@@ -22,7 +22,8 @@ const THROWABLE = { [O.BARREL]: 18, [O.CRATE]: 20, [O.ROCK]: 26 };
 // objetos rasteiros (vão direto para o chão pré-desenhado)
 const FLAT = new Set([O.FLOWER, O.LILY, O.FLOWERBED, O.BONES, O.RUBBLE, O.IVY, O.STAGEFLOOR]);
 const BEDS = [];
-const KITCHENS = [];   // fogões (casas e taverna): { x, y, bi }
+const KITCHENS = [];
+const JAILCELLS = [];   // celas da cadeia: { door:[x,y], spot:[x,y], tiles:Set(índice), bi }   // fogões (casas e taverna): { x, y, bi }
 const FRUIT_STOOL = { x: -1, y: -1 };
 const STAGE = { x: -1, y: -1 };   // cadafalso da guilhotina (centro do tablado 3x3)   // camas do térreo (onde dá para deitar e dormir): { x, y, dx, dy (travesseiro -> pés), bi }
 const DIRS8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
@@ -92,6 +93,7 @@ const BUILDINGS = TEST3D ? [] : [
   { x: C + 13, y: C + 9, ...BH('shop', 5, 5, 4.0, 2.8, 'Alfaiataria Real', { v: 3 }) },
   { x: C + 21, y: C + 15, ...BH('shop', 6, 4, 2.6, 2.6, 'Pergaminhos & Mapas', { v: 4 }) },
   { x: C - 5, y: C - 19, ...BH('castle', 12, 10, 10, 6.5, 'Castelo de Sxan', { floors: 2 }) },
+  { x: C + 22, y: C + 20, ...BH('jail', 6, 8, 3.2, 2.4, 'Cadeia de Sxan', { floors: 1, door: 'W' }) },
 ];
 // portas: lado S (+y, padrão), N (-y), E (+x) ou W (-x). O layout interno usa um "quadro local":
 // i = posição ao longo da parede da porta (largura A), j = profundidade (0 = fundo, D-1 = linha da porta)
@@ -200,6 +202,11 @@ function interiorLayout0(b, fl = 0) {
   } else if (k === 'temple') {
     put('altar', dc - 1, 0, { w: 3 }); npcAt(dc, 1); put('candles', 1, 0); put('candles', w - 2, 0);
     for (const j of [3, 5]) { put('pew', 1, j, { w: dc - 1, seat: 3 }); put('pew', dc + 1, j, { w: w - dc - 2, seat: 3 }); }
+  } else if (k === 'jail') {
+    for (const c of [0, 3, 6]) { put('cot', c, 0, { h: 2 }); put('bucket', c + 1, 0); put('bars', c, 2, { v: 0 }); put('celldoor', c + 1, 2, { v: 0, block: false }); }
+    for (const i of [2, 5]) { put('bars', i, 0, { v: 1 }); put('bars', i, 1, { v: 1 }); put('bars', i, 2, { v: 2 }); }
+    if (put('table', 0, 4)) put('chair', 1, 4, { seat: 3 });
+    npcAt(1, 3); put('pew', w - 2, 4, { w: 2, seat: 1 });
   } else if (k === 'barracks') {
     put('bunk', 0, 0, { h: 2 }); put('bunk', 1, 0, { h: 2 }); put('bunk', w - 1, 0, { h: 2 }); put('bunk', w - 2, 0, { h: 2 });
     npcAt(dc, 1); put('rack', 2, 0); put('rack', w - 3, 0);
@@ -253,6 +260,7 @@ const NPCS = TEST3D ? [] : [
   { id: 'guard4', name: 'Sentinela Wyn', kind: 'guard', x: C + 2.4, y: C - 29.4 },
   { id: 'fruit', name: 'Marta, a Fruteira', kind: 'fruit', x: C - 3, y: C + 9, stall: [C - 3, C + 10] },
   { id: 'executioner', name: 'Mestre Corvo, o Carrasco', kind: 'executioner', x: C - 4.6, y: C + 3.4 },
+  { id: 'jailer', name: 'Bruno, o Carcereiro', kind: 'jailer', ...npcIn(BLD_BY('jail'), { x: C + 25, y: C + 23 }) },
 ];
 // ---------- bairro de teste ----------
 if (TEST3D) {
@@ -790,7 +798,7 @@ function generateWorld() {
       for (let yy = cy - 1; yy <= cy + 2 && ok; yy++) for (let xx = cx - 1; xx <= cx + 1 && ok; xx++) { const i = idx(xx, yy); if (bld[i] !== -1 || BLOCKING.has(obj[i]) || ground[i] === T.WATER || rdir[i] && yy > cy + 1) ok = false; }
       if (ok) best = [cx, cy];
     }
-    if (best) { const [cx, cy] = best; for (let yy = cy - 1; yy <= cy + 1; yy++) for (let xx = cx - 1; xx <= cx + 1; xx++) obj[idx(xx, yy)] = O.STAGEFLOOR; obj[idx(cx, cy)] = O.GUILLOTINE; obj[idx(cx, cy + 2)] = O.NONE; STAGE.x = cx; STAGE.y = cy; } }
+    if (best) { const [cx, cy] = best; obj[idx(cx, cy)] = O.GUILLOTINE; obj[idx(cx, cy + 1)] = O.PART; obj[idx(cx, cy + 2)] = O.NONE; STAGE.x = cx; STAGE.y = cy; } }
   for (const [x, y, o] of [[C - 4, KEEP.y1 - 3, O.FLOWERBED], [C + 5, KEEP.y1 - 3, O.FLOWERBED], [C - 1, KEEP.y1 - 2, O.BRAZIER], [C + 2, KEEP.y1 - 2, O.BRAZIER], [C - 6, KEEP.y1 - 2, O.BENCH], [C + 7, KEEP.y1 - 2, O.BENCH], [C - 4, KEEP.y1 - 6, O.STATUE], [C + 5, KEEP.y1 - 6, O.STATUE]]) decoAny(x, y, o);
   // catedral: cemitério e jardim
   const T0 = BUILDINGS[0];
@@ -833,6 +841,8 @@ function generateWorld() {
 // mobília -> obstáculos (PART) e assentos, no quadro do mundo
 function placeFurniture(b, bi, f, obj, seats, idx) {
   if (f.t === 'stairup' || f.t === 'stairdown') return;
+  if (f.t === 'celldoor') { const [dx, dy] = bLocal(b, f.i, f.j), [sx, sy] = bLocal(b, f.i, f.j - 1), tiles = new Set(); for (let a = f.i - 1; a <= f.i; a++) for (let c = 0; c <= 1; c++) { const [tx, ty] = bLocal(b, a, c); tiles.add(ty * MAP_W + tx); } JAILCELLS.push({ door: [dx, dy], spot: [sx, sy], tiles, bi }); }
+  if (f.t === 'cot') { const [px, py] = bLocal(b, f.i, f.j), [fx, fy] = bLocal(b, f.i, f.j + f.h - 1); BEDS.push({ x: (px + fx) / 2, y: (py + fy) / 2, dx: fx - px, dy: fy - py, bi }); }
   if (f.t === 'stove') { const [x, y] = bLocal(b, f.i, f.j); KITCHENS.push({ x, y, bi }); }
   if (f.t === 'bed') { const [px, py] = bLocal(b, f.i + (f.w - 1) / 2, f.j), [fx, fy] = bLocal(b, f.i + (f.w - 1) / 2, f.j + f.h - 1); BEDS.push({ x: (px + fx) / 2, y: (py + fy) / 2, dx: fx - px, dy: fy - py, bi }); }
   for (let a = 0; a < f.w; a++) for (let c = 0; c < f.h; c++) { const [x, y] = bLocal(b, f.i + a, f.j + c); if (f.block) obj[idx(x, y)] = O.PART; }
@@ -902,7 +912,7 @@ function generateDistrict() {
 }
 const WORLD = TEST3D ? generateDistrict() : generateWorld();
 // o carrasco fica ao lado do cadafalso, perto da alavanca
-if (STAGE.x >= 0) { const ex = NPCS.find(n => n.id === 'executioner'); if (ex) { const c = [[2, 0.6], [2, -0.6], [-2, 0.6], [0.6, 2]].find(([dx, dy]) => !BLOCKING.has(WORLD.obj[Math.round(STAGE.y + dy) * MAP_W + Math.round(STAGE.x + dx)])) || [2, 0.6]; ex.x = STAGE.x + c[0]; ex.y = STAGE.y + c[1]; } }
+if (STAGE.x >= 0) { const ex = NPCS.find(n => n.id === 'executioner'); if (ex) { const c = [[1.1, 0.2], [-1.1, 0.2], [1.1, 1.2]].find(([dx, dy]) => !BLOCKING.has(WORLD.obj[Math.round(STAGE.y + dy) * MAP_W + Math.round(STAGE.x + dx)])) || [1.1, 0.2]; ex.x = STAGE.x + c[0]; ex.y = STAGE.y + c[1]; } }
 const NPC_AT = new Set(NPCS.map(n => Math.round(n.y) * MAP_W + Math.round(n.x)));
 
 function inBounds(x, y) { return x >= 0 && y >= 0 && x < MAP_W && y < MAP_H; }

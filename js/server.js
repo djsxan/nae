@@ -28,7 +28,7 @@ function fullStat(p) {
     pots: { hp: p.pots.hp, mp: p.pots.mp, band: p.pots.band || 0 }, body: p.body, bleed: p.bleed, food: Math.round(p.food ?? 100), water: Math.round(p.water ?? 100), cold: Math.round(p.cold || 0), infect: p.infect || 0, sick: Math.max(0, (p.sickUntil || 0) - now), hasSkin: !!p.hasSkin, lost: p.lost || 0, pro: p.pro || 0, knock: Math.max(0, (p.knockUntil || 0) - now), inv: { ...p.inv }, quests: { ...p.quests }, qdone: { ...p.qdone },
     buffs: Object.entries(p.buffs).filter(([, u]) => u > now).map(([k, u]) => [k, u - now]),
     cds: [0, 1, 2, 3].map(i => Math.max(0, (p.cds[i] || 0) - now)),
-    combat: now - p.lastCombat < OUT_OF_COMBAT_MS, cst: Math.round(p.cst ?? CST_MAX), cstMax: cstMaxOf(p), esc: (p.gripBy || p.tied) ? Math.round(p.esc || 0) : 0, arw: (p.arrows || []).map(a => a.part), tree: p.tree || {}, use: p.use || {}, stun: Math.max(0, (p.stunUntil || 0) - now), rip: Math.max(0, (p.ripUntil || 0) - now), slow: Math.max(0, (p.slowUntil || 0) - now), downed: p.downed ? p.downed.until - now : 0,
+    combat: now - p.lastCombat < OUT_OF_COMBAT_MS, cst: Math.round(p.cst ?? CST_MAX), cstMax: cstMaxOf(p), chk: p.choking ? +(p.chokeT || 0).toFixed(2) : 0, jl: p.jailUntil > now ? p.jailUntil - now : 0, cell: p.cell ?? -1, esc: (p.gripBy || p.tied) ? Math.round(p.esc || 0) : 0, arw: (p.arrows || []).map(a => a.part), tree: p.tree || {}, use: p.use || {}, stun: Math.max(0, (p.stunUntil || 0) - now), rip: Math.max(0, (p.ripUntil || 0) - now), slow: Math.max(0, (p.slowUntil || 0) - now), downed: p.downed ? p.downed.until - now : 0,
   };
 }
 function sendStat(p) { Net.toOne(p.id, fullStat(p)); }
@@ -150,6 +150,7 @@ function hostOnClient(from, m) {
       downed: null, carriedBy: null, carrying: null, revive: null, quests: {}, qdone: {}, inv: {},
     };
     if (m.inv) for (const k in LOOT) if (m.inv[k] > 0) np.inv[k] = clamp(m.inv[k] | 0, 0, 999);
+    if (+m.jailLeft > 0) setTimeout(() => { if (S.players[np.id]) jailPlayer(np, Math.min(900000, +m.jailLeft)); }, 1500);
     np.tree = cleanTree(cls, lvl, m.tree); np.use = {}; if (m.use && typeof m.use === 'object') for (const k in USE) if (isFinite(m.use[k])) np.use[k] = clamp(+m.use[k], 0, 1e6);
     np.maxHp = maxHpOf(np); np.maxMp = maxMpOf(np);
     if (m.quests) for (const q of QUESTS) if (m.quests[q.id] != null) np.quests[q.id] = clamp(m.quests[q.id] | 0, 0, q.count);
@@ -185,6 +186,7 @@ function hostOnClient(from, m) {
     case 'loose': bowLoose(p, m); break;
     case 'pullarrow': pullArrow(p); break;
     case 'grab': startGrab(p, m); break;
+    case 'pickstart': case 'pick': case 'opencell': case 'give': jailMsg(p, m); break;
     case 'surrender': if (now_() < (p.wanted || 0) && !p.downed && !p.escortBy && !(p.jailUntil > now_())) { p.surrendered = true; p.atk = null; tell(p, 'Você se rendeu. Fique parado: uma sentinela vem te buscar.'); sys(p.name + ' se rendeu às sentinelas.'); } break;
     case 'choke': p.choking = !!m.on && !!(p.drag && p.drag.mode === 'grip'); break;
     case 'cookat': cookAt(p, String(m.r)); break;
@@ -338,7 +340,10 @@ function hostOnClient(from, m) {
 function handleMove(p, m) {
   if (p.carriedBy) return;
   if (p.grabbed || p.dragBy || p.gripBy || p.surrendered || now_() < (p.flungUntil || 0) || now_() < (p.knockUntil || 0)) return;
-  if (p.jailUntil) { if (now_() > p.jailUntil) { p.jailUntil = 0; tell(p, 'Você cumpriu a pena e está livre.'); } else { const J = jailSpot(), tx = +m.x, ty = +m.y; if (J && isFinite(tx) && WORLD.bld[tileAt(tx, ty)] !== J.bi) { Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: p.z, fl: p.fl || 0, fb: p.fb ?? -1 }); return; } } }
+  { const tx = +m.x, ty = +m.y, ti = isFinite(tx) && isFinite(ty) ? tileAt(tx, ty) : -1, c = jailOf(p), st = cellsState();
+    const back = () => Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: p.z, fl: p.fl || 0, fb: p.fb ?? -1 });
+    if (c && ti >= 0 && !c.tiles.has(ti)) { back(); return; }                                                     // preso só anda dentro da cela
+    if (!c && ti >= 0) { const k = JAILCELLS.findIndex(q => q.tiles.has(ti) || (q.door[1] * MAP_W + q.door[0]) === ti); if (k >= 0 && st[k].locked && (q => q.door[1] * MAP_W + q.door[0])(JAILCELLS[k]) === ti) { back(); return; } } }
   if (p.sleep != null && m.w) p.sleep = null;   // voando / derrubado
   if (p.dev) { const x = +m.x, y = +m.y; if (isFinite(x) && isFinite(y)) { p.x = clamp(x, 1, MAP_W - 2); p.y = clamp(y, 1, MAP_H - 2); p.z = +m.z || 0; p.dir = m.d | 0; p.walking = !!m.w; p.lastMv = now_(); } return; }
   const now = now_();
@@ -782,7 +787,13 @@ function usePot(p, k) {
 function npcAction(p, m) {
   const n = NPCS.find(q => q.id === m.n);
   { const sn = S.npcs && S.npcs[m.n]; if (sn && (sn.dead || sn.downed)) { tell(p, sn.dead ? sn.name + ' está morto.' : sn.name + ' está caído e não responde.'); return; } }
-  if (!n || dist(p.x, p.y, (S.npcs && S.npcs[n.id] ? S.npcs[n.id].x : n.x), (S.npcs && S.npcs[n.id] ? S.npcs[n.id].y : n.y)) > 3.5) { tell(p, 'Chegue mais perto para conversar.'); return; }
+  const inJail = n && n.id === 'jailer' && WORLD.bld[tileAt(p.x, p.y)] === BUILDINGS.findIndex(b => b.kind === 'jail');
+  if (!n || (!inJail && dist(p.x, p.y, (S.npcs && S.npcs[n.id] ? S.npcs[n.id].x : n.x), (S.npcs && S.npcs[n.id] ? S.npcs[n.id].y : n.y)) > 3.5)) { tell(p, 'Chegue mais perto para conversar.'); return; }
+  if (n.id === 'jailer' && m.a === 'bail') {
+    const q = S.players[m.who || p.id]; if (!q || !(q.jailUntil > now_())) { Net.toOne(p.id, { t: 'npc', n: n.id, text: 'Esse aí não está preso.' }); return; }
+    const price = bailPrice(q); if (p.gold < price) { Net.toOne(p.id, { t: 'npc', n: n.id, text: 'A fiança é ' + price + ' de ouro. Você não tem o bastante.' }); return; }
+    p.gold -= price; releasePlayer(q, (q === p ? 'Você pagou' : p.name + ' pagou') + ' a fiança de ' + price + ' de ouro. Está livre.'); Net.toOne(p.id, { t: 'npc', n: n.id, text: 'Fiança paga: ' + price + ' de ouro. Pode ir.' }); sendStat(p); return;
+  }
   const say = text => Net.toOne(p.id, { t: 'npc', n: n.id, text });
   const pay = cost => { if (p.gold < cost) { say('Você não tem ouro suficiente.'); return false; } p.gold -= cost; return true; };
   const now = now_();
@@ -1042,12 +1053,12 @@ function playerStrike(p, k, a, now) {
 const pvpOk = (a, b) => a !== b && !a.dev && !b.dev && !b.downed && Math.abs((a.z || 0) - (b.z || 0)) < 0.5 && (a.fl || 0) === (b.fl || 0);
 // crime na cidade: se uma sentinela vê (até 10 passos, sem parede no meio), o agressor fica procurado por 5 minutos
 function sightClear(ax, ay, bx, by) { const n = Math.ceil(dist(ax, ay, bx, by) * 2); for (let i = 1; i < n; i++) { const t = tileAt(ax + (bx - ax) * i / n, ay + (by - ay) * i / n); if (WORLD.bld[t] >= 0 || WORLD.obj[t] === O.WALL || WORLD.obj[t] === O.TOWER || WORLD.ground[t] === T.CLIFF) return false; } return true; }
-function witnessCrime(p, x, y) {
+function witnessCrime(p, x, y, kind) {
   if (!p || p.dev || !inSafe(x, y)) return false;
   const guards = S.npcs ? Object.values(S.npcs).filter(n => n.kind === 'guard' && !n.dead && !n.downed) : NPCS.filter(n => n.kind === 'guard');
   const seen = guards.some(n => dist(n.x, n.y, x, y) <= 10 && sightClear(n.x, n.y, x, y));
   if (!seen) return false;
-  const now = now_(), was = now < (p.wanted || 0); p.wanted = now + 300000;
+  const now = now_(), was = now < (p.wanted || 0); p.wanted = now + 300000; if (!p._crimeT || now - p._crimeT > 4000 || kind === 'murder') { p._crimeT = now; crimeSentence(p, kind || 'assault'); }
   if (!was) { sys(p.name + ' foi visto cometendo um crime na cidade! As sentinelas estão atrás dele.'); tell(p, 'Uma sentinela viu: você está PROCURADO por 5 minutos (sair da cidade limpa a ficha).'); }
   Net.toAll({ t: 'wanted', id: p.id, ms: 300000 }); return true;
 }
@@ -1505,7 +1516,7 @@ function startGrab(p, m) {
     if ((p.cst ?? 0) < 30) { tell(p, 'Sem fôlego para agarrar.'); return; }
     p.cst -= 20; t.gripBy = p.id; t.dragBy = p.id; t.atk = null; t.escAt = now + (k === 'm' ? ((WEIGHT[t.type] ?? 2) <= 1 ? 2600 : 3600) : 5000);
     p.drag = { k, id: t.id, mode, w, a: Math.atan2(t.y - p.y, t.x - p.x) };
-    near(p.x, p.y, { t: 'drag', by: p.id, k, id: t.id, mode }); if (k === 'n') witnessCrime(p, p.x, p.y); sendStat(p); return;
+    near(p.x, p.y, { t: 'drag', by: p.id, k, id: t.id, mode }); if (k === 'n') witnessCrime(p, p.x, p.y, 'grab'); sendStat(p); return;
   }
   if (mode === 'grip') {   // agarrão em quem está de pé: só pelas costas ou em quem está atordoado/sem fôlego
     if (k !== 'p' || t.downed || t.dev || t.gripBy || t.carriedBy) return;
@@ -1564,11 +1575,11 @@ function dragTick(p, now, dt) {
   const a = p._dragA ?? Math.atan2(t.y - p.y, t.x - p.x) + Math.PI;
   if (d.mode === 'back') { t.x = p.x; t.y = p.y; t.z = p.z; p.cst -= (d.w >= 2 ? 8 : 2) * dt; p.cstT = now; if (p.cst <= 0) { p.cst = 0; stopDrag(p, 'O peso venceu: você largou.'); } return; }
   if (d.mode === 'grip') {   // a vítima fica presa na frente de quem agarra
-    const [fx, fy] = dirVec(p.dir), nx = p.x + fx * 0.36, ny = p.y + fy * 0.36;
-    if (canStand(nx, ny, p.z || 0, 0.15)) { t.x = nx; t.y = ny; } t.lastMv = now; t.walking = false; t.dir = p.dir;
+    const [fx, fy] = dirVec(p.dir), nx = p.x + fx * 0.48, ny = p.y + fy * 0.48;
+    if (canStand(nx, ny, p.z || 0, 0.15)) { t.x = nx; t.y = ny; } t.lastMv = now; t.walking = !!p.walking; t.dir = p.dir;
     t.choked = !!p.choking;
     if (p.choking) {   // apertando o pescoço: a vítima perde o fôlego, desmaia em ~5s e morre se continuar mais ~5s
-      p.chokeT = (p.chokeT || 0) + dt; if (inSafe(p.x, p.y)) witnessCrime(p, p.x, p.y);
+      p.chokeT = (p.chokeT || 0) + dt; if (inSafe(p.x, p.y)) witnessCrime(p, p.x, p.y, p.chokeT > 9.5 ? 'murder' : 'grab');
       if (d.k === 'p') { t.cst = Math.max(0, (t.cst ?? 0) - 40 * dt); t.esc = Math.max(0, (t.esc || 0) - 12 * dt); }
       if (d.k === 'n') t.escAt = Math.max(t.escAt || 0, now + 1500);
       if (d.k === 'm') { t.escAt = Math.max(t.escAt || 0, now + 1500); if (p.chokeT > 5) { killMonster(t, p, 0); stopDrag(p); return; } }
@@ -1607,7 +1618,9 @@ function initNpcs() {
 const npcAlive = id => { const n = S.npcs && S.npcs[id]; return !n || (!n.dead && !n.downed); };
 function npcDamage(n, dmg, p) {
   if (!n || n.dead) return; const now = now_();
-  if (p) witnessCrime(p, n.x, n.y);
+  if (p) witnessCrime(p, n.x, n.y, n.downed ? 'murder' : 'assault');
+  if (n.carrying) { npcDropCarried(n); n.mission = null; sys(n.name + ' largou o preso!'); }   // resgate: atacar o guarda que leva alguém
+  if (n.kind === 'executioner') abortExecution('O carrasco foi atacado! A execução foi interrompida.');
   if (n.downed) { npcDie(n, p); return; }
   n.hp -= dmg; sfx(n.x, n.y, '-' + dmg, '#ff8a6a'); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'hurt', ms: 300 });
   if (n.kind === 'guard' && p) { n.aggro = p.id; p.wanted = Math.max(p.wanted || 0, now + 300000); Net.toAll({ t: 'wanted', id: p.id, ms: p.wanted - now }); }
@@ -1635,14 +1648,14 @@ function npcWalk(n, tx, ty, speed, dt) {
 }
 const JAIL_MS = 120000;
 const dirFromVecS = (dx, dy) => { const sx = dx - dy, sy = (dx + dy) * 0.5; return ((Math.round(Math.atan2(sx, sy) / (Math.PI / 4)) % 8) + 8) % 8; };
-function jailSpot() {
+function jailSpotOld() {
   if (S.jail !== undefined) return S.jail; S.jail = null;
   const bi = BUILDINGS.findIndex(b => b.kind === 'barracks'); if (bi < 0) return null; const b = BUILDINGS[bi];
   for (let y = b.y + 1; y < b.y + b.h - 1 && !S.jail; y++) for (let x = b.x + 1; x < b.x + b.w - 1 && !S.jail; x++) if (WORLD.bld[y * MAP_W + x] === bi && canStand(x, y, 0, 0.25)) S.jail = { x, y, bi };
   return S.jail;
 }
-// execução no cadafalso (usada pelo jogador e pela sentinela)
-function startExecution(v, by) {
+// execução (versão térrea abaixo)
+function startExecutionOld(v, by) {
   if (!npcAlive('executioner') || v.execAt) return false;
   if (v.wanted) { v.wanted = 0; Net.toAll({ t: 'wanted', id: v.id, ms: 0 }); }
   const now = now_(); v.x = STAGE.x; v.y = STAGE.y; v.z = 0; v.execAt = now + 2600; v.downed.until = Math.max(v.downed.until, now + 12000);
@@ -1658,7 +1671,7 @@ function guardThink(n, now, dt) {
     const ox = n.x, oy = n.y, arrived = npcWalk(n, J.x, J.y, 1.5, dt), mx = n.x - ox, my = n.y - oy, ml = Math.hypot(mx, my);
     if (ml > 0.001) { const nx = n.x - mx / ml * 0.8, ny = n.y - my / ml * 0.8; if (canStand(nx, ny, 0, 0.2)) { q.x = nx; q.y = ny; } q.dir = n.dir = dirFromVecS(mx, my); }
     q.lastMv = now;
-    if (arrived) { q.x = J.x; q.y = J.y; q.escortBy = null; q.dragBy = null; q.surrendered = false; q.jailUntil = now + JAIL_MS; q.wanted = 0; Net.toAll({ t: 'wanted', id: q.id, ms: 0 }); n.escort = null; tell(q, 'Você está preso no quartel por ' + Math.round(JAIL_MS / 60000) + ' minutos. Depois disso a ficha fica limpa.'); sys(q.name + ' foi preso no quartel.'); }
+    if (arrived) { q.escortBy = null; q.dragBy = null; n.escort = null; jailPlayer(q, q.sentence || CRIME_MS.assault); sys(q.name + ' foi preso na cadeia.'); }
     return;
   }
   for (const q of Object.values(S.players)) {   // procurado que se rendeu: vai buscar
@@ -1672,7 +1685,7 @@ function guardThink(n, now, dt) {
   if (n.carrying) {
     const q = S.players[n.carrying]; if (!q || !q.downed) { if (q) npcDropCarried(n); else n.carrying = null; return; }
     q.x = n.x; q.y = n.y; q.downed.until = Math.max(q.downed.until, now + 4000);
-    if (n.mission === 'stage' && STAGE.x >= 0) { if (npcWalk(n, STAGE.x + 1.2, STAGE.y + 2.2, 1.7, dt)) { const v = npcDropCarried(n); if (v && !startExecution(v, n.name)) tell(v, 'Sem carrasco, a sentinela te larga no cadafalso.'); n.mission = null; } }
+    if (n.mission === 'stage' && STAGE.x >= 0) { if (npcWalk(n, STAGE.x + 0.4, STAGE.y + 2.1, 1.7, dt)) { const v = npcDropCarried(n); if (v && !startExecution(v, n.name)) tell(v, 'Sem carrasco, a sentinela te larga no cadafalso.'); n.mission = null; } }
     else { const tx = TEMPLE_SPAWN.x, ty = TEMPLE_SPAWN.y; if (npcWalk(n, tx, ty, 1.7, dt)) { const v = npcDropCarried(n); n.mission = null; if (v && npcAlive('priest')) { revivePlayer(v, 0.35, 'Irmã Lúmina'); tell(v, 'A sentinela te trouxe até a Irmã Lúmina.'); } } }
     return;
   }
@@ -1773,6 +1786,85 @@ function cookAt(p, r) {
     p.inv[rc.out] = (p.inv[rc.out] || 0) + 1; useGain(p, 'cook', 2); Net.toOne(p.id, { t: 'loot', k: rc.out }); tell(p, rc.name + ' pronto!'); sendStat(p);
   }, 3000);
 }
+
+// ---------------- cadeia: celas, pena por crime, fiança, fuga, visitas ----------------
+const CRIME_MS = { assault: 120000, grab: 180000, murder: 360000 }, CRIME_TXT = { assault: 'agressão', grab: 'ataque à traição', murder: 'assassinato' };
+const cellsState = () => S.cells || (S.cells = JAILCELLS.map(() => ({ locked: true, who: null })));
+const jailOf = p => p.jailUntil > now_() && p.cell != null ? JAILCELLS[p.cell] : null;
+function jailSpot() { const st = cellsState(); const i = st.findIndex(c => !c.who); if (i < 0) return null; const c = JAILCELLS[i]; return { x: c.spot[0], y: c.spot[1], bi: c.bi, cell: i }; }
+function jailPlayer(q, ms) {
+  const st = cellsState(); let i = st.findIndex(c => !c.who); if (i < 0) i = 0;
+  const c = JAILCELLS[i]; if (!c) return false; const now = now_();
+  if (st[i].who && S.players[st[i].who] && st[i].who !== q.id) releasePlayer(S.players[st[i].who], 'A cela foi esvaziada para um novo preso.');
+  st[i].who = q.id; st[i].locked = true; q.cell = i; q.jailUntil = now + Math.max(30000, ms); q.x = c.spot[0]; q.y = c.spot[1]; q.z = 0; q.fl = 0; q.fb = -1;
+  q.wanted = 0; q.sentence = 0; q.crimes = []; q.surrendered = false; Net.toAll({ t: 'wanted', id: q.id, ms: 0 });
+  if (!q.inv.bread && Object.keys(q.inv).length < INV_SLOTS) q.inv.bread = 1;
+  Net.toOne(q.id, { t: 'tp', x: q.x, y: q.y, z: 0, fl: 0, fb: -1 });
+  tell(q, 'Você está preso por ' + Math.ceil((q.jailUntil - now) / 60000) + ' min. Dormir no catre faz o tempo passar 2x mais rápido; fale com o carcereiro para pagar fiança; F na porta da cela tenta arrombar.'); sendStat(q); return true;
+}
+function releasePlayer(q, why) {
+  const st = cellsState(), i = q.cell; if (i != null && st[i] && st[i].who === q.id) { st[i].who = null; st[i].locked = true; }
+  const c = i != null ? JAILCELLS[i] : null; q.jailUntil = 0; q.cell = null;
+  if (c) { q.x = c.door[0] - 1; q.y = c.door[1]; Net.toOne(q.id, { t: 'tp', x: q.x, y: q.y, z: 0, fl: 0, fb: -1 }); }
+  tell(q, why || 'Você está livre.'); sendStat(q);
+}
+function jailTick(p, now, dt) {
+  if (!p.jailUntil) return;
+  if (p.sleep != null) p.jailUntil -= dt * 1000;   // dormindo no catre o tempo passa 2x
+  if (now > p.jailUntil) releasePlayer(p, 'Você cumpriu a pena. A porta da cela se abre: está livre.');
+}
+const bailPrice = q => Math.max(10, Math.ceil((q.jailUntil - now_()) / 60000) * 30);
+// fechadura: o preso arromba com o minijogo; um amigo abre de noite com o carcereiro dormindo
+function escapeCell(q, by) {
+  const st = cellsState(), i = q.cell; if (i == null) return; st[i].who = null; st[i].locked = true; q.jailUntil = 0; q.cell = null;
+  const c = JAILCELLS[i]; q.x = c.door[0] - 1; q.y = c.door[1]; Net.toOne(q.id, { t: 'tp', x: q.x, y: q.y, z: 0, fl: 0, fb: -1 });
+  q.wanted = now_() + 300000; q.sentence = (q.sentence || 0) + 180000; Net.toAll({ t: 'wanted', id: q.id, ms: 300000 });
+  sys(q.name + ' fugiu da cadeia' + (by ? ' com a ajuda de ' + by : '') + '! As sentinelas estão atrás dele.'); sendStat(q);
+}
+function jailMsg(p, m) {
+  const now = now_(), st = cellsState();
+  if (m.t === 'pickstart') { const c = jailOf(p); if (!c || dist(p.x, p.y, c.door[0], c.door[1]) > 1.6) return; p.pickT = now; return; }
+  if (m.t === 'pick') {
+    const c = jailOf(p); if (!c || !p.pickT || now - p.pickT < 3000) return; p.pickT = 0;
+    if (m.ok) { tell(p, 'Clique! A fechadura cedeu.'); escapeCell(p); }
+    else { p.jailUntil += 60000; tell(p, 'A gazua quebrou e o carcereiro ouviu: +1 minuto de pena.'); sendStat(p); }
+    return;
+  }
+  if (m.t === 'opencell') {   // amigo de fora, de noite, com o carcereiro dormindo
+    const i = JAILCELLS.findIndex(c => dist(p.x, p.y, c.door[0], c.door[1]) < 1.6); if (i < 0 || !st[i].who) return;
+    const q = S.players[st[i].who]; if (!q) return;
+    const night = typeof dayInfo === 'function' && dayInfo().night, jl = S.npcs && S.npcs.jailer, asleep = night || !jl || jl.dead || jl.downed;
+    if (!asleep) { tell(p, 'O carcereiro está acordado e de olho. Volte de noite.'); return; }
+    escapeCell(q, p.name); p.wanted = now + 300000; p.sentence = (p.sentence || 0) + 180000; Net.toAll({ t: 'wanted', id: p.id, ms: 300000 }); return;
+  }
+  if (m.t === 'give') {   // passar item pelas grades
+    const q = S.players[m.to], k = String(m.k); if (!q || q === p || !(q.jailUntil > now) || dist(p.x, p.y, q.x, q.y) > 2.2 || !LOOT[k] || !(p.inv[k] > 0)) return;
+    if (!q.inv[k] && Object.keys(q.inv).length >= INV_SLOTS) { tell(p, 'A mochila do preso está cheia.'); return; }
+    p.inv[k]--; if (!p.inv[k]) delete p.inv[k]; q.inv[k] = (q.inv[k] || 0) + 1; tell(p, 'Você passou ' + LOOT[k].name + ' pelas grades.'); tell(q, p.name + ' te passou ' + LOOT[k].name + '.'); sendStat(p); sendStat(q);
+  }
+}
+function crimeSentence(p, kind) { p.sentence = Math.min(900000, (p.sentence || 0) + (CRIME_MS[kind] || CRIME_MS.assault)); (p.crimes = p.crimes || []).push(CRIME_TXT[kind] || 'agressão'); if (p.crimes.length > 4) p.crimes.shift(); }
+
+// execução na guilhotina: deitar na prancha, fechar a luneta, anúncio, alavanca, lâmina, cabeça no cesto
+const EXEC_T = { lock: 1400, announce: 2000, pull: 6400, drop: 7000, fall: 10000 };
+function startExecution(v, by) {
+  if (!npcAlive('executioner') || v.execAt || STAGE.x < 0) return false;
+  const now = now_(), tok = now + Math.random(), crimes = (v.crimes && v.crimes.length ? v.crimes.join(', ') : 'crimes contra Sxan');
+  if (v.wanted) { v.wanted = 0; Net.toAll({ t: 'wanted', id: v.id, ms: 0 }); }
+  if (v.carriedBy) v.carriedBy = null; if (v.dragBy && S.players[v.dragBy]) stopDrag(S.players[v.dragBy]);
+  v.x = STAGE.x; v.y = STAGE.y + 0.95; v.z = 0; v.execAt = now + EXEC_T.drop; v.execTok = tok; v.downed = v.downed || { until: 0 }; v.downed.until = now + EXEC_T.fall + 4000;
+  const ex = S.npcs && S.npcs.executioner; if (ex) { ex.x = STAGE.x + 1.1; ex.y = STAGE.y + 0.2; }
+  near(STAGE.x, STAGE.y, { t: 'exec', id: v.id, x: STAGE.x, y: STAGE.y, T: EXEC_T, name: v.name, crimes }, VIEW_RADIUS + 12);
+  sys('🔔 O sino da praça toca: ' + by + ' entregou ' + v.name + ' ao carrasco.');
+  setTimeout(() => { if (v.execTok !== tok) return; sys('Mestre Corvo: "' + v.name + ', condenado por ' + crimes + '. Que Sxan tenha piedade da sua alma."'); }, EXEC_T.announce);
+  setTimeout(() => { if (v.execTok !== tok || !S.npcs || !S.npcs.executioner || !npcAlive('executioner')) return; near(STAGE.x, STAGE.y, { t: 'anim', w: 'n', id: 'executioner', a: 'lever', ms: 1100 }); }, EXEC_T.pull);
+  setTimeout(() => { const q = S.players[v.id]; if (!q || q.execTok !== tok) return; q.execAt = 0; q.execTok = 0; q.downed = null; q.lost = (q.lost || 0) & ~LOST.head; severPlayer(q, 'head', { x: STAGE.x, y: STAGE.y + 2, name: 'o Carrasco' }); if (q.downed) q.downed.until = now_() + 3500; }, EXEC_T.drop);
+  return true;
+}
+function abortExecution(why) {
+  for (const q of Object.values(S.players)) if (q.execTok) { q.execTok = 0; q.execAt = 0; if (q.downed) q.downed.until = now_() + DOWNED_MS; q.x = STAGE.x + 0.6; q.y = STAGE.y + 1.8; near(STAGE.x, STAGE.y, { t: 'execabort', id: q.id }, VIEW_RADIUS + 12); sys(why); }
+}
+
 // ---------------- progressão por uso e habilidades da árvore ----------------
 function useGain(p, k, amt) {
   if (!USE[k] || !p || p.dev || !(amt > 0)) return; p.use = p.use || {};
@@ -1858,7 +1950,7 @@ function hostTick() {
   }
 
   for (const p of players) { if (p.wanted && (now > p.wanted || !inSafe(p.x, p.y))) { p.wanted = 0; Net.toAll({ t: 'wanted', id: p.id, ms: 0 }); }
-    bodyTick(p, now, dt); survivalTick(p, now, dt); combatTick(p, now, dt); bowTick(p, now, dt); dragTick(p, now, dt); tiedTick(p, now); if (p.running && p.walking) { const d = dist(p._rx ?? p.x, p._ry ?? p.y, p.x, p.y); if (d < 3) useGain(p, 'run', d); } p._rx = p.x; p._ry = p.y; }
+    bodyTick(p, now, dt); survivalTick(p, now, dt); combatTick(p, now, dt); bowTick(p, now, dt); dragTick(p, now, dt); tiedTick(p, now); jailTick(p, now, dt); if (p.running && p.walking) { const d = dist(p._rx ?? p.x, p._ry ?? p.y, p.x, p.y); if (d < 3) useGain(p, 'run', d); } p._rx = p.x; p._ry = p.y; }
   if (!S.bslots) initBastions();
   tickBastions(now);
   if (S.fires && S.fires.length) { S.fires = S.fires.filter(f => f.until > now); for (const p of players) { if (p.downed || now < (p.burnT || 0)) continue; if (S.fires.some(f => dist(f.x, f.y, p.x, p.y) < f.r)) { p.burnT = now + 500; damagePlayer(p, 6, null, 0); if (Math.random() < 0.25) ignitePlayer(p, now); } } }
@@ -1916,7 +2008,7 @@ function hostTick() {
     for (const p of players) {
       if (dist(p.x, p.y, r.x, r.y) > VIEW_RADIUS) continue;
       if (p.devHidden && p.id !== r.id) continue;
-      let fl = (p.walking ? 1 : 0) | (p.downed ? 2 : 0) | (p.carriedBy ? 4 : 0) | (p.carrying ? 8 : 0) | (p.running && p.walking ? 256 : 0) | (p.sit ? 512 : 0) | (p.sit === 'c' ? 1024 : 0) | (p.sleep != null ? 32768 : 0) | (p.drawT ? 65536 : 0) | (p.dragBy ? 131072 : 0) | (p.dragMode === 'foot' ? 262144 : 0) | (p.drag && p.drag.mode === 'arms' ? 524288 : 0) | (p.drag && p.drag.mode === 'foot' ? 1048576 : 0) | (p.drag && p.drag.mode === 'back' ? 2097152 : 0) | (p.drag && p.drag.mode === 'grip' ? 4194304 : 0) | (p.gripBy ? 8388608 : 0) | (p.tied ? 16777216 : 0) | (p.choked ? 33554432 : 0) | (p.choking ? 67108864 : 0) | (p.escortBy || p.surrendered ? 134217728 : 0) | (p.drag && (p.drag.helper || ((dragTarget(p.drag.k, p.drag.id) || {}).dragBy2)) ? 268435456 : 0) | ((p.fl || 0) << 11) | (p.crouch ? 8192 : 0) | (p.slide ? 16384 : 0);
+      let fl = (p.walking ? 1 : 0) | (p.downed ? 2 : 0) | (p.carriedBy ? 4 : 0) | (p.carrying ? 8 : 0) | (p.running && p.walking ? 256 : 0) | (p.sit ? 512 : 0) | (p.sit === 'c' ? 1024 : 0) | (p.sleep != null ? 32768 : 0) | (p.drawT ? 65536 : 0) | (p.dragBy ? 131072 : 0) | (p.dragMode === 'foot' ? 262144 : 0) | (p.drag && p.drag.mode === 'arms' ? 524288 : 0) | (p.drag && p.drag.mode === 'foot' ? 1048576 : 0) | (p.drag && p.drag.mode === 'back' ? 2097152 : 0) | (p.drag && p.drag.mode === 'grip' ? 4194304 : 0) | (p.gripBy ? 8388608 : 0) | (p.tied ? 16777216 : 0) | (p.choked ? 33554432 : 0) | (p.choking ? 67108864 : 0) | (p.escortBy || p.surrendered ? 134217728 : 0) | (p.jailUntil > now ? 536870912 : 0) | (p.drag && (p.drag.helper || ((dragTarget(p.drag.k, p.drag.id) || {}).dragBy2)) ? 268435456 : 0) | ((p.fl || 0) << 11) | (p.crouch ? 8192 : 0) | (p.slide ? 16384 : 0);
       for (const b in BUFF_BITS) if (buffOn(p, b)) fl |= BUFF_BITS[b];
       pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0]);
     }

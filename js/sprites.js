@@ -44,6 +44,7 @@ function shadeHex(hex, amt) {
   return '#' + h(r) + h(g) + h(b);
 }
 const NPC_LOOKS = {
+  jailer: () => Object.assign(heroLook('knight', 'iron', '#4a3a2a'), { armor: 'leather', body: tone('#4a3a2a'), body2: tone('#2a2018'), accent: tone('#6a5a3a'), trim: tone('#8a7a50'), legs: tone('#3a2e22'), boots: tone('#1e1610'), head: 'none', hair: tone('#2a1e14'), beard: tone('#2a1e14'), weapon: 'club', shield: null, capeTone: null, skin: tone('#c89878') }),
   executioner: () => Object.assign(heroLook('knight', 'iron', '#1c1816'), { armor: 'leather', body: tone('#1c1816'), body2: tone('#3a2a1e'), accent: tone('#1c1816'), trim: tone('#4a3a2a'), legs: tone('#2a2420'), boots: tone('#1a1410'), head: 'hood', headTone: tone('#0e0c0b'), weapon: 'axe', shield: null, capeTone: null, skin: tone('#c89a7a') }),
   fruit: () => Object.assign(heroLook('archer', 'scout', '#3e5a34'), { armor: 'robe', body: tone('#3e5a34'), body2: tone('#efe6cf'), accent: tone('#efe6cf'), trim: tone('#a8342a'), head: 'none', hairStyle: 'long', hair: tone('#3a2414'), weapon: null, quiver: false, skin: tone('#e6bea0'), capeTone: null }),
   priest: () => Object.assign(heroLook('mage', 'adept', '#e9e2cf'), { body: tone('#e9e2cf'), body2: tone('#c9a24a'), head: 'hood', accent: tone('#f2ecdc'), weapon: 'book', beard: null, hair: tone('#6b4a2b'), skin: tone('#e2b896') }),
@@ -139,6 +140,7 @@ const ACTS = {
   anger: [[0, {}], [0.2, { aA: [1.7, 0.3, 2.3], aB: [0.4, 0.3, 1.8], tl: 0.2, ht: 0.1, mouth: 1 }], [0.35, { aA: [2.3, 0.3, 2.0], tl: 0.22 }], [0.5, { aA: [1.7, 0.3, 2.3] }], [0.65, { aA: [2.3, 0.3, 2.0], tl: 0.25, mouth: 1 }], [0.8, { aA: [1.7, 0.3, 2.3] }], [1, {}]],
   fear: [[0, {}], [0.2, { kn: -0.6, tl: 0.35, aA: [1.6, 0.1, 2.4], aB: [1.6, 0.1, 2.4], ht: 0.3, lA: [0.6, -0.9], lB: [0.4, -0.8] }], [0.5, { kn: -0.65, tl: 0.4, aA: [1.66, 0.12, 2.45], aB: [1.6, 0.1, 2.4], ht: 0.32, lA: [0.6, -0.9], lB: [0.4, -0.8] }], [0.85, { kn: -0.6, tl: 0.35, aA: [1.6, 0.1, 2.4], aB: [1.62, 0.1, 2.4], ht: 0.3, lA: [0.6, -0.9], lB: [0.4, -0.8] }], [1, {}]],
   sad: [[0, {}], [0.3, { tl: 0.25, ht: 0.6, aA: [1.4, 0.1, 2.5], aB: [0.1, 0.05, 0.2] }], [0.85, { tl: 0.28, ht: 0.65, aA: [1.45, 0.1, 2.55], aB: [0.1, 0.05, 0.2] }], [1, {}]],
+  lever: [[0, {}], [0.3, { aA: [2.6, 0.2, 0.4], tl: -0.1, ht: -0.1 }], [0.55, { aA: [0.9, 0.25, 0.2], tl: 0.35, kn: -0.3 }], [1, { aA: [0.8, 0.25, 0.2], tl: 0.25, kn: -0.2 }]],
   // ---- casa: mexer a panela e varrer ----
   cook: [[0, { aA: [1.1, 0.15, 1.0], aB: [0.9, 0.1, 1.5], tl: 0.22, ht: 0.3 }], [0.25, { aA: [1.15, 0.38, 1.1], aB: [0.9, 0.1, 1.5], tl: 0.22, ht: 0.3 }], [0.5, { aA: [1.22, 0.15, 1.2], aB: [0.9, 0.1, 1.5], tl: 0.22, ht: 0.3 }], [0.75, { aA: [1.15, -0.08, 1.1], aB: [0.9, 0.1, 1.5], tl: 0.22, ht: 0.3 }], [1, { aA: [1.1, 0.15, 1.0], aB: [0.9, 0.1, 1.5], tl: 0.22, ht: 0.3 }]],
   sweep: [[0, { aA: [0.85, 0.12, 0.5], aB: [0.55, 0.15, 1.0], tl: 0.3, tw: 0.45, ht: 0.3, broom: 1 }], [0.5, { aA: [0.85, 0.12, 0.5], aB: [0.55, 0.15, 1.0], tl: 0.34, tw: -0.45, ht: 0.3, broom: 1 }], [1, { aA: [0.85, 0.12, 0.5], aB: [0.55, 0.15, 1.0], tl: 0.3, tw: 0.45, ht: 0.3, broom: 1 }]],
@@ -148,7 +150,7 @@ const ACTS = {
   // ---- reação ao golpe ----
   hurt: [[0, {}], [0.25, { tl: -0.38, aA: [0.7, 0.55, 0.6], aB: [0.7, 0.55, 0.6], ht: -0.45, kn: -0.35 }], [1, {}]],
 };
-const ACT_MS = { cheer: 1400, surprise: 1000, adore: 2600, anger: 1400, fear: 1600, sad: 2200, cook: 3000, sweep: 1400, loose: 350, nock: 800, drinkb: 1600, scoop: 1500, hurt_head: 420, hurt_leg: 420, getup: 650, kick: 520, execute: 720, quiver: 760, turnshot: 950, dualcast: 560, turncast: 950, salute: 1200, point: 1300, dance: 900, hurt: 300, swing: 440, bash: 560, spin: 560, block: 650, warcry: 700, shoot: 440, double: 620, pierce: 640, rain: 560, dash: 560, bolt: 400, fireball: 520, nova: 620, heal: 680, meteor: 720, cast: 600, bite: 320 };
+const ACT_MS = { lever: 1100, cheer: 1400, surprise: 1000, adore: 2600, anger: 1400, fear: 1600, sad: 2200, cook: 3000, sweep: 1400, loose: 350, nock: 800, drinkb: 1600, scoop: 1500, hurt_head: 420, hurt_leg: 420, getup: 650, kick: 520, execute: 720, quiver: 760, turnshot: 950, dualcast: 560, turncast: 950, salute: 1200, point: 1300, dance: 900, hurt: 300, swing: 440, bash: 560, spin: 560, block: 650, warcry: 700, shoot: 440, double: 620, pierce: 640, rain: 560, dash: 560, bolt: 400, fireball: 520, nova: 620, heal: 680, meteor: 720, cast: 600, bite: 320 };
 const IDLES = {
   look: [[0, {}], [0.25, { hw: 0.6 }], [0.6, { hw: -0.6 }], [1, {}]],
   stretch: [[0, {}], [0.4, { aA: [3.0, 0.3, 0.2], aB: [3.0, 0.3, 0.2], tl: -0.12, mouth: 1, wp: 3.1 }], [0.7, { aA: [3.0, 0.3, 0.2], aB: [3.0, 0.3, 0.2], tl: -0.12, wp: 3.1 }], [1, {}]],
@@ -635,7 +637,7 @@ function heroSprite(cls, skin, color, P) {
   const L = lookFor(lk, () => heroLook(cls, skin, color));
   return sprite('h|' + lk + '|' + poseKey(P), HW, HH, HAX, HAY, pc => drawHeroPC(pc, L, P, cls), { ok: 0.42 });
 }
-const NPC_CLS = { executioner: 'knight', fruit: 'archer', priest: 'mage', merchant: 'archer', innkeeper: 'archer', guard: 'knight', captain: 'knight', smith: 'knight' };
+const NPC_CLS = { jailer: 'knight', executioner: 'knight', fruit: 'archer', priest: 'mage', merchant: 'archer', innkeeper: 'archer', guard: 'knight', captain: 'knight', smith: 'knight' };
 function npcSprite(kind, P) {
   const L = lookFor('npc:' + kind, NPC_LOOKS[kind]);
   return sprite('n|' + kind + '|' + poseKey(P), HW, HH, HAX, HAY, pc => drawHeroPC(pc, L, P, NPC_CLS[kind] || 'knight'), { ok: 0.42 });

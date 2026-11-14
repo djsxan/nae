@@ -493,7 +493,23 @@ function mGuillotine(v) {
 }
 // banquinho de madeira (três pés e assento redondo)
 function mStool() { const o = grp(), W = WOOD(); o.add(mk(new THREE.CylinderGeometry(0.2, 0.2, 0.06, 14).translate(0, 0.46, 0), W)); for (let k = 0; k < 3; k++) { const a = k * 2.09, l = mk(new THREE.CylinderGeometry(0.025, 0.03, 0.46, 6).translate(0, 0.23, 0), DWOOD()); l.position.set(Math.cos(a) * 0.13, 0, Math.sin(a) * 0.13); l.rotation.set(Math.sin(a) * 0.12, 0, -Math.cos(a) * 0.12); o.add(l); } return o; }
-const NATURE = { guil: [mGuillotine, 1.0], stool: [mStool, 1.0], oak: [mOak, 2.15], birch: [mBirch, 2.0], willow: [mWillow, 2.05], fern: [mFern, 1.15], roots: [mRoots, 1.0], shrooms: [mShrooms, 0.95], berry: [mBerry, 1.05], herb: [mHerb, 1.0], boulder: [mBoulder, 1.15] };
+function mGuillotineG(v) {
+  const o = grp(), W = WOOD(), D = DWOOD(), iron = smat(null, '#9aa0a8', { metal: 1, rough: 0.3 }), rope = smat(null, '#a88a5a', { rough: 0.9 }), z0 = -0.15;
+  o.add(wbox(1.1, 0.12, 0.7, 0, 0.06, z0, D, 1.5));
+  for (const x of [-0.32, 0.32]) o.add(wbox(0.12, 2.5, 0.12, x, 1.25, z0, D, 2));
+  o.add(wbox(0.9, 0.15, 0.2, 0, 2.55, z0, D, 2));
+  for (const x of [-0.32, 0.32]) { const br = mk(BOX(0.07, 0.9, 0.07, 0, 0, 0), D); br.position.set(x, 0.45, z0 - 0.3); br.rotation.x = -0.6; o.add(br); }
+  const by = v === 2 ? 0.5 : 2.0, bl = new THREE.Shape(); bl.moveTo(-0.27, 0.2); bl.lineTo(0.27, 0.2); bl.lineTo(0.27, 0.02); bl.lineTo(-0.27, -0.13); bl.closePath();
+  o.add(mk(new THREE.ExtrudeGeometry(bl, { depth: 0.03, bevelEnabled: false }).translate(0, by, z0 - 0.015), iron)); o.add(wbox(0.58, 0.14, 0.1, 0, by + 0.27, z0, D, 1));
+  o.add(wbox(0.6, 0.15, 0.13, 0, 0.36, z0, D, 1.5)); o.add(wbox(0.6, 0.12, 0.13, 0, v ? 0.6 : 0.85, z0, D, 1.5));   // luneta (a de cima desce para prender)
+  o.add(wbox(0.36, 0.07, 1.3, 0, 0.42, z0 + 0.78, W, 1.5)); for (const zz of [0.35, 1.25]) o.add(wbox(0.07, 0.38, 0.07, 0, 0.19, z0 + zz, D, 1));
+  o.add(mk(new THREE.CylinderGeometry(0.2, 0.15, 0.26, 12, 1, true).translate(0, 0.13, z0 - 0.45), smat(null, '#8a6a3a', { side: THREE.DoubleSide, rough: 0.9 })));
+  const lv = mk(BOX(0.05, 0.55, 0.05, 0, 0.27, 0), D); lv.position.set(0.5, 0.3, z0); lv.rotation.z = v === 2 ? -0.7 : 0.45; o.add(lv);
+  o.add(mk(new THREE.CylinderGeometry(0.008, 0.008, 2.0, 4).translate(0.38, 1.4, z0 + 0.06), rope));
+  if (v === 2) { o.add(mk(new THREE.CircleGeometry(0.16, 12).rotateX(-Math.PI / 2).translate(0, 0.27, z0 - 0.45), smat(null, '#5a0c0c', { rough: 0.3 }))); o.add(mk(new THREE.CircleGeometry(0.12, 10).rotateX(-Math.PI / 2).translate(0.03, 0.465, z0 + 0.22), smat(null, '#6a0e0e', { rough: 0.3 }))); }
+  return o;
+}
+const NATURE = { guil: [mGuillotineG, 1.0], stool: [mStool, 1.0], oak: [mOak, 2.15], birch: [mBirch, 2.0], willow: [mWillow, 2.05], fern: [mFern, 1.15], roots: [mRoots, 1.0], shrooms: [mShrooms, 0.95], berry: [mBerry, 1.05], herb: [mHerb, 1.0], boulder: [mBoulder, 1.15] };
 function natureSprite(kind, v) { const N = NATURE[kind]; if (!N || !S3.ok) return null; return scen3('nt|' + kind + '|' + v, () => { const g = N[0](v); g.scale.setScalar(N[1]); return g; }); }
 function rockGeo(seed, r, sx, sy, sz) {
   const g = new THREE.IcosahedronGeometry(r, 2), p = g.attributes.position, R = rng(seed), off = [R() * 9, R() * 9, R() * 9];
@@ -1023,6 +1039,7 @@ const BSTYLE = {
   smith: { wall: '#8e897e', roof: '#4e4844', tex: 'brick', roofTex: 'slate', trim: '#2a1e14' },
   barracks: { wall: '#9c968a', roof: '#5e4034', tex: 'brick', roofTex: 'shingle', trim: '#2a1e14' },
   stable: { wall: '#9a7850', roof: '#5a5048', tex: 'wood', roofTex: 'slate', trim: '#3a2410' },
+  jail: { wall: '#7c786e', roof: '#3a3c42', tex: 'brick', roofTex: 'slate', trim: '#1e1a16' },
   stairtower: { wall: '#a29c90', roof: '#3e4a66', tex: 'brick', roofTex: 'slate', trim: '#2a1e14' },
 };
 // variações de casas e lojas (cores de reboco, telhados e madeira)
@@ -1296,7 +1313,7 @@ function mBuilding(b, night) {
 // ============================================================
 function mInterior(b, fl = 0) {
   const [w, h] = bDims(b), { H } = bldDims(b), o = grp(), L = interiorLayout(b, fl), R = rng(b.x * 13 + b.y), nF = floorsOf(b);
-  const stoneK = b.kind === 'temple' || b.kind === 'castle' || b.kind === 'smith' || b.kind === 'barracks';
+  const stoneK = b.kind === 'temple' || b.kind === 'castle' || b.kind === 'smith' || b.kind === 'barracks' || b.kind === 'jail';
   const floorM = stoneK ? smat('stoneblock', b.kind === 'castle' ? '#a8a092' : '#8e887c', { bump: 1 }) : smat('wood', b.kind === 'stable' ? '#8a6a3e' : '#7a5232', { bump: 1.2 });
   const wallM = stoneK ? smat('brick', b.kind === 'castle' ? '#b4ad9c' : '#a29c90', { bump: 1.2 }) : smat('plaster', '#e2d6bc', { bump: 0.7 });
   const trimM = smat('wood', '#4a2f17'), hw = Math.min(H / nF, b.kind === 'castle' || b.kind === 'temple' ? 5 : 2.3), t = 0.16;
@@ -1371,6 +1388,16 @@ function mInterior(b, fl = 0) {
       case 'bed': g.add(wbox(0.9, 0.3, f.h - 0.15, 0, 0.15, 0, W_(), 2)); g.add(mk(new THREE.BoxGeometry(0.82, 0.14, f.h - 0.3).translate(0, 0.37, 0.02), cloth('#e8e0cc'))); g.add(mk(new THREE.BoxGeometry(0.86, 0.06, (f.h - 0.3) * 0.6).translate(0, 0.46, 0.2), cloth(['#7a2a2a', '#2a4a7a', '#3a6a3a'][f.i % 3]))); g.add(mk(new THREE.BoxGeometry(0.5, 0.1, 0.25).translate(0, 0.48, -(f.h - 0.3) / 2 + 0.15), cloth('#f4eedc'))); g.add(wbox(0.9, 0.7, 0.08, 0, 0.35, -(f.h - 0.15) / 2, DW(), 2)); break;
       case 'bunk': for (const y of [0.15, 1.0]) { g.add(wbox(0.85, 0.12, f.h - 0.2, 0, y + 0.12, 0, W_(), 2)); g.add(mk(new THREE.BoxGeometry(0.78, 0.1, f.h - 0.35).translate(0, y + 0.24, 0), cloth('#9a8a6a'))); } for (const [px, pz] of [[-0.4, -(f.h - 0.2) / 2], [0.4, -(f.h - 0.2) / 2], [-0.4, (f.h - 0.2) / 2], [0.4, (f.h - 0.2) / 2]]) g.add(wbox(0.06, 1.4, 0.06, px, 0.7, pz, DW(), 2)); break;
       case 'fireplace': { const fx = backZ ? 0 : -0.25, fz = backZ ? -0.25 : 0; g.add(wbox(backZ ? 0.95 : 0.5, 1.5, backZ ? 0.5 : 0.95, fx, 0.75, fz, smat('brick', '#8a8478', { bump: 1.4 }), 1.5)); g.add(mk(new THREE.BoxGeometry(backZ ? 0.55 : 0.08, 0.5, backZ ? 0.08 : 0.55).translate(fx + (backZ ? 0 : 0.22), 0.35, fz + (backZ ? 0.22 : 0)), smat(null, '#140c06'))); g.add(mk(new THREE.ConeGeometry(0.18, 0.34, 6).translate(fx + (backZ ? 0 : 0.2), 0.3, fz + (backZ ? 0.2 : 0)), smat(null, '#ff9a30', { emissive: '#ff7a10', ei: 2.2 }))); g.add(wbox(backZ ? 1.1 : 0.62, 0.1, backZ ? 0.62 : 1.1, fx, 1.0, fz, smat('stoneblock', '#9a948a'), 2)); const pl = new THREE.PointLight(0xff9a40, 1.6, 4.5); pl.position.set(fx + (backZ ? 0 : 0.5), 0.6, fz + (backZ ? 0.5 : 0)); g.add(pl); break; }
+      case 'bars': case 'celldoor': {   // grades de ferro (v=0 ao longo de x, 1 ao longo de z, 2 canto); a porta tem moldura e fechadura
+        const iron = smat(null, '#3e3c3a', { metal: 0.85, rough: 0.45 }), alongX = f.v !== 1, n = 6, H = 2.05;
+        const rod = (x, z) => g.add(mk(new THREE.CylinderGeometry(0.022, 0.022, H, 6).translate(x, H / 2, z), iron));
+        if (f.v === 2) { rod(0, 0); rod(-0.3, 0); rod(0, -0.3); }
+        else for (let k = 0; k < n; k++) { const s = -0.45 + k * 0.9 / (n - 1); alongX ? rod(s, 0) : rod(0, s); }
+        for (const y of [0.08, 1.0, H - 0.06]) g.add(mk(new THREE.BoxGeometry(alongX ? 1.0 : 0.05, 0.05, alongX ? 0.05 : 1.0).translate(0, y, 0), iron));
+        if (f.t === 'celldoor') { g.add(mk(new THREE.BoxGeometry(0.07, H, 0.07).translate(-0.47, H / 2, 0), iron)); g.add(mk(new THREE.BoxGeometry(0.07, H, 0.07).translate(0.47, H / 2, 0), iron)); g.add(mk(new THREE.BoxGeometry(0.14, 0.18, 0.08).translate(0.32, 1.0, 0.03), smat(null, '#5a4a2a', { metal: 0.7, rough: 0.4 }))); }
+        break; }
+      case 'cot': g.add(wbox(0.8, 0.22, f.h - 0.2, 0, 0.11, 0, DW(), 2)); g.add(mk(new THREE.BoxGeometry(0.72, 0.12, f.h - 0.35).translate(0, 0.28, 0), smat('cloth', '#b09a60', { bump: 1.4 }))); g.add(mk(new THREE.BoxGeometry(0.66, 0.05, (f.h - 0.4) * 0.5).translate(0, 0.36, 0.2), smat('cloth', '#6a5a48', { bump: 0.6 }))); break;
+      case 'bucket': g.add(mk(new THREE.CylinderGeometry(0.17, 0.14, 0.3, 12).translate(0.1, 0.15, -0.15), smat('wood', '#5a4028', { bump: 1 }))); g.add(mk(new THREE.TorusGeometry(0.165, 0.012, 5, 14).rotateX(Math.PI / 2).translate(0.1, 0.25, -0.15), smat(null, '#3e3c3a', { metal: 0.8 }))); break;
       case 'stove': {   // fogão a lenha de ferro: corpo escuro, boca com brasa, chapa, panela fumegante e cano
         const iron = smat(null, '#2e2a28', { metal: 0.6, rough: 0.5 }), dz = backZ ? -0.12 : 0, dx = backX ? -0.12 : 0;
         g.add(mk(new THREE.BoxGeometry(0.8, 0.72, 0.62).translate(dx, 0.36, dz), iron)); g.add(mk(new THREE.BoxGeometry(0.84, 0.05, 0.66).translate(dx, 0.74, dz), smat(null, '#1e1c1a', { metal: 0.7, rough: 0.4 })));

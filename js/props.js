@@ -371,6 +371,7 @@ function buildingSprite(b, night) {
       tavern: { wall: '#d6c296', roof: '#6e2e22', tex: 'plaster', roofTex: 'shingle', trim: '#3a2410' },
       house: { wall: '#ddd0b0', roof: b.x % 2 ? '#7a3828' : '#46505e', tex: 'plaster', roofTex: b.x % 2 ? 'shingle' : 'slate', trim: '#4a2f17' },
       smith: { wall: '#7e796e', roof: '#45403c', tex: 'stone', roofTex: 'shingle', trim: '#2a1e14' },
+      jail: { wall: '#7c786e', roof: '#3a3c42', tex: 'stone', roofTex: 'slate', trim: '#1e1a16' },
       barracks: { wall: '#928c80', roof: '#5a3a30', tex: 'stone', roofTex: 'shingle', trim: '#2a1e14' },
       stairtower: { wall: '#a29c90', roof: '#3e4a66', tex: 'stone', roofTex: 'shingle', trim: '#2a1e14' },
       castle: { wall: '#b4ad9c', roof: '#3e4a66', tex: 'stone', roofTex: 'shingle', trim: '#c9a24a' },

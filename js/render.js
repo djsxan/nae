@@ -315,8 +315,7 @@ function heroPoseFor(e, now) {
 function drawWeaverAura(ctx, sx, sy, now) {
   const fy = 14 + Math.sin(now / 600) * 3, pulse = 0.5 + Math.sin(now / 420) * 0.5;
   ctx.save(); ctx.globalCompositeOperation = 'lighter';
-  softDab(ctx, sx, sy - fy - 28, 40 + pulse * 8, '#f4f8ff', 0.16 + pulse * 0.06);
-  softDab(ctx, sx, sy + 1, 26, '#ffffff', 0.12);
+
   ctx.lineWidth = 1;
   for (let r = 0; r < 2; r++) { const rr = 15 + r * 6 + ((now / 900 + r * 0.5) % 1) * 6, al = 0.5 * (1 - ((now / 900 + r * 0.5) % 1)); ctx.strokeStyle = 'rgba(255,255,255,' + al.toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(sx, sy + 1, rr, rr * 0.42, 0, 0, 7); ctx.stroke(); }
   for (let k = 0; k < 3; k++) {   // fios de luz girando em elipses inclinadas
@@ -329,7 +328,6 @@ function drawWeaverAura(ctx, sx, sy, now) {
     ctx.fillStyle = 'rgba(255,255,255,' + al.toFixed(2) + ')'; ctx.fillRect(x - 0.7, y - 0.7, 1.4, 1.4);
   }
   ctx.restore();
-  G.lights.push({ x: sx, y: sy - 30, r: 80, c: '235,245,255', a: 0.85 });
 }
 let _stoolSpr = null;
 function stoolSprite() {
@@ -341,6 +339,7 @@ function stoolSprite() {
 }
 // altura do tablado do cadafalso (com a rampa da escada na frente)
 function stageLift(x, y) {
+  return 0;   // a guilhotina agora fica no chão
   if (STAGE.x < 0) return 0; const dx = x - STAGE.x, dy = y - STAGE.y, H = 0.82 * (typeof HV !== 'undefined' ? HV : 25);
   if (Math.abs(dx) <= 1.5 && Math.abs(dy) <= 1.5) return H;
   if (Math.abs(dx) < 0.6 && dy > 1.5 && dy < 2.35) return H * (1 - (dy - 1.5) / 0.85);
@@ -350,7 +349,8 @@ function drawHeroEntity(ctx, e, sx, sy, now) {
   if (R3.ok && e.tied && !e.isNpc && typeof drawTied === 'function') { drawTied(ctx, e, sx, sy, now); e._spr = null; return; }
   if (R3.ok && e.downed && !e.isNpc && typeof drawTow === 'function' && TOWS['p:' + e.id] && drawTow(ctx, 'p:' + e.id, now)) { e._spr = null; return; }
   if (R3.ok && e.downed && e.dragged && !e.isNpc && typeof drawDragged === 'function') { drawDragged(ctx, e, sx, sy, now); e._spr = null; return; }
-  if (R3.ok && e.exec && now < e.exec.t0 + e.exec.ms + 1500) {   // deitado na guilhotina, com a cabeça na luneta
+  if (R3.ok && e.exec && e.exec.T && typeof drawExecVictim === 'function' && drawExecVictim(ctx, e, sx, sy, now)) return;
+  if (R3.ok && e.exec && !e.exec.T && now < e.exec.t0 + e.exec.ms + 1500) {   // deitado na guilhotina, com a cabeça na luneta
     const s = heroSprite3D(e.cls, e.skin, e.color, { dir: 6, walk: -1, down: true, lost: e.lost || 0, pro: e.pro || 0 });
     ctx.imageSmoothingEnabled = true; pblit(ctx, woundOf(s, 3), sx, sy - 0.95 * (typeof HV !== 'undefined' ? HV : 25)); e._spr = null; return;
   }
@@ -530,7 +530,7 @@ function objSprite(o, x, y) {
   switch (o) {
     case O.STOOL: return stoolSprite();
     case O.STAGEFLOOR: return null;
-    case O.GUILLOTINE: return natureSprite('guil', G.bladeAt && performance.now() >= G.bladeAt && performance.now() < G.bladeAt + 5000 ? 1 : 0) || smallSprite('cart');
+    case O.GUILLOTINE: return natureSprite('guil', typeof guilState === 'function' ? guilState() : 0) || smallSprite('cart');
     case O.OAK: return natureSprite('oak', v & 1) || treeSprite(v, 1, 3);
     case O.BIRCH: return natureSprite('birch', v & 1) || treeSprite(v, 1, 1);
     case O.WILLOW: return natureSprite('willow', v & 1) || treeSprite(v, 1, 0);
@@ -1003,6 +1003,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   for (const it of sky) drawItem(it);   // o dragão voando passa por cima de tudo
   if (typeof drawBowTop === 'function') drawBowTop(ctx, now);
   if (typeof drawRadial === 'function') { drawRadial(ctx, now); drawGripBar(ctx, now); }
+  if (typeof drawChokeRing === 'function') { drawChokeRing(ctx, now); drawLockpick(ctx); }
   // dentro de uma construção: a cidade escurece e o cômodo aparece cortado, com quem está dentro
   if (inside) {
     ctx.fillStyle = 'rgba(8,5,2,0.6)'; ctx.fillRect(-20, -20, vw + 40, vh + 40);

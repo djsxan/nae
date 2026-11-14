@@ -196,6 +196,10 @@ function updateTows(now) {
     if (!f) { const L = towLook(key); if (!L) continue; f = towStart(key, L.look, L.e.rx, L.e.ry, L.e.dir); if (!f) continue; TOWS[key] = f; f.tl = now; }
     f.cs = want[key]; f.c = f.cs[0].c; f.tmode = f.cs[0].mode; f.seen = now; f.combined = f.tmode === 'back' && !!(f.c.isNpc || f.c.cls);
     const steps = Math.min(4, Math.max(1, Math.round((now - (f.tl || now)) / 16.7))); f.tl = now;
+    if (f.combined) { stepCarried(f, f.c, steps); continue; }
+    if (f.local) { f.local = false; f.wx = f.c.rx; f.wy = f.c.ry; f.pinT = {}; }
+    // Tecelão (ou qualquer um) puxando rápido demais: o corpo vai deixando sangue no chão
+    { const sp = f.lcx != null ? Math.hypot(f.c.rx - f.lcx, f.c.ry - f.lcy) / Math.max(0.001, steps * 0.0167) : 0; f.lcx = f.c.rx; f.lcy = f.c.ry; if (sp > 3.2 && now - (f.bleedT || 0) > 110 && typeof addBlood === 'function') { f.bleedT = now; const [bx, by] = towWorldOf(f, f.mode === 'quad' ? 'F' : 'pel'); addBlood(bx + (Math.random() - 0.5) * 0.3, by + (Math.random() - 0.5) * 0.3, 0, 0.1 + Math.random() * 0.08, 60000); } }
     let pins = []; for (const w of f.cs) pins = pins.concat(towPins(f, w.c, w.mode));
     const bias = towBias(f, f.c, f.tmode), cols = towCols(f, f.c, f.tmode);
     for (let s = 0; s < steps; s++) towStepOnce(f, pins, bias, cols);
@@ -203,6 +207,7 @@ function updateTows(now) {
   // soltou: o corpo assenta no chão e fica deitado onde parou
   for (const key in TOWS) {
     const f = TOWS[key]; if (want[key]) continue;
+    if (f.local && f.c) { f.wx = f.c.rx; f.wy = f.c.ry; f.local = false; }
     for (let s = 0; s < 160; s++) towStepOnce(f, [], null, null);
     const R = towRig(f), L = towLook(key);
     if (R && L) { if (f.mode === 'quad') quadApply(f, R); else ragApply(f, R); const fin = rigShot(f, R, true), fk = key[0] === 'p' ? 'p' + key.slice(2) : key[0] === 'c' ? 'm' + key.slice(2) : 'n' + key.slice(2), p0 = iso(f.wx, f.wy), p1 = iso(L.e.rx, L.e.ry); FALLS[fk] = { ...f, done: true, final: fin, ox: p0.sx - p1.sx + f.ox, oy: p0.sy - p1.sy + f.oy, staged: false }; }
@@ -230,10 +235,39 @@ function carrySprite(c, f, P) {
   const a = (P.dir | 0) * Math.PI / 4; R.root.position.set(0, 0, 0); R.root.quaternion.identity(); R.root.rotation.set(0, Math.atan2(0.5 * Math.sin(a), Math.cos(a)), 0); R.root.updateMatrixWorld(true);
   let minY = Infinity; for (const o of [R.LA.ft, R.LB.ft]) minY = Math.min(minY, o.getWorldPosition(v3()).y); R.root.position.y = -minY + 0.035; R.root.updateMatrixWorld(true);
   if (f.mode === 'quad') quadApply(f, Rb); else ragApply(f, Rb);
-  const s = simOf(f), cc = ctrOf(f), c0 = ctr0Of(f), [ox, oz] = W2M(f.wx - c.rx, f.wy - c.ry);
-  Rb.root.position.x += ox + cc.x - c0.x; Rb.root.position.z += oz + cc.z - c0.z; Rb.root.position.y += R.root.position.y; Rb.root.updateMatrixWorld(true);
+  const cc = ctrOf(f), c0 = ctr0Of(f); Rb.root.position.x += cc.x - c0.x; Rb.root.position.z += cc.z - c0.z; Rb.root.updateMatrixWorld(true);   // simulado no espaço de quem carrega
   if (f.hero) applyLost(Rb, f.lost || 0, f.pro || 0);
   scene.add(R.root); scene.add(Rb.root); renderer.render(scene, cam); scene.remove(R.root); scene.remove(Rb.root);
   const cv = f._ccv || (f._ccv = document.createElement('canvas')); cv.width = W; cv.height = H; const x = cv.getContext('2d'); x.clearRect(0, 0, W, H); x.drawImage(renderer.domElement, 0, 0);
   return { c: cv, w: FRAME_W, h: FRAME_H, ax: FRAME_W / 2, ay: FOOT_Y, painted: true, hd: true };
+}
+
+// pose de quem carrega (igual à do desenho) e pontos do corpo dele no espaço do modelo
+function carrierFrame(c) {
+  const P = heroPoseFor(c, performance.now()), cls = c.isNpc ? (NPC_CLS[c.kind] || 'knight') : c.cls, R = c.isNpc ? _rigs.get('npc:' + c.kind) : _rigs.get(cls + ':' + c.skin + ':' + c.color); if (!R) return null;
+  const Q = buildPose(cls, P); applyPose(R, Q, P, P.walk >= 0 ? P.walk / 12 * Math.PI * 2 : 0);
+  const a = (P.dir | 0) * Math.PI / 4, yaw = Math.atan2(0.5 * Math.sin(a), Math.cos(a)); R.root.position.set(0, 0, 0); R.root.quaternion.identity(); R.root.rotation.set(0, yaw, 0); R.root.updateMatrixWorld(true);
+  let minY = Infinity; for (const o of [R.LA.ft, R.LB.ft]) minY = Math.min(minY, o.getWorldPosition(v3()).y); R.root.position.y = -minY + 0.035; R.root.updateMatrixWorld(true);
+  return { sh: R.A.sh.getWorldPosition(v3()), shB: R.B.sh.getWorldPosition(v3()), chest: R.chest.getWorldPosition(v3()), head: R.head.getWorldPosition(v3()), fx: Math.sin(yaw), fz: Math.cos(yaw) };
+}
+function stepCarried(f, c, steps) {
+  const F = carrierFrame(c); if (!F) return;
+  const s = simOf(f), pts = s.pts, prev = s.prev;
+  if (!f.local) {   // entra no espaço de quem carrega
+    const [dx, dz] = W2M(f.wx - c.rx, f.wy - c.ry); for (const n in pts) { pts[n].x += dx; pts[n].z += dz; prev[n].x += dx; prev[n].z += dz; }
+    f.local = true; f.pinT = {}; f.lcx = c.rx; f.lcy = c.ry;
+  }
+  // inércia: quando quem carrega anda, o corpo fica um pouco para trás e balança
+  const [ix, iz] = W2M(c.rx - (f.lcx ?? c.rx), c.ry - (f.lcy ?? c.ry)); f.lcx = c.rx; f.lcy = c.ry;
+  for (const n in pts) { pts[n].x -= ix * 0.45; pts[n].z -= iz * 0.45; prev[n].x -= ix * 0.45; prev[n].z -= iz * 0.45; }
+  const sh = F.sh, top = sh.y + 0.13, pinN = f.mode === 'quad' ? 'T' : 'pel';
+  const sx2 = F.fz, sz2 = -F.fx, pins = [[pinN, sh.x - F.fx * 0.03, top, sh.z - F.fz * 0.03]];
+  if (f.mode !== 'quad') {   // quadril atravessado no ombro, joelhos presos pelo braço na frente do peito, tronco deitado nas costas
+    pins.push(['hpA', sh.x + sx2 * 0.11 - F.fx * 0.04, top - 0.02, sh.z + sz2 * 0.11 - F.fz * 0.04]); pins.push(['hpB', sh.x - sx2 * 0.11 - F.fx * 0.04, top - 0.02, sh.z - sz2 * 0.11 - F.fz * 0.04]);
+    const ky = sh.y - 0.28, kx = F.chest.x + F.fx * 0.3, kz = F.chest.z + F.fz * 0.3; pins.push(['knA', kx + sx2 * 0.08, ky, kz + sz2 * 0.08]); pins.push(['knB', kx - sx2 * 0.08, ky, kz - sz2 * 0.08]);
+  }
+  const b = f.mode === 'quad' ? [['F', -F.fx * 5, -F.fz * 5], ['K', F.fx * 5, F.fz * 5]] : [['hed', -F.fx * 8, -F.fz * 8], ['shA', -F.fx * 5, -F.fz * 5], ['shB', -F.fx * 5, -F.fz * 5], ['ftA', F.fx * 7, F.fz * 7], ['ftB', F.fx * 7, F.fz * 7], ['knA', F.fx * 5, F.fz * 5], ['knB', F.fx * 5, F.fz * 5]];
+  const cols = [{ x: F.chest.x, z: F.chest.z, r: 0.26, y0: 0.2, y1: sh.y + 0.02 }, { x: F.head.x, z: F.head.z, r: 0.15, y0: F.head.y - 0.12, y1: F.head.y + 0.16 }];
+  const save = towStepOnce; for (let k = 0; k < steps; k++) towStepOnce(f, pins, b, cols);
+  if (!f.settled) { for (let k = 0; k < 90; k++) towStepOnce(f, pins, b, cols); f.settled = true; }
 }

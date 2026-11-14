@@ -461,7 +461,7 @@ MON_LOOK.orcchief = () => ({ ...MON_LOOK.orc(), accent: tone('#9a1a14'), trim: t
 MON_LOOK.cryptlord = () => ({ ...MON_LOOK.skeleton(), head: 'circlet', weapon: 'darkblade', accent: tone('#3a1a4a'), trim: tone('#c8a850'), capeTone: tone('#2a1a3a') });
 // O Tecelão de Sxan: manto cinza esfarrapado com fios de ouro, capuz sem rosto, olhos de luz
 // O Tecelão: entidade careca, pele pálida, olhos brancos de luz, todo de branco e descalço
-const WEAVER_LOOK = () => ({ skin: tone('#efcfb6'), hair: null, armor: 'cloth', body: tone('#f7f7f4'), body2: tone('#e4e4e0'), accent: tone('#ffffff'), legs: tone('#ececea'), boots: tone('#efcfb6'), trim: tone('#d8d8d4'), head: 'none', weapon: null });
+const WEAVER_LOOK = () => ({ skin: tone('#d8b096'), hair: null, armor: 'cloth', body: tone('#c9c8c2'), body2: tone('#b4b3ad'), accent: tone('#d0cfc9'), legs: tone('#bdbcb6'), boots: tone('#d8b096'), trim: tone('#a8a7a1'), head: 'none', weapon: null });   // roupa e pele foscas: só os olhos brilham
 function weaverExtras(R) {
   const S = 1.12, h = R.head, glow = mat('#ffffff', 'gem', { emissive: '#ffffff', emissiveIntensity: 5 });
   for (const s of [-1, 1]) h.add(mesh(sphG(0.02 * S), glow, s * 0.036 * S, 0.015 * S, 0.093 * S));

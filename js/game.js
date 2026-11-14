@@ -30,7 +30,7 @@ function anySprite(cls, skin, color, P, kind) {
 function later(ms, fn) { if (!ms || ms <= 0) fn(); else G.timers.push({ at: performance.now() + ms, fn }); }
 const IDLE_SETS = {
   knight: ['look', 'stretch', 'polish', 'kick', 'sit', 'look'], archer: ['look', 'stretch', 'yawn', 'polish', 'sit', 'kick'], mage: ['look', 'yawn', 'polish', 'stretch', 'sit'],
-  fruit: ['look', 'wave', 'look', 'stretch'], executioner: ['look', 'polish', 'look', 'stretch'], priest: ['pray', 'read', 'look', 'pray'], merchant: ['look', 'wave', 'kick', 'look'], innkeeper: ['drink', 'look', 'wave', 'drink'], guard: ['salute', 'look', 'kick', 'look'], captain: ['look', 'salute', 'polish', 'look'],
+  jailer: ['look', 'yawn', 'look', 'polish'], fruit: ['look', 'wave', 'look', 'stretch'], executioner: ['look', 'polish', 'look', 'stretch'], priest: ['pray', 'read', 'look', 'pray'], merchant: ['look', 'wave', 'kick', 'look'], innkeeper: ['drink', 'look', 'wave', 'drink'], guard: ['salute', 'look', 'kick', 'look'], captain: ['look', 'salute', 'polish', 'look'],
 };
 function updateIdle(e, now) {
   if (e.npDead || e.npDown) { e.idleAnim = null; return; }
@@ -51,6 +51,7 @@ function clientOnServer(m) {
   const now = performance.now();
   if (typeof progEvent === 'function' && progEvent(m, now)) return;
   if (typeof bowEvent === 'function' && bowEvent(m, now)) return;
+  if (typeof jailEvent === 'function' && jailEvent(m, now)) return;
   switch (m.t) {
     case 'welcome':
       G.myId = m.you; setTimeout(() => Net.send({ t: 'duel', on: SET.duel ? 1 : 0 }), 500);
@@ -69,7 +70,7 @@ function clientOnServer(m) {
       const oldLvl = e.lvl;
       if (m.slow) G.slowUntil = now + m.slow;
       if (m.knock) G.knockUntil = now + m.knock;
-      G.cst = m.cst ?? CST_MAX; G.cstMax = m.cstMax || CST_MAX; e.arw = m.arw || []; e.esc = m.esc || 0; if (m.tree) e.tree = m.tree; if (m.use) e.use = m.use; if (typeof onProgStat === 'function') onProgStat(); G.stunUntil = now + (m.stun || 0); G.ripUntil = now + (m.rip || 0);
+      G.cst = m.cst ?? CST_MAX; G.cstMax = m.cstMax || CST_MAX; e.arw = m.arw || []; e.esc = m.esc || 0; e.chk = m.chk || 0; e.jl = m.jl || 0; e.cell = m.cell ?? -1; if (m.tree) e.tree = m.tree; if (m.use) e.use = m.use; if (typeof onProgStat === 'function') onProgStat(); G.stunUntil = now + (m.stun || 0); G.ripUntil = now + (m.rip || 0);
       Object.assign(e, { hp: m.hp, maxHp: m.maxHp, mp: m.mp, maxMp: m.maxMp, lvl: m.lvl, xp: m.xp, gold: m.gold, pots: m.pots, food: m.food, water: m.water, cold: m.cold, infect: m.infect, sick: m.sick, hasSkin: m.hasSkin, body: m.body, bleed: m.bleed, lost: m.lost || 0, pro: m.pro || 0, inv: m.inv || {}, combat: m.combat, quests: m.quests, qdone: m.qdone });
       setBuffs(e, m.buffs);
       G.cdEnd = m.cds.map(r => now + r);
@@ -145,7 +146,7 @@ function clientOnServer(m) {
     case 'shake': G.shake = Math.max(G.shake, m.s || 6); break;
     case 'tele': G.teles.push({ ...m, t0: now }); break;
     case 'fires': for (const [x, y, r, ms] of m.l) { const t = Math.round(y) * MAP_W + Math.round(x); G.fires.push({ x, y, r, z: m.z != null ? m.z : (WORLD.ground[t] === T.CLIFF && WORLD.fl1[t] > 0 ? 1 : 0), t0: now + (m.ms || 0), until: now + ms }); } if (!m.nb) G.breaths.push({ t0: now, ms: 650 }); break;
-    case 'exec': { const e = G.players[m.id]; if (e) e.exec = { t0: now, ms: m.ms }; G.bladeAt = now + m.ms; const x = G.npcs.executioner; if (x) x.anim = { a: 'execute', t0: now + m.ms - 380, ms: 720 }; break; }
+
     case 'wanted': { const e = G.players[m.id]; if (e) e.wantedUntil = m.ms ? now + m.ms : 0; break; }
     case 'jet': { const e = G.monsters[m.id]; if (e) e.jet = { ...m, t0: now }; break; }
     case 'grab': { const e = G.players[m.id]; if (e) e.grab = { mid: m.mid, until: now + m.ms + 400 }; break; }
@@ -204,7 +205,7 @@ function applySnapshot(m, now) {
     e.tow = tow || null; e.tied = !!(fl & 16777216); e.dragged = !!(fl & 131072); e.prone = !!(fl & 262144); e.gripped = !!(fl & 8388608);
     e.dragMode = fl & 524288 ? 'arms' : fl & 1048576 ? 'foot' : fl & 2097152 ? 'back' : fl & 4194304 ? 'grip' : null;
     if (e === G.me && e.dragged) { e.cx = x; e.cy = y; if (e.rx == null || Math.hypot(x - e.rx, y - e.ry) > 4) { e.x = e.rx = x; e.y = e.ry = y; } G.path = null; }
-    e.choked = !!(fl & 33554432); e.choking = !!(fl & 67108864); e.escorted = !!(fl & 134217728); e.pullHelp = !!(fl & 268435456);   // sendo puxado/agarrado: a posição vem do servidor
+    e.jailed = !!(fl & 536870912); e.choked = !!(fl & 33554432); e.choking = !!(fl & 67108864); e.escorted = !!(fl & 134217728); e.pullHelp = !!(fl & 268435456);   // sendo puxado/agarrado: a posição vem do servidor
     const wasDown = e.downed; e.downed = !!(fl & 2);
     if (e.downed && !wasDown && !e.downUntil) e.downUntil = now + DOWNED_MS;
     if (id === G.myId) {
@@ -256,7 +257,7 @@ function monsterNear(x, y, r = 0.5) {
   for (const id in G.monsters) { const m = G.monsters[id]; if (!m.dieAt && dist(m.rx, m.ry, x, y) < r) return true; }
   return false;
 }
-function freeAt(x, y, z) { if (G.dev && G.noclip) return true; const me = G.me; if (me && me.fl > 0) return canStandFloor(x, y, me.fb, me.fl, 0.22); return canStandZ(x, y, z, 0.22) && (z >= 0.5 || G.slide || !monsterNear(x, y)); }
+function freeAt(x, y, z) { if (G.dev && G.noclip) return true; if (typeof jailBlock === 'function' && JAILCELLS.length && jailBlock(x, y)) return false; const me = G.me; if (me && me.fl > 0) return canStandFloor(x, y, me.fb, me.fl, 0.22); return canStandZ(x, y, z, 0.22) && (z >= 0.5 || G.slide || !monsterNear(x, y)); }
 
 function myInput() {
   const k = G.keys;
@@ -274,7 +275,7 @@ function myInput() {
 
 function updateLocal(now, dt) {
   const me = G.me;
-  if (me && (me.carriedBy || me.dragged) && me.cx != null) { const k = Math.min(1, dt * 9); me.rx += (me.cx - me.rx) * k; me.ry += (me.cy - me.ry) * k; me.x = me.rx; me.y = me.ry; if (me.escorted) { me.walking = Math.hypot(me.cx - me.rx, me.cy - me.ry) > 0.03; if (me.walking) me.walkDist = (me.walkDist || 0) + Math.hypot(me.cx - me.rx, me.cy - me.ry) * k; } }
+  if (me && (me.carriedBy || me.dragged) && me.cx != null) { const k = Math.min(1, dt * 9); me.rx += (me.cx - me.rx) * k; me.ry += (me.cy - me.ry) * k; me.x = me.rx; me.y = me.ry; if (me.escorted || me.gripped) { me.walking = Math.hypot(me.cx - me.rx, me.cy - me.ry) > 0.03; if (me.walking) me.walkDist = (me.walkDist || 0) + Math.hypot(me.cx - me.rx, me.cy - me.ry) * k; } }
   if (!me || me.carriedBy) { if (me) { me.walking = false; } return; }
   if (now < (G.busyUntil || 0)) { me.walking = false; G.path = null; if (G.busyFace) me.dir = dirFromVec(G.busyFace.x - me.x, G.busyFace.y - me.y, me.dir); return; }   // cozinhando: parado de frente para o fogão
   if (G.climbing) { stepClimb(now); return; }
@@ -466,7 +467,7 @@ function saveChar() {
   const me = G.me;
   try {
     const all = loadChars();
-    all[charKey(me.name, me.cls)] = { name: me.name, cls: me.cls, skin: me.skin, color: me.color, lvl: me.lvl, xp: me.xp, gold: me.gold, pots: me.pots, food: me.food, water: me.water, infect: me.infect, hasSkin: me.hasSkin, tree: me.tree, use: me.use, body: me.body, bleed: me.bleed, lost: (me.lost || 0) & 30, pro: me.pro || 0, inv: me.inv, quests: me.quests, qdone: me.qdone, t: Date.now() };
+    all[charKey(me.name, me.cls)] = { name: me.name, cls: me.cls, skin: me.skin, color: me.color, lvl: me.lvl, xp: me.xp, gold: me.gold, pots: me.pots, food: me.food, water: me.water, infect: me.infect, hasSkin: me.hasSkin, tree: me.tree, use: me.use, jailLeft: me.jl || 0, body: me.body, bleed: me.bleed, lost: (me.lost || 0) & 30, pro: me.pro || 0, inv: me.inv, quests: me.quests, qdone: me.qdone, t: Date.now() };
     localStorage.setItem(SAVE_KEY, JSON.stringify(all));
   } catch (e) { }
 }
@@ -550,7 +551,7 @@ function updateInv() {
       s.classList.add('full'); if (G.newLoot === it.k) s.classList.add('new');
       s.innerHTML = `<span style="color:${it.color};filter:${it.k === 'mp' ? 'hue-rotate(55deg) saturate(1.4)' : it.k === 'hp' ? 'hue-rotate(195deg) saturate(1.6)' : 'none'}">${it.icon}</span><span class="n">${it.n}</span>`;
       s.onmouseenter = () => { $('inv-info').innerHTML = `<b>${it.name}</b> ×${it.n}<br>${it.desc}`; };
-      if (it.use) s.onclick = () => { it.use(); setTimeout(updateInv, 300); };
+      if (it.use || LOOT[it.k]) s.onclick = (ev) => { if (ev.shiftKey && LOOT[it.k] && typeof giveToPrisoner === 'function' && giveToPrisoner(it.k)) { setTimeout(updateInv, 300); return; } if (it.use) { it.use(); setTimeout(updateInv, 300); } };
     }
     grid.appendChild(s);
   }
@@ -643,6 +644,7 @@ function flashDamage() { const v = $('vignette'); v.classList.remove('hit'); voi
 // ---------- diálogos com NPCs ----------
 const GUARD_TEXT = 'Além do fosso: os Campos (★) logo além da paliçada; o Bosque Sombrio (★★) ao norte; o Pântano Pútrido (★★) a leste; as Colinas de Ossos (★★★) ao sul; o Acampamento Orc (★★★) a oeste. Perto do mar, as Terras Selvagens (★★★★). A cachoeira fica na montanha, a noroeste.';
 const NPC_DIALOG = {
+  jailer: { greet: 'Cadeia de Sxan. Quem entra, cumpre a pena — ou paga a fiança.', opts: [] },
   executioner: { greet: 'A justiça de Sxan é rápida e limpa. Traga o condenado caído até o cadafalso — carregue-o e aperte F aqui perto — e eu cuido do resto.', opts: [] },
   fruit: { greet: 'Frutas fresquinhas do pomar, colhidas hoje cedo! Maçã docinha, amora do mato... leva uma?', opts: [
     ['Maçã — 3 ouro', { a: 'buyl', item: 'apple', qty: 1 }], ['5 Maçãs — 15 ouro', { a: 'buyl', item: 'apple', qty: 5 }],
@@ -699,6 +701,11 @@ function buildDialogOptions(id) {
       if (active) add(`✦ ${q.name} — ${me.quests[q.id]}/${q.count} (cancelar)`, () => Net.send({ t: 'npc', n: id, a: 'abandon', id: q.id }), 'active');
       else add(`${q.name} — ${q.count} ${MON[q.mon].name} · ${q.xp} xp${done ? ` · feito ${done}x` : ''}`, () => { setDialogText(q.desc); Net.send({ t: 'npc', n: id, a: 'quest', id: q.id }); });
     }
+  } else if (id === 'jailer') {
+    const me = G.me;
+    if (me.jl > 0) add('Pagar minha fiança — ' + Math.max(10, Math.ceil(me.jl / 60000) * 30) + ' ouro', () => Net.send({ t: 'npc', n: id, a: 'bail' }));
+    for (const pid in G.players) { const q = G.players[pid]; if (q !== me && q.jailed) add('Pagar a fiança de ' + q.name + ' (30 ouro por minuto restante)', () => Net.send({ t: 'npc', n: id, a: 'bail', who: pid })); }
+    add('Como funciona a cadeia?', () => setDialogText('Quem é pego pelas sentinelas fica aqui o tempo da pena: agressão 2 minutos, ataque à traição 3, assassinato 6. Dormir no catre faz o tempo passar mais rápido. Fiança: 30 de ouro por minuto que falta. E nada de mexer nas fechaduras, ouviu?'));
   } else {
     const def = NPC_DIALOG[n.kind];
     for (const [label, act] of def.opts) add(label, () => { if (act.local) setDialogText(act.local); else Net.send({ t: 'npc', n: id, ...act }); });
@@ -815,7 +822,7 @@ canvas.addEventListener('mousedown', e => {
   }
   const npc = npcUnderMouse(e.clientX, e.clientY);
   if (npc) {
-    if (dist(me.x, me.y, G.npcs[npc.id].x, G.npcs[npc.id].y) <= 3) openDialog(npc.id);
+    if (dist(me.x, me.y, G.npcs[npc.id].x, G.npcs[npc.id].y) <= 3 || (npc.id === 'jailer' && me.jl > 0)) openDialog(npc.id);
     else { G.path = findPath(me.x, me.y, Math.round(npc.x), Math.round(npc.y), me.z, 2); G.pathGoal = G.path ? { x: Math.round(npc.x), y: Math.round(npc.y) } : null; G.pendingNpc = npc.id; }
     return;
   }
@@ -877,6 +884,7 @@ window.addEventListener('keydown', e => {
   if (k === 'y' && !e.repeat && G.me && G.me.wantedUntil > performance.now()) { Net.send({ t: 'surrender' }); return; }
   if (k === 'h' && !e.repeat && typeof grabKeyDown === 'function') { grabKeyDown(); return; }   // segurar H: menu radial (puxar / carregar / agarrar / soltar)
   if (k === 'f' && !e.repeat && !nearestDowned()) { const c = nearCorpse(); if (c) { G.loot = { id: c.id, t0: performance.now() }; G.keys.add('f'); return; } }
+  if (k === 'f' && !e.repeat && typeof jailKeyF === 'function' && jailKeyF()) return;
   if (k === 'f' && !e.repeat && typeof nearStove === 'function' && nearStove() && !nearestDowned()) { openCook(); return; }
   if (k === 'f' && !e.repeat && !nearestDowned() && !nearCorpse() && survivalAction()) return;
   if (k === 'f' && !e.repeat && (G.me.arw || []).length && !nearestDowned() && !nearCorpse()) { Net.send({ t: 'pullarrow' }); return; }   // arrancar flecha cravada
@@ -895,6 +903,7 @@ window.addEventListener('keydown', e => {
   if ((k === '5' || k === '6' || k === '7') && !e.repeat) { Net.send({ t: 'tskill', b: +k - 5, a: G.me.fa ?? 0, id: G.target || 0 }); return; }
   if (k === 'm' && !e.repeat) { toggleWorldMap(); return; }
   if (k === 't') { if (!e.repeat) openEmoteWheel(); return; }
+  if (k === ' ' && G.pick) { e.preventDefault(); if (!e.repeat) lockpickKey(); return; }
   if (k === ' ' && G.me && (G.me.gripped || G.me.tied)) { e.preventDefault(); Net.send({ t: 'struggle' }); return; }   // agarrado: martelar espaço
   if (k === ' ' && inCombatZone()) { e.preventDefault(); if (!e.repeat) { const me = G.me, iv = myInput(); const v = iv || (me.fa != null ? [-Math.cos(me.fa), -Math.sin(me.fa)] : [0, 1]); G.dodge = { t0: performance.now(), v }; Net.send({ t: 'dodge' }); } return; }
   if (k === 'z' && !e.repeat && inCombatZone()) { strike('under'); return; }
@@ -936,6 +945,7 @@ function frame() {
     if (typeof updateNpcMotion === 'function') updateNpcMotion(now, dt);
     if (typeof npcReactions === 'function') npcReactions(now);
     if (typeof updateTows === 'function') updateTows(now);
+    if (typeof crowdLook === 'function') { crowdLook(now); jailerNight(); }
     if (G.reviveSticky && (G.me.walking || !G.reviving)) { if (G.reviving) Net.send({ t: 'revive', id: G.reviving, on: false }); G.reviving = null; G.reviveSticky = false; }
     if (G.shootHeld && inCombatZone() && now - (G.shootT || 0) > 220) { G.shootT = now; Net.send({ t: 'shoot', a: G.me.fa ?? 0, id: G.target || 0 }); }
     { // luta com o dragão: a câmera se afasta devagar para caber tudo na tela (só se o zoom não foi mudado à mão)
@@ -1059,7 +1069,7 @@ function lockLobby(b) { for (const el of document.querySelectorAll('#lobby butto
 function helloMsg() {
   const name = $('name').value.trim() || 'Aventureiro';
   const saved = loadChars()[charKey(name, chosenClass)] || {};
-  return { t: 'hello', dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, use: saved.use, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
+  return { t: 'hello', dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
 }
 function showRoom(code) { $('room-code').textContent = Net.offline ? 'offline' : code; }
 function createRoom(code = 'S1', tries = 0) {
@@ -1406,7 +1416,8 @@ function updateNeeds() {
   if (me.sick > 0) out.push(['🤢', 'Enjoado', 1]);
   el.innerHTML = out.map(([i, t, s]) => '<span class="nd s' + s + '" title="' + t + '">' + i + '</span>').join('');
   document.body.classList.toggle('cold', (me.cold || 0) > 50); document.body.classList.toggle('fever', !!me.infect);
-  const pr = $('prompt'); if (!G.loot && !nearCorpse()) { const raw = me.inv && (me.inv.venison || me.inv.pork); const stN = typeof nearStove === 'function' && nearStove(), hv = nearHarvest(), exN = me.carrying && STAGE.x >= 0 && dist(me.x, me.y, STAGE.x, STAGE.y) < 3.4; const txt = me.wantedUntil > performance.now() && !me.escorted ? 'Y: render-se às sentinelas' : me.dragMode === 'grip' ? 'Segure o clique esquerdo: apertar o pescoço · H solta' : exN ? 'F: entregar ao carrasco (execução)' : stN ? 'F: cozinhar' : hv >= 0 ? (WORLD.obj[hv] === O.BERRY ? 'F: colher frutas' : 'F: colher erva') : raw && nearFireC() ? 'F: assar a carne' : nearWaterC() && (me.water ?? 100) < 98 ? 'F: beber' : ''; if (txt) { pr.textContent = txt; pr.classList.remove('hidden'); } else pr.classList.add('hidden'); }
+  const pr = $('prompt'); if (!G.loot && !nearCorpse()) { const raw = me.inv && (me.inv.venison || me.inv.pork); const stN = typeof nearStove === 'function' && nearStove(), hv = nearHarvest(), exN = me.carrying && STAGE.x >= 0 && dist(me.x, me.y, STAGE.x, STAGE.y) < 3.4; const jp = typeof jailPrompt === 'function' ? jailPrompt() : '';
+  const txt = jp ? jp : me.wantedUntil > performance.now() && !me.escorted ? 'Y: render-se às sentinelas' : me.dragMode === 'grip' ? 'Segure o clique esquerdo: apertar o pescoço · H solta' : exN ? 'F: entregar ao carrasco (execução)' : stN ? 'F: cozinhar' : hv >= 0 ? (WORLD.obj[hv] === O.BERRY ? 'F: colher frutas' : 'F: colher erva') : raw && nearFireC() ? 'F: assar a carne' : nearWaterC() && (me.water ?? 100) < 98 ? 'F: beber' : ''; if (txt) { pr.textContent = txt; pr.classList.remove('hidden'); } else pr.classList.add('hidden'); }
   if ($('pz-use') && typeof useHtml === 'function') $('pz-use').innerHTML = useHtml();
   if ($('pz-surv')) $('pz-surv').innerHTML = '<div><b>Fome</b> ' + Math.round(100 - (me.food ?? 100)) + '% · <b>Sede</b> ' + Math.round(100 - (me.water ?? 100)) + '% · <b>Frio</b> ' + Math.round(me.cold || 0) + '%</div><div><b>Infecção</b> ' + ['nenhuma', 'febre', 'grave'][me.infect || 0] + (me.sick > 0 ? ' · <b>enjoado</b>' : '') + '</div><div class="gp-note">Coma e beba, fique perto do fogo à noite, trate feridas graves com bandagem. A morte é permanente.</div>';
 }

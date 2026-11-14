@@ -65,6 +65,7 @@ function npcReactions(now) {
   }
 }
 function drawNpcBubble(ctx, e, sx, sy, now) {
+  if (e.custP && e.custP.doze && typeof drawZzz === 'function') drawZzz(ctx, sx, sy - 30, now);
   if (!e.bubble || now > e.bubble.until) return;
   const k = 1 - Math.max(0, (e.bubble.until - now - 200) / 1200), y = sy - 70 - Math.sin(Math.min(1, k * 3) * Math.PI) * 3;
   ctx.save(); ctx.font = 'bold 12px serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,248,225,0.95)'; ctx.strokeStyle = 'rgba(40,24,10,0.9)'; ctx.lineWidth = 3;
