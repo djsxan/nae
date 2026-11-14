@@ -1391,6 +1391,7 @@ function mInterior(b, fl = 0) {
       case 'bars': case 'celldoor': {   // grades de ferro (v=0 ao longo de x, 1 ao longo de z, 2 canto); a porta tem moldura e fechadura
         const iron = smat(null, '#3e3c3a', { metal: 0.85, rough: 0.45 }), alongX = f.v !== 1, n = 6, H = 2.05;
         const rod = (x, z) => g.add(mk(new THREE.CylinderGeometry(0.022, 0.022, H, 6).translate(x, H / 2, z), iron));
+        if (f.t === 'celldoor') { g.add(mk(new THREE.BoxGeometry(0.07, H, 0.07).translate(-0.47, H / 2, 0), iron)); g.add(mk(new THREE.BoxGeometry(0.07, H, 0.07).translate(0.47, H / 2, 0), iron)); g.add(mk(new THREE.BoxGeometry(1.0, 0.06, 0.07).translate(0, H - 0.03, 0), iron)); break; }
         if (f.v === 2) { rod(0, 0); rod(-0.3, 0); rod(0, -0.3); }
         else for (let k = 0; k < n; k++) { const s = -0.45 + k * 0.9 / (n - 1); alongX ? rod(s, 0) : rod(0, s); }
         for (const y of [0.08, 1.0, H - 0.06]) g.add(mk(new THREE.BoxGeometry(alongX ? 1.0 : 0.05, 0.05, alongX ? 0.05 : 1.0).translate(0, y, 0), iron));

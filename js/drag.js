@@ -5,7 +5,7 @@
 // ============================================================
 const WEIGHT_C = { rat: 0, toad: 0, slime: 0, spider: 0, wisp: 0, wolf: 1, goblin: 1, boar: 1, deer: 2, skeleton: 2, bandit: 2, deserter: 2, orc: 2 };
 const RADIAL_MS = 220;
-const OPT_LABEL = { revive: 'Reanimar', arms: 'Braços', foot: 'Pé', back: 'Costas', grip: 'Agarrar' };
+const OPT_LABEL = { tie: 'Amarrar', revive: 'Reanimar', arms: 'Braços', foot: 'Pé', back: 'Costas', grip: 'Agarrar' };
 function grabCandidate() {
   const me = G.me; if (!me) return null;
   let best = null, bd = 1.9;
@@ -27,7 +27,10 @@ function grabKeyDown() {
   if (me.dragMode) { Net.send({ t: 'release' }); return true; }
   if (me.carrying) return false;   // o F de entregar ao carrasco / G de largar continuam valendo
   if (typeof tiedNear === 'function') { const t = tiedNear(); if (t) { Net.send({ t: 'untie', id: t.id }); return true; } }
-  const c = grabCandidate(); if (!c) return false;
+  let c = grabCandidate();
+  if (me.dragMode === 'grip' && me.inv && me.inv.rope > 0) { for (const id in G.players) { const q = G.players[id]; if (q !== me && q.gripped && !q.bound && dist(q.rx, q.ry, me.x, me.y) < 1.2) { Net.send({ t: 'grab', k: 'p', id, mode: 'tie' }); return true; } } }
+  if (c && c.k === 'p' && me.inv && me.inv.rope > 0) { const q = G.players[c.id]; if (q && !q.bound && (q.downed || q.escorted)) c = { ...c, opts: c.opts.concat(['tie']) }; }
+  if (!c) return false;
   G.radial = { t0: performance.now(), ...c, sel: 0 }; return true;
 }
 function grabKeyUp() {

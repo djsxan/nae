@@ -28,7 +28,7 @@ function fullStat(p) {
     pots: { hp: p.pots.hp, mp: p.pots.mp, band: p.pots.band || 0 }, body: p.body, bleed: p.bleed, food: Math.round(p.food ?? 100), water: Math.round(p.water ?? 100), cold: Math.round(p.cold || 0), infect: p.infect || 0, sick: Math.max(0, (p.sickUntil || 0) - now), hasSkin: !!p.hasSkin, lost: p.lost || 0, pro: p.pro || 0, knock: Math.max(0, (p.knockUntil || 0) - now), inv: { ...p.inv }, quests: { ...p.quests }, qdone: { ...p.qdone },
     buffs: Object.entries(p.buffs).filter(([, u]) => u > now).map(([k, u]) => [k, u - now]),
     cds: [0, 1, 2, 3].map(i => Math.max(0, (p.cds[i] || 0) - now)),
-    combat: now - p.lastCombat < OUT_OF_COMBAT_MS, cst: Math.round(p.cst ?? CST_MAX), cstMax: cstMaxOf(p), chk: p.choking ? +(p.chokeT || 0).toFixed(2) : 0, jl: p.jailUntil > now ? p.jailUntil - now : 0, cell: p.cell ?? -1, esc: (p.gripBy || p.tied) ? Math.round(p.esc || 0) : 0, arw: (p.arrows || []).map(a => a.part), tree: p.tree || {}, use: p.use || {}, stun: Math.max(0, (p.stunUntil || 0) - now), rip: Math.max(0, (p.ripUntil || 0) - now), slow: Math.max(0, (p.slowUntil || 0) - now), downed: p.downed ? p.downed.until - now : 0,
+    combat: now - p.lastCombat < OUT_OF_COMBAT_MS, cst: Math.round(p.cst ?? CST_MAX), cstMax: cstMaxOf(p), bnd: p.bound ? p.bound.kind : '', bndE: p.bound ? Math.round(p.bound.esc || 0) : 0, chk: p.choking ? +(p.chokeT || 0).toFixed(2) : 0, jl: p.jailUntil > now ? p.jailUntil - now : 0, cell: p.cell ?? -1, esc: (p.gripBy || p.tied) ? Math.round(p.esc || 0) : 0, arw: (p.arrows || []).map(a => a.part), tree: p.tree || {}, use: p.use || {}, stun: Math.max(0, (p.stunUntil || 0) - now), rip: Math.max(0, (p.ripUntil || 0) - now), slow: Math.max(0, (p.slowUntil || 0) - now), downed: p.downed ? p.downed.until - now : 0,
   };
 }
 function sendStat(p) { Net.toOne(p.id, fullStat(p)); }
@@ -171,6 +171,7 @@ function hostOnClient(from, m) {
     return;
   }
   if (!p) return;
+  if (p.bound && BOUND_BLOCK.has(m.t)) return;   // amarrado: não luta, não pega nada
   switch (m.t) {
     case 'mv': handleMove(p, m); break;
     case 'target': p.target = m.id && S.monsters[m.id] ? m.id : null; break;
@@ -191,7 +192,8 @@ function hostOnClient(from, m) {
     case 'choke': p.choking = !!m.on && !!(p.drag && p.drag.mode === 'grip'); break;
     case 'cookat': cookAt(p, String(m.r)); break;
     case 'release': stopDrag(p); break;
-    case 'struggle': if (!tiedStruggle(p)) struggle(p); break;
+    case 'struggle': if (p.bound) { boundStruggle(p); break; } if (!tiedStruggle(p)) struggle(p); break;
+    case 'lastwords': case 'execbail': lawMsg(p, m); break;
     case 'untie': untie(p, m); break;
     case 'shoot': {
       const now = now_(); if (p.cls === 'knight' || p.downed || p.carrying || p.lifted || p.atk || p.casting || p.grabbed || now < p.nextAtk) break;
@@ -797,7 +799,7 @@ function npcAction(p, m) {
   const say = text => Net.toOne(p.id, { t: 'npc', n: n.id, text });
   const pay = cost => { if (p.gold < cost) { say('Você não tem ouro suficiente.'); return false; } p.gold -= cost; return true; };
   const now = now_();
-  if (m.a === 'buyl' && LOOT[m.item] && ((n.id === 'merchant' && ['bread', 'ointment', 'firewood'].includes(m.item)) || (n.id === 'fruit' && ['apple', 'berries'].includes(m.item)))) {
+  if (m.a === 'buyl' && LOOT[m.item] && ((n.id === 'merchant' && ['bread', 'ointment', 'firewood', 'rope', 'lockpick'].includes(m.item)) || (n.id === 'fruit' && ['apple', 'berries'].includes(m.item)))) {
     const qty = m.qty === 5 ? 5 : 1; if (!p.inv[m.item] && Object.keys(p.inv).length >= INV_SLOTS) { say('Sua mochila está cheia.'); return; }
     if (!pay(LOOT[m.item].price * qty)) return; p.inv[m.item] = (p.inv[m.item] || 0) + qty; say(qty + 'x ' + LOOT[m.item].name + '. Bom proveito.');
   } else if (n.id === 'priest' && m.a === 'treset') {
@@ -1507,9 +1509,15 @@ const GRIP_HUMANOID = new Set(['bandit', 'deserter', 'skeleton', 'orc']);
 function startGrab(p, m) {
   if (p.downed || p.drag || p.carrying || p.lifted || p.carriedBy || p.gripBy || p.dragBy) return;
   const k = m.k, mode = m.mode, t = dragTarget(k, m.id);
-  if (!t || t === p || !['arms', 'foot', 'back', 'grip'].includes(mode) || dist(p.x, p.y, t.x, t.y) > 2.1) return;
+  if (!t || t === p || !['arms', 'foot', 'back', 'grip', 'tie'].includes(mode) || dist(p.x, p.y, t.x, t.y) > 2.1) return;
   const w = weightOf(k, t); if (w >= 3) { tell(p, 'Pesado demais para mover.'); return; }
   const now = now_();
+  if (mode === 'tie') {
+    if (k !== 'p' || t === p || t.bound || !(t.downed || t.surrendered || t.gripBy === p.id)) return;
+    if (!(p.inv.rope > 0)) { tell(p, 'Você precisa de uma corda (Empório).'); return; }
+    p.inv.rope--; if (!p.inv.rope) delete p.inv.rope; if (p.drag && p.drag.id === t.id) stopDrag(p); bindPlayer(t, 'rope'); if (inSafe(p.x, p.y)) witnessCrime(p, p.x, p.y, 'grab');
+    tell(t, p.name + ' amarrou suas mãos com uma corda. Martele ESPAÇO para se soltar.'); tell(p, 'Você amarrou ' + t.name + '.'); sendStat(p); return;
+  }
   if (mode === 'grip' && (k === 'm' || k === 'n')) {   // agarrar bicho pequeno, humanoide atordoado ou NPC em pé
     if (t.gripBy || t.dragBy || t.dead || t.downed || t.carrying) return;
     if (k === 'm') { const small = (WEIGHT[t.type] ?? 2) <= 1, weak = now < (t.stunUntil || 0) || t.sleep; if (!(small && !t.atk) && !(GRIP_HUMANOID.has(t.type) && weak)) { tell(p, small ? 'Ele está atacando: espere a brecha.' : 'Só dá para agarrar esse inimigo atordoado.'); return; } }
@@ -1604,7 +1612,7 @@ function dragTick(p, now, dt) {
 }
 function dragCleanup() {
   for (const L of [Object.values(S.players), Object.values(S.corpses || {}), Object.values(S.npcs || {})]) for (const q of L) if (q.dragBy2 && (!S.players[q.dragBy2] || !S.players[q.dragBy2].drag || S.players[q.dragBy2].drag.id !== q.id)) q.dragBy2 = null;
-  for (const q of Object.values(S.players)) if (q.dragBy && !String(q.dragBy).startsWith('w:') && (!S.players[q.dragBy] || !S.players[q.dragBy].drag || S.players[q.dragBy].drag.id !== q.id)) { q.dragBy = null; q.gripBy = null; q.dragMode = null; q.esc = 0; }
+  for (const q of Object.values(S.players)) if (q.dragBy && !/^(w:|n:|exec)/.test(String(q.dragBy)) && (!S.players[q.dragBy] || !S.players[q.dragBy].drag || S.players[q.dragBy].drag.id !== q.id)) { q.dragBy = null; q.gripBy = null; q.dragMode = null; q.esc = 0; }
   for (const c of Object.values(S.npcs || {})) if (c.dragBy && (!S.players[c.dragBy] || !S.players[c.dragBy].drag || S.players[c.dragBy].drag.id !== c.id)) { c.dragBy = null; c.dragMode = null; c.onBack = null; }
   for (const c of Object.values(S.corpses || {})) if (c.dragBy && (!S.players[c.dragBy] || !S.players[c.dragBy].drag || S.players[c.dragBy].drag.id !== c.id)) { c.dragBy = null; c.dragMode = null; c.onBack = null; }
 }
@@ -1665,7 +1673,8 @@ function startExecutionOld(v, by) {
 }
 function guardThink(n, now, dt) {
   n.walk = false;
-  if (n.escort) {   // escoltando um preso até a cela
+  if (n.lead) { leadTick(n, now, dt); return; }
+  if (n.escort) {   // (antigo) escoltando um preso até a cela
     const q = S.players[n.escort]; if (!q || q.downed) { if (q) { q.escortBy = null; q.dragBy = null; } n.escort = null; return; }
     const J = jailSpot(); if (!J) { n.escort = null; q.escortBy = null; q.dragBy = null; return; }
     const ox = n.x, oy = n.y, arrived = npcWalk(n, J.x, J.y, 1.5, dt), mx = n.x - ox, my = n.y - oy, ml = Math.hypot(mx, my);
@@ -1677,7 +1686,7 @@ function guardThink(n, now, dt) {
   for (const q of Object.values(S.players)) {   // procurado que se rendeu: vai buscar
     if (!q.surrendered || q.escortBy || q.downed) continue; if (Object.values(S.npcs).some(o => o !== n && o.escort === q.id)) continue;
     const d = dist(n.x, n.y, q.x, q.y); if (d > 22) continue;
-    if (d < 1.2) { n.escort = q.id; q.escortBy = n.id; q.dragBy = 'n:' + n.id; tell(q, n.name + ' amarra suas mãos e te leva para o quartel.'); }
+    if (d < 1.2) { if (Object.values(S.npcs).some(o => o.lead && o.lead.id === q.id)) return; startLead(n, q, 'jail', now); }
     else npcWalk(n, q.x, q.y, 2.0, dt);
     return;
   }
@@ -1691,9 +1700,9 @@ function guardThink(n, now, dt) {
   }
   // procurados à vista: persegue e ataca; caído, carrega
   let tgt = null, bd = 14;
-  for (const q of Object.values(S.players)) { if (q.dev || q.carriedBy || q.execAt || q.jailUntil > now || q.escortBy || q.surrendered || !(now < (q.wanted || 0) || n.aggro === q.id)) continue; const d = dist(n.x, n.y, q.x, q.y); if (d < bd && (d < 3 || sightClear(n.x, n.y, q.x, q.y))) { bd = d; tgt = q; } }
+  for (const q of Object.values(S.players)) { if (q.dev || q.carriedBy || q.execAt || q.condemned || q.bound || q.jailUntil > now || q.escortBy || q.surrendered || !(now < (q.wanted || 0) || n.aggro === q.id)) continue; const d = dist(n.x, n.y, q.x, q.y); if (d < bd && (d < 3 || sightClear(n.x, n.y, q.x, q.y))) { bd = d; tgt = q; } }
   if (tgt) {
-    if (tgt.downed) { if (bd < 1.3) { entCarry(n, tgt, 'n:' + n.id); n.mission = 'stage'; n.aggro = null; sys(n.name + ' prendeu ' + tgt.name + ' e o leva ao cadafalso!'); } else npcWalk(n, tgt.x, tgt.y, 2.3, dt); return; }
+    if (tgt.downed) { if (bd < 1.3) { if (Object.values(S.npcs).some(o => o.lead && o.lead.id === tgt.id)) return; n.aggro = null; startLead(n, tgt, 'stage', now); } else npcWalk(n, tgt.x, tgt.y, 2.3, dt); return; }
     if (bd > 1.3) { npcWalk(n, tgt.x, tgt.y, 2.3, dt); return; }
     if (now >= (n.nextAtk || 0)) {
       n.nextAtk = now + 1400; n.face = Math.atan2(tgt.y - n.y, tgt.x - n.x);
@@ -1762,6 +1771,10 @@ function tiedTick(p, now) {
   if (now > p.tied.until) { p.tied = null; sys(p.name + ' foi executado pelo chefe do acampamento.'); p.downed = null; severPlayer(p, 'head', { x: p.x + 1, y: p.y, name: 'o chefe' }); }
 }
 function untie(p, m) {
+  { const q = S.players[m.id]; if (q && q.bound && q !== p && dist(p.x, p.y, q.x, q.y) <= 2 && !String(q.dragBy || '').startsWith('n:')) {
+    if (q.bound.kind === 'rope') { q.bound = null; tell(q, p.name + ' cortou a corda das suas mãos.'); tell(p, 'Você cortou a corda.'); sendStat(q); return; }
+    if (p.inv.lockpick > 0) { p.inv.lockpick--; if (!p.inv.lockpick) delete p.inv.lockpick; q.bound = null; tell(q, p.name + ' abriu suas algemas.'); tell(p, 'Clique! A gazua abriu as algemas.'); if (inSafe(p.x, p.y)) witnessCrime(p, p.x, p.y, 'grab'); sendStat(q); sendStat(p); return; }
+    tell(p, 'Algemas de ferro: só com uma gazua (Empório).'); return; } }
   const q = S.players[m.id]; if (!q || !q.tied || dist(p.x, p.y, q.x, q.y) > 2) return;
   q.tied = null; q.esc = 0; q.downed.until = now_() + DOWNED_MS; tell(q, p.name + ' cortou suas cordas!'); tell(p, 'Você soltou ' + q.name + '. Reanime-o!');
 }
@@ -1792,20 +1805,20 @@ const CRIME_MS = { assault: 120000, grab: 180000, murder: 360000 }, CRIME_TXT = 
 const cellsState = () => S.cells || (S.cells = JAILCELLS.map(() => ({ locked: true, who: null })));
 const jailOf = p => p.jailUntil > now_() && p.cell != null ? JAILCELLS[p.cell] : null;
 function jailSpot() { const st = cellsState(); const i = st.findIndex(c => !c.who); if (i < 0) return null; const c = JAILCELLS[i]; return { x: c.spot[0], y: c.spot[1], bi: c.bi, cell: i }; }
-function jailPlayer(q, ms) {
-  const st = cellsState(); let i = st.findIndex(c => !c.who); if (i < 0) i = 0;
+function jailPlayer(q, ms, opt = {}) {
+  const st = cellsState(); let i = opt.cell != null ? opt.cell : st.findIndex(c => !c.who); if (i < 0) i = 0;
   const c = JAILCELLS[i]; if (!c) return false; const now = now_();
   if (st[i].who && S.players[st[i].who] && st[i].who !== q.id) releasePlayer(S.players[st[i].who], 'A cela foi esvaziada para um novo preso.');
-  st[i].who = q.id; st[i].locked = true; q.cell = i; q.jailUntil = now + Math.max(30000, ms); q.x = c.spot[0]; q.y = c.spot[1]; q.z = 0; q.fl = 0; q.fb = -1;
+  st[i].who = q.id; st[i].locked = true; st[i].open = 0; q.cell = i; q.jailUntil = now + Math.max(30000, ms); if (!opt.noTp) { q.x = c.spot[0]; q.y = c.spot[1]; } q.z = 0; q.fl = 0; q.fb = -1; q.bound = null; q.dragBy = null; if (q.condemned) condemn(q, false);
   q.wanted = 0; q.sentence = 0; q.crimes = []; q.surrendered = false; Net.toAll({ t: 'wanted', id: q.id, ms: 0 });
   if (!q.inv.bread && Object.keys(q.inv).length < INV_SLOTS) q.inv.bread = 1;
-  Net.toOne(q.id, { t: 'tp', x: q.x, y: q.y, z: 0, fl: 0, fb: -1 });
+  if (!opt.noTp) Net.toOne(q.id, { t: 'tp', x: q.x, y: q.y, z: 0, fl: 0, fb: -1 });
   tell(q, 'Você está preso por ' + Math.ceil((q.jailUntil - now) / 60000) + ' min. Dormir no catre faz o tempo passar 2x mais rápido; fale com o carcereiro para pagar fiança; F na porta da cela tenta arrombar.'); sendStat(q); return true;
 }
 function releasePlayer(q, why) {
   const st = cellsState(), i = q.cell; if (i != null && st[i] && st[i].who === q.id) { st[i].who = null; st[i].locked = true; }
   const c = i != null ? JAILCELLS[i] : null; q.jailUntil = 0; q.cell = null;
-  if (c) { q.x = c.door[0] - 1; q.y = c.door[1]; Net.toOne(q.id, { t: 'tp', x: q.x, y: q.y, z: 0, fl: 0, fb: -1 }); }
+  if (c) { const b = BUILDINGS[c.bi], d0 = doorOf(b), [dtx, dty] = doorTile(b); let best = null, bd = 1e9; for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { if (WORLD.bld[y * MAP_W + x] !== c.bi || !canStand(x, y, 0, 0.25) || JAILCELLS.some(z => z.tiles.has(y * MAP_W + x) || (z.door[0] === x && z.door[1] === y))) continue; const jl = S.npcs && S.npcs.jailer; if (jl && dist(jl.x, jl.y, x, y) < 1.2) continue; const dd = dist(x, y, dtx, dty); if (dd < bd) { bd = dd; best = [x, y]; } } if (best) { q.x = best[0]; q.y = best[1]; } else { q.x = d0.x; q.y = d0.y; } Net.toOne(q.id, { t: 'tp', x: q.x, y: q.y, z: 0, fl: 0, fb: -1 }); }
   tell(q, why || 'Você está livre.'); sendStat(q);
 }
 function jailTick(p, now, dt) {
@@ -1817,7 +1830,7 @@ const bailPrice = q => Math.max(10, Math.ceil((q.jailUntil - now_()) / 60000) * 
 // fechadura: o preso arromba com o minijogo; um amigo abre de noite com o carcereiro dormindo
 function escapeCell(q, by) {
   const st = cellsState(), i = q.cell; if (i == null) return; st[i].who = null; st[i].locked = true; q.jailUntil = 0; q.cell = null;
-  const c = JAILCELLS[i]; q.x = c.door[0] - 1; q.y = c.door[1]; Net.toOne(q.id, { t: 'tp', x: q.x, y: q.y, z: 0, fl: 0, fb: -1 });
+  const c = JAILCELLS[i]; q.x = c.door[0] + (c.door[0] - c.spot[0]); q.y = c.door[1] + (c.door[1] - c.spot[1]); Net.toOne(q.id, { t: 'tp', x: q.x, y: q.y, z: 0, fl: 0, fb: -1 });
   q.wanted = now_() + 300000; q.sentence = (q.sentence || 0) + 180000; Net.toAll({ t: 'wanted', id: q.id, ms: 300000 });
   sys(q.name + ' fugiu da cadeia' + (by ? ' com a ajuda de ' + by : '') + '! As sentinelas estão atrás dele.'); sendStat(q);
 }
@@ -1852,17 +1865,74 @@ function startExecution(v, by) {
   const now = now_(), tok = now + Math.random(), crimes = (v.crimes && v.crimes.length ? v.crimes.join(', ') : 'crimes contra Sxan');
   if (v.wanted) { v.wanted = 0; Net.toAll({ t: 'wanted', id: v.id, ms: 0 }); }
   if (v.carriedBy) v.carriedBy = null; if (v.dragBy && S.players[v.dragBy]) stopDrag(S.players[v.dragBy]);
-  v.x = STAGE.x; v.y = STAGE.y + 0.95; v.z = 0; v.execAt = now + EXEC_T.drop; v.execTok = tok; v.downed = v.downed || { until: 0 }; v.downed.until = now + EXEC_T.fall + 4000;
+  v.x = STAGE.x; v.y = STAGE.y + 0.95; v.z = 0; v.execAt = now + EXEC_T.drop; v.execTok = tok; v.downed = null; v.dragBy = 'exec'; if (!v.condemned) condemn(v, true);
   const ex = S.npcs && S.npcs.executioner; if (ex) { ex.x = STAGE.x + 1.1; ex.y = STAGE.y + 0.2; }
   near(STAGE.x, STAGE.y, { t: 'exec', id: v.id, x: STAGE.x, y: STAGE.y, T: EXEC_T, name: v.name, crimes }, VIEW_RADIUS + 12);
   sys('🔔 O sino da praça toca: ' + by + ' entregou ' + v.name + ' ao carrasco.');
   setTimeout(() => { if (v.execTok !== tok) return; sys('Mestre Corvo: "' + v.name + ', condenado por ' + crimes + '. Que Sxan tenha piedade da sua alma."'); }, EXEC_T.announce);
   setTimeout(() => { if (v.execTok !== tok || !S.npcs || !S.npcs.executioner || !npcAlive('executioner')) return; near(STAGE.x, STAGE.y, { t: 'anim', w: 'n', id: 'executioner', a: 'lever', ms: 1100 }); }, EXEC_T.pull);
-  setTimeout(() => { const q = S.players[v.id]; if (!q || q.execTok !== tok) return; q.execAt = 0; q.execTok = 0; q.downed = null; q.lost = (q.lost || 0) & ~LOST.head; severPlayer(q, 'head', { x: STAGE.x, y: STAGE.y + 2, name: 'o Carrasco' }); if (q.downed) q.downed.until = now_() + 3500; }, EXEC_T.drop);
+  setTimeout(() => { const q = S.players[v.id]; if (!q || q.execTok !== tok) return; q.execAt = 0; q.execTok = 0; q.downed = null; q.dragBy = null; q.bound = null; q.lost = (q.lost || 0) & ~LOST.head; Net.toAll({ t: 'condemned', id: q.id, on: 0 }); severPlayer(q, 'head', { x: STAGE.x, y: STAGE.y + 2, name: 'o Carrasco' }); if (q.downed) q.downed.until = now_() + 3500; }, EXEC_T.drop);
   return true;
 }
 function abortExecution(why) {
-  for (const q of Object.values(S.players)) if (q.execTok) { q.execTok = 0; q.execAt = 0; if (q.downed) q.downed.until = now_() + DOWNED_MS; q.x = STAGE.x + 0.6; q.y = STAGE.y + 1.8; near(STAGE.x, STAGE.y, { t: 'execabort', id: q.id }, VIEW_RADIUS + 12); sys(why); }
+  for (const q of Object.values(S.players)) if (q.execTok) { q.execTok = 0; q.execAt = 0; q.dragBy = null; if (q.downed) q.downed.until = now_() + DOWNED_MS; q.x = STAGE.x + 0.6; q.y = STAGE.y + 1.8; near(STAGE.x, STAGE.y, { t: 'execabort', id: q.id }, VIEW_RADIUS + 12); sys(why); }
+}
+
+
+// ---------------- amarrar (algemas das sentinelas, corda dos jogadores) ----------------
+const BOUND_BLOCK = new Set(['atk', 'skill', 'tskill', 'kick', 'dodge', 'shoot', 'draw', 'loose', 'grab', 'carry', 'lift', 'throw', 'cookat', 'use']);
+function bindPlayer(q, kind) { q.bound = { kind, esc: 0 }; q.atk = null; q.parry = null; q.drawT = null; q.casting = null; if (q.carrying) dropCarried(q); if (q.drag) stopDrag(q); sendStat(q); }
+function boundStruggle(p) {
+  if (!p.bound || p.bound.kind !== 'rope' || String(p.dragBy || '').startsWith('n:')) { if (p.bound && p.bound.kind === 'cuffs') tell(p, 'Algemas de ferro: não dá para soltar sozinho.'); return; }
+  p.bound.esc += 2.5; if (p.bound.esc >= 100) { p.bound = null; tell(p, 'Você se livrou da corda!'); } sendStat(p);
+}
+// ---------------- sentinelas conduzindo presos (algemar, levar andando, cena da cela, cadafalso) ----------------
+function condemn(q, on) { q.condemned = !!on; if (!on) q.saidLast = false; Net.toAll({ t: 'condemned', id: q.id, on: on ? 1 : 0 }); }
+function startLead(n, q, dest, now) {
+  n.lead = { id: q.id, dest, phase: 'cuff', t: now + 2000 }; q.dragBy = 'n:' + n.id; q.surrendered = false; q.atk = null;
+  if (dest === 'stage') { q.downed = null; q.revive = null; q.hp = Math.max(1, Math.round(q.maxHp * 0.15)); condemn(q, true); tell(q, n.name + ' te levanta e algema. Você será levado à guilhotina. Escreva suas últimas palavras, ou alguém pode pagar a fiança de 1000 ouro.'); sys(n.name + ' algemou ' + q.name + ' e o leva à guilhotina.'); }
+  else { const c = jailSpot(); n.lead.cell = c ? c.cell : 0; cellsState()[n.lead.cell].who = 'res:' + q.id; tell(q, n.name + ' algema suas mãos.'); }
+  near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'cuff', ms: 1900, tx: q.x, ty: q.y }); n.dir = dirFromVecS(q.x - n.x, q.y - n.y);
+}
+function leadTick(n, now, dt) {
+  const L = n.lead, q = S.players[L.id];
+  if (!q || (q.downed && L.dest === 'jail')) { if (q) q.dragBy = null; if (L.cell != null && cellsState()[L.cell] && String(cellsState()[L.cell].who).startsWith('res:')) cellsState()[L.cell].who = null; n.lead = null; return; }
+  q.lastMv = now; q.walking = false;
+  if (L.phase === 'cuff') { if (now >= L.t) { bindPlayer(q, 'cuffs'); L.phase = 'walk'; } return; }
+  if (L.phase === 'scene') return;
+  let tx, ty, sp;
+  if (L.dest === 'stage') { tx = STAGE.x + 0.4; ty = STAGE.y + 2.1; sp = 0.8; }
+  else { const c = JAILCELLS[L.cell], ax = c.door[0] - c.spot[0], ay = c.door[1] - c.spot[1]; tx = c.door[0] + ax * 1.6; ty = c.door[1] + ay * 1.6; sp = 1.1; }
+  const ox = n.x, oy = n.y, arrived = npcWalk(n, tx, ty, sp, dt), mx = n.x - ox, my = n.y - oy, ml = Math.hypot(mx, my);
+  if (ml > 0.0005) { n.dir = dirFromVecS(mx, my); const nx = n.x + mx / ml * 0.55, ny = n.y + my / ml * 0.55; if (canStand(nx, ny, 0, 0.15)) { q.x = nx; q.y = ny; } q.dir = n.dir; q.walking = true; }
+  if (!arrived) return;
+  if (L.dest === 'stage') { n.lead = null; q.dragBy = null; startExecution(q, n.name); return; }
+  cellScene(n, q, L, now);
+}
+// cena da cela: o carcereiro abre com a chave, a sentinela empurra o preso, tira as algemas, fecha e tranca
+function cellScene(n, q, L, now) {
+  L.phase = 'scene'; const i = L.cell, c = JAILCELLS[i], st = cellsState(), tok = now + Math.random(); L.tok = tok;
+  const ax = c.door[0] - c.spot[0], ay = c.door[1] - c.spot[1], jl = S.npcs && S.npcs.jailer, alive = jl && !jl.dead && !jl.downed;
+  if (alive) { jl.x = c.door[0] + ax * 0.9 + ay * 0.85; jl.y = c.door[1] + ay * 0.9 + ax * 0.85; jl.dir = dirFromVecS(c.door[0] - jl.x, c.door[1] - jl.y); near(jl.x, jl.y, { t: 'anim', w: 'n', id: 'jailer', a: 'key', ms: 1100 }); }
+  q.x = c.door[0] + ax * 0.9; q.y = c.door[1] + ay * 0.9; q.dir = dirFromVecS(-ax, -ay);
+  const ok = () => n.lead && n.lead.tok === tok && S.players[q.id];
+  setTimeout(() => { if (!ok()) return; st[i].open = 1; }, 1100);
+  setTimeout(() => { if (!ok()) return; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'shove', ms: 700, tx: c.spot[0], ty: c.spot[1] }); q.x = c.spot[0]; q.y = c.spot[1]; knockPlayer(q, { x: c.door[0] + ax, y: c.door[1] + ay }, now_()); tell(q, 'A sentinela te empurra para dentro da cela.'); }, 1800);
+  setTimeout(() => { if (!ok()) return; q.bound = null; sendStat(q); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'cuff', ms: 900, tx: c.spot[0], ty: c.spot[1] }); }, 2900);
+  setTimeout(() => { if (!ok()) return; st[i].open = 0; if (alive) near(jl.x, jl.y, { t: 'anim', w: 'n', id: 'jailer', a: 'key', ms: 1100 }); }, 3800);
+  setTimeout(() => { if (!ok()) return; q.dragBy = null; n.lead = null; st[i].who = null; jailPlayer(q, q.sentence || CRIME_MS.assault, { noTp: true, cell: i }); sys(q.name + ' foi trancado na cadeia.'); if (alive) { jl.x = jl.postX; jl.y = jl.postY; } }, 4700);
+}
+function lawMsg(p, m) {
+  if (m.t === 'lastwords') { if (!p.condemned || p.saidLast) return; const tx = String(m.text || '').replace(/[<>]/g, '').trim().slice(0, 120); if (!tx) return; p.saidLast = true; sys('Últimas palavras de ' + p.name + ': "' + tx + '"'); near(p.x, p.y, { t: 'pbubble', id: p.id, text: tx }, VIEW_RADIUS + 12); return; }
+  if (m.t === 'execbail') {
+    const q = S.players[m.who || p.id]; if (!q || !q.condemned) return; if (p !== q && dist(p.x, p.y, q.x, q.y) > 14) { tell(p, 'Chegue mais perto para pagar a fiança.'); return; }
+    if (p.gold < 1000) { tell(p, 'A fiança da execução é 1000 de ouro. Você não tem o bastante.'); return; }
+    p.gold -= 1000; sendStat(p);
+    if (q.execTok) { q.execTok = 0; q.execAt = 0; near(STAGE.x, STAGE.y, { t: 'execabort', id: q.id }, VIEW_RADIUS + 12); }
+    for (const n of Object.values(S.npcs || {})) if (n.lead && n.lead.id === q.id) n.lead = null;
+    q.dragBy = null; q.bound = null; condemn(q, false); sys((p === q ? q.name + ' pagou' : p.name + ' pagou') + ' a fiança de 1000 ouro: ' + q.name + ' escapa da guilhotina e vai para a cadeia.');
+    jailPlayer(q, q.sentence || CRIME_MS.murder);
+  }
 }
 
 // ---------------- progressão por uso e habilidades da árvore ----------------
@@ -2008,7 +2078,7 @@ function hostTick() {
     for (const p of players) {
       if (dist(p.x, p.y, r.x, r.y) > VIEW_RADIUS) continue;
       if (p.devHidden && p.id !== r.id) continue;
-      let fl = (p.walking ? 1 : 0) | (p.downed ? 2 : 0) | (p.carriedBy ? 4 : 0) | (p.carrying ? 8 : 0) | (p.running && p.walking ? 256 : 0) | (p.sit ? 512 : 0) | (p.sit === 'c' ? 1024 : 0) | (p.sleep != null ? 32768 : 0) | (p.drawT ? 65536 : 0) | (p.dragBy ? 131072 : 0) | (p.dragMode === 'foot' ? 262144 : 0) | (p.drag && p.drag.mode === 'arms' ? 524288 : 0) | (p.drag && p.drag.mode === 'foot' ? 1048576 : 0) | (p.drag && p.drag.mode === 'back' ? 2097152 : 0) | (p.drag && p.drag.mode === 'grip' ? 4194304 : 0) | (p.gripBy ? 8388608 : 0) | (p.tied ? 16777216 : 0) | (p.choked ? 33554432 : 0) | (p.choking ? 67108864 : 0) | (p.escortBy || p.surrendered ? 134217728 : 0) | (p.jailUntil > now ? 536870912 : 0) | (p.drag && (p.drag.helper || ((dragTarget(p.drag.k, p.drag.id) || {}).dragBy2)) ? 268435456 : 0) | ((p.fl || 0) << 11) | (p.crouch ? 8192 : 0) | (p.slide ? 16384 : 0);
+      let fl = (p.walking ? 1 : 0) | (p.downed ? 2 : 0) | (p.carriedBy ? 4 : 0) | (p.carrying ? 8 : 0) | (p.running && p.walking ? 256 : 0) | (p.sit ? 512 : 0) | (p.sit === 'c' ? 1024 : 0) | (p.sleep != null ? 32768 : 0) | (p.drawT ? 65536 : 0) | (p.dragBy ? 131072 : 0) | (p.dragMode === 'foot' ? 262144 : 0) | (p.drag && p.drag.mode === 'arms' ? 524288 : 0) | (p.drag && p.drag.mode === 'foot' ? 1048576 : 0) | (p.drag && p.drag.mode === 'back' ? 2097152 : 0) | (p.drag && p.drag.mode === 'grip' ? 4194304 : 0) | (p.gripBy ? 8388608 : 0) | (p.tied ? 16777216 : 0) | (p.choked ? 33554432 : 0) | (p.choking ? 67108864 : 0) | (p.escortBy || p.surrendered ? 134217728 : 0) | (p.jailUntil > now ? 536870912 : 0) | (p.bound ? 1073741824 : 0) | (p.drag && (p.drag.helper || ((dragTarget(p.drag.k, p.drag.id) || {}).dragBy2)) ? 268435456 : 0) | ((p.fl || 0) << 11) | (p.crouch ? 8192 : 0) | (p.slide ? 16384 : 0);
       for (const b in BUFF_BITS) if (buffOn(p, b)) fl |= BUFF_BITS[b];
       pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0]);
     }
@@ -2018,8 +2088,8 @@ function hostTick() {
     }
     const ch = []; for (const id in S.chests) { const c = S.chests[id]; if (Math.abs(c.x - r.x) <= VIEW_RADIUS && Math.abs(c.y - r.y) <= VIEW_RADIUS) ch.push([c.id, Math.round(c.x * 100), Math.round(c.y * 100), c.opened.has(r.id) ? 1 : 0, c.who.has(r.id) ? 1 : 0]); }
     const co = []; for (const id in S.corpses || {}) { const c = S.corpses[id]; if (Math.abs(c.x - r.x) <= VIEW_RADIUS && Math.abs(c.y - r.y) <= VIEW_RADIUS) co.push([c.id, MON_TYPES.indexOf(c.type), Math.round(c.x * 100), Math.round(c.y * 100), c.z, c.looted ? 1 : 0, Math.round(c.ix * 10), Math.round(c.iy * 10), c.lost || 0, c.onBack || 0]); }
-    const np = []; for (const n of Object.values(S.npcs || {})) { if (Math.abs(n.x - r.x) > VIEW_RADIUS + 4 || Math.abs(n.y - r.y) > VIEW_RADIUS + 4) continue; np.push([n.id, Math.round(n.x * 100), Math.round(n.y * 100), (n.downed ? 1 : 0) | (n.dead ? 2 : 0) | (n.dragBy && n.dragMode !== 'back' ? 4 : 0) | (n.dragMode === 'foot' ? 8 : 0) | (n.walk ? 32 : 0), n.onBack || 0, n.carrying || 0]); }
-    Net.toOne(r.id, { t: 's', p: pl, m: ml, ch, co, np }, true);
+    const np = []; for (const n of Object.values(S.npcs || {})) { if (Math.abs(n.x - r.x) > VIEW_RADIUS + 4 || Math.abs(n.y - r.y) > VIEW_RADIUS + 4) continue; np.push([n.id, Math.round(n.x * 100), Math.round(n.y * 100), (n.downed ? 1 : 0) | (n.dead ? 2 : 0) | (n.dragBy && n.dragMode !== 'back' ? 4 : 0) | (n.dragMode === 'foot' ? 8 : 0) | (n.walk ? 32 : 0) | (n.lead && n.lead.phase === 'walk' ? 64 : 0), n.onBack || 0, n.carrying || 0]); }
+    Net.toOne(r.id, { t: 's', p: pl, m: ml, ch, co, np, jc: (S.cells || []).map(c => c.open ? 1 : 0) }, true);
   }
 }
 

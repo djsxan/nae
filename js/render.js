@@ -278,6 +278,7 @@ function heroPoseFor(e, now) {
   const P = { view: view0 === 'W' ? 'E' : view0, walk: -1, act: null, idle: null, sit: false, carry: !!e.lifted };
   if (e.dragMode) P.drag = e.dragMode; else if (e.carrying && !e.lifted) P.drag = 'back';
   if (e.gripped) P.held = e.choked ? 2 : 1;
+  if (e.bound && !e.downed) { P.tied = 1; if (P.drag !== 'lead') P.drag = null; }
   if (e.escorted) { P.tied = 1; P.drag = null; }
   P.dir = e.dir || 0;
   if (e.custP && !e.walking) { Object.assign(P, e.custP); if (P.sit) P.walk = -1; return P; }
@@ -859,6 +860,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   };
   for (const id in G.monsters) addEnt(G.monsters[id], 1);
   for (const n of NPCS) addEnt(G.npcs[n.id], 3);
+  if (typeof cellDoorItems === 'function') cellDoorItems(items, inB0, now);
   for (const id in G.players) { const e = G.players[id]; if (!e.carriedBy && !(e.grab && now < e.grab.until)) addEnt(e, 2); }
   const inB = inB0;
   let inside = null;
@@ -974,6 +976,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       if (it.b.kind === 'smith') { const p = iso(it.b.x - 0.5 + it.b.w * 0.5, it.b.y - 0.5 + it.b.h); G.lights.push({ x: p.sx + ox, y: p.sy + oy - 16, r: 62, c: '255,130,50', a: 1, flick: 1 }); if (Math.random() < 0.1) spawnPart('ember', p.sx, p.sy - 20); }
       return;
     }
+    if (it.k === 6) { drawCellDoor(ctx, it); return; }
     if (it.k === 5) { pblit(ctx, slabSprite(Math.floor(hash2(it.x, it.y, 4) * 3)), it.sx, it.sy - FLOOR_PX); return; }
     const e = it.e;
     ctx.imageSmoothingEnabled = false;
@@ -988,6 +991,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     } else {
       ctx.imageSmoothingEnabled = true; drawAuras(ctx, e, it.sx, it.sy, now); ctx.imageSmoothingEnabled = false;
       drawHeroEntity(ctx, e, it.sx, it.sy, now); if (e.arrows) drawStuck(ctx, e, it.sx, it.sy, now);
+      if (typeof drawPlayerBubble === 'function') drawPlayerBubble(ctx, e, it.sx, it.sy, now);
       if (e.dragMode === 'back' && typeof drawBackCorpse === 'function') { drawBackCorpse(ctx, e, it.sx, it.sy, now); drawNpcOnBack(ctx, e, it.sx, it.sy); }
       heroExtras(e, it.sx, it.sy);
       if (e.burnUntil > now && typeof drawOnFire === 'function') drawOnFire(ctx, it.sx, it.sy, now, (e.x || 0) * 7.1);

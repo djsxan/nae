@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'World of Sxan';
-const VERSION = 'v1.25.0';
-const VERSION_NAME = 'Cadeia e Guilhotina';
+const VERSION = 'v1.26.0';
+const VERSION_NAME = 'Algemas';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -180,6 +180,8 @@ const LOOT = {
   stew:     { name: 'Ensopado', price: 18, icon: '♨', color: '#b8743a', desc: 'Ensopado quente de carne e ervas. Sacia, mata a sede e cura um pouco. Clique para comer.' },
   pie:      { name: 'Torta de Frutas', price: 14, icon: '◒', color: '#c8603a', desc: 'Torta doce de frutas silvestres e maçã. Clique para comer.' },
   tea:      { name: 'Chá de Ervas', price: 8, icon: '☕', color: '#8aa84a', desc: 'Mata a sede e baixa a febre. Clique para beber.' },
+  rope:     { name: 'Corda', price: 15, icon: '➰', color: '#c8a870', desc: 'Para amarrar as mãos de alguém caído, rendido ou preso no mata-leão (H → Amarrar).' },
+  lockpick: { name: 'Gazua', price: 40, icon: '⚷', color: '#9aa0a6', desc: 'Abre algemas (F perto de alguém algemado). Usar na cidade é crime.' },
   apple:    { name: 'Maçã', price: 3, icon: '●', color: '#c8302a', desc: 'Maçã docinha da feira. Mata um pouco a fome. Clique para comer.' },
   berries:  { name: 'Frutas Silvestres', price: 3, icon: '❀', color: '#c8283a', desc: 'Colhidas no mato. Matam um pouco a fome. Clique para comer.' },
   herb:     { name: 'Erva Medicinal',   price: 8,   icon: '❦', color: '#6aa84a', desc: 'Mastigue para baixar a febre e estancar sangramentos leves. Clique para usar.' },

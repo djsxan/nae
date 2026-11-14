@@ -140,6 +140,9 @@ const ACTS = {
   anger: [[0, {}], [0.2, { aA: [1.7, 0.3, 2.3], aB: [0.4, 0.3, 1.8], tl: 0.2, ht: 0.1, mouth: 1 }], [0.35, { aA: [2.3, 0.3, 2.0], tl: 0.22 }], [0.5, { aA: [1.7, 0.3, 2.3] }], [0.65, { aA: [2.3, 0.3, 2.0], tl: 0.25, mouth: 1 }], [0.8, { aA: [1.7, 0.3, 2.3] }], [1, {}]],
   fear: [[0, {}], [0.2, { kn: -0.6, tl: 0.35, aA: [1.6, 0.1, 2.4], aB: [1.6, 0.1, 2.4], ht: 0.3, lA: [0.6, -0.9], lB: [0.4, -0.8] }], [0.5, { kn: -0.65, tl: 0.4, aA: [1.66, 0.12, 2.45], aB: [1.6, 0.1, 2.4], ht: 0.32, lA: [0.6, -0.9], lB: [0.4, -0.8] }], [0.85, { kn: -0.6, tl: 0.35, aA: [1.6, 0.1, 2.4], aB: [1.62, 0.1, 2.4], ht: 0.3, lA: [0.6, -0.9], lB: [0.4, -0.8] }], [1, {}]],
   sad: [[0, {}], [0.3, { tl: 0.25, ht: 0.6, aA: [1.4, 0.1, 2.5], aB: [0.1, 0.05, 0.2] }], [0.85, { tl: 0.28, ht: 0.65, aA: [1.45, 0.1, 2.55], aB: [0.1, 0.05, 0.2] }], [1, {}]],
+  cuff: [[0, {}], [0.3, { aA: [1.0, 0.1, 0.9], aB: [1.0, 0.1, 0.9], tl: 0.3, kn: -0.25, ht: 0.3 }], [0.75, { aA: [0.9, -0.05, 1.1], aB: [0.9, -0.05, 1.1], tl: 0.32, kn: -0.25, ht: 0.35 }], [1, {}]],
+  key: [[0, {}], [0.3, { aA: [1.45, 0.05, 0.5], ht: 0.15 }], [0.55, { aA: [1.45, 0.05, 0.5], ht: 0.15, tw: 0.25 }], [0.8, { aA: [1.45, 0.05, 0.5], ht: 0.15, tw: -0.1 }], [1, {}]],
+  shove: [[0, {}], [0.25, { aA: [1.0, 0.1, 1.6], aB: [1.0, 0.1, 1.6], tl: -0.1 }], [0.5, { aA: [1.5, 0.05, 0.1], aB: [1.5, 0.05, 0.1], tl: 0.3, lA: [0.5, -0.3] }], [1, {}]],
   lever: [[0, {}], [0.3, { aA: [2.6, 0.2, 0.4], tl: -0.1, ht: -0.1 }], [0.55, { aA: [0.9, 0.25, 0.2], tl: 0.35, kn: -0.3 }], [1, { aA: [0.8, 0.25, 0.2], tl: 0.25, kn: -0.2 }]],
   // ---- casa: mexer a panela e varrer ----
   cook: [[0, { aA: [1.1, 0.15, 1.0], aB: [0.9, 0.1, 1.5], tl: 0.22, ht: 0.3 }], [0.25, { aA: [1.15, 0.38, 1.1], aB: [0.9, 0.1, 1.5], tl: 0.22, ht: 0.3 }], [0.5, { aA: [1.22, 0.15, 1.2], aB: [0.9, 0.1, 1.5], tl: 0.22, ht: 0.3 }], [0.75, { aA: [1.15, -0.08, 1.1], aB: [0.9, 0.1, 1.5], tl: 0.22, ht: 0.3 }], [1, { aA: [1.1, 0.15, 1.0], aB: [0.9, 0.1, 1.5], tl: 0.22, ht: 0.3 }]],
@@ -150,7 +153,7 @@ const ACTS = {
   // ---- reação ao golpe ----
   hurt: [[0, {}], [0.25, { tl: -0.38, aA: [0.7, 0.55, 0.6], aB: [0.7, 0.55, 0.6], ht: -0.45, kn: -0.35 }], [1, {}]],
 };
-const ACT_MS = { lever: 1100, cheer: 1400, surprise: 1000, adore: 2600, anger: 1400, fear: 1600, sad: 2200, cook: 3000, sweep: 1400, loose: 350, nock: 800, drinkb: 1600, scoop: 1500, hurt_head: 420, hurt_leg: 420, getup: 650, kick: 520, execute: 720, quiver: 760, turnshot: 950, dualcast: 560, turncast: 950, salute: 1200, point: 1300, dance: 900, hurt: 300, swing: 440, bash: 560, spin: 560, block: 650, warcry: 700, shoot: 440, double: 620, pierce: 640, rain: 560, dash: 560, bolt: 400, fireball: 520, nova: 620, heal: 680, meteor: 720, cast: 600, bite: 320 };
+const ACT_MS = { cuff: 1900, key: 1100, shove: 700, lever: 1100, cheer: 1400, surprise: 1000, adore: 2600, anger: 1400, fear: 1600, sad: 2200, cook: 3000, sweep: 1400, loose: 350, nock: 800, drinkb: 1600, scoop: 1500, hurt_head: 420, hurt_leg: 420, getup: 650, kick: 520, execute: 720, quiver: 760, turnshot: 950, dualcast: 560, turncast: 950, salute: 1200, point: 1300, dance: 900, hurt: 300, swing: 440, bash: 560, spin: 560, block: 650, warcry: 700, shoot: 440, double: 620, pierce: 640, rain: 560, dash: 560, bolt: 400, fireball: 520, nova: 620, heal: 680, meteor: 720, cast: 600, bite: 320 };
 const IDLES = {
   look: [[0, {}], [0.25, { hw: 0.6 }], [0.6, { hw: -0.6 }], [1, {}]],
   stretch: [[0, {}], [0.4, { aA: [3.0, 0.3, 0.2], aB: [3.0, 0.3, 0.2], tl: -0.12, mouth: 1, wp: 3.1 }], [0.7, { aA: [3.0, 0.3, 0.2], aB: [3.0, 0.3, 0.2], tl: -0.12, wp: 3.1 }], [1, {}]],
@@ -210,6 +213,8 @@ function buildPose(cls, P) {
     Q.aA = [-0.62, 0.18, 0.05]; Q.tl = 0.32; Q.kn = -0.2; Q.ht = -0.1; Q.wp = -0.4;
   } else if (P.drag === 'back') {   // corpo dobrado sobre o ombro: a mão segura as pernas, o tronco curvado com o peso
     Q.aA = [1.55, 0.3, 2.35]; Q.tl = 0.18; Q.kn = -0.15; Q.ht = 0.08;
+  } else if (P.drag === 'lead') {   // sentinela conduzindo: uma mão no braço do preso, a outra no ombro
+    Q.aA = [1.05, 0.05, 0.55]; Q.aB = [1.2, -0.15, 1.0]; Q.tl = 0.06;
   } else if (P.drag === 'grip') {   // mata-leão: um braço em volta do pescoço, a outra mão travando por trás da cabeça
     Q.aA = [1.35, -0.55, 2.0]; Q.aB = [1.75, 0.35, 2.45]; Q.tl = -0.12; Q.kn = -0.25; Q.ht = 0.15;
   }

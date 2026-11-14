@@ -103,3 +103,65 @@ function giveToPrisoner(k) {
 }
 // carcereiro: cochila de noite
 function jailerNight() { const e = G.npcs.jailer; if (!e || e.npDead || e.npDown || e.dragged) return; const night = dayInfo().night; e.custP = night ? { sit: 'g', doze: 1 } : null; }
+
+// ---------- portas das celas que giram (desenhadas à parte, por cima do interior) ----------
+G.cellAng = [];
+function cellDoorItems(items, inB, now) {
+  if (!JAILCELLS.length || inB !== JAILCELLS[0].bi) return;
+  const dt = Math.min(0.1, (now - (G.cellT || now)) / 1000); G.cellT = now;
+  JAILCELLS.forEach((c, i) => {
+    const want = (G.cellOpen && G.cellOpen[i]) ? 1 : 0; G.cellAng[i] = (G.cellAng[i] || 0) + (want - (G.cellAng[i] || 0)) * Math.min(1, dt * 5);
+    const p = iso(c.door[0], c.door[1]); items.push({ d: c.door[0] + c.door[1] + 0.05, k: 6, cell: i, sx: p.sx + G.view.ox, sy: p.sy + G.view.oy, inside: true });
+  });
+}
+function drawCellDoor(ctx, it) {
+  const c = JAILCELLS[it.cell], a = (G.cellAng[it.cell] || 0) * 1.45;
+  const ax = c.door[0] - c.spot[0], ay = c.door[1] - c.spot[1], ux = -ay, uy = ax;                       // ao longo da grade
+  const hx = c.door[0] + ux * 0.47, hy = c.door[1] + uy * 0.47;                                          // dobradiça
+  const ex = hx - (Math.cos(a) * ux - Math.sin(a) * ax) * 0.94, ey = hy - (Math.cos(a) * uy - Math.sin(a) * ay) * 0.94;   // abre para o corredor
+  const P = (x, y) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy]; }, [x0, y0] = P(hx, hy), [x1, y1] = P(ex, ey), H = 2.05 * (typeof HV !== 'undefined' ? HV : 25);
+  ctx.save(); ctx.lineCap = 'round';
+  for (let k = 0; k <= 6; k++) { const t = k / 6, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t; ctx.strokeStyle = '#1e1c1a'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x, y - H); ctx.stroke(); ctx.strokeStyle = '#5a5652'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(x - 0.4, y); ctx.lineTo(x - 0.4, y - H); ctx.stroke(); }
+  for (const hh of [0.05, 0.5, 0.97]) { ctx.strokeStyle = '#2a2826'; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(x0, y0 - H * hh); ctx.lineTo(x1, y1 - H * hh); ctx.stroke(); }
+  const lx = x0 + (x1 - x0) * 0.82, ly = y0 + (y1 - y0) * 0.82 - H * 0.5; ctx.fillStyle = '#6a5a32'; ctx.fillRect(lx - 3, ly - 4, 6, 8); ctx.fillStyle = '#1a1410'; ctx.fillRect(lx - 0.7, ly - 1.5, 1.4, 3);
+  ctx.restore();
+}
+// ---------- condenado: últimas palavras e fiança na hora ----------
+G.condemned = new Set();
+function lawEvent(m, now) {
+  if (m.t === 'condemned') { if (m.on) G.condemned.add(m.id); else G.condemned.delete(m.id); updateLawUI(); return true; }
+  if (m.t === 'pbubble') { const e = G.players[m.id]; if (e) e.bubble = { t: '“' + m.text + '”', until: now + 7000 }; return true; }
+  return false;
+}
+function updateLawUI() {
+  let box = $('lawui');
+  if (!box) {
+    box = document.createElement('div'); box.id = 'lawui';
+    box.style.cssText = 'position:fixed;left:50%;bottom:92px;transform:translateX(-50%);z-index:60;display:flex;flex-direction:column;gap:6px;align-items:center;font-family:inherit';
+    document.body.appendChild(box);
+  }
+  const me = G.me; if (!me) return;
+  const sig = [...G.condemned].filter(id => id === G.myId || (G.players[id] && dist(G.players[id].rx, G.players[id].ry, me.x, me.y) <= 14)).join(',');
+  if (sig === G.lawSig) return; G.lawSig = sig; box.innerHTML = '';
+  if (G.condemned.has(G.myId)) {
+    const row = document.createElement('div'); row.className = 'gpanel'; row.style.cssText = 'position:static;display:flex;gap:8px;align-items:center;padding:8px 10px';
+    row.innerHTML = '<b style="white-space:nowrap">Últimas palavras</b><input id="lastw" maxlength="120" placeholder="Escreva e aperte Enter" style="width:min(360px,52vw)"><button class="btn" id="lastw-go">Dizer</button><button class="btn gold" id="ebail">Fiança: 1000 ouro</button>';
+    box.appendChild(row);
+    const go = () => { const v = $('lastw').value.trim(); if (!v) return; Net.send({ t: 'lastwords', text: v }); row.querySelector('#lastw').disabled = true; row.querySelector('#lastw-go').disabled = true; };
+    row.querySelector('#lastw').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') go(); });
+    row.querySelector('#lastw-go').onclick = go; row.querySelector('#ebail').onclick = () => Net.send({ t: 'execbail' });
+  }
+  for (const id of G.condemned) {
+    if (id === G.myId) continue; const q = G.players[id]; if (!q || dist(q.rx, q.ry, me.x, me.y) > 14) continue;
+    const b = document.createElement('button'); b.className = 'btn gold'; b.textContent = 'Pagar a fiança de ' + q.name + ' (1000 ouro) e salvá-lo da guilhotina';
+    b.onclick = () => Net.send({ t: 'execbail', who: id }); box.appendChild(b);
+  }
+}
+function boundNear() { const me = G.me; for (const id in G.players) { const q = G.players[id]; if (q !== me && q.bound && dist(q.rx, q.ry, me.x, me.y) < 1.8) return q; } return null; }
+function drawPlayerBubble(ctx, e, sx, sy, now) {
+  if (!e.bubble || now > e.bubble.until) return;
+  ctx.save(); ctx.font = 'italic 8px serif'; ctx.textAlign = 'center'; const w = Math.min(160, ctx.measureText(e.bubble.t).width + 10);
+  ctx.fillStyle = 'rgba(245,236,214,0.95)'; ctx.strokeStyle = 'rgba(60,40,20,0.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.roundRect ? ctx.roundRect(sx - w / 2, sy - 92, w, 14, 3) : ctx.rect(sx - w / 2, sy - 92, w, 14); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = '#2a1a0a'; ctx.fillText(e.bubble.t.length > 34 ? e.bubble.t.slice(0, 33) + '…”' : e.bubble.t, sx, sy - 82); ctx.restore();
+}
+setInterval(() => { if (G.started && G.condemned.size) updateLawUI(); }, 2000);

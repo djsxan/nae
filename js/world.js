@@ -794,7 +794,7 @@ function generateWorld() {
   // cadafalso com guilhotina: em frente ao castelo, à esquerda da porta, diante da estátua e do estandarte (tablado 3x3 + 1 tile livre para a escada)
   { let best = null;
     for (let r = 0; r < 7 && !best; r++) for (let dy = -r; dy <= r && !best; dy++) for (let dx = -r; dx <= r && !best; dx++) {
-      const cx = C - 7 + dx, cy = KEEP.y1 + 5 + dy; let ok = true;
+      const cx = C - 4 + dx, cy = KEEP.y1 + 6 + dy; let ok = true;
       for (let yy = cy - 1; yy <= cy + 2 && ok; yy++) for (let xx = cx - 1; xx <= cx + 1 && ok; xx++) { const i = idx(xx, yy); if (bld[i] !== -1 || BLOCKING.has(obj[i]) || ground[i] === T.WATER || rdir[i] && yy > cy + 1) ok = false; }
       if (ok) best = [cx, cy];
     }
@@ -830,6 +830,7 @@ function generateWorld() {
     const r = R(x, y, 77);
     obj[i] = r < 0.025 ? O.TREE : r < 0.05 ? O.BUSH : r < 0.15 ? O.TALLGRASS : r < 0.22 ? O.FLOWER : O.NONE;
   }
+  if (STAGE.x >= 0) for (let yy = STAGE.y - 3; yy <= STAGE.y + 4; yy++) for (let xx = STAGE.x - 3; xx <= STAGE.x + 3; xx++) { const i2 = idx(xx, yy); if (obj[i2] === O.LAMP && Math.hypot(xx - STAGE.x, yy - STAGE.y - 0.5) < 3.2) obj[i2] = O.NONE; }
   for (const n of NPCS) obj[idx(Math.round(n.x), Math.round(n.y))] = O.NONE;
   { const fr = NPCS.find(n => n.id === 'fruit'); if (fr) for (const [dx, dy] of [[1, -1], [-1, -1], [1, 1], [-1, 1], [2, -1]]) { const x = fr.stall[0] + dx, y = fr.stall[1] + dy, i = idx(x, y); if (bld[i] < 0 && obj[i] === O.NONE && !(x === Math.round(fr.x) && y === Math.round(fr.y))) { obj[i] = O.STOOL; FRUIT_STOOL.x = x; FRUIT_STOOL.y = y; break; } } }
   for (let k = seats.length - 1; k >= 0; k--) if (seats[k].bi < 0) seats.splice(k, 1);

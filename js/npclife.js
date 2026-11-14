@@ -6,7 +6,7 @@ function applyNpcRows(rows, now) {
   const seen = new Set();
   for (const [id, x100, y100, fl, onBack, carrying] of rows || []) {
     const e = G.npcs[id]; if (!e) continue; seen.add(id);
-    e.srv = true; e.npDown = !!(fl & 1); e.npDead = !!(fl & 2); e.dragged = !!(fl & 4); e.prone = !!(fl & 8); e.npWalk = !!(fl & 32);
+    e.srv = true; e.dragMode = fl & 64 ? 'lead' : (e.dragMode === 'lead' ? null : e.dragMode); e.npDown = !!(fl & 1); e.npDead = !!(fl & 2); e.dragged = !!(fl & 4); e.prone = !!(fl & 8); e.npWalk = !!(fl & 32);
     e.onBackBy = onBack || null; e.carrying = carrying || null;
     e.tx = x100 / 100; e.ty = y100 / 100;
     if (e.kind !== 'fruit' || e.npDown || e.npDead || e.dragged || e.onBackBy) { if (e._snap == null || Math.hypot(e.tx - e.rx, e.ty - e.ry) > 4) { e.x = e.rx = e.tx; e.y = e.ry = e.ty; } e._snap = 1; }
