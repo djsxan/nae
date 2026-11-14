@@ -12,11 +12,11 @@ const O = {
   REEDS: 10, LILY: 11, STUMP: 12, DEADTREE: 13, GRAVE: 14, BONES: 15, TENT: 16, CAMPFIRE: 17, FENCE: 18,
   TORCH: 19, BARREL: 20, CRATE: 21, HAY: 22, WELL: 23, STALL: 24, BENCH: 25, BANNER: 26, LOG: 27,
   FLOWERBED: 28, SPIKES: 29, WALL: 30, TOWER: 31, PART: 32, GATE: 33, STAIRS: 34, RUBBLE: 35, RUBBLEBIG: 36,
-  STATUE: 37, BRAZIER: 38, DUMMY: 39, WATERFALL: 40, LOWWALL: 41, IVY: 42, ANVIL: 43, WEAPONRACK: 44, CART: 45, TABLE: 46, CAVE: 47, HOARD: 48, ARMORPILE: 49, RUINTOWER: 50, OAK: 51, BIRCH: 52, WILLOW: 53, FERN: 54, ROOTS: 55, SHROOMS: 56, BERRY: 57, HERB: 58, BOULDER: 59, GUILLOTINE: 60, STOOL: 61, STAGEFLOOR: 62,
+  STATUE: 37, BRAZIER: 38, DUMMY: 39, WATERFALL: 40, LOWWALL: 41, IVY: 42, ANVIL: 43, WEAPONRACK: 44, CART: 45, TABLE: 46, CAVE: 47, HOARD: 48, ARMORPILE: 49, RUINTOWER: 50, OAK: 51, BIRCH: 52, WILLOW: 53, FERN: 54, ROOTS: 55, SHROOMS: 56, BERRY: 57, HERB: 58, BOULDER: 59, GUILLOTINE: 60, STOOL: 61, STAGEFLOOR: 62, VITRINE: 63, FRUITCRATE: 64,
 };
 const BLOCKING = new Set([O.TREE, O.PINE, O.ROCK, O.FOUNTAIN, O.STUMP, O.DEADTREE, O.GRAVE, O.TENT,
   O.CAMPFIRE, O.FENCE, O.BARREL, O.CRATE, O.HAY, O.WELL, O.STALL, O.LOG, O.SPIKES,
-  O.WALL, O.TOWER, O.PART, O.RUBBLEBIG, O.CAVE, O.HOARD, O.RUINTOWER, O.OAK, O.BIRCH, O.WILLOW, O.BOULDER, O.GUILLOTINE, O.STOOL, O.STATUE, O.BRAZIER, O.DUMMY, O.WATERFALL, O.LOWWALL, O.ANVIL, O.WEAPONRACK, O.CART, O.TABLE]);
+  O.WALL, O.TOWER, O.PART, O.RUBBLEBIG, O.CAVE, O.HOARD, O.RUINTOWER, O.OAK, O.BIRCH, O.WILLOW, O.BOULDER, O.GUILLOTINE, O.STOOL, O.VITRINE, O.FRUITCRATE, O.STATUE, O.BRAZIER, O.DUMMY, O.WATERFALL, O.LOWWALL, O.ANVIL, O.WEAPONRACK, O.CART, O.TABLE]);
 // objetos soltos que dá para pegar e arremessar (dano base)
 const THROWABLE = { [O.BARREL]: 18, [O.CRATE]: 20, [O.ROCK]: 26 };
 // objetos rasteiros (vão direto para o chão pré-desenhado)
@@ -94,6 +94,11 @@ const BUILDINGS = TEST3D ? [] : [
   { x: C + 21, y: C + 15, ...BH('shop', 6, 4, 2.6, 2.6, 'Pergaminhos & Mapas', { v: 4 }) },
   { x: C - 5, y: C - 19, ...BH('castle', 12, 10, 10, 6.5, 'Castelo de Sxan', { floors: 2 }) },
   { x: C + 22, y: C + 20, ...BH('jail', 6, 8, 3.2, 2.4, 'Cadeia de Sxan', { floors: 1, door: 'W' }) },
+  { x: C - 19, y: C - 3, ...BH('boutique', 8, 6, 4.6, 3.0, 'Ateliê Real de Sxan', { floors: 1, door: 'S' }) },
+  { x: C - 13, y: C + 16, ...BH('fruithouse', 5, 4, 2.9, 2.6, '', { floors: 1, door: 'E' }) },
+  { x: C - 30, y: C - 1, ...BH('shop', 5, 5, 3.8, 2.6, '', { v: 1, door: 'S', blank: true }) },
+  { x: C - 29, y: C + 8, ...BH('shop', 5, 5, 3.6, 2.6, '', { v: 3, door: 'N', blank: true }) },
+  { x: C - 22, y: C + 8, ...BH('shop', 5, 5, 4.0, 2.8, '', { v: 2, door: 'N', blank: true }) },
 ];
 // portas: lado S (+y, padrão), N (-y), E (+x) ou W (-x). O layout interno usa um "quadro local":
 // i = posição ao longo da parede da porta (largura A), j = profundidade (0 = fundo, D-1 = linha da porta)
@@ -179,13 +184,23 @@ function interiorLayout0(b, fl = 0) {
     else { put('crate', 1, 0); put('barrel', 2, 0); put('bed', 0, h - 2, { h: 2 }); put('crate', w - 1, h - 1); put('rug', 2, 2, { w: Math.max(1, w - 4), block: false }); }
     return { F, npc: null };
   }
-  if (k === 'house') {
+  if (k === 'boutique') {
+    put('mirror', 0, 0); put('clothrack', 1, 0); put('clothrack', 2, 0); put('mannequin', w - 3, 0); put('mannequin', w - 1, 0);
+    npcAt(w - 2, 1); put('counter', w - 3, 2, { w: 3, v: 9 }); put('chair', 0, 2, { seat: 1 }); put('chair', 0, 3, { seat: 1 });
+    put('rug', 1, 1, { w: 4, h: h - 2, v: 9, block: false });
+  } else if (k === 'fruithouse') {
+    put('bed', 0, 0, { h: 2 }); put('stove', 2, 0); taken.add(key(2, 1)); put('chest', 1, 0); put('crate', w - 1, 0, { v: 7 });
+    if (put('table', 2, h - 2)) put('chair', 1, h - 2, { seat: 1 });
+    put('rug', 3, 1, { block: false });
+  } else if (k === 'house') {
     put('bed', 0, 0, { h: 2 }); put('fireplace', w - 2, 0);
     for (const i of [w - 1, w - 3, 2, 3]) if (i >= 1 && i < w && can(i, 0) && can(i, 1)) { put('stove', i, 0); taken.add(key(i, 1)); break; }   // a frente do fogão fica livre para cozinhar
     put('chest', 1, 0);
     if (put('table', w - 2, h - 3)) { put('chair', w - 1, h - 3, { seat: 5 }); put('chair', w - 3, h - 3, { seat: 1 }); }
     put('shelf', 0, h - 2); if (h >= 5) put('crate', 0, h - 1);
     put('rug', dc, 1, { block: false });
+  } else if (k === 'shop' && b.blank) {   // loja vazia (à espera de um dono): prateleiras no fundo e um balcão
+    for (let i = 0; i < w; i++) if (i !== dc) put('shelf', i, 0, { v: b.v });
   } else if (k === 'shop') {
     if (!b.v) npcAt(dc, 0);
     for (let i = 0; i < w; i++) if (i !== dc) put('shelf', i, 0, { v: b.v });
@@ -260,6 +275,9 @@ const NPCS = TEST3D ? [] : [
   { id: 'guard4', name: 'Sentinela Wyn', kind: 'guard', x: C + 2.4, y: C - 29.4 },
   { id: 'fruit', name: 'Marta, a Fruteira', kind: 'fruit', x: C - 3, y: C + 9, stall: [C - 3, C + 10] },
   { id: 'executioner', name: 'Mestre Corvo, o Carrasco', kind: 'executioner', x: C - 4.6, y: C + 3.4 },
+  { id: 'tailor', name: 'Mestre Aurélio, o Alfaiate Real', kind: 'tailor', ...npcIn(BLD_BY('boutique'), { x: C - 15, y: C - 1 }) },
+  { id: 'guard5', name: 'Sentinela Corin', kind: 'guard', x: C - 29.4, y: C + 3.6 },
+  { id: 'guard6', name: 'Sentinela Lys', kind: 'guard', x: C - 29.4, y: C + 8.4 },
   { id: 'jailer', name: 'Bruno, o Carcereiro', kind: 'jailer', ...npcIn(BLD_BY('jail'), { x: C + 25, y: C + 23 }) },
 ];
 // ---------- bairro de teste ----------
@@ -626,6 +644,7 @@ function generateWorld() {
   // leste e oeste: saem do anel
   { const L = lastLand(x1 + RG, C, 1, 0); for (let k = 1; k <= L; k++) for (let w = 0; w <= 1; w++) road(x1 + RG + k, C + w, 1); }
   { const L = lastLand(x0 - RG, C, -1, 0); for (let k = 1; k <= L; k++) for (let w = 0; w <= 1; w++) road(x0 - RG - k, C + w, 1); }
+  for (let x = x0 - RG; x < x0; x++) for (let y = C + 4; y <= C + 7; y++) road(x, y, 1, 1);
 
   // chão da cidade: calçamento com canteiros de grama
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) set(x, y, vnoise(x / 5, y / 5, 610) > 0.7 ? T.GRASS : T.COBBLE, O.NONE);
@@ -636,10 +655,11 @@ function generateWorld() {
   towers.push([x0, y0], [x1 - 1, y0], [x0, y1 - 1], [x1 - 1, y1 - 1]);
   for (const t of sideT) { towers.push([C + t, y0], [C + t, y1 - 1], [x0, C + t], [x1 - 1, C + t]); }
   towers.push([C - 2, y0], [C + 2, y0]);                                   // portão norte (secundário)
+  towers.push([x0, C + 2], [x0, C + 8]);                                   // portão oeste (rua nova)
   const gateTowers = [[C - 4, y1 - 1], [C + 3, y1 - 1]];                    // portão principal: torres altas
   towers.push(...gateTowers);
   const inTower = (x, y) => towers.some(([tx, ty]) => x >= tx && x <= tx + 1 && y >= ty && y <= ty + 1);
-  const isGate = (x, y) => (y === y1 && x >= C - 1 && x <= C + 2) || (y === y0 && (x === C || x === C + 1));
+  const isGate = (x, y) => (y === y1 && x >= C - 1 && x <= C + 2) || (y === y0 && (x === C || x === C + 1)) || (x === x0 && y >= C + 4 && y <= C + 7);
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     if (!(x === x0 || x === x1 || y === y0 || y === y1) || inTower(x, y)) continue;
     const i = idx(x, y);
@@ -695,6 +715,8 @@ function generateWorld() {
   street(KEEP.x0 - 2, KEEP.y0 - 2, KEEP.x1 + 2, KEEP.y0 - 1); street(KEEP.x0 - 2, KEEP.y1 + 1, KEEP.x1 + 2, KEEP.y1 + 2); // anel do castelo
   street(KEEP.x0 - 2, KEEP.y0, KEEP.x0 - 1, KEEP.y1); street(KEEP.x1 + 1, KEEP.y0, KEEP.x1 + 2, KEEP.y1);
   street(x0 + 2, C + 5, x1 - 2, C + 6);                    // rua do mercado (leste-oeste)
+  street(x0, C + 4, C - 8, C + 7);                         // rua nova (larga) até o portão oeste
+  reserve(C - 18, C + 20, C - 8, C + 21); reserve(C + 7, C + 10, C + 17, C + 22);   // quintal da Marta; lado direito da feira sem casa
   street(C + 19, C - 20, C + 20, y1 - 3);                  // beco dos mercadores (estreito, como o Beco Diagonal)
   street(C - 7, C + 9, C + 8, C + 17);                     // praça do mercado
   street(x0 + 2, C - 16, KEEP.x0 - 3, C - 15);             // rua do templo
@@ -785,7 +807,15 @@ function generateWorld() {
   decoAny(C - 2, y1 - 2, O.BRAZIER); decoAny(C + 3, y1 - 2, O.BRAZIER);
   decoAny(C - 1, y0 + 1, O.BRAZIER); decoAny(C + 2, y0 + 1, O.BRAZIER);
   for (let y = C - 18; y < y1 - 4; y += 6) { decoAny(C + 18, y, O.LAMP); decoAny(C + 21, y + 3, O.LAMP); }
-  for (let x = x0 + 5; x < x1 - 4; x += 7) { if (Math.abs(x - C) > 4) { decoAny(x, C + 4, O.LAMP); } }
+  for (let x = x0 + 5; x < x1 - 4; x += 7) { if (Math.abs(x - C) > 4 && x > C - 8) { decoAny(x, C + 4, O.LAMP); } }
+  for (const [x, y] of [[C - 25, C + 3], [C - 21, C + 3], [C - 25, C + 8], [C - 17, C + 8], [C - 10, C + 8]]) decoAny(x, y, O.LAMP);
+  decoAny(x0 + 1, C + 10, O.BARREL); decoAny(x0 + 1, C + 11, O.CRATE); decoAny(x0 + 2, C + 10, O.CRATE); decoAny(x0 + 2, C + 11, O.BARREL); decoAny(x0 + 2, C + 8, O.HAY); decoAny(x0 + 2, C + 9, O.BARREL);   // canto entre a loja e a muralha
+  for (let y = C + 3; y <= C + 8; y++) for (let x = x0 + 2; x <= C - 4; x++) { const i = idx(x, y); if (obj[i] === O.RUBBLE || obj[i] === O.TREE || obj[i] === O.RUBBLEBIG) obj[i] = O.NONE; }   // rua nova limpa e organizada
+  // Ateliê: vitrines no passeio da frente e no lado do largo
+  for (const [x, y] of [[C - 18, C + 3], [C - 13, C + 3], [C - 11, C - 2], [C - 11, C + 1]]) decoAny(x, y, O.VITRINE);
+  // casa da Marta: quintal cercado com macieira, floreiras e caixotes de fruta na porta
+  { const hx = C - 13, hy = C + 16; for (let x = hx - 4; x <= hx - 1; x++) { decoAny(x, hy - 1, O.FENCE); if (x !== hx - 2) decoAny(x, hy + 4, O.FENCE); } for (let y = hy; y <= hy + 3; y++) decoAny(hx - 5, y, O.FENCE);
+    decoAny(hx - 3, hy + 1, O.TREE); decoAny(hx - 2, hy + 3, O.FLOWERBED); decoAny(hx + 5, hy - 1, O.FRUITCRATE); decoAny(hx + 5, hy + 4, O.FRUITCRATE); decoAny(hx + 2, hy + 4, O.FLOWERBED); }
   // bandeiras do castelo e pátio interno
   for (const x of [KEEP.x0 + 4, KEEP.x1 - 4]) decoAny(x, KEEP.y1 + 2, O.BANNER);
   // pracinha do sul-oeste

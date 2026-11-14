@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Cinzel+Decorative:wght@700;900&family=Alegreya:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Alegreya+Sans+SC:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=1.26.0">
+<link rel="stylesheet" href="css/style.css?v=1.27.0">
 </head>
 <body>
 <canvas id="game"></canvas>
@@ -104,6 +104,7 @@
   <div id="combat-pad">
     <div class="slot round pot" id="pot-hp" data-tip="Poção de Vida&#10;Recupera 35% da vida. Tecla Q"><canvas width="72" height="72"></canvas><span class="key">Q</span><span class="count" id="pot-hp-n">0</span></div>
     <div class="slot round pot" id="pot-mp" data-tip="Poção de Mana&#10;Recupera 40% da mana. Tecla E"><canvas width="72" height="72"></canvas><span class="key">E</span><span class="count" id="pot-mp-n">0</span></div>
+    <div class="slot round pot" id="pot-band" data-tip="Bandagem&#10;Estanca o pior sangramento. Tecla B"><canvas width="72" height="72"></canvas><span class="key">B</span><span class="count" id="pot-band-n">0</span></div>
     <div class="slot round skill" id="slot0"><canvas width="96" height="96"></canvas><span class="key">1</span><span class="cost"></span><span class="cd"></span><span class="cdt" id="slot0-t"></span></div>
     <div class="slot round skill" id="slot1"><canvas width="96" height="96"></canvas><span class="key">2</span><span class="cost"></span><span class="cd"></span><span class="cdt" id="slot1-t"></span></div>
     <div class="slot round skill" id="slot2"><canvas width="96" height="96"></canvas><span class="key">3</span><span class="cost"></span><span class="cd"></span><span class="cdt" id="slot2-t"></span></div>
@@ -218,28 +219,29 @@
 </div>
 
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<script src="js/config.js?v=1.26.0"></script>
-<script src="js/world.js?v=1.26.0"></script>
-<script src="js/net.js?v=1.26.0"></script>
-<script src="js/pixel.js?v=1.26.0"></script>
-<script src="js/paint.js?v=1.26.0"></script>
-<script src="js/sprites.js?v=1.26.0"></script>
-<script src="js/props.js?v=1.26.0"></script>
-<script src="js/terrain.js?v=1.26.0"></script>
+<script src="js/config.js?v=1.27.0"></script>
+<script src="js/world.js?v=1.27.0"></script>
+<script src="js/net.js?v=1.27.0"></script>
+<script src="js/pixel.js?v=1.27.0"></script>
+<script src="js/paint.js?v=1.27.0"></script>
+<script src="js/sprites.js?v=1.27.0"></script>
+<script src="js/props.js?v=1.27.0"></script>
+<script src="js/terrain.js?v=1.27.0"></script>
 <script src="https://unpkg.com/three@0.149.0/build/three.min.js"></script>
-<script src="js/render.js?v=1.26.0"></script>
-<script src="js/render3d.js?v=1.26.0"></script>
-<script src="js/dragon.js?v=1.26.0"></script>
-<script src="js/ragdoll.js?v=1.26.0"></script>
-<script src="js/scene3d.js?v=1.26.0"></script>
-<script src="js/server.js?v=1.26.0"></script>
-<script src="js/game.js?v=1.26.0"></script>
-<script src="js/life.js?v=1.26.0"></script>
-<script src="js/progress.js?v=1.26.0"></script>
-<script src="js/bow.js?v=1.26.0"></script>
-<script src="js/drag.js?v=1.26.0"></script>
-<script src="js/npclife.js?v=1.26.0"></script>
-<script src="js/kitchen.js?v=1.26.0"></script>
-<script src="js/jail.js?v=1.26.0"></script>
+<script src="js/render.js?v=1.27.0"></script>
+<script src="js/render3d.js?v=1.27.0"></script>
+<script src="js/dragon.js?v=1.27.0"></script>
+<script src="js/ragdoll.js?v=1.27.0"></script>
+<script src="js/scene3d.js?v=1.27.0"></script>
+<script src="js/server.js?v=1.27.0"></script>
+<script src="js/game.js?v=1.27.0"></script>
+<script src="js/life.js?v=1.27.0"></script>
+<script src="js/progress.js?v=1.27.0"></script>
+<script src="js/bow.js?v=1.27.0"></script>
+<script src="js/drag.js?v=1.27.0"></script>
+<script src="js/npclife.js?v=1.27.0"></script>
+<script src="js/kitchen.js?v=1.27.0"></script>
+<script src="js/jail.js?v=1.27.0"></script>
+<script src="js/showcase.js?v=1.27.0"></script>
 </body>
 </html>

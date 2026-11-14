@@ -187,6 +187,7 @@ function hostOnClient(from, m) {
     case 'loose': bowLoose(p, m); break;
     case 'pullarrow': pullArrow(p); break;
     case 'grab': startGrab(p, m); break;
+    case 'appleoffer': { const n = S.npcs && S.npcs.fruit, now = now_(); if (!n || n.dead || n.downed || dist(p.x, p.y, n.x, n.y) > 5 || (p.food ?? 100) >= 45 || now < (p.appleT || 0)) break; if (!p.inv.apple && Object.keys(p.inv).length >= INV_SLOTS) { tell(p, 'Sua mochila está cheia.'); break; } p.appleT = now + 600000; p.inv.apple = (p.inv.apple || 0) + 1; Net.toOne(p.id, { t: 'loot', k: 'apple' }); tell(p, 'Marta te dá uma maçã vermelhinha.'); sendStat(p); break; }
     case 'pickstart': case 'pick': case 'opencell': case 'give': jailMsg(p, m); break;
     case 'surrender': if (now_() < (p.wanted || 0) && !p.downed && !p.escortBy && !(p.jailUntil > now_())) { p.surrendered = true; p.atk = null; tell(p, 'Você se rendeu. Fique parado: uma sentinela vem te buscar.'); sys(p.name + ' se rendeu às sentinelas.'); } break;
     case 'choke': p.choking = !!m.on && !!(p.drag && p.drag.mode === 'grip'); break;

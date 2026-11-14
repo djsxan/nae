@@ -281,7 +281,8 @@ function heroPoseFor(e, now) {
   if (e.bound && !e.downed) { P.tied = 1; if (P.drag !== 'lead') P.drag = null; }
   if (e.escorted) { P.tied = 1; P.drag = null; }
   P.dir = e.dir || 0;
-  if (e.custP && !e.walking) { Object.assign(P, e.custP); if (P.sit) P.walk = -1; return P; }
+  if (e.custP && !e.walking) { Object.assign(P, e.custP); if (P.sit) P.walk = -1; if (e.isNpc && typeof martaOfferPose === 'function') martaOfferPose(e, P, now); return P; }
+  if (e.isNpc && e.kind === 'fruit' && typeof martaOfferPose === 'function' && !e.walking) martaOfferPose(e, P, now);
   if (e.custP && e.custP.sweep && e.walking) P.act = e.custP.act;
   if (e.walking) { P.walk = Math.floor(e.walkDist * (e.cls === 'knight' ? 8.5 : 9.5) / (e.running ? 1.45 : 1)) % 12; if (e.running) P.run = 1; if (e.dragMode === 'arms') P.walk = (12 - P.walk) % 12; }   // puxando pelos braços anda de costas
   if (e.anim) { const t = actProg(e.anim, now); if (t >= 0 && ACTS[e.anim.a]) P.act = { k: e.anim.a, f: Math.min(11, Math.floor(t * 12)) }; }
@@ -291,7 +292,7 @@ function heroPoseFor(e, now) {
   if (!P.act && (e === G.me ? G.parrying : e.parrying)) { P.act = { k: 'parry', f: 6 }; P.run = 0; }
   if (!P.act && (e === G.me ? performance.now() < (G.stunUntil || 0) : e.stunned)) P.act = { k: 'hurt', f: 5 };
   if (e.cast && e.cast.end > now) P.act = { k: 'cast', f: Math.floor(now / 70) % 12 };
-  if (!P.act && e.emote && !e.walking) { const ms = ACT_MS[e.emote.k], t = (now - e.emote.t0) / ms; if (e.emote.k === 'dance') P.act = { k: 'dance', f: Math.floor(t * 12) % 12 }; else if (t < 1) P.act = { k: e.emote.k + (e.cls === 'knight' && ACTS[e.emote.k + '_k'] ? '_k' : ''), f: Math.min(11, Math.floor(t * 12)) }; else e.emote = null; }
+  if (!P.act && e.emote && !e.walking) { const ms = ACT_MS[e.emote.k], t = (now - e.emote.t0) / ms; if (e.emote.k === 'dance') P.act = { k: 'dance', f: Math.floor(t * 12) % 12 }; else if (e.emote.k === 'adore') P.act = { k: 'adore', f: t < 0.8 ? Math.floor(t * 12) : 9 }; else if (t < 1) P.act = { k: e.emote.k + (e.cls === 'knight' && ACTS[e.emote.k + '_k'] ? '_k' : ''), f: Math.min(11, Math.floor(t * 12)) }; else e.emote = null; }
   else if (e.walking && e.emote) e.emote = null;
   if (e.sit && !P.act) { P.sit = e.sit.chair ? 'c' : 'g'; P.walk = -1; e._sseed = e._sseed ?? Math.random() * 20000; const sv = Math.floor((now + e._sseed) / 6500) % 3; if (sv) P.sv = sv; return P; }
   if (!e.isNpc) {
@@ -434,8 +435,10 @@ const MON_H = { dragon: 420, bandit: 84, deserter: 90, wisp: 70, orcchief: 140, 
 function drawTelegraph(ctx, e, sx, sy, now) {
   const an = e.anim, k = Math.min(1, (now - an.t0) / an.W), seg = 10, pts = [[sx, sy]], mode = SET.tele || 'soft';
   if (mode === 'off') return;
-  if (mode === 'soft') {   // discreto: arco fino na ponta do alcance, só na segunda metade da preparação
-    if (k < 0.45 && k < 1) return; const a2 = Math.min(1, (k - 0.45) / 0.55);
+  if (mode === 'soft') {   // discretíssimo: um fio de luz na borda do alcance, só no último terço da preparação, e um lampejo no golpe
+    if (k < 0.66) return; const a2 = Math.min(1, (k - 0.66) / 0.34);
+    ctx.save(); ctx.beginPath(); for (let q = -seg; q <= seg; q++) { const a = an.ang + an.arc * q / seg, p = iso(e.rx + Math.cos(a) * an.reach, e.ry + Math.sin(a) * an.reach), x = p.sx + G.view.ox, y = p.sy + G.view.oy - (e.z || 0) * FLOOR_PX; q === -seg ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
+    ctx.lineCap = 'round'; ctx.strokeStyle = k >= 1 ? 'rgba(255,250,235,0.55)' : 'rgba(255,214,170,' + (0.06 + a2 * 0.26).toFixed(2) + ')'; ctx.lineWidth = k >= 1 ? 0.9 : 0.6; ctx.stroke(); ctx.restore(); return;
     ctx.beginPath(); for (let q = -seg; q <= seg; q++) { const a = an.ang + an.arc * q / seg, p = iso(e.rx + Math.cos(a) * an.reach, e.ry + Math.sin(a) * an.reach), x = p.sx + G.view.ox, y = p.sy + G.view.oy - (e.z || 0) * FLOOR_PX; q === -seg ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }
     ctx.strokeStyle = k >= 1 ? 'rgba(255,255,255,0.7)' : 'rgba(255,70,40,' + (0.15 + a2 * 0.45).toFixed(2) + ')'; ctx.lineWidth = 1.2 + a2; ctx.stroke(); return;
   }
@@ -530,6 +533,8 @@ function objSprite(o, x, y) {
   const h = hash2(x, y, 17), v = Math.floor(h * 3), i = y * MAP_W + x, z = WORLD.zone[i];
   switch (o) {
     case O.STOOL: return stoolSprite();
+    case O.FRUITCRATE: return natureSprite('fcrate', 0) || smallSprite('crate');
+    case O.VITRINE: return typeof vitrineSprite === 'function' ? vitrineSprite(i) : smallSprite('crate');
     case O.STAGEFLOOR: return null;
     case O.GUILLOTINE: return natureSprite('guil', typeof guilState === 'function' ? guilState() : 0) || smallSprite('cart');
     case O.OAK: return natureSprite('oak', v & 1) || treeSprite(v, 1, 3);

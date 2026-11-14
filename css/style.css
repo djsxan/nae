@@ -363,3 +363,18 @@ body.fever #game { filter: saturate(0.8) hue-rotate(-12deg); }
 #deathscreen .ds-title { font: 900 64px 'Cinzel Decorative', serif; color: #a8180c; text-shadow: 0 0 30px #000; }
 #deathscreen .ds-sub { font: italic 20px 'Alegreya', serif; margin: 8px 0 4px; }
 #deathscreen .ds-note { font: 15px 'Alegreya', serif; color: #b8a080; margin-bottom: 22px; }
+
+/* ---------- barra de medalhões (osso + latão) ---------- */
+.slot.round { background: transparent !important; box-shadow: none !important; overflow: visible !important; filter: drop-shadow(0 4px 6px rgba(0,0,0,.6)); }
+.slot.round:hover { filter: drop-shadow(0 0 6px rgba(232,196,90,.55)) drop-shadow(0 4px 6px rgba(0,0,0,.6)); }
+.slot .medal-wrap, .slot .medal { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.slot .cd { inset: 9%; }
+.slot .key { color: #2a1a0a; background: #e6d8b8; border-radius: 3px; padding: 0 4px; line-height: 14px; text-shadow: none; top: -2px; left: -2px; transform: none; font-size: 11px; box-shadow: 0 1px 2px #000; }
+.slot.pot .key { transform: none; }
+.slot .count { right: -4px; bottom: -4px; transform: none; background: rgba(20,14,8,.85); border: 1px solid #6e5428; border-radius: 9px; padding: 0 6px; font-size: 12px; line-height: 16px; }
+.slot .cost { top: auto; bottom: -14px; color: #a8c4ff; }
+.slot.nomana .medal { filter: grayscale(.9) brightness(.55); }
+#pot-band { right: 196px; bottom: 142px; }
+#btn-attack { background: transparent !important; box-shadow: none !important; filter: drop-shadow(0 6px 8px rgba(0,0,0,.65)); }
+#btn-attack span { display: none; }
+#btn-attack .medal { position: absolute; inset: 0; width: 100%; height: 100%; }

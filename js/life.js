@@ -39,7 +39,8 @@ function lifeInit() {
   LIFE.arr = [pickSpot([[-0.8, back * 0.8], [-1, 0]]), pickSpot([[0.8, back * 0.8], [1, 0]])];
   LIFE.faceStall = dirFromVec(sx - LIFE.stand[0], sy - LIFE.stand[1], 0);
   let home = -1, bd = 1e9;
-  BUILDINGS.forEach((b, bi) => { if (b.kind !== 'house' || !BEDS.some(q => q.bi === bi)) return; const d = Math.hypot(b.x + b.w / 2 - sx, b.y + b.h / 2 - sy); if (d < bd) { bd = d; home = bi; } });
+  { const fh = BUILDINGS.findIndex(b => b.kind === 'fruithouse'); if (fh >= 0 && BEDS.some(q => q.bi === fh)) { home = fh; bd = -1; } }
+  if (home < 0) BUILDINGS.forEach((b, bi) => { if (b.kind !== 'house' || !BEDS.some(q => q.bi === bi)) return; const d = Math.hypot(b.x + b.w / 2 - sx, b.y + b.h / 2 - sy); if (d < bd) { bd = d; home = bi; } });
   if (home < 0) return false;
   LIFE.home = home; LIFE.bed = BEDS.find(q => q.bi === home); LIFE.seat = WORLD.seats.find(q => q.bi === home) || null; LIFE.stove = KITCHENS.find(q => q.bi === home) || null;
   const bedIn = interiorSpot(home, LIFE.bed.x, LIFE.bed.y);

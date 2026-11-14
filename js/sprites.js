@@ -46,6 +46,7 @@ function shadeHex(hex, amt) {
 const NPC_LOOKS = {
   jailer: () => Object.assign(heroLook('knight', 'iron', '#4a3a2a'), { armor: 'leather', body: tone('#4a3a2a'), body2: tone('#2a2018'), accent: tone('#6a5a3a'), trim: tone('#8a7a50'), legs: tone('#3a2e22'), boots: tone('#1e1610'), head: 'none', hair: tone('#2a1e14'), beard: tone('#2a1e14'), weapon: 'club', shield: null, capeTone: null, skin: tone('#c89878') }),
   executioner: () => Object.assign(heroLook('knight', 'iron', '#1c1816'), { armor: 'leather', body: tone('#1c1816'), body2: tone('#3a2a1e'), accent: tone('#1c1816'), trim: tone('#4a3a2a'), legs: tone('#2a2420'), boots: tone('#1a1410'), head: 'hood', headTone: tone('#0e0c0b'), weapon: 'axe', shield: null, capeTone: null, skin: tone('#c89a7a') }),
+  tailor: () => Object.assign(heroLook('mage', 'adept', '#6e1424'), { armor: 'robe', body: tone('#5e1422'), body2: tone('#2a0e14'), accent: tone('#d4a94a'), trim: tone('#d4a94a'), head: 'none', hair: tone('#d8d4cc'), beard: tone('#d8d4cc'), weapon: null, capeTone: tone('#2a0e14'), skin: tone('#e2c0a0') }),
   fruit: () => Object.assign(heroLook('archer', 'scout', '#3e5a34'), { armor: 'robe', body: tone('#3e5a34'), body2: tone('#efe6cf'), accent: tone('#efe6cf'), trim: tone('#a8342a'), head: 'none', hairStyle: 'long', hair: tone('#3a2414'), weapon: null, quiver: false, skin: tone('#e6bea0'), capeTone: null }),
   priest: () => Object.assign(heroLook('mage', 'adept', '#e9e2cf'), { body: tone('#e9e2cf'), body2: tone('#c9a24a'), head: 'hood', accent: tone('#f2ecdc'), weapon: 'book', beard: null, hair: tone('#6b4a2b'), skin: tone('#e2b896') }),
   merchant: () => Object.assign(heroLook('archer', 'scout', '#2f5a3a'), { armor: 'vest', body: tone('#7a3b22'), body2: tone('#d6c9a8'), head: 'cap', headTone: tone('#2f5a3a'), weapon: null, quiver: false, beard: tone('#5a3a22'), hair: tone('#5a3a22') }),
@@ -140,6 +141,7 @@ const ACTS = {
   anger: [[0, {}], [0.2, { aA: [1.7, 0.3, 2.3], aB: [0.4, 0.3, 1.8], tl: 0.2, ht: 0.1, mouth: 1 }], [0.35, { aA: [2.3, 0.3, 2.0], tl: 0.22 }], [0.5, { aA: [1.7, 0.3, 2.3] }], [0.65, { aA: [2.3, 0.3, 2.0], tl: 0.25, mouth: 1 }], [0.8, { aA: [1.7, 0.3, 2.3] }], [1, {}]],
   fear: [[0, {}], [0.2, { kn: -0.6, tl: 0.35, aA: [1.6, 0.1, 2.4], aB: [1.6, 0.1, 2.4], ht: 0.3, lA: [0.6, -0.9], lB: [0.4, -0.8] }], [0.5, { kn: -0.65, tl: 0.4, aA: [1.66, 0.12, 2.45], aB: [1.6, 0.1, 2.4], ht: 0.32, lA: [0.6, -0.9], lB: [0.4, -0.8] }], [0.85, { kn: -0.6, tl: 0.35, aA: [1.6, 0.1, 2.4], aB: [1.62, 0.1, 2.4], ht: 0.3, lA: [0.6, -0.9], lB: [0.4, -0.8] }], [1, {}]],
   sad: [[0, {}], [0.3, { tl: 0.25, ht: 0.6, aA: [1.4, 0.1, 2.5], aB: [0.1, 0.05, 0.2] }], [0.85, { tl: 0.28, ht: 0.65, aA: [1.45, 0.1, 2.55], aB: [0.1, 0.05, 0.2] }], [1, {}]],
+  offer: [[0, { aA: [1.35, 0.15, 0.3], tl: 0.08, ht: 0.12, apple: 1 }], [1, { aA: [1.35, 0.15, 0.3], tl: 0.08, ht: 0.12, apple: 1 }]],
   cuff: [[0, {}], [0.3, { aA: [1.0, 0.1, 0.9], aB: [1.0, 0.1, 0.9], tl: 0.3, kn: -0.25, ht: 0.3 }], [0.75, { aA: [0.9, -0.05, 1.1], aB: [0.9, -0.05, 1.1], tl: 0.32, kn: -0.25, ht: 0.35 }], [1, {}]],
   key: [[0, {}], [0.3, { aA: [1.45, 0.05, 0.5], ht: 0.15 }], [0.55, { aA: [1.45, 0.05, 0.5], ht: 0.15, tw: 0.25 }], [0.8, { aA: [1.45, 0.05, 0.5], ht: 0.15, tw: -0.1 }], [1, {}]],
   shove: [[0, {}], [0.25, { aA: [1.0, 0.1, 1.6], aB: [1.0, 0.1, 1.6], tl: -0.1 }], [0.5, { aA: [1.5, 0.05, 0.1], aB: [1.5, 0.05, 0.1], tl: 0.3, lA: [0.5, -0.3] }], [1, {}]],
@@ -183,7 +185,7 @@ function mixField(base, a, b, t, key) {
 // calcula a pose final (ângulos) a partir de caminhada + ação + idle
 function buildPose(cls, P) {
   const base = BASE[cls] || BASE.knight;
-  const Q = { aA: base.aA.slice(), aB: base.aB.slice(), wp: base.wp, tl: base.tl, tw: 0, lA: [0.04, -0.06], lB: [-0.04, -0.06], kn: 0, drop: 0, ht: 0, hw: 0, mouth: 0, pull: 0, glow: 0, bot: 0, harrow: 0, broom: 0 };
+  const Q = { aA: base.aA.slice(), aB: base.aB.slice(), wp: base.wp, tl: base.tl, tw: 0, lA: [0.04, -0.06], lB: [-0.04, -0.06], kn: 0, drop: 0, ht: 0, hw: 0, mouth: 0, pull: 0, glow: 0, bot: 0, harrow: 0, broom: 0, apple: 0 };
   if (P.walk >= 0) {
     // ciclo de passada: a perna de apoio fica quase reta; o joelho dobra quando a perna avança
     const ph = P.walk / 12 * Math.PI * 2;
@@ -224,7 +226,7 @@ function buildPose(cls, P) {
   }
   const apply = (keys, p) => {
     const { a, b, t } = sampleKeys(keys, p);
-    for (const k of ['aA', 'aB', 'wp', 'tl', 'tw', 'lA', 'lB', 'kn', 'drop', 'ht', 'hw', 'mouth', 'pull', 'glow', 'yaw', 'bot', 'harrow', 'broom']) {
+    for (const k of ['aA', 'aB', 'wp', 'tl', 'tw', 'lA', 'lB', 'kn', 'drop', 'ht', 'hw', 'mouth', 'pull', 'glow', 'yaw', 'bot', 'harrow', 'broom', 'apple']) {
       if (a[k] == null && b[k] == null) continue;
       const v = mixField(Q, a, b, t, k);
       if (v !== undefined) Q[k] = v;
@@ -642,7 +644,7 @@ function heroSprite(cls, skin, color, P) {
   const L = lookFor(lk, () => heroLook(cls, skin, color));
   return sprite('h|' + lk + '|' + poseKey(P), HW, HH, HAX, HAY, pc => drawHeroPC(pc, L, P, cls), { ok: 0.42 });
 }
-const NPC_CLS = { jailer: 'knight', executioner: 'knight', fruit: 'archer', priest: 'mage', merchant: 'archer', innkeeper: 'archer', guard: 'knight', captain: 'knight', smith: 'knight' };
+const NPC_CLS = { tailor: 'mage', jailer: 'knight', executioner: 'knight', fruit: 'archer', priest: 'mage', merchant: 'archer', innkeeper: 'archer', guard: 'knight', captain: 'knight', smith: 'knight' };
 function npcSprite(kind, P) {
   const L = lookFor('npc:' + kind, NPC_LOOKS[kind]);
   return sprite('n|' + kind + '|' + poseKey(P), HW, HH, HAX, HAY, pc => drawHeroPC(pc, L, P, NPC_CLS[kind] || 'knight'), { ok: 0.42 });

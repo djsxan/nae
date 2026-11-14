@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'World of Sxan';
-const VERSION = 'v1.26.0';
-const VERSION_NAME = 'Algemas';
+const VERSION = 'v1.27.0';
+const VERSION_NAME = 'Rua do Ateliê';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)

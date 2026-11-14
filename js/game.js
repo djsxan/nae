@@ -30,7 +30,7 @@ function anySprite(cls, skin, color, P, kind) {
 function later(ms, fn) { if (!ms || ms <= 0) fn(); else G.timers.push({ at: performance.now() + ms, fn }); }
 const IDLE_SETS = {
   knight: ['look', 'stretch', 'polish', 'kick', 'sit', 'look'], archer: ['look', 'stretch', 'yawn', 'polish', 'sit', 'kick'], mage: ['look', 'yawn', 'polish', 'stretch', 'sit'],
-  jailer: ['look', 'yawn', 'look', 'polish'], fruit: ['look', 'wave', 'look', 'stretch'], executioner: ['look', 'polish', 'look', 'stretch'], priest: ['pray', 'read', 'look', 'pray'], merchant: ['look', 'wave', 'kick', 'look'], innkeeper: ['drink', 'look', 'wave', 'drink'], guard: ['salute', 'look', 'kick', 'look'], captain: ['look', 'salute', 'polish', 'look'],
+  tailor: ['look', 'polish', 'look', 'salute'], jailer: ['look', 'yawn', 'look', 'polish'], fruit: ['look', 'wave', 'look', 'stretch'], executioner: ['look', 'polish', 'look', 'stretch'], priest: ['pray', 'read', 'look', 'pray'], merchant: ['look', 'wave', 'kick', 'look'], innkeeper: ['drink', 'look', 'wave', 'drink'], guard: ['salute', 'look', 'kick', 'look'], captain: ['look', 'salute', 'polish', 'look'],
 };
 function updateIdle(e, now) {
   if (e.npDead || e.npDown) { e.idleAnim = null; return; }
@@ -501,7 +501,7 @@ function updateHud() {
   bar('xp', me.xp, need(me.lvl), `${me.xp} / ${need(me.lvl)} xp`);
   $('gold').textContent = me.gold;
   $('pot-hp-n').textContent = me.pots ? me.pots.hp : 0;
-  $('pot-mp-n').textContent = me.pots ? me.pots.mp : 0;
+  $('pot-mp-n').textContent = me.pots ? me.pots.mp : 0; if ($('pot-band-n')) $('pot-band-n').textContent = me.pots ? (me.pots.band || 0) : 0;
   const st = $('combat-state');
   st.textContent = me.downed ? '✖ Caído' : me.combat ? '⚔ Em combate' : (me.hp < me.maxHp || me.mp < me.maxMp ? '✚ Recuperando' : '· Descansado');
   st.className = me.downed || me.combat ? 'combat' : 'rest';
@@ -646,6 +646,9 @@ function flashDamage() { const v = $('vignette'); v.classList.remove('hit'); voi
 // ---------- diálogos com NPCs ----------
 const GUARD_TEXT = 'Além do fosso: os Campos (★) logo além da paliçada; o Bosque Sombrio (★★) ao norte; o Pântano Pútrido (★★) a leste; as Colinas de Ossos (★★★) ao sul; o Acampamento Orc (★★★) a oeste. Perto do mar, as Terras Selvagens (★★★★). A cachoeira fica na montanha, a noroeste.';
 const NPC_DIALOG = {
+  tailor: { greet: 'Bem-vindo ao Ateliê Real. Aqui só entra o que há de mais fino em Sxan: armaduras de gala, mantos de seda e couro trabalhado à mão. Admire as vitrines.', opts: [
+    ['O que está nas vitrines?', { local: 'As peças mais raras do reino, vestidas nos manequins lá fora. Elas trocam de tempos em tempos. Em breve poderão ser encomendadas, mas não serão baratas.' }],
+    ['Como estou vestido?', { local: 'Hmm... o corte é honesto, mas o tecido já viu dias melhores. Volte quando quiser algo à altura do seu nome.' }]] },
   jailer: { greet: 'Cadeia de Sxan. Quem entra, cumpre a pena — ou paga a fiança.', opts: [] },
   executioner: { greet: 'A justiça de Sxan é rápida e limpa. Traga o condenado caído até o cadafalso — carregue-o e aperte F aqui perto — e eu cuido do resto.', opts: [] },
   fruit: { greet: 'Frutas fresquinhas do pomar, colhidas hoje cedo! Maçã docinha, amora do mato... leva uma?', opts: [
@@ -887,6 +890,7 @@ window.addEventListener('keydown', e => {
   if (k === 'y' && !e.repeat && G.me && G.me.wantedUntil > performance.now()) { Net.send({ t: 'surrender' }); return; }
   if (k === 'h' && !e.repeat && typeof grabKeyDown === 'function') { grabKeyDown(); return; }   // segurar H: menu radial (puxar / carregar / agarrar / soltar)
   if (k === 'f' && !e.repeat && !nearestDowned()) { const c = nearCorpse(); if (c) { G.loot = { id: c.id, t0: performance.now() }; G.keys.add('f'); return; } }
+  if (k === 'f' && !e.repeat && G.appleOffer && performance.now() < G.appleOffer.until) { Net.send({ t: 'appleoffer' }); G.appleOffer = null; if (G.npcs.fruit) G.npcs.fruit.bubble = { t: '♥', until: performance.now() + 1500 }; return; }
   if (k === 'f' && !e.repeat && typeof boundNear === 'function') { const q = boundNear(); if (q) { Net.send({ t: 'untie', id: q.id }); return; } }
   if (k === 'f' && !e.repeat && typeof jailKeyF === 'function' && jailKeyF()) return;
   if (k === 'f' && !e.repeat && typeof nearStove === 'function' && nearStove() && !nearestDowned()) { openCook(); return; }
@@ -949,6 +953,7 @@ function frame() {
     if (G.me.dragMode === 'arms') { let t = null, bd = 2.2; for (const id in G.players) { const q = G.players[id]; if (q !== G.me && q.dragged && q.downed) { const d = dist(q.rx, q.ry, G.me.x, G.me.y); if (d < bd) { bd = d; t = q; } } } for (const id in G.npcs) { const q = G.npcs[id]; if (q.dragged) { const d = dist(q.rx, q.ry, G.me.x, G.me.y); if (d < bd) { bd = d; t = q; } } } if (t) G.me.dir = dirFromVec(t.rx - G.me.x, t.ry - G.me.y, G.me.dir); }   // anda de costas olhando o corpo
     if (typeof updateNpcMotion === 'function') updateNpcMotion(now, dt);
     if (typeof npcReactions === 'function') npcReactions(now);
+    if (typeof martaApple === 'function') martaApple(now);
     if (typeof updateTows === 'function') updateTows(now);
     if (typeof crowdLook === 'function') { crowdLook(now); jailerNight(); }
     if (G.reviveSticky && (G.me.walking || !G.reviving)) { if (G.reviving) Net.send({ t: 'revive', id: G.reviving, on: false }); G.reviving = null; G.reviveSticky = false; }
@@ -1024,6 +1029,8 @@ function buildHotbar() {
     el.onclick = () => castSkill(i);
   });
   iconTo($('pot-hp').querySelector('canvas'), 'hp'); iconTo($('pot-mp').querySelector('canvas'), 'mp');
+  if (typeof medalize === 'function') { SKILLS[cls].forEach((sk, i) => medalize($('slot' + i), sk.id)); medalize($('pot-hp'), 'hp'); medalize($('pot-mp'), 'mp'); medalize($('pot-band'), 'band'); if (!$('btn-attack').querySelector('.medal')) $('btn-attack').insertAdjacentHTML('beforeend', medalSVG('attack')); }
+  if ($('pot-band')) $('pot-band').onclick = () => Net.send({ t: 'band' });
   $('pot-hp').onclick = () => drinkPot('hp'); $('pot-mp').onclick = () => drinkPot('mp');
   const p = CLASSES[cls].passive;
   $('passive').dataset.tip = `Aptidão: ${p.name}\n${p.desc}`; $('passive').textContent = p.name;
