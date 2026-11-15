@@ -1053,7 +1053,7 @@ function startGame() {
   $('btn-attack').onclick = attackNearest;
   if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
   if (!$('btn-crouch')) { const b = document.createElement('button'); b.id = 'btn-crouch'; b.textContent = '⤓'; b.title = 'Agachar'; document.body.appendChild(b); b.addEventListener('click', () => { G.crouchToggle = !G.crouchToggle; b.classList.toggle('on', G.crouchToggle); }); }
-  addChat('', `Bem-vindo a World of Sxan, ${G.me.name}. Fale com os moradores clicando neles. Enter abre o chat.`);
+  addChat('', `Bem-vindo a Nae, ${G.me.name}. Fale com os moradores clicando neles. Enter abre o chat.`);
 
 }
 

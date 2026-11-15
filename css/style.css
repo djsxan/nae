@@ -1,5 +1,5 @@
 /* ============================================================
-   World of Sxan — interface medieval realista
+   Nae — interface medieval realista
    (ferro escuro, couro, pergaminho e ouro envelhecido)
    ============================================================ */
 :root {
@@ -378,3 +378,49 @@ body.fever #game { filter: saturate(0.8) hue-rotate(-12deg); }
 #btn-attack { background: transparent !important; box-shadow: none !important; filter: drop-shadow(0 6px 8px rgba(0,0,0,.65)); }
 #btn-attack span { display: none; }
 #btn-attack .medal { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* ============ NAE — tela inicial ============ */
+#title3d { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: 9; display: block; }
+body.nae #lobby { background: transparent; padding: 0; display: block; overflow: hidden; }
+body.nae #lobby::before { content: ""; position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background: radial-gradient(ellipse 75% 70% at 62% 42%, transparent 40%, rgba(6,5,3,.55) 78%, rgba(4,3,2,.92) 100%), linear-gradient(90deg, rgba(5,4,3,.82) 0%, rgba(5,4,3,.35) 28%, transparent 48%); }
+body.nae #lobby::after { content: ""; position: fixed; inset: -50%; pointer-events: none; z-index: 0; opacity: .07; animation: naeGrain .6s steps(4) infinite;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E"); }
+@keyframes naeGrain { 0% { transform: translate(0,0); } 25% { transform: translate(-3%,2%); } 50% { transform: translate(2%,-3%); } 75% { transform: translate(-2%,-1%); } }
+#title-menu { display: none; }
+body.nae #title-menu { display: flex; flex-direction: column; position: fixed; left: max(5vw, 24px); top: 0; bottom: 0; justify-content: center; z-index: 2; gap: 28px; }
+.nae-logo { font-family: 'IM Fell English SC', 'Cinzel', Georgia, serif; font-size: clamp(64px, 9vw, 128px); letter-spacing: .32em; line-height: .9; color: #e2d6bc; padding-left: .05em;
+  text-shadow: 0 2px 0 #000, 0 0 28px rgba(0,0,0,.85); -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence baseFrequency='.045' numOctaves='4' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -2.4 2.1'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23g)'/%3E%3C/svg%3E"); -webkit-mask-size: 220px; mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='g'%3E%3CfeTurbulence baseFrequency='.045' numOctaves='4' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 -2.4 2.1'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23g)'/%3E%3C/svg%3E"); mask-size: 220px; }
+.nae-nav { display: flex; flex-direction: column; gap: 4px; border-left: 1px solid rgba(226,214,188,.25); padding-left: 18px; }
+.nae-nav button { all: unset; cursor: pointer; font-family: 'IM Fell English SC', 'Cinzel', serif; font-size: 22px; letter-spacing: .14em; color: rgba(226,214,188,.72); padding: 6px 0; transition: color .2s, transform .2s; text-shadow: 0 1px 3px #000; }
+.nae-nav button:hover, .nae-nav button:focus-visible { color: #f1e6cc; transform: translateX(4px); }
+.nae-nav button.on { color: #c8402e; }
+.nae-nav button.on::before { content: '— '; }
+.nae-ver { font: 12px 'IM Fell English', Georgia, serif; color: rgba(226,214,188,.4); letter-spacing: .1em; }
+/* painéis: o pergaminho vira uma folha escura sobre a cena */
+body.nae .scroll { display: none; }
+body.nae.tp-open .scroll { display: block; position: fixed; right: max(4vw, 16px); top: 6vh; bottom: 6vh; width: min(720px, 62vw); overflow-y: auto; z-index: 2; margin: 0;
+  background: linear-gradient(180deg, rgba(18,14,10,.93), rgba(10,8,6,.95)); border: 1px solid rgba(226,214,188,.18); box-shadow: 0 30px 80px rgba(0,0,0,.7); border-radius: 2px; color: #d8ccb4; padding: 26px 30px; animation: naeIn .35s ease; }
+@keyframes naeIn { from { opacity: 0; transform: translateX(16px); } }
+@media (max-width: 760px) { body.nae.tp-open .scroll { width: auto; left: 16px; right: 16px; } body.nae #title-menu { top: auto; bottom: 4vh; justify-content: flex-end; } }
+body.nae .scroll h1, body.nae .scroll .sub, body.nae .scroll .logo-small, body.nae #version { display: none; }
+body.nae .scroll h2 { color: #c9b48a; border-bottom-color: rgba(226,214,188,.15); font-family: 'IM Fell English SC', 'Cinzel', serif; font-size: 17px; letter-spacing: .12em; }
+body.nae .scroll label { color: #b8a888; }
+body.nae .scroll input[type=text] { background: rgba(0,0,0,.45); color: #efe4cc; border: 1px solid rgba(226,214,188,.25); }
+body.nae .scroll .hint, body.nae .scroll p { color: #9a8e78; }
+body.nae .scroll .btn { background: rgba(30,24,18,.9); color: #e2d6bc; border: 1px solid rgba(226,214,188,.3); box-shadow: none; text-shadow: none; }
+body.nae .scroll .btn.gold { background: #6e1a14; border-color: #a83a2a; color: #f4e6cc; }
+body.nae .scroll .btn:hover { filter: brightness(1.2); }
+body.nae .class-card { background: rgba(0,0,0,.35) !important; border-color: rgba(226,214,188,.2) !important; color: #d8ccb4 !important; }
+body.nae .class-card.sel { border-color: #a83a2a !important; box-shadow: 0 0 0 1px #a83a2a !important; }
+body.nae #sv-list .sv-row { background: rgba(0,0,0,.35); border-color: rgba(226,214,188,.18); }
+/* o que cada painel mostra */
+body.nae .scroll > * { display: none; }
+body.nae[data-tp=play] .scroll > .lobby-grid, body.nae[data-tp=play] .scroll > .start, body.nae[data-tp=chars] .scroll > .lobby-grid, body.nae[data-tp=chars] .scroll > .start,
+body.nae[data-tp=realms] .scroll > .start, body.nae[data-tp=opts] .scroll > #nae-opts { display: block; }
+body.nae[data-tp=play] #servers, body.nae[data-tp=chars] #servers { display: none; }
+body.nae[data-tp=realms] .start h2, body.nae[data-tp=realms] .start .hint { display: none; }
+body.nae[data-tp=chars] .lobby-grid > section.wide { display: none; }
+.nae-row { display: flex; gap: 8px; } .nae-row button { flex: 1; padding: 8px; background: rgba(0,0,0,.4); color: #d8ccb4; border: 1px solid rgba(226,214,188,.25); cursor: pointer; font-family: 'IM Fell English SC', serif; letter-spacing: .1em; }
+.nae-row button.on { border-color: #a83a2a; color: #f1e6cc; background: #3a120e; }
+body.nae .class-card h3, body.nae .class-card .cname, body.nae .class-card b { color: #e2d6bc !important; }
