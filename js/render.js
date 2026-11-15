@@ -281,6 +281,8 @@ function heroPoseFor(e, now) {
   if (e.bound && !e.downed) { P.tied = (e.stb & 4) ? 2 : 1; if (P.drag !== 'lead') P.drag = null; }
   else if (e.stb & 1) { P.surr = 1; P.drag = null; }
   if (e.stb & 8) P.led = 1;
+  if ((e.stb & 16) && !e.downed) P.carry = true;   // carregando um pacote do trabalho
+  if ((e.stb & 32) && !e.walking && !e.downed) P.act = { k: 'polish', f: Math.floor(now / 110) % 12 };   // turno: trabalhando no balcão/bancada
   P.dir = e.dir || 0;
   if (e.custP && !e.walking) { Object.assign(P, e.custP); if (P.sit) P.walk = -1; if (e.isNpc && typeof martaOfferPose === 'function') martaOfferPose(e, P, now); return P; }
   if (e.isNpc && e.kind === 'fruit' && typeof martaOfferPose === 'function' && !e.walking) martaOfferPose(e, P, now);
@@ -552,6 +554,7 @@ function objSprite(o, x, y) {
   switch (o) {
     case O.STOOL: return stoolSprite();
     case O.FRUITCRATE: return natureSprite('fcrate', 0) || smallSprite('crate');
+    case O.NOTICEBOARD: return natureSprite('board', 0) || smallSprite('crate');
     case O.WATERWHEEL: return natureSprite('wheel', Math.floor(performance.now() / 260) % 4) || smallSprite('crate');
     case O.VITRINE: return typeof vitrineSprite === 'function' ? vitrineSprite(i) : smallSprite('crate');
     case O.STAGEFLOOR: return null;
@@ -1020,6 +1023,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       drawMonsterEntity(ctx, e, it.sx, it.sy, now); if (e.carrying && G.players[e.carrying]) drawCarried(ctx, G.players[e.carrying], it.sx, it.sy - (MON[e.type].big ? 20 : 0)); if (e.arrows && !FALLS['m' + e.id]) drawStuck(ctx, e, it.sx, it.sy, now);
     } else if (it.k === 3) {
       if (typeof drawNpcState === 'function' && drawNpcState(ctx, e, it.sx, it.sy, now)) { if (e.npDead && !e.onBackBy) labels.push({ sx: it.sx, sy: it.sy - 22, name: e.name + ' (morto)', color: '#8a8a8a', npc: e, e }); return; }
+      if (typeof drawPackage === 'function' && (e.isNpc || (e.stb & 16))) drawPackage(ctx, e.isNpc ? e : { pkg: true, walking: e.walking, walkDist: e.walkDist }, it.sx, it.sy, now);
       if (typeof drawNpcBubble === 'function') drawNpcBubble(ctx, e, it.sx, it.sy, now);
       drawHeroEntity(ctx, e, it.sx, it.sy, now); if (e.arrows) drawStuck(ctx, e, it.sx, it.sy, now);
       if (e.carrying && G.players[e.carrying]) drawCarried(ctx, G.players[e.carrying], it.sx, it.sy);
@@ -1046,6 +1050,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   for (const it of upper) drawItem(it);
   for (const it of sky) drawItem(it);   // o dragão voando passa por cima de tudo
   if (typeof drawBowTop === 'function') drawBowTop(ctx, now);
+  if (typeof drawJobsOverlay === 'function') drawJobsOverlay(ctx, now);
   if (typeof drawRadial === 'function') { drawRadial(ctx, now); drawGripBar(ctx, now); }
   if (typeof drawChokeRing === 'function') { drawChokeRing(ctx, now); drawLockpick(ctx); }
   // dentro de uma construção: a cidade escurece e o cômodo aparece cortado, com quem está dentro

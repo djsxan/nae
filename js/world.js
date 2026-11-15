@@ -12,11 +12,11 @@ const O = {
   REEDS: 10, LILY: 11, STUMP: 12, DEADTREE: 13, GRAVE: 14, BONES: 15, TENT: 16, CAMPFIRE: 17, FENCE: 18,
   TORCH: 19, BARREL: 20, CRATE: 21, HAY: 22, WELL: 23, STALL: 24, BENCH: 25, BANNER: 26, LOG: 27,
   FLOWERBED: 28, SPIKES: 29, WALL: 30, TOWER: 31, PART: 32, GATE: 33, STAIRS: 34, RUBBLE: 35, RUBBLEBIG: 36,
-  STATUE: 37, BRAZIER: 38, DUMMY: 39, WATERFALL: 40, LOWWALL: 41, IVY: 42, ANVIL: 43, WEAPONRACK: 44, CART: 45, TABLE: 46, CAVE: 47, HOARD: 48, ARMORPILE: 49, RUINTOWER: 50, OAK: 51, BIRCH: 52, WILLOW: 53, FERN: 54, ROOTS: 55, SHROOMS: 56, BERRY: 57, HERB: 58, BOULDER: 59, GUILLOTINE: 60, STOOL: 61, STAGEFLOOR: 62, VITRINE: 63, FRUITCRATE: 64, WATERWHEEL: 65,
+  STATUE: 37, BRAZIER: 38, DUMMY: 39, WATERFALL: 40, LOWWALL: 41, IVY: 42, ANVIL: 43, WEAPONRACK: 44, CART: 45, TABLE: 46, CAVE: 47, HOARD: 48, ARMORPILE: 49, RUINTOWER: 50, OAK: 51, BIRCH: 52, WILLOW: 53, FERN: 54, ROOTS: 55, SHROOMS: 56, BERRY: 57, HERB: 58, BOULDER: 59, GUILLOTINE: 60, STOOL: 61, STAGEFLOOR: 62, VITRINE: 63, FRUITCRATE: 64, WATERWHEEL: 65, NOTICEBOARD: 66,
 };
 const BLOCKING = new Set([O.TREE, O.PINE, O.ROCK, O.FOUNTAIN, O.STUMP, O.DEADTREE, O.GRAVE, O.TENT,
   O.CAMPFIRE, O.FENCE, O.BARREL, O.CRATE, O.HAY, O.WELL, O.STALL, O.LOG, O.SPIKES,
-  O.WALL, O.TOWER, O.PART, O.RUBBLEBIG, O.CAVE, O.HOARD, O.RUINTOWER, O.OAK, O.BIRCH, O.WILLOW, O.BOULDER, O.GUILLOTINE, O.STOOL, O.VITRINE, O.FRUITCRATE, O.WATERWHEEL, O.STATUE, O.BRAZIER, O.DUMMY, O.WATERFALL, O.LOWWALL, O.ANVIL, O.WEAPONRACK, O.CART, O.TABLE]);
+  O.WALL, O.TOWER, O.PART, O.RUBBLEBIG, O.CAVE, O.HOARD, O.RUINTOWER, O.OAK, O.BIRCH, O.WILLOW, O.BOULDER, O.GUILLOTINE, O.STOOL, O.VITRINE, O.FRUITCRATE, O.WATERWHEEL, O.NOTICEBOARD, O.STATUE, O.BRAZIER, O.DUMMY, O.WATERFALL, O.LOWWALL, O.ANVIL, O.WEAPONRACK, O.CART, O.TABLE]);
 // objetos soltos que dá para pegar e arremessar (dano base)
 const THROWABLE = { [O.BARREL]: 18, [O.CRATE]: 20, [O.ROCK]: 26 };
 // objetos rasteiros (vão direto para o chão pré-desenhado)
@@ -26,6 +26,19 @@ const KITCHENS = [];
 const CHESTS = [];   // baús dentro das casas: { x, y, bi } (baú seguro de quem aluga)
 const JAILCELLS = [];   // celas da cadeia: { door:[x,y], spot:[x,y], tiles:Set(índice), bi }   // fogões (casas e taverna): { x, y, bi }
 const FRUIT_STOOL = { x: -1, y: -1 };
+const NOTICE = { x: -1, y: -1 };
+// ---------- ofícios e coleta ----------
+const PROFS = { lenhador: 'Lenhador', minerador: 'Minerador', herbalista: 'Herbalista', artesao: 'Artesão', comerciante: 'Comerciante', mensageiro: 'Mensageiro', biscateiro: 'Biscateiro' };
+const profLv = xp => Math.min(10, 1 + Math.floor(Math.sqrt((xp || 0) / 25)));
+// o que cada coisa do mapa dá: ferramenta, ofício, item, nível mínimo, chance de raro
+const GATHER = {};
+for (const o of ['TREE', 'PINE', 'BIRCH', 'WILLOW']) GATHER[o] = { tool: 'axe', prof: 'lenhador', item: 'log', min: 1, rare: 'hardwood', rp: 0.04, verb: 'cortar lenha' };
+GATHER.OAK = { tool: 'axe', prof: 'lenhador', item: 'hardwood', min: 3, rare: 'hardwood', rp: 0.25, verb: 'cortar carvalho' };
+GATHER.ROCK = { tool: 'pickaxe', prof: 'minerador', item: 'ore', min: 1, rare: 'gem', rp: 0.04, verb: 'quebrar pedra' };
+GATHER.BOULDER = { tool: 'pickaxe', prof: 'minerador', item: 'ore', min: 3, rare: 'gem', rp: 0.14, verb: 'quebrar rocha' };
+GATHER.TALLGRASS = { tool: 'sickle', prof: 'herbalista', item: 'flaxraw', min: 1, rare: 'silverleaf', rp: 0.04, verb: 'colher linho' };
+GATHER.FERN = { tool: 'sickle', prof: 'herbalista', item: 'flaxraw', min: 2, rare: 'silverleaf', rp: 0.1, verb: 'colher plantas' };
+const gatherOf = o => { for (const k in GATHER) if (O[k] === o) return GATHER[k]; return null; };
 const STAGE = { x: -1, y: -1 };   // cadafalso da guilhotina (centro do tablado 3x3)   // camas do térreo (onde dá para deitar e dormir): { x, y, dx, dy (travesseiro -> pés), bi }
 const DIRS8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
 
@@ -889,6 +902,7 @@ function generateWorld() {
   // beco: caixas, barris e lampiões junto às lojas
   for (let k = 0; k < 10; k++) { const y = C - 18 + k * 5; decoAny(C + 18, y + 1, k % 2 ? O.BARREL : O.CRATE); }
   // bairro nobre: chafariz com estátuas, árvores e lampiões na avenida, jardins murados com sebes
+  decoAny(C + 7, C + 9, O.NOTICEBOARD); NOTICE.x = C + 7; NOTICE.y = C + 9;   // quadro de avisos (bicos e entregas) na praça do mercado
   { const fx = C + 18, fy = C - 2;
     for (const [x, y, o] of [[fx, fy, O.FOUNTAIN], [fx - 4, fy - 3, O.STATUE], [fx + 4, fy - 3, O.STATUE], [fx - 4, fy + 3, O.STATUE], [fx + 4, fy + 3, O.STATUE], [fx - 2, fy - 3, O.BENCH], [fx + 2, fy + 3, O.BENCH], [fx - 2, fy + 3, O.FLOWERBED], [fx + 2, fy - 3, O.FLOWERBED]]) decoAny(x, y, o);
     for (let y = C - 20; y <= C + 14; y += 6) { if (Math.abs(y - fy) < 5) continue; decoAny(C + 16, y, O.BIRCH); decoAny(C + 21, y + 3, O.BIRCH); decoAny(C + 16, y + 3, O.LAMP); decoAny(C + 21, y, O.LAMP); }
@@ -1038,6 +1052,7 @@ if (!TEST3D) {
     const st = b.kind === 'shop' && SHOP_TYPE_BY_NAME[b.name]; if (st) { b.shopType = st; NPCS.push({ id: 'st_' + st, kind: 'st_' + st, role: 'clerk', bi, name: STAFF_NAMES[st], ...npcIn(b, { x: b.x + 1, y: b.y + 1 }) }); }
   });
   const sq = { x: CENTER - 32 - 37, y: CENTER + 4 };   // pracinha da vila do oeste (x0 - 37)
+  NPCS.push({ id: 'supplier', kind: 'supplier', role: 'supplier', name: 'Jonas, o Entregador do Fornecedor', x: C + 4, y: C + 30 });   // espera as encomendas perto do portão principal
   [['courier1', 'Pip, o Mensageiro', -1.2, 0], ['courier2', 'Lia Ventura, a Mensageira', 1.2, -0.6], ['courier3', 'Tomé Passolargo, o Carroceiro', 0.3, 1.4]].forEach(([id, name, dx, dy]) => NPCS.push({ id, kind: id, role: 'courier', name, x: sq.x + dx, y: sq.y + dy }));
 }
 // ---------- economia dos negócios: mercadorias, o que cada loja vende e o que cada oficina faz ----------
@@ -1122,7 +1137,7 @@ function walkableTile(x, y, z = 0) {
   return g !== T.WATER && g !== T.CLIFF && !BLOCKING.has(WORLD.obj[i]) && !NPC_AT.has(i);
 }
 // objetos redondos: colidem só no tamanho real (círculo), não no tile inteiro
-const OBJ_R = { [O.WATERWHEEL]: 0.45, [O.TREE]: 0.38, [O.PINE]: 0.34, [O.OAK]: 0.44, [O.BIRCH]: 0.26, [O.WILLOW]: 0.4, [O.ROCK]: 0.34, [O.STUMP]: 0.24, [O.DEADTREE]: 0.3, [O.GRAVE]: 0.28, [O.CAMPFIRE]: 0.3,
+const OBJ_R = { [O.NOTICEBOARD]: 0.3, [O.WATERWHEEL]: 0.45, [O.TREE]: 0.38, [O.PINE]: 0.34, [O.OAK]: 0.44, [O.BIRCH]: 0.26, [O.WILLOW]: 0.4, [O.ROCK]: 0.34, [O.STUMP]: 0.24, [O.DEADTREE]: 0.3, [O.GRAVE]: 0.28, [O.CAMPFIRE]: 0.3,
   [O.BARREL]: 0.28, [O.CRATE]: 0.32, [O.HOARD]: 0.5, [O.HAY]: 0.38, [O.BRAZIER]: 0.24, [O.DUMMY]: 0.22, [O.STATUE]: 0.4, [O.ANVIL]: 0.3, [O.WEAPONRACK]: 0.32, [O.WELL]: 0.46 };
 function solidTile(x, y, L) {
   if (!inBounds(x, y)) return true;

@@ -1,0 +1,85 @@
+// ============================================================
+//  TRABALHOS NO CLIENTE — coleta (segurar F com a ferramenta), quadro de avisos, bicos e entregas com marcador,
+//  turnos nos negócios e a lista de ofícios na Jornada.
+// ============================================================
+G.job = null; G.gath = null; G.shiftUntil = 0;
+const hasTool = k => G.me && G.me.inv && G.me.inv[k] > 0;
+function nearGather() {
+  const me = G.me; if (!me || (me.z || 0) >= 0.5) return null; let best = null, bd = 1.75;
+  for (let y = Math.round(me.y) - 2; y <= Math.round(me.y) + 2; y++) for (let x = Math.round(me.x) - 2; x <= Math.round(me.x) + 2; x++) {
+    if (!inBounds(x, y)) continue; const i = y * MAP_W + x, G0 = gatherOf(WORLD.obj[i]); if (!G0 || WORLD.bld[i] >= 0) continue; const d = dist(me.x, me.y, x, y); if (d < bd) { bd = d; best = { i, G0 }; } }
+  return best;
+}
+function gatherMs(G0) { const lv = profLv((G.me.prof || {})[G0.prof]); return 2600 * (1 - 0.06 * (lv - 1)); }
+function jobsPrompt() {
+  const me = G.me; if (!me) return '';
+  if (G.job && G.job.step) { const s = G.job.step; if (dist(me.x, me.y, s.x, s.y) < 1.8) return 'F: ' + s.t; }
+  if (NOTICE.x >= 0 && dist(me.x, me.y, NOTICE.x, NOTICE.y) < 2) return 'F: quadro de avisos (bicos e entregas)';
+  if (G.shiftUntil > performance.now()) return 'Trabalhando… saia do prédio para parar';
+  if (shiftHere()) return 'F: trabalhar um turno aqui';
+  const g = nearGather(); if (g) { const lv = profLv((me.prof || {})[g.G0.prof]); if (!hasTool(g.G0.tool)) return 'Precisa de ' + LOOT[g.G0.tool].name.toLowerCase() + ' para ' + g.G0.verb + ' (Empório)'; if (lv < g.G0.min) return PROFS[g.G0.prof] + ' nível ' + g.G0.min + ' para ' + g.G0.verb; return 'Segure F: ' + g.G0.verb + ' · ' + PROFS[g.G0.prof] + ' ' + lv; }
+  return '';
+}
+// dentro de um negócio, perto do balcão/bancada (onde fica o funcionário)
+function shiftHere() {
+  const me = G.me; if (!me) return false; const bi = WORLD.bld[tileAt(me.x, me.y)]; if (bi < 0) return false;
+  for (const id in G.npcs) { const n = G.npcs[id], N = NPCS.find(q => q.id === id); if (!N || N.kind === 'guard' || N.kind === 'broker') continue; if (WORLD.bld[tileAt(N.x, N.y)] === bi && dist(me.x, me.y, N.x, N.y) < 2.6) return true; }
+  return false;
+}
+// F: retorna true se usou a tecla
+function jobsF(ev) {
+  const me = G.me; if (!me || ev.repeat) return false;
+  if (G.job && G.job.step && dist(me.x, me.y, G.job.step.x, G.job.step.y) < 1.8) { if (G.job.step.k === 'sweep') { me.anim = { a: 'sweep', t0: performance.now(), ms: 1500 }; } Net.send({ t: 'job', a: 'step' }); return true; }
+  if (NOTICE.x >= 0 && dist(me.x, me.y, NOTICE.x, NOTICE.y) < 2) { Net.send({ t: 'job', a: 'board' }); return true; }
+  if (G.shiftUntil <= performance.now() && shiftHere()) { Net.send({ t: 'shift', a: 'start' }); return true; }
+  const g = nearGather(); if (g && hasTool(g.G0.tool) && profLv((me.prof || {})[g.G0.prof]) >= g.G0.min) { G.gath = { i: g.i, t0: performance.now(), ms: gatherMs(g.G0), G0: g.G0, animT: 0 }; return true; }
+  return false;
+}
+function jobsKeyUp(k) { if (k === 'f' && G.gath) G.gath = null; }
+function jobsTickC(now) {
+  const g = G.gath, me = G.me; if (!g || !me) return;
+  if (me.walking || !G.keys.has('f')) { G.gath = null; return; }
+  if (now > g.animT) { g.animT = now + 750; const crouch = g.G0.tool === 'sickle'; me.anim = { a: crouch ? 'gather' : 'atk_slashR', t0: now, ms: 700 }; Net.send({ t: 'gathering', a: crouch ? 'crouch' : 'swing' }); }
+  if (now - g.t0 >= g.ms) { Net.send({ t: 'gather', i: g.i }); G.gath = null; }
+}
+// ---------- desenho: barra de coleta/turno e marcador do trabalho ----------
+function drawJobsOverlay(ctx, now) {
+  const me = G.me; if (!me) return; const ox = G.view.ox, oy = G.view.oy, P = iso(me.rx, me.ry), x = P.sx + ox, y = P.sy + oy - 62;
+  const bar = (k, col, txt) => { ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - 20, y, 40, 5); ctx.fillStyle = col; ctx.fillRect(x - 19, y + 1, 38 * k, 3); if (txt) { ctx.font = 'bold 6px serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.fillText(txt, x, y - 2); } ctx.restore(); };
+  if (G.gath) bar(Math.min(1, (now - G.gath.t0) / G.gath.ms), '#9ad860', G.gath.G0.verb);
+  if (G.shiftUntil > now) bar(1 - (G.shiftUntil - now) / G.shiftMs, '#e8c45a', 'turno');
+  const J = G.job; if (J && J.step) {   // anel pulsando no lugar certo e seta na borda se estiver fora da tela
+    const s = J.step, p = iso(s.x, s.y), sx = p.sx + ox, sy = p.sy + oy, pul = 1 + Math.sin(now / 220) * 0.15, W = ctx.canvas.width / (window.devicePixelRatio || 1) / SCALE, H = ctx.canvas.height / (window.devicePixelRatio || 1) / SCALE;
+    ctx.save(); ctx.strokeStyle = 'rgba(232,196,90,0.95)'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.ellipse(sx, sy, 9 * pul, 4.5 * pul, 0, 0, 7); ctx.stroke(); ctx.fillStyle = 'rgba(232,196,90,0.9)'; ctx.beginPath(); ctx.moveTo(sx, sy - 6); ctx.lineTo(sx - 4, sy - 14 - Math.sin(now / 220) * 2); ctx.lineTo(sx + 4, sy - 14 - Math.sin(now / 220) * 2); ctx.closePath(); ctx.fill();
+    if (sx < 10 || sy < 10 || sx > W - 10 || sy > H - 10) { const cx = W / 2, cy = H / 2, a = Math.atan2(sy - cy, sx - cx), r = Math.min(W, H) / 2 - 24, ax = cx + Math.cos(a) * r, ay = cy + Math.sin(a) * r; ctx.translate(ax, ay); ctx.rotate(a); ctx.beginPath(); ctx.moveTo(10, 0); ctx.lineTo(-6, -7); ctx.lineTo(-2, 0); ctx.lineTo(-6, 7); ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+  }
+}
+// ---------- painel do quadro de avisos e rastreador ----------
+function jobsEvent(m) {
+  if (m.t === 'jobs') { jobsBoard(m); return true; }
+  if (m.t === 'job') { G.job = m.job; jobsTracker(); return true; }
+  if (m.t === 'shift') { if (m.on) { G.shiftMs = m.ms; G.shiftUntil = performance.now() + m.ms; } else G.shiftUntil = 0; return true; }
+  return false;
+}
+function jobsBoard(m) {
+  let d = document.getElementById('jobboard');
+  if (!d) { d = document.createElement('div'); d.id = 'jobboard'; d.className = 'gpanel hidden'; document.body.appendChild(d); }
+  d.innerHTML = '<div class="gp-head"><span>Quadro de avisos</span><button class="gp-x" id="jb-x">✕</button></div>' +
+    (m.job ? '<div class="est-cost">Trabalho atual: <b>' + m.job.title + '</b> (' + m.job.i + '/' + m.job.n + ')</div>' : '') +
+    m.offers.map((o, k) => '<div class="est-row biz"><i style="background:#c9a24a"></i><div><b>' + o.title + '</b><small>' + o.giver + ' · ' + PROFS[o.prof] + ' · ' + o.n + ' etapas</small></div><div class="est-r"><b>' + o.pay + '</b><small>ouro</small><button class="est-btn" data-jtake="' + k + '"' + (m.job ? ' disabled' : '') + '>Aceitar</button></div></div>').join('') +
+    '<div class="gp-sub">Seus ofícios</div><div class="jb-profs">' + Object.keys(PROFS).map(k => { const xp = (m.prof || {})[k] || 0, lv = profLv(xp), a = 25 * (lv - 1) ** 2, b = 25 * lv ** 2; return '<div><span>' + PROFS[k] + ' <b>' + lv + '</b></span><i><em style="width:' + (lv >= 10 ? 100 : Math.round((xp - a) / (b - a) * 100)) + '%"></em></i></div>'; }).join('') + '</div>' +
+    '<div class="gp-note">Machado, picareta e foice no Empório do Borin. Turnos: aperte F perto do balcão ou da bancada de qualquer negócio.</div>';
+  d.classList.remove('hidden');
+  d.querySelector('#jb-x').onclick = () => d.classList.add('hidden');
+  for (const b of d.querySelectorAll('[data-jtake]')) b.onclick = () => { Net.send({ t: 'job', a: 'take', k: +b.dataset.jtake }); d.classList.add('hidden'); };
+}
+function jobsTracker() {
+  let t = document.getElementById('jobtrack'); const J = G.job;
+  if (!J) { if (t) t.remove(); return; }
+  if (!t) { t = document.createElement('div'); t.id = 'jobtrack'; document.body.appendChild(t); }
+  t.innerHTML = '<b>' + J.title + '</b> <small>' + J.i + '/' + J.n + ' · ' + J.pay + ' ouro</small><div>➤ ' + (J.step ? J.step.t : '') + '</div><button title="Desistir">✕</button>';
+  t.querySelector('button').onclick = () => { if (confirm('Desistir deste trabalho?')) Net.send({ t: 'job', a: 'quit' }); };
+}
+// ofícios na Jornada (J)
+function profsHtml() { const P0 = (G.me && G.me.prof) || {}; return '<div class="gp-sub">Ofícios</div><div class="jb-profs">' + Object.keys(PROFS).map(k => { const xp = P0[k] || 0, lv = profLv(xp), a = 25 * (lv - 1) ** 2, b = 25 * lv ** 2; return '<div><span>' + PROFS[k] + ' <b>' + lv + '</b></span><i><em style="width:' + (lv >= 10 ? 100 : Math.round((xp - a) / (b - a) * 100)) + '%"></em></i></div>'; }).join('') + '</div>'; }

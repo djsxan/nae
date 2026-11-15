@@ -531,7 +531,13 @@ function mWaterWheel(v) {
   o.add(mk(new THREE.BoxGeometry(0.9, 0.12, 0.3).translate(0, 0.06, 0), smat('stoneblock', '#7a756a')));
   o.rotation.y = Math.PI / 2; return grp(o);
 }
-const NATURE = { wheel: [mWaterWheel, 1.0], guilp: [mGuilPlank, 1.0], guil: [mGuillotineG, 1.0], stool: [mStool, 1.0], fcrate: [mFruitCrate, 1.0], oak: [mOak, 2.15], birch: [mBirch, 2.0], willow: [mWillow, 2.05], fern: [mFern, 1.15], roots: [mRoots, 1.0], shrooms: [mShrooms, 0.95], berry: [mBerry, 1.05], herb: [mHerb, 1.0], boulder: [mBoulder, 1.15] };
+function mNoticeBoard() {
+  const o = grp(), W = WOOD(), D = DWOOD(); for (const x of [-0.42, 0.42]) o.add(wbox(0.08, 1.5, 0.08, x, 0.75, 0, D, 1));
+  o.add(wbox(1.0, 0.7, 0.06, 0, 1.05, 0.02, W, 1.5)); o.add(mk(new THREE.ConeGeometry(0.7, 0.28, 4, 1).rotateY(Math.PI / 4).scale(1, 1, 0.35).translate(0, 1.55, 0), smat('shingle', '#7a3a26')));
+  const paper = ['#efe6cf', '#e8dcb8', '#f4ecd8', '#e0d4b0']; for (let k = 0; k < 5; k++) { const p = mk(new THREE.BoxGeometry(0.2 + (k % 2) * 0.06, 0.22, 0.01).translate(-0.33 + k * 0.165, 1.02 + (k % 3 - 1) * 0.12, 0.06), smat(null, paper[k % 4], { rough: 1 })); p.rotation.z = (k % 2 ? 0.08 : -0.06); o.add(p); }
+  return o;
+}
+const NATURE = { board: [mNoticeBoard, 1.0], wheel: [mWaterWheel, 1.0], guilp: [mGuilPlank, 1.0], guil: [mGuillotineG, 1.0], stool: [mStool, 1.0], fcrate: [mFruitCrate, 1.0], oak: [mOak, 2.15], birch: [mBirch, 2.0], willow: [mWillow, 2.05], fern: [mFern, 1.15], roots: [mRoots, 1.0], shrooms: [mShrooms, 0.95], berry: [mBerry, 1.05], herb: [mHerb, 1.0], boulder: [mBoulder, 1.15] };
 function natureSprite(kind, v) { const N = NATURE[kind]; if (!N || !S3.ok) return null; return scen3('nt|' + kind + '|' + v, () => { const g = N[0](v); g.scale.setScalar(N[1]); return g; }); }
 function rockGeo(seed, r, sx, sy, sz) {
   const g = new THREE.IcosahedronGeometry(r, 2), p = g.attributes.position, R = rng(seed), off = [R() * 9, R() * 9, R() * 9];

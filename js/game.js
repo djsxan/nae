@@ -29,6 +29,7 @@ function anySprite(cls, skin, color, P, kind) {
 }
 function later(ms, fn) { if (!ms || ms <= 0) fn(); else G.timers.push({ at: performance.now() + ms, fn }); }
 const IDLE_SETS = {
+  v_house1: ['look', 'wave', 'look'], v_house2: ['look', 'look', 'wave'], v_trav1: ['stretch', 'look', 'yawn'], v_trav2: ['look', 'stretch'], v_vis1: ['look', 'wave'], v_vis2: ['look', 'wave', 'look'], v_thug1: ['look', 'look'], v_thug2: ['look', 'stretch'], supplier: ['look', 'stretch', 'yawn'],
   st_saw: ['stretch', 'polish', 'look'], st_mine: ['stretch', 'look', 'polish'], st_farm: ['look', 'stretch', 'yawn'], st_carp: ['polish', 'look', 'polish'], st_alch: ['look', 'polish', 'look'],
   st_apoth: ['look', 'polish', 'wave'], st_arcane: ['look', 'yawn', 'polish'], st_tailor: ['polish', 'look', 'wave'], st_scroll: ['look', 'polish', 'yawn'],
   courier1: ['look', 'stretch', 'wave'], courier2: ['look', 'yawn', 'stretch'], courier3: ['stretch', 'look', 'yawn'],
@@ -56,6 +57,8 @@ function clientOnServer(m) {
   if (typeof bowEvent === 'function' && bowEvent(m, now)) return;
   if (typeof jailEvent === 'function' && jailEvent(m, now)) return;
   if (typeof estateEvent === 'function' && estateEvent(m)) return;
+  if (typeof jobsEvent === 'function' && jobsEvent(m)) return;
+  if (typeof visEvent === 'function' && visEvent(m)) return;
   if (typeof lawEvent === 'function' && lawEvent(m, now)) return;
   switch (m.t) {
     case 'welcome':
@@ -77,7 +80,7 @@ function clientOnServer(m) {
       if (m.knock) G.knockUntil = now + m.knock;
       G.cst = m.cst ?? CST_MAX; G.cstMax = m.cstMax || CST_MAX; e.arw = m.arw || []; e.esc = m.esc || 0; e.chk = m.chk || 0; e.bnd = m.bnd || ''; e.bndE = m.bndE || 0; e.jl = m.jl || 0; e.cell = m.cell ?? -1; if (m.tree) e.tree = m.tree; if (m.use) e.use = m.use; if (typeof onProgStat === 'function') onProgStat(); G.stunUntil = now + (m.stun || 0); G.ripUntil = now + (m.rip || 0);
       Object.assign(e, { hp: m.hp, maxHp: m.maxHp, mp: m.mp, maxMp: m.maxMp, lvl: m.lvl, xp: m.xp, gold: m.gold, pots: m.pots, food: m.food, water: m.water, cold: m.cold, infect: m.infect, sick: m.sick, hasSkin: m.hasSkin, body: m.body, bleed: m.bleed, lost: m.lost || 0, pro: m.pro || 0, inv: m.inv || {}, combat: m.combat, quests: m.quests, qdone: m.qdone });
-      setBuffs(e, m.buffs);
+      setBuffs(e, m.buffs); if (m.prof) e.prof = m.prof; if ('job' in m && typeof jobsTracker === 'function') { G.job = m.job; jobsTracker(); }
       G.cdEnd = m.cds.map(r => now + r);
       e.downed = m.downed > 0; e.downUntil = now + m.downed;
       saveChar(); updateHud(); updateQuests(); if (!$('inv').classList.contains('hidden')) updateInv();
@@ -475,7 +478,7 @@ function saveChar() {
   const me = G.me;
   try {
     const all = loadChars();
-    all[charKey(me.name, me.cls)] = { name: me.name, cls: me.cls, skin: me.skin, color: me.color, lvl: me.lvl, xp: me.xp, gold: me.gold, pots: me.pots, food: me.food, water: me.water, infect: me.infect, hasSkin: me.hasSkin, tree: me.tree, use: me.use, jailLeft: me.jl || 0, body: me.body, bleed: me.bleed, lost: (me.lost || 0) & 30, pro: me.pro || 0, inv: me.inv, quests: me.quests, qdone: me.qdone, t: Date.now() };
+    all[charKey(me.name, me.cls)] = { name: me.name, cls: me.cls, skin: me.skin, color: me.color, lvl: me.lvl, xp: me.xp, gold: me.gold, pots: me.pots, food: me.food, water: me.water, infect: me.infect, hasSkin: me.hasSkin, tree: me.tree, prof: me.prof, use: me.use, jailLeft: me.jl || 0, body: me.body, bleed: me.bleed, lost: (me.lost || 0) & 30, pro: me.pro || 0, inv: me.inv, quests: me.quests, qdone: me.qdone, t: Date.now() };
     localStorage.setItem(SAVE_KEY, JSON.stringify(all));
   } catch (e) { }
 }
@@ -525,6 +528,7 @@ function updateHud() {
 function updateQuests() {
   const box = $('quest-list'), done = $('quest-done'), me = G.me;
   box.innerHTML = ''; done.innerHTML = '';
+  if (typeof profsHtml === 'function') { let pe = $('journal-profs'); if (!pe) { pe = document.createElement('div'); pe.id = 'journal-profs'; $('journal').appendChild(pe); } pe.innerHTML = profsHtml(); }
   const act = Object.entries(me.quests || {});
   const row = (q, html) => { const d = document.createElement('div'); d.className = 'jq'; d.innerHTML = html; return d; };
   for (const [id, n] of act) {
@@ -656,6 +660,16 @@ function flashDamage() { const v = $('vignette'); v.classList.remove('hit'); voi
 // ---------- diálogos com NPCs ----------
 const GUARD_TEXT = 'Além do fosso: os Campos (★) logo além da paliçada; o Bosque Sombrio (★★) ao norte; o Pântano Pútrido (★★) a leste; as Colinas de Ossos (★★★) ao sul; o Acampamento Orc (★★★) a oeste. Perto do mar, as Terras Selvagens (★★★★). A cachoeira fica na montanha, a noroeste.';
 const NPC_DIALOG = {
+  v_house1: { greet: "Bom dia! Vim fazer as compras da semana.", opts: [['Tudo bem?', { local: "Tudo tão caro hoje em dia..." }]] },
+  v_house2: { greet: "Bom dia! Vim fazer as compras da semana.", opts: [['Tudo bem?', { local: "Tudo tão caro hoje em dia..." }]] },
+  v_trav1: { greet: "Acabei de chegar de longe. Onde fica a taverna?", opts: [['Tudo bem?', { local: "Estrada perigosa, essa até Sxan." }]] },
+  v_trav2: { greet: "Acabei de chegar de longe. Onde fica a taverna?", opts: [['Tudo bem?', { local: "Estrada perigosa, essa até Sxan." }]] },
+  v_vis1: { greet: "Que cidade bonita! Já viu o chafariz?", opts: [['Tudo bem?', { local: "Estou só de passagem." }]] },
+  v_vis2: { greet: "Que cidade bonita! Já viu o chafariz?", opts: [['Tudo bem?', { local: "Estou só de passagem." }]] },
+  v_thug1: { greet: "Tá olhando o quê?", opts: [['Tudo bem?', { local: "Circulando, circulando." }]] },
+  v_thug2: { greet: "Tá olhando o quê?", opts: [['Tudo bem?', { local: "Circulando, circulando." }]] },
+  supplier: { greet: 'Sou o Jonas, entregador do fornecedor. Faça a encomenda no menu do seu negócio (tecla N) e eu levo até a sua loja!', opts: [['Quanto tempo demora?', { local: 'Saio do portão principal uma hora depois do pedido e vou andando. Se ninguém me atacar no caminho, chego rapidinho.' }]] },
+
   st_saw: { greet: "A serra não para enquanto o rio corre! Toras de pinho e carvalho, cortadas e empilhadas.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_mine: { greet: "Pedra, minério e, se a sorte ajudar, um cristal que brilha no escuro. Cuidado com a cabeça.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_farm: { greet: "Ervas para o alambique, linho para o tear. A terra daqui é boa, só falta mão.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
@@ -665,7 +679,7 @@ const NPC_DIALOG = {
   st_arcane: { greet: "Cristais, varinhas, coisas que zumbem. Não encoste no que brilha.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_tailor: { greet: "Linho, lã e linha. Se o patrão mandar tecido, eu deixo a loja cheia de cor.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_scroll: { greet: "Papel, pergaminho, tinta. Um bom mapa vale mais que uma espada, acredite.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
-  courier1: { greet: "Pip, mensageiro! Levo e trago o que for, da vila até a Rua Nova, num pé só.", opts: [['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
+  courier1: { greet: "Pip, mensageiro! Levo e trago o que for, da vila até a Rua Nova, num pé só.", opts: [['Tem alguma entrega para mim?', { job: 'delivery' }], ['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
   courier2: { greet: "Lia Ventura. Conheço cada viela daqui até o rio. Ninguém me alcança.", opts: [['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
   courier3: { greet: "Tomé, carroceiro. Devagar, mas a carga chega inteira. Quase sempre.", opts: [['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
   broker: { greet: 'Bem-vindo à Imobiliária Chave de Bronze! Casas, lojas, oficinas: se tem porta em Sxan, eu sei de quem é a chave. Quer ver o que está livre?', opts: [
@@ -676,7 +690,7 @@ const NPC_DIALOG = {
     ['Comprar ou alugar?', { local: 'Alugar sai barato para começar, mas cobra todo dia. Comprar custa 60 dias de aluguel de uma vez, e depois só 1 ouro de imposto por dia. Se cansar, a Coroa compra de volta pela metade.' }]] },
   noble: { greet: 'Oh. Um aventureiro, aqui? Que... pitoresco. Cuidado com as botas no calçamento.', opts: [['Que bairro é este?', { local: 'O Bairro Nobre, querido. As melhores famílias de Sxan vivem aqui, longe do cheiro da feira.' }]] },
   noble2: { greet: 'Lorde Cassian Aldren. Se veio pedir favores, marque uma audiência como todo mundo.', opts: [['Só estou de passagem.', { local: 'Então passe. E não pise nos canteiros.' }]] },
-  gardener: { greet: 'Bom dia! Essas sebes não se podam sozinhas, sabe? A Lady Valmont quer tudo perfeito.', opts: [['Belo jardim.', { local: 'Trinta anos de tesoura! A roseira do chafariz fui eu que plantei.' }]] },
+  gardener: { greet: 'Bom dia! Essas sebes não se podam sozinhas, sabe? A Lady Valmont quer tudo perfeito.', opts: [['Precisa de ajuda? (varrer a praça)', { job: 'sweep' }], ['Belo jardim.', { local: 'Trinta anos de tesoura! A roseira do chafariz fui eu que plantei.' }]] },
   tailor: { greet: 'Bem-vindo ao Ateliê Real. Aqui só entra o que há de mais fino em Sxan: armaduras de gala, mantos de seda e couro trabalhado à mão. Admire as vitrines.', opts: [
     ['O que está nas vitrines?', { local: 'As peças mais raras do reino, vestidas nos manequins lá fora. Elas trocam de tempos em tempos. Em breve poderão ser encomendadas, mas não serão baratas.' }],
     ['Como estou vestido?', { local: 'Hmm... o corte é honesto, mas o tecido já viu dias melhores. Volte quando quiser algo à altura do seu nome.' }]] },
@@ -686,6 +700,8 @@ const NPC_DIALOG = {
     ['Maçã — 3 ouro', { a: 'buyl', item: 'apple', qty: 1 }], ['5 Maçãs — 15 ouro', { a: 'buyl', item: 'apple', qty: 5 }],
     ['Frutas Silvestres — 3 ouro', { a: 'buyl', item: 'berries', qty: 1 }], ['5 Frutas Silvestres — 15 ouro', { a: 'buyl', item: 'berries', qty: 5 }]] },
   merchant: { greet: 'Bem-vindo ao Empório. Não é muito, mas o que vendo funciona.', opts: [
+    ['Precisa de ajuda? (carregar caixas)', { job: 'crates' }],
+    ['Machado — 25 ouro', { a: 'buyl', item: 'axe', qty: 1 }], ['Picareta — 25 ouro', { a: 'buyl', item: 'pickaxe', qty: 1 }], ['Foice — 25 ouro', { a: 'buyl', item: 'sickle', qty: 1 }],
     ['Corda — 15 ouro', { a: 'buyl', item: 'rope', qty: 1 }], ['Gazua — 40 ouro', { a: 'buyl', item: 'lockpick', qty: 1 }],
     ['Poção de Vida — 20 ouro', { a: 'buy', item: 'hp', qty: 1 }], ['5 Poções de Vida — 100 ouro', { a: 'buy', item: 'hp', qty: 5 }],
     ['Poção de Mana — 25 ouro', { a: 'buy', item: 'mp', qty: 1 }], ['5 Poções de Mana — 125 ouro', { a: 'buy', item: 'mp', qty: 5 }],
@@ -694,7 +710,7 @@ const NPC_DIALOG = {
     ['Bandagem — 8 ouro', { a: 'buy', item: 'band', qty: 1 }], ['5 Bandagens — 40 ouro', { a: 'buy', item: 'band', qty: 5 }],
     ['Vender todo o saque', { a: 'sell' }]] },
   priest: { greet: 'Paz, viajante. A capela é pequena, mas a Aurora ainda escuta quem pede. Traga aqui os que caírem; eu cuido deles.', opts: [['Receber a bênção (grátis)', { a: 'bless' }], ['Ritual de restauração dos membros — 600 ouro', { a: 'ritual' }]] },
-  innkeeper: { greet: 'Sente-se. Tem fogo, comida quente e gente falando demais. Do que precisa?', opts: [
+  innkeeper: { greet: 'Sente-se. Tem fogo, comida quente e gente falando demais. Do que precisa?', opts: [['Precisa de ajuda? (água do poço)', { job: 'water' }], 
     ['Hidromel — 15 ouro (+10% de dano por 3 min)', { a: 'mead' }], ['Ensopado de javali — 10 ouro (recupera tudo)', { a: 'stew' }], ['Ouvir as conversas da taverna', { a: 'rumor' }]] },
   guard: { greet: 'Fique atento lá fora. Quanto mais longe da cidadela, mais o mundo tenta te matar.', opts: [['Quais são as regiões?', { local: GUARD_TEXT }]] },
   smith: { greet: 'Hrodgar. Ferreiro da cidadela. Se a lâmina está cega, eu resolvo.', opts: [['Afiar a arma — 25 ouro (+15% de dano por 4 min)', { a: 'whet' }], ['Prótese (perna de pau / gancho) — 150 ouro', { a: 'prosth' }], ['Conversar', { a: 'talk' }]] },
@@ -712,7 +728,7 @@ function openDialog(id) {
   { const e = G.npcs[id]; if (e && (e.npDead || e.npDown)) { showToast(e.npDead ? e.name + ' está morto.' : e.name + ' está caído.'); return; } }
   const n = NPCS.find(q => q.id === id), def = NPC_DIALOG[n.id === 'captain' ? 'captain' : n.kind];
   G.dialog = { id };
-  $('dlg-name').textContent = n.name;
+  $('dlg-name').textContent = n.name; G.dlgOp = null; if (n.kind !== 'guard' && n.kind !== 'captain') Net.send({ t: 'op', id: n.id });
   setDialogText(n.id === 'fruit' && !LIFE.atStall ? LIFE.busyText : def.greet);
   buildDialogOptions(id);
   const pc = $('dlg-portrait'), pctx = pc.getContext('2d');
@@ -745,8 +761,9 @@ function buildDialogOptions(id) {
     add('Como funciona a cadeia?', () => setDialogText('Quem é pego pelas sentinelas fica aqui o tempo da pena: agressão 2 minutos, ataque à traição 3, assassinato 6. Dormir no catre faz o tempo passar mais rápido. Fiança: 30 de ouro por minuto que falta. E nada de mexer nas fechaduras, ouviu?'));
   } else {
     const def = NPC_DIALOG[n.kind];
-    for (const [label, act] of def.opts) add(label, () => { const P = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null; if (act.open === 'biz') { if (P && estMine(P.id)) { closeDialog(); bizOpen(P.id); } else setDialogText('Só o dono pode mexer nos livros. ' + (P && G.est.st[P.id] ? 'Este ponto é de ' + G.est.st[P.id].replace('★', '') + '.' : 'Este ponto está à venda: fale com Mestre Anselmo, na Imobiliária.')); } else if (act.counter) { if (P) counterOpen(P.id); } else if (act.owner) setDialogText(P && G.est.st[P.id] ? 'Trabalho para ' + G.est.st[P.id].replace('★', '') + '. Paga em dia… quase sempre.' : 'Ninguém, por enquanto. A Coroa vende ou aluga o ponto, e eu venho junto!'); else if (act.open === 'estate') { closeDialog(); estToggle(true, 'house'); } else if (act.local) setDialogText(act.local); else Net.send({ t: 'npc', n: id, ...act }); });
+    for (const [label, act] of def.opts) add(label, () => { const P = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null; if (act.open === 'biz') { if (P && estMine(P.id)) { closeDialog(); bizOpen(P.id); } else setDialogText('Só o dono pode mexer nos livros. ' + (P && G.est.st[P.id] ? 'Este ponto é de ' + G.est.st[P.id].replace('★', '') + '.' : 'Este ponto está à venda: fale com Mestre Anselmo, na Imobiliária.')); } else if (act.job) { closeDialog(); Net.send({ t: 'job', a: 'take', type: act.job }); } else if (act.counter) { if (P) counterOpen(P.id); } else if (act.owner) setDialogText(P && G.est.st[P.id] ? 'Trabalho para ' + G.est.st[P.id].replace('★', '') + '. Paga em dia… quase sempre.' : 'Ninguém, por enquanto. A Coroa vende ou aluga o ponto, e eu venho junto!'); else if (act.open === 'estate') { closeDialog(); estToggle(true, 'house'); } else if (act.local) setDialogText(act.local); else Net.send({ t: 'npc', n: id, ...act }); });
   }
+  if (n.kind !== 'guard' && n.kind !== 'captain' && !String(n.id).startsWith('v_')) { const gk = Object.keys(G.me.inv || {}).find(k => G.me.inv[k] > 0 && (FOOD[k] || ['herb', 'gem', 'wand', 'map'].includes(k))); if (gk) add('Dar ' + (LOOT[gk] ? LOOT[gk].name : gk) + ' de presente', () => Net.send({ t: 'gift', id, k: gk })); }
   add('Até logo', closeDialog, 'ghost');
 }
 function setDialogText(t) { $('dlg-text').textContent = t; }
@@ -925,6 +942,7 @@ window.addEventListener('keydown', e => {
   if (k === 'f' && !e.repeat && typeof boundNear === 'function') { const q = boundNear(); if (q) { Net.send({ t: 'untie', id: q.id }); return; } }
   if (k === 'f' && !e.repeat && typeof jailKeyF === 'function' && jailKeyF()) return;
   if (k === 'f' && !e.repeat && typeof nearStove === 'function' && nearStove() && !nearestDowned()) { openCook(); return; }
+  if (k === 'f' && !e.repeat && !nearestDowned() && !nearCorpse() && typeof jobsF === 'function' && jobsF(e)) return;
   if (k === 'f' && !e.repeat && !nearestDowned() && !nearCorpse() && typeof estateF === 'function' && estateF()) return;
   if (k === 'f' && !e.repeat && !nearestDowned() && !nearCorpse() && survivalAction()) return;
   if (k === 'f' && !e.repeat && (G.me.arw || []).length && !nearestDowned() && !nearCorpse()) { Net.send({ t: 'pullarrow' }); return; }   // arrancar flecha cravada
@@ -941,6 +959,7 @@ window.addEventListener('keydown', e => {
   if (k === 'j' && !e.repeat) { togglePanel('journal'); return; }
   if (k === 'k' && !e.repeat) { togglePanel('tree'); return; }
   if (k === 'l' && !e.repeat && typeof estToggle === 'function') { estToggle(null, 'mine'); return; }
+  if (k === 'n' && !e.repeat && typeof hubToggle === 'function') { hubToggle(); return; }
   if ((k === '5' || k === '6' || k === '7') && !e.repeat) { Net.send({ t: 'tskill', b: +k - 5, a: G.me.fa ?? 0, id: G.target || 0 }); return; }
   if (k === 'm' && !e.repeat) { toggleWorldMap(); return; }
   if (k === 't') { if (!e.repeat) openEmoteWheel(); return; }
@@ -967,6 +986,7 @@ window.addEventListener('keyup', e => {
   G.keys.delete(k);
   if (k === 't' && G.wheel) closeEmoteWheel(true);
   if (k === 'h' && typeof grabKeyUp === 'function' && grabKeyUp()) return;
+  if (typeof jobsKeyUp === 'function') jobsKeyUp(k);
   if (k === 'f' && G.reviving && !G.reviveSticky) { Net.send({ t: 'revive', id: G.reviving, on: false }); G.reviving = null; }
 });
 window.addEventListener('blur', () => G.keys.clear());
@@ -988,6 +1008,7 @@ function frame() {
     if (typeof npcReactions === 'function') npcReactions(now);
     if (typeof martaApple === 'function') martaApple(now);
     if (typeof updateTows === 'function') updateTows(now);
+    if (typeof jobsTickC === 'function') jobsTickC(now);
     if (typeof crowdLook === 'function') { crowdLook(now); jailerNight(); }
     if (G.reviveSticky && (G.me.walking || !G.reviving)) { if (G.reviving) Net.send({ t: 'revive', id: G.reviving, on: false }); G.reviving = null; G.reviveSticky = false; }
     if (G.shootHeld && inCombatZone() && now - (G.shootT || 0) > 220) { G.shootT = now; Net.send({ t: 'shoot', a: G.me.fa ?? 0, id: G.target || 0 }); }
@@ -1109,7 +1130,7 @@ function lockLobby(b) { for (const el of document.querySelectorAll('#lobby butto
 function helloMsg() {
   const name = $('name').value.trim() || 'Aventureiro';
   const saved = loadChars()[charKey(name, chosenClass)] || {};
-  return { t: 'hello', dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
+  return { t: 'hello', dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
 }
 function showRoom(code) { $('room-code').textContent = Net.offline ? 'offline' : code; }
 function createRoom(code = 'S1', tries = 0) {
@@ -1469,7 +1490,7 @@ function updateNeeds() {
   if (typeof survMedalsUpdate === 'function') survMedalsUpdate(me);
   const pr = $('prompt'); if (!G.loot && !nearCorpse()) { const raw = me.inv && (me.inv.venison || me.inv.pork); const stN = typeof nearStove === 'function' && nearStove(), hv = nearHarvest(), exN = me.carrying && STAGE.x >= 0 && dist(me.x, me.y, STAGE.x, STAGE.y) < 3.4; const jp = typeof jailPrompt === 'function' ? jailPrompt() : '';
   const bq = typeof boundNear === 'function' ? boundNear() : null;
-  const txt = me.bound ? (me.bnd === 'rope' ? 'Mãos amarradas com corda: martele ESPAÇO para se soltar (' + (me.bndE || 0) + '%)' : 'Algemado: só uma gazua ou o carcereiro abrem') : bq ? (bq.bound ? 'F: soltar ' + bq.name : '') : jp ? jp : (typeof estatePrompt === 'function' && estatePrompt()) ? estatePrompt() : me.wantedUntil > performance.now() && !me.escorted ? 'Y: render-se às sentinelas' : me.dragMode === 'grip' ? 'Segure o clique esquerdo: apertar o pescoço · H solta' : exN ? 'F: entregar ao carrasco (execução)' : stN ? 'F: cozinhar' : hv >= 0 ? (WORLD.obj[hv] === O.BERRY ? 'F: colher frutas' : 'F: colher erva') : raw && nearFireC() ? 'F: assar a carne' : nearWaterC() && (me.water ?? 100) < 98 ? 'F: beber' : ''; G.survPrompt = txt; } else G.survPrompt = '';
+  const txt = me.bound ? (me.bnd === 'rope' ? 'Mãos amarradas com corda: martele ESPAÇO para se soltar (' + (me.bndE || 0) + '%)' : 'Algemado: só uma gazua ou o carcereiro abrem') : bq ? (bq.bound ? 'F: soltar ' + bq.name : '') : jp ? jp : (typeof jobsPrompt === 'function' && jobsPrompt()) ? jobsPrompt() : (typeof estatePrompt === 'function' && estatePrompt()) ? estatePrompt() : me.wantedUntil > performance.now() && !me.escorted ? 'Y: render-se às sentinelas' : me.dragMode === 'grip' ? 'Segure o clique esquerdo: apertar o pescoço · H solta' : exN ? 'F: entregar ao carrasco (execução)' : stN ? 'F: cozinhar' : hv >= 0 ? (WORLD.obj[hv] === O.BERRY ? 'F: colher frutas' : 'F: colher erva') : raw && nearFireC() ? 'F: assar a carne' : nearWaterC() && (me.water ?? 100) < 98 ? 'F: beber' : ''; G.survPrompt = txt; } else G.survPrompt = '';
   if ($('pz-use') && typeof useHtml === 'function') $('pz-use').innerHTML = useHtml();
   if ($('pz-surv')) $('pz-surv').innerHTML = '<div><b>Fome</b> ' + Math.round(100 - (me.food ?? 100)) + '% · <b>Sede</b> ' + Math.round(100 - (me.water ?? 100)) + '% · <b>Frio</b> ' + Math.round(me.cold || 0) + '%</div><div><b>Infecção</b> ' + ['nenhuma', 'febre', 'grave'][me.infect || 0] + (me.sick > 0 ? ' · <b>enjoado</b>' : '') + '</div><div class="gp-note">Coma e beba, fique perto do fogo à noite, trate feridas graves com bandagem. A morte é permanente.</div>';
 }

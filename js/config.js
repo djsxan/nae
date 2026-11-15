@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.33.0';
-const VERSION_NAME = 'Nae · Moradores';
+const VERSION = 'v1.34.0';
+const VERSION_NAME = 'Nae · Trabalho e Gente';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -153,6 +153,14 @@ const ITEMS = {
 const DYING_HP = 0.25, KNEEL_HP = 0.15, KNEEL_MUL = 0.5, AID_MS = 2000, AID_HEAL = 0.2;
 const CROUCH_MUL = 0.5, SLIDE_MS = 600, SLIDE_COST = 22;
 const LOOT = {
+  axe:      { name: 'Machado de lenhador', price: 25, icon: '🪓', color: '#b8b0a0', desc: 'Para cortar árvores (segure F perto de uma). Não gasta.', tool: 1 },
+  pickaxe:  { name: 'Picareta',          price: 25, icon: '⛏', color: '#a8a8b0', desc: 'Para quebrar pedras (segure F perto de uma). Não gasta.', tool: 1 },
+  sickle:   { name: 'Foice',             price: 25, icon: '🌙', color: '#c8c0a8', desc: 'Para colher linho e plantas no mato alto (segure F). Não gasta.', tool: 1 },
+  log:      { name: 'Tora de madeira',   price: 3,  icon: '🪵', color: '#a8784a', desc: 'Madeira cortada. Vende no Empório ou vai para uma carpintaria.' },
+  hardwood: { name: 'Madeira nobre',     price: 12, icon: '🟫', color: '#7a4a2a', desc: 'Carvalho de veio fino. Rara e valiosa.' },
+  ore:      { name: 'Minério',           price: 4,  icon: '🪨', color: '#8a8a90', desc: 'Pedra com metal. Vende no Empório ou vai para a forja.' },
+  flaxraw:  { name: 'Linho cru',         price: 3,  icon: '🌾', color: '#d8c890', desc: 'Fibra para tecido e bandagens.' },
+  silverleaf: { name: 'Folha-de-prata',  price: 15, icon: '🍃', color: '#c8e0e8', desc: 'Erva rara que brilha ao luar. Boticários pagam bem.' },
   wand:     { name: 'Varinha entalhada', price: 10, icon: '🪄', color: '#c8a070', desc: 'Feita na Carpintaria da Vila. Magos e colecionadores pagam bem.' },
   map:      { name: 'Mapa da região',    price: 7,  icon: '🗺', color: '#e8d8a8', desc: 'Copiado à mão em Pergaminhos & Mapas. Vale no Empório.' },
   rattail:  { name: 'Rabo de Ratazana', price: 4,   icon: '〰', color: '#c8a090', desc: 'Fino e pelado. Alguém paga por isso.' },

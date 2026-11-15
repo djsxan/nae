@@ -13,10 +13,12 @@ const WK_LABEL = { saw: 'Serraria: tira madeira sozinha', mine: 'Mina: tira min�
 function estateEvent(m) {
   if (m.t === 'biz') { bizEvent(m); return true; }
   if (m.t === 'counter') { counterShow(m); return true; }
+  if (m.t === 'op') { if (G.dialog && G.dialog.id === m.id) { let el = document.getElementById('dlg-op'); if (!el) { el = document.createElement('div'); el.id = 'dlg-op'; const nm = document.getElementById('dlg-name'); nm.parentNode.insertBefore(el, nm.nextSibling); } el.className = 'op-' + m.lv; el.textContent = m.ln + ' — ' + m.why; } return true; }
   if (m.t !== 'estate') return false;
   if (m.st) G.est.st = m.st; if (m.L) G.est.L = m.L;
   if ('mine' in m) { G.est.mine = m.mine; G.est.mineT = performance.now(); }
-  if (m.biz) G.est.biz = m.biz; if (m.ten) G.est.ten = m.ten;
+  if (m.biz) G.est.biz = m.biz; if (m.ten) G.est.ten = m.ten; if (m.cour) G.est.cour = m.cour;
+  if (typeof hubRender === 'function') hubRender();
   if (estOpen()) estRender();
   return true;
 }
@@ -271,12 +273,40 @@ function counterOpen(pid) { G.counterPid = pid; Net.send({ t: 'biz', a: 'counter
 function counterShow(m) {
   if (!G.dialog || m.pid !== G.counterPid) return; const box = document.getElementById('dlg-opts'); if (!box) return;
   if (m.none) { setDialogText('Esta loja ainda não tem dono, não tenho nada para vender.'); return; }
-  setDialogText(m.own ? 'Patrão! Pode pegar o que quiser do estoque, é seu.' : m.closed ? 'Desculpe, a loja está fechada: o patrão não pagou meu salário.' : (m.items.length ? 'Loja de ' + m.owner + '. O que vai levar?' : 'Acabou tudo! O patrão precisa reabastecer.'));
+  if (m.refuse) { setDialogText('Com você eu não faço negócio. Saia da minha loja.'); return; }
+  setDialogText(m.own ? 'Patrão! Pode levar do estoque pelo preço de custo (o ouro fica no cofre).' : m.closed ? 'Desculpe, a loja está fechada: o patrão não pagou meu salário.' : (m.items.length ? 'Loja de ' + m.owner + '. O que vai levar?' : 'Acabou tudo! O patrão precisa reabastecer.'));
   box.innerHTML = '';
   const add = (label, fn, cls) => { const b = document.createElement('button'); b.textContent = label; b.onclick = fn; if (cls) b.className = cls; box.appendChild(b); };
   for (const it of m.items) { const G2 = GOODS[it.g], I = GOOD_ITEM[it.g], what = I.pot ? (I.pot === 'hp' ? 'Poção de vida' : 'Bandagem') : LOOT[I.loot].name;
-    add(G2.ic + ' ' + what + ' · ' + (m.own ? 'pegar' : it.price + ' ouro') + ' (' + it.q + ' no estoque)', () => Net.send({ t: 'biz', a: 'cbuy', pid: m.pid, g: it.g, q: 1 }));
-    if (it.q >= 5) add('   ×5 · ' + (m.own ? 'pegar 5' : it.price * 5 + ' ouro'), () => Net.send({ t: 'biz', a: 'cbuy', pid: m.pid, g: it.g, q: 5 }), 'ghost'); }
+    add(G2.ic + ' ' + what + ' · ' + it.price + ' ouro' + (m.own ? ' (custo)' : '') + ' (' + it.q + ' no estoque)', () => Net.send({ t: 'biz', a: 'cbuy', pid: m.pid, g: it.g, q: 1 }));
+    if (it.q >= 5) add('   ×5 · ' + it.price * 5 + ' ouro', () => Net.send({ t: 'biz', a: 'cbuy', pid: m.pid, g: it.g, q: 5 }), 'ghost'); }
   add('Voltar', () => buildDialogOptions(G.dialog.id), 'ghost');
   refreshDialogGold();
+}
+
+// ============================================================
+//  PAINEL NEGÓCIOS (tecla N): todos os seus negócios e investimentos num lugar só
+// ============================================================
+function hubToggle(on) {
+  let d = document.getElementById('bizhub');
+  if (!d) { d = document.createElement('div'); d.id = 'bizhub'; d.className = 'gpanel hidden'; d.innerHTML = '<div class="gp-head"><span>Negócios</span><span class="gp-gold"><span class="coin"></span><b id="hub-gold">0</b></span><button class="gp-x" id="hub-x">✕</button></div><div id="hub-body"></div>'; document.body.appendChild(d); d.querySelector('#hub-x').onclick = () => hubToggle(false); }
+  const open = on != null ? on : d.classList.contains('hidden'); d.classList.toggle('hidden', !open);
+  if (open) { Net.send({ t: 'estate', a: 'open' }); hubRender(); } else if (!estOpen()) Net.send({ t: 'estate', a: 'close' });
+}
+function hubRender() {
+  const d = document.getElementById('bizhub'); if (!d || d.classList.contains('hidden') || !G.me) return;
+  document.getElementById('hub-gold').textContent = G.me.gold;
+  const L = G.est.biz || [], totCofre = L.reduce((a, b) => a + (b.cofre || b.box || 0), 0), totWeek = L.reduce((a, b) => a + ((b.sum && b.sum.week) || 0), 0);
+  let h = '<div class="hub-top"><div><small>Nos cofres</small><b>' + totCofre + '</b></div><div><small>Lucro da semana</small><b class="' + (totWeek < 0 ? 'neg' : '') + '">' + totWeek + '</b></div><div><small>Negócios</small><b>' + L.length + ' / 3</b></div></div>';
+  if (!L.length) h += '<div class="gp-note">Você ainda não tem negócios. Fale com Mestre Anselmo na Imobiliária ou procure as placas "À VENDA" (lojas na Rua Nova, oficinas na Vila do Oeste).</div>';
+  h += L.map(b => { const P = PROPS_BY[b.pid], S0 = b.sum;
+    if (P.kind === 'house') return '<div class="hub-card"><div class="hub-h"><b>🏘 ' + P.name + '</b><span>' + P.district + ' · inquilinos</span></div><div class="hub-row"><span>Caixa de aluguel: <b>' + (b.box || 0) + '</b></span><span>Renda: ' + P.week + '/semana</span></div><div class="hub-act"><button class="est-btn ghost" data-hest="1">Ver no painel de imóveis</button></div></div>';
+    const alerts = []; if (S0) { if (S0.closed) alerts.push('⛔ parado: sem ouro p/ salário'); if (S0.full) alerts.push('💰 cofre cheio: venha buscar'); if (P.kind === 'shop' && S0.n === 0 && !S0.orders) alerts.push('📦 sem estoque'); }
+    return '<div class="hub-card' + (alerts.length ? ' warn' : '') + '"><div class="hub-h"><b>' + (P.kind === 'shop' ? '🛒 ' : '⚒ ') + P.name + '</b><span>' + P.district + ' · ' + (b.mode === 'own' ? 'comprado' : 'alugado') + '</span></div>' +
+      '<div class="hub-row"><span>Cofre <b>' + (b.cofre || 0) + '</b></span><span>' + (P.kind === 'shop' ? 'Prateleiras' : 'Depósito') + ' <b>' + (S0 ? S0.n + '/' + S0.cap : '?') + '</b></span><span>Hoje <b>' + (S0 ? S0.rev : 0) + '</b></span><span>Semana <b>' + (S0 ? S0.week : 0) + '</b></span>' + (S0 && S0.orders ? '<span>🚚 ' + S0.orders + ' a caminho</span>' : '') + '</div>' +
+      (alerts.length ? '<div class="hub-alert">' + alerts.join(' · ') + '</div>' : '') + '<div class="hub-act"><button class="est-btn" data-hman="' + b.pid + '">Gerenciar</button></div></div>'; }).join('');
+  const C2 = G.est.cour || []; if (C2.length) h += '<div class="gp-sub">Mensageiros na rua</div>' + C2.map(c => '<div class="est-cost">🏃 ' + c.name + ' · ' + c.st + ' · ' + Object.keys(c.g).map(g => c.g[g] + ' ' + GOODS[g].n).join(', ') + ' → ' + c.to + '</div>').join('');
+  document.getElementById('hub-body').innerHTML = h;
+  for (const b of d.querySelectorAll('[data-hman]')) b.onclick = () => bizOpen(b.dataset.hman);
+  for (const b of d.querySelectorAll('[data-hest]')) b.onclick = () => { hubToggle(false); estToggle(true, 'mine'); };
 }

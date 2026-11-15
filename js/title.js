@@ -92,6 +92,20 @@ function titleMenu() {
     box.querySelector('#nae-devclr').onclick = () => { try { localStorage.removeItem('nae-dev'); } catch (e) { } st(); };
     st();
   }
+  { // Jogar = continuar rápido com o herói atual; Personagens = escolher/criar/editar heróis
+    const scroll = lob.querySelector('.scroll'), start = scroll.querySelector('.start');
+    const q = document.createElement('section'); q.id = 'nae-quick'; q.className = 'nae-quick'; scroll.insertBefore(q, start);
+    const tp = document.createElement('div'); tp.id = 'nae-toplay'; tp.className = 'nae-toplay'; tp.innerHTML = '<button class="btn gold">Jogar com este herói ▸</button>'; scroll.insertBefore(tp, start);
+    tp.querySelector('button').onclick = () => open('play');
+    window.naeQuick = () => {
+      const nm = (document.getElementById('name') || {}).value || '', cls = typeof chosenClass !== 'undefined' ? chosenClass : 'knight';
+      let sv = null; try { sv = nm.trim() && typeof loadChars === 'function' ? loadChars()[charKey(nm, cls)] : null; } catch (e) { }
+      const cn = typeof CLASSES !== 'undefined' && CLASSES[cls] ? CLASSES[cls].name : cls;
+      q.innerHTML = nm.trim() ? '<div class="nq-card"><div class="nq-who"><b>' + nm.replace(/</g, '') + '</b><span>' + cn + (sv ? ' · nível ' + (sv.lvl || 1) + ' · ' + (sv.gold || 0) + ' ouro' : ' · herói novo') + '</span></div><button class="btn ghost" id="nq-change">Trocar herói</button></div>'
+        : '<div class="nq-card"><div class="nq-who"><b>Nenhum herói ainda</b><span>Crie o seu em Personagens.</span></div><button class="btn gold" id="nq-change">Criar herói</button></div>';
+      q.querySelector('#nq-change').onclick = () => open('chars');
+    };
+  }
   document.body.classList.add('nae-ready');
   const markQ = () => opts.querySelectorAll('[data-q]').forEach(b => b.classList.toggle('on', (typeof SET !== 'undefined' && (SET.quality || 'high')) === b.dataset.q));
   opts.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { if (typeof SET !== 'undefined') { SET.quality = b.dataset.q; try { saveSettings(); } catch (e) { } } markQ(); }); markQ();
@@ -99,7 +113,7 @@ function titleMenu() {
     const same = document.body.dataset.tp === k && document.body.classList.contains('tp-open');
     m.querySelectorAll('button').forEach(b => b.classList.toggle('on', !same && b.dataset.p === k));
     if (same) { document.body.classList.remove('tp-open'); return; }
-    document.body.dataset.tp = k; document.body.classList.add('tp-open');
+    document.body.dataset.tp = k; document.body.classList.add('tp-open'); if (k === 'play' && window.naeQuick) window.naeQuick();
     if (k === 'chars') { const s = document.getElementById('saved'); if (s) s.scrollIntoView({ block: 'center' }); }
     if (k === 'realms' && typeof scanServers === 'function') scanServers();
   };

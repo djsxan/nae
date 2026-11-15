@@ -2,11 +2,18 @@
 //  NPCs VULNERÁVEIS NO CLIENTE — estados vindos do anfitrião (caído, morto, puxado, carregado),
 //  sentinelas que andam, prisioneiros amarrados no poste e o que cada um carrega.
 // ============================================================
+function visEvent(m) {
+  const add = v => { if (G.npcs[v.id]) return; G.npcs[v.id] = mkEnt({ id: v.id, kind: v.kind, name: v.name, x: v.x, y: v.y, isNpc: true, visible: true, dir: 0 }); if (!NPCS.find(q => q.id === v.id)) NPCS.push({ id: v.id, kind: v.kind, name: v.name, x: v.x, y: v.y, transient: true }); };
+  if (m.t === 'vspawn') { add(m.v); return true; }
+  if (m.t === 'vlist') { for (const v of m.list) add(v); return true; }
+  if (m.t === 'vgone') { delete G.npcs[m.id]; const k = NPCS.findIndex(q => q.id === m.id); if (k >= 0) NPCS.splice(k, 1); if (G.dialog && G.dialog.id === m.id) closeDialog(); return true; }
+  return false;
+}
 function applyNpcRows(rows, now) {
   const seen = new Set();
   for (const [id, x100, y100, fl, onBack, carrying] of rows || []) {
     const e = G.npcs[id]; if (!e) continue; seen.add(id);
-    e.srv = true; e.dragMode = fl & 64 ? 'lead' : (e.dragMode === 'lead' ? null : e.dragMode); e.npDown = !!(fl & 1); e.npDead = !!(fl & 2); e.dragged = !!(fl & 4); e.prone = !!(fl & 8); e.npWalk = !!(fl & 32); e.crawl = !!(fl & 128); e.npSleep = !!(fl & 256);
+    e.srv = true; e.dragMode = fl & 64 ? 'lead' : (e.dragMode === 'lead' ? null : e.dragMode); e.npDown = !!(fl & 1); e.npDead = !!(fl & 2); e.dragged = !!(fl & 4); e.prone = !!(fl & 8); e.npWalk = !!(fl & 32); e.crawl = !!(fl & 128); e.npSleep = !!(fl & 256); e.pkg = !!(fl & 512);
     e.onBackBy = onBack || null; e.carrying = carrying || null;
     e.tx = x100 / 100; e.ty = y100 / 100;
     if (e.kind !== 'fruit' || e.npDown || e.npDead || e.dragged || e.onBackBy) { if (e._snap == null || Math.hypot(e.tx - e.rx, e.ty - e.ry) > 4) { e.x = e.rx = e.tx; e.y = e.ry = e.ty; } e._snap = 1; }
@@ -106,5 +113,16 @@ function drawWeaverFlora(ctx, ox, oy, now) {
     if (f.k === 'flower' && grow > 0.5) { const fx = x + droop * 1.5, fy = y - hgt, pr = 1.1 * k * f.s; ctx.fillStyle = f.c; for (let q = 0; q < 5; q++) { const a = f.rot + q * 1.2566; ctx.beginPath(); ctx.arc(fx + Math.cos(a) * pr, fy + Math.sin(a) * pr * 0.6, pr * 0.75, 0, 7); ctx.fill(); } ctx.fillStyle = '#f0b830'; ctx.beginPath(); ctx.arc(fx, fy, pr * 0.55, 0, 7); ctx.fill(); }
     if (!f.wilt && grow < 1 && Math.random() < 0.03) spawnPart('ember', p.sx + (Math.random() - 0.5) * 4, p.sy - hgt);
   }
+  ctx.restore();
+}
+
+// caixote/pacote nos braços (mensageiros e o entregador do fornecedor)
+function drawPackage(ctx, e, sx, sy, now) {
+  if (!e.pkg || e.npDown || e.npDead) return; const bob = e.walking ? Math.abs(Math.sin((e.walkDist || 0) * 4)) * 1.2 : 0, x = sx + 3, y = sy - 25 - bob;
+  ctx.save(); ctx.fillStyle = '#8a6438'; ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 0.7;
+  ctx.beginPath(); ctx.moveTo(x - 5, y - 2); ctx.lineTo(x, y - 4.5); ctx.lineTo(x + 5, y - 2); ctx.lineTo(x, y + 0.5); ctx.closePath(); ctx.fillStyle = '#b08a52'; ctx.fill(); ctx.stroke();   // tampa
+  ctx.beginPath(); ctx.moveTo(x - 5, y - 2); ctx.lineTo(x, y + 0.5); ctx.lineTo(x, y + 6); ctx.lineTo(x - 5, y + 3.5); ctx.closePath(); ctx.fillStyle = '#8a6438'; ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x + 5, y - 2); ctx.lineTo(x, y + 0.5); ctx.lineTo(x, y + 6); ctx.lineTo(x + 5, y + 3.5); ctx.closePath(); ctx.fillStyle = '#6e4e2a'; ctx.fill(); ctx.stroke();
+  ctx.strokeStyle = '#c8a870'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(x - 2.5, y - 3.2); ctx.lineTo(x + 2.5, y - 0.8); ctx.stroke();   // barbante
   ctx.restore();
 }

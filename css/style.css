@@ -498,3 +498,33 @@ body.nae:not(.nae-ready) #lobby > *:not(#title3d) { visibility: hidden; }
 #surv-medals .sv-arc { fill: none; stroke-width: 4.2; stroke-linecap: round; transition: stroke-dashoffset .6s, stroke .6s; }
 #sv-season { font: 600 12px 'Alegreya', serif; color: #e8dcc0; text-shadow: 0 1px 2px #000; margin: 0 0 4px 2px; white-space: nowrap; }
 @media (max-width: 760px) { #surv-medals { left: auto; right: 12px; bottom: 210px; } }
+
+/* título: Jogar (continuar) × Personagens (criar/escolher) */
+.nae-quick, .nae-toplay { display: none; }
+body.nae[data-tp=play] .scroll > .lobby-grid { display: none !important; }
+body.nae[data-tp=play] .scroll > .nae-quick { display: block; }
+body.nae[data-tp=chars] .scroll > .start { display: none !important; }
+body.nae[data-tp=chars] .lobby-grid > section.wide { display: block !important; }
+body.nae[data-tp=chars] .scroll > .nae-toplay { display: block; text-align: center; margin: 14px 0 6px; }
+.nq-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border: 1px solid rgba(201,162,74,.45); border-radius: 8px; background: rgba(20,14,8,.55); margin: 6px 0 14px; }
+.nq-who { flex: 1; } .nq-who b { display: block; font: 700 24px 'Cinzel', serif; color: #f0d890; } .nq-who span { color: #c8b890; }
+
+/* ---------- painel Negócios (N) ---------- */
+#bizhub { width: min(720px, 96vw); }
+.hub-top { display: flex; gap: 12px; margin-bottom: 10px; } .hub-top > div { flex: 1; padding: 8px 10px; border: 1px solid #4a3a22; border-radius: 8px; background: rgba(20,14,8,.5); }
+.hub-top small { display: block; color: #a8987a; font-size: 12px; } .hub-top b { font: 700 22px 'Cinzel', serif; color: #f0d890; } .hub-top b.neg { color: #ff9a8a; }
+.hub-card { border: 1px solid #4a3a22; border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; background: rgba(20,14,8,.35); } .hub-card.warn { border-color: #a8602a; }
+.hub-h b { font: 700 16px 'Cinzel', serif; color: #f0d890; margin-right: 8px; } .hub-h span { color: #a8987a; font-size: 13px; }
+.hub-row { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 6px 0; font-size: 14px; color: #d8ccb0; } .hub-row b { color: #f0d890; }
+.hub-alert { color: #ffb08a; font-size: 13px; margin-bottom: 6px; } .hub-act .est-btn { padding: 5px 12px; font-size: 13px; }
+
+#dlg-op { font-size: 13px; font-style: italic; margin: -2px 0 6px; } #dlg-op.op-amigo { color: #7cc35e; } #dlg-op.op-simpatico { color: #a8d890; } #dlg-op.op-neutro { color: #a8987a; } #dlg-op.op-desconfiado { color: #e8a060; } #dlg-op.op-inimigo { color: #ff7a6a; }
+
+/* ---------- trabalhos ---------- */
+#jobboard { width: min(620px, 96vw); }
+#jobtrack { position: fixed; z-index: 14; top: 64px; left: 50%; transform: translateX(-50%); background: rgba(20,14,8,.82); border: 1px solid #6a5028; border-radius: 8px; padding: 6px 30px 6px 12px; color: #e8dcc0; font: 14px 'Alegreya', serif; text-align: center; max-width: 92vw; }
+#jobtrack b { color: #f0d890; } #jobtrack small { color: #a8987a; } #jobtrack div { font-size: 13px; color: #d8ccb0; }
+#jobtrack button { position: absolute; right: 6px; top: 6px; border: 0; background: none; color: #e88; cursor: pointer; }
+.jb-profs { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px 14px; margin: 6px 0; font-size: 13px; }
+.jb-profs span { display: flex; justify-content: space-between; } .jb-profs b { color: #f0d890; }
+.jb-profs i { display: block; height: 5px; border-radius: 3px; background: #2a2016; margin-top: 2px; } .jb-profs em { display: block; height: 100%; border-radius: 3px; background: #c9a24a; }
