@@ -278,8 +278,9 @@ function heroPoseFor(e, now) {
   const P = { view: view0 === 'W' ? 'E' : view0, walk: -1, act: null, idle: null, sit: false, carry: !!e.lifted };
   if (e.dragMode) P.drag = e.dragMode; else if (e.carrying && !e.lifted) P.drag = 'back';
   if (e.gripped) P.held = e.choked ? 2 : 1;
-  if (e.bound && !e.downed) { P.tied = 1; if (P.drag !== 'lead') P.drag = null; }
-  if (e.escorted) { P.tied = 1; P.drag = null; }
+  if (e.bound && !e.downed) { P.tied = (e.stb & 4) ? 2 : 1; if (P.drag !== 'lead') P.drag = null; }
+  else if (e.stb & 1) { P.surr = 1; P.drag = null; }
+  if (e.stb & 8) P.led = 1;
   P.dir = e.dir || 0;
   if (e.custP && !e.walking) { Object.assign(P, e.custP); if (P.sit) P.walk = -1; if (e.isNpc && typeof martaOfferPose === 'function') martaOfferPose(e, P, now); return P; }
   if (e.isNpc && e.kind === 'fruit' && typeof martaOfferPose === 'function' && !e.walking) martaOfferPose(e, P, now);

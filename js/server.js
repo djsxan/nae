@@ -345,7 +345,8 @@ function handleMove(p, m) {
   if (p.grabbed || p.dragBy || p.gripBy || p.surrendered || now_() < (p.flungUntil || 0) || now_() < (p.knockUntil || 0)) return;
   { const tx = +m.x, ty = +m.y, ti = isFinite(tx) && isFinite(ty) ? tileAt(tx, ty) : -1, c = jailOf(p), st = cellsState();
     const back = () => Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: p.z, fl: p.fl || 0, fb: p.fb ?? -1 });
-    if (c && ti >= 0 && !c.tiles.has(ti)) { back(); return; }                                                     // preso só anda dentro da cela
+    if (c && p.dev) releasePlayer(p, 'O Tecelão atravessa as grades.');
+    else if (c && ti >= 0 && !c.tiles.has(ti)) { back(); return; }                                                     // preso só anda dentro da cela
     if (!c && ti >= 0) { const k = JAILCELLS.findIndex(q => q.tiles.has(ti) || (q.door[1] * MAP_W + q.door[0]) === ti); if (k >= 0 && st[k].locked && (q => q.door[1] * MAP_W + q.door[0])(JAILCELLS[k]) === ti) { back(); return; } } }
   if (p.sleep != null && m.w) p.sleep = null;   // voando / derrubado
   if (p.dev) { const x = +m.x, y = +m.y; if (isFinite(x) && isFinite(y)) { p.x = clamp(x, 1, MAP_W - 2); p.y = clamp(y, 1, MAP_H - 2); p.z = +m.z || 0; p.dir = m.d | 0; p.walking = !!m.w; p.lastMv = now_(); } return; }
@@ -920,7 +921,7 @@ function monsterThink(m, players, now, dt) {
   if (m.gripBy) { const g = S.players[m.gripBy]; if (!g || !g.drag || g.drag.id !== m.id || now > m.escAt) { m.gripBy = null; m.dragBy = null; if (g && g.drag && g.drag.id === m.id) stopDrag(g, MON[m.type].name + ' se soltou!'); m.stunUntil = 0; } else return; }
   if (now < m.stunUntil) return;
   if (m.dragging && wolfDragTick(m, now, dt)) return;
-  if ((m.carrying || m.carryWant) && captorTick(m, now, dt)) return;
+  if ((m.carrying || m.carryWant || m.leadP) && captorTick(m, now, dt)) return;
   const speed = d.speed * (now < m.slowUntil ? 0.5 : 1) * ((m.lost || 0) & 24 ? 0.4 : 1), step = speed * dt;
   const homeDist = dist(m.x, m.y, m.homeX, m.homeY);
   const reach = d.big ? 1.7 : 1.3;
@@ -1510,9 +1511,14 @@ const GRIP_HUMANOID = new Set(['bandit', 'deserter', 'skeleton', 'orc']);
 function startGrab(p, m) {
   if (p.downed || p.drag || p.carrying || p.lifted || p.carriedBy || p.gripBy || p.dragBy) return;
   const k = m.k, mode = m.mode, t = dragTarget(k, m.id);
-  if (!t || t === p || !['arms', 'foot', 'back', 'grip', 'tie'].includes(mode) || dist(p.x, p.y, t.x, t.y) > 2.1) return;
+  if (!t || t === p || !['arms', 'foot', 'back', 'grip', 'tie', 'lead'].includes(mode) || dist(p.x, p.y, t.x, t.y) > 2.1) return;
   const w = weightOf(k, t); if (w >= 3) { tell(p, 'Pesado demais para mover.'); return; }
   const now = now_();
+  if (mode === 'lead') {
+    if (k !== 'p' || t === p || !t.bound || t.downed || t.dragBy) return;
+    p.drag = { k, id: t.id, mode: 'lead', w }; t.dragBy = p.id; t.dragMode = 'lead'; if (inSafe(p.x, p.y)) witnessCrime(p, p.x, p.y, 'grab');
+    near(p.x, p.y, { t: 'drag', by: p.id, k, id: t.id, mode: 'lead' }); tell(t, p.name + ' te segura pelo braço e te conduz.'); return;
+  }
   if (mode === 'tie') {
     if (k !== 'p' || t === p || t.bound || !(t.downed || t.surrendered || t.gripBy === p.id)) return;
     if (!(p.inv.rope > 0)) { tell(p, 'Você precisa de uma corda (Empório).'); return; }
@@ -1577,6 +1583,11 @@ function struggle(p) {
 function dragTick(p, now, dt) {
   const d = p.drag; if (!d) return;
   const t = dragTarget(d.k, d.id);
+  if (d.mode === 'lead') {   // conduzindo: a pessoa amarrada anda na frente, no seu ritmo
+    if (!t || !t.bound || t.downed || p.downed) { stopDrag(p); return; }
+    const [fx, fy] = dirVec(p.dir), nx = p.x + fx * 0.55, ny = p.y + fy * 0.55; if (canStand(nx, ny, p.z || 0, 0.15)) { t.x = nx; t.y = ny; }
+    t.walking = !!p.walking; t.dir = p.dir; t.lastMv = now; return;
+  }
   if (!t || p.downed || p.carriedBy || (d.k === 'p' && d.mode !== 'grip' && !t.downed) || (d.k === 'n' && d.mode !== 'grip' && !t.downed && !t.dead) || (d.mode === 'grip' && t.downed && !t.downed.faint && !t.faintAt) || (d.k === 'p' && t.carriedBy)) { stopDrag(p); return; }
   if (d.helper) { const pr = S.players[t.dragBy]; if (!pr || !pr.drag || pr.drag.id !== t.id) { d.helper = false; t.dragBy = p.id; t.dragBy2 = null; } else { if (dist(p.x, p.y, t.x, t.y) > 3) stopDrag(p, 'A ponta escapou da sua mão.'); return; } }
   if (t.dragBy2) { const h = S.players[t.dragBy2]; if (h && h.drag && h.drag.id === t.id) { t.x = (p.x + h.x) / 2; t.y = (p.y + h.y) / 2; t.z = p.z; t.lastMv = now; return; } t.dragBy2 = null; }
@@ -1613,7 +1624,7 @@ function dragTick(p, now, dt) {
 }
 function dragCleanup() {
   for (const L of [Object.values(S.players), Object.values(S.corpses || {}), Object.values(S.npcs || {})]) for (const q of L) if (q.dragBy2 && (!S.players[q.dragBy2] || !S.players[q.dragBy2].drag || S.players[q.dragBy2].drag.id !== q.id)) q.dragBy2 = null;
-  for (const q of Object.values(S.players)) if (q.dragBy && !/^(w:|n:|exec)/.test(String(q.dragBy)) && (!S.players[q.dragBy] || !S.players[q.dragBy].drag || S.players[q.dragBy].drag.id !== q.id)) { q.dragBy = null; q.gripBy = null; q.dragMode = null; q.esc = 0; }
+  for (const q of Object.values(S.players)) if (q.dragBy && !/^(w:|n:|m:|exec)/.test(String(q.dragBy)) && (!S.players[q.dragBy] || !S.players[q.dragBy].drag || S.players[q.dragBy].drag.id !== q.id)) { q.dragBy = null; q.gripBy = null; q.dragMode = null; q.esc = 0; }
   for (const c of Object.values(S.npcs || {})) if (c.dragBy && (!S.players[c.dragBy] || !S.players[c.dragBy].drag || S.players[c.dragBy].drag.id !== c.id)) { c.dragBy = null; c.dragMode = null; c.onBack = null; }
   for (const c of Object.values(S.corpses || {})) if (c.dragBy && (!S.players[c.dragBy] || !S.players[c.dragBy].drag || S.players[c.dragBy].drag.id !== c.id)) { c.dragBy = null; c.dragMode = null; c.onBack = null; }
 }
@@ -1729,6 +1740,7 @@ function npcTick(now, dt) {
     if (n.dead) continue;
     if (n.downed) { if (now > n.downed.until && !n.dragBy) { n.downed = null; n.hp = Math.round(n.maxHp * 0.3); n.goHome = n.id !== 'fruit'; sys(n.name + ' se levantou, ferido.'); } continue; }
     if (n.goHome && !n.dragBy && !n.gripBy) { if (npcWalk(n, n.postX, n.postY, 1.3, dt)) { n.goHome = false; n.x = n.postX; n.y = n.postY; } continue; }
+    if (n.walkTo && !n.dragBy) { if (npcWalk(n, n.walkTo[0], n.walkTo[1], 1.1, dt)) { n.x = n.walkTo[0]; n.y = n.walkTo[1]; n.walkTo = null; } }
     if (n.gripBy && !n.downed) { const g = S.players[n.gripBy]; if (!g || !g.drag || g.drag.id !== n.id || now > n.escAt) { n.gripBy = null; n.dragBy = null; if (g && g.drag && g.drag.id === n.id) stopDrag(g, n.name + ' se soltou!'); } continue; }
     if (n.dragBy) continue;
     if (n.kind === 'guard') { guardThink(n, now, dt); continue; }
@@ -1736,9 +1748,19 @@ function npcTick(now, dt) {
   }
 }
 // ---------- monstros: orcs/bandidos levam prisioneiros, lobos arrastam a presa ----------
-const CAPTORS = new Set(['orc', 'bandit', 'deserter', 'goblin', 'orcchief', 'deserterchief']);
+const CAPTORS = new Set(['orc', 'bandit', 'deserter', 'goblin', 'orcchief', 'deserterchief', 'troll']);
 function captorTick(m, now, dt) {
   const d = MON[m.type];
+  if (m.leadP) {   // levando o prisioneiro amarrado, andando na frente
+    const q = S.players[m.leadP];
+    if (!q || !q.bound || q.dragBy !== 'm:' + m.id) { if (q && q.dragBy === 'm:' + m.id) q.dragBy = null; m.leadP = null; if (q) m.aggro = q.id; return false; }
+    const B = BASTIONS.find(b => b.id === m.bs), hx = B ? B.x : m.homeX, hy = B ? B.y : m.homeY, ox = m.x, oy = m.y;
+    if (dist(m.x, m.y, hx, hy) < 1.6) { m.leadP = null; q.dragBy = null; goDown(q, null); if (q.downed) { q.bound = null; q.tied = { until: now + 300000, by: m.type }; q.esc = 0; q.x = hx + 0.8; q.y = hy + 0.3; tell(q, 'Você foi amarrado num poste do acampamento! Martele ESPAÇO para se soltar, ou espere ajuda (F perto solta). Em 5 minutos o chefe vai te executar.'); sys(q.name + ' foi feito prisioneiro.'); } return true; }
+    { const dx = hx - m.x, dy = hy - m.y, dl = Math.hypot(dx, dy) || 1, st = d.speed * 0.55 * dt, nx = m.x + dx / dl * st, ny = m.y + dy / dl * st; if (canStand(nx, ny, 0, 0.2)) { m.x = nx; m.y = ny; } else if (Math.abs(dx) > 0.01 && canStand(nx, m.y, 0, 0.2)) m.x = nx; else if (Math.abs(dy) > 0.01 && canStand(m.x, ny, 0, 0.2)) m.y = ny; else { m.x = nx; m.y = ny; } m.face = dx - dy > 0 ? 1 : -1; }   // ignora o próprio prisioneiro à frente
+    const mx = m.x - ox, my = m.y - oy, ml = Math.hypot(mx, my);
+    if (ml > 0.0005) { const nx = m.x + mx / ml * 0.6, ny = m.y + my / ml * 0.6; if (canStand(nx, ny, 0, 0.15)) { q.x = nx; q.y = ny; } q.dir = dirFromVecS(mx, my); q.walking = true; } else q.walking = false;
+    q.lastMv = now; return true;
+  }
   if (m.carrying) {
     const q = S.players[m.carrying]; if (!q || !q.downed) { if (q) npcDropCarried(m); else m.carrying = null; return true; }
     q.x = m.x; q.y = m.y; q.downed.until = Math.max(q.downed.until, now + 4000);
@@ -1749,7 +1771,11 @@ function captorTick(m, now, dt) {
   }
   if (m.carryWant) {
     const q = S.players[m.carryWant]; if (!q || !q.downed || q.carriedBy || q.dragBy || q.tied) { m.carryWant = null; return false; }
-    if (dist(m.x, m.y, q.x, q.y) < 1.3) { entCarry(m, q, 'm:' + m.id); m.carryWant = null; tell(q, 'Um ' + MON[m.type].name.toLowerCase() + ' te jogou nas costas e te leva para o acampamento!'); }
+    if (dist(m.x, m.y, q.x, q.y) < 1.3) {
+      m.carryWant = null;
+      if (m.type === 'troll') { entCarry(m, q, 'm:' + m.id); tell(q, 'O troll te joga no ombro e te leva para o acampamento!'); }
+      else { q.downed = null; q.revive = null; q.hp = Math.max(1, Math.round(q.maxHp * 0.15)); bindPlayer(q, 'rope'); q.dragBy = 'm:' + m.id; m.leadP = q.id; tell(q, 'Um ' + MON[m.type].name.toLowerCase() + ' amarrou suas mãos e te leva andando para o acampamento! Martele ESPAÇO para soltar a corda.'); sendStat(q); }
+    }
     else chase(m, q.x, q.y, d.speed * dt, now);
     return true;
   }
@@ -1807,6 +1833,7 @@ const cellsState = () => S.cells || (S.cells = JAILCELLS.map(() => ({ locked: tr
 const jailOf = p => p.jailUntil > now_() && p.cell != null ? JAILCELLS[p.cell] : null;
 function jailSpot() { const st = cellsState(); const i = st.findIndex(c => !c.who); if (i < 0) return null; const c = JAILCELLS[i]; return { x: c.spot[0], y: c.spot[1], bi: c.bi, cell: i }; }
 function jailPlayer(q, ms, opt = {}) {
+  if (q.dev) { q.wanted = 0; q.sentence = 0; return false; }
   const st = cellsState(); let i = opt.cell != null ? opt.cell : st.findIndex(c => !c.who); if (i < 0) i = 0;
   const c = JAILCELLS[i]; if (!c) return false; const now = now_();
   if (st[i].who && S.players[st[i].who] && st[i].who !== q.id) releasePlayer(S.players[st[i].who], 'A cela foi esvaziada para um novo preso.');
@@ -1860,14 +1887,15 @@ function jailMsg(p, m) {
 function crimeSentence(p, kind) { p.sentence = Math.min(900000, (p.sentence || 0) + (CRIME_MS[kind] || CRIME_MS.assault)); (p.crimes = p.crimes || []).push(CRIME_TXT[kind] || 'agressão'); if (p.crimes.length > 4) p.crimes.shift(); }
 
 // execução na guilhotina: deitar na prancha, fechar a luneta, anúncio, alavanca, lâmina, cabeça no cesto
-const EXEC_T = { lock: 1400, announce: 2000, pull: 6400, drop: 7000, fall: 10000 };
+const EXEC_T = { lock: 1400, announce: 3000, pull: 28400, drop: 30000, fall: 33500 };
 function startExecution(v, by) {
   if (!npcAlive('executioner') || v.execAt || STAGE.x < 0) return false;
   const now = now_(), tok = now + Math.random(), crimes = (v.crimes && v.crimes.length ? v.crimes.join(', ') : 'crimes contra Sxan');
   if (v.wanted) { v.wanted = 0; Net.toAll({ t: 'wanted', id: v.id, ms: 0 }); }
   if (v.carriedBy) v.carriedBy = null; if (v.dragBy && S.players[v.dragBy]) stopDrag(S.players[v.dragBy]);
   v.x = STAGE.x; v.y = STAGE.y + 0.95; v.z = 0; v.execAt = now + EXEC_T.drop; v.execTok = tok; v.downed = null; v.dragBy = 'exec'; if (!v.condemned) condemn(v, true);
-  const ex = S.npcs && S.npcs.executioner; if (ex) { ex.x = STAGE.x + 1.1; ex.y = STAGE.y + 0.2; }
+  const ex = S.npcs && S.npcs.executioner; if (ex) { ex.walkTo = [STAGE.x - 1.3, STAGE.y + 2.2]; setTimeout(() => { if (v.execTok === tok && ex && !ex.dead) ex.walkTo = [STAGE.x + 1.1, STAGE.y + 0.2]; }, EXEC_T.pull - 3200); }
+  for (const s of [10, 20]) setTimeout(() => { if (v.execTok !== tok) return; sys('🔔 O sino da praça toca (' + (30 - s) + ' segundos).'); near(STAGE.x, STAGE.y, { t: 'shake', s: 1 }, VIEW_RADIUS + 12); }, s * 1000);
   near(STAGE.x, STAGE.y, { t: 'exec', id: v.id, x: STAGE.x, y: STAGE.y, T: EXEC_T, name: v.name, crimes }, VIEW_RADIUS + 12);
   sys('🔔 O sino da praça toca: ' + by + ' entregou ' + v.name + ' ao carrasco.');
   setTimeout(() => { if (v.execTok !== tok) return; sys('Mestre Corvo: "' + v.name + ', condenado por ' + crimes + '. Que Sxan tenha piedade da sua alma."'); }, EXEC_T.announce);
@@ -2081,7 +2109,7 @@ function hostTick() {
       if (p.devHidden && p.id !== r.id) continue;
       let fl = (p.walking ? 1 : 0) | (p.downed ? 2 : 0) | (p.carriedBy ? 4 : 0) | (p.carrying ? 8 : 0) | (p.running && p.walking ? 256 : 0) | (p.sit ? 512 : 0) | (p.sit === 'c' ? 1024 : 0) | (p.sleep != null ? 32768 : 0) | (p.drawT ? 65536 : 0) | (p.dragBy ? 131072 : 0) | (p.dragMode === 'foot' ? 262144 : 0) | (p.drag && p.drag.mode === 'arms' ? 524288 : 0) | (p.drag && p.drag.mode === 'foot' ? 1048576 : 0) | (p.drag && p.drag.mode === 'back' ? 2097152 : 0) | (p.drag && p.drag.mode === 'grip' ? 4194304 : 0) | (p.gripBy ? 8388608 : 0) | (p.tied ? 16777216 : 0) | (p.choked ? 33554432 : 0) | (p.choking ? 67108864 : 0) | (p.escortBy || p.surrendered ? 134217728 : 0) | (p.jailUntil > now ? 536870912 : 0) | (p.bound ? 1073741824 : 0) | (p.drag && (p.drag.helper || ((dragTarget(p.drag.k, p.drag.id) || {}).dragBy2)) ? 268435456 : 0) | ((p.fl || 0) << 11) | (p.crouch ? 8192 : 0) | (p.slide ? 16384 : 0);
       for (const b in BUFF_BITS) if (buffOn(p, b)) fl |= BUFF_BITS[b];
-      pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0]);
+      pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0, (p.surrendered ? 1 : 0) | (p.bound && p.bound.kind === 'rope' ? 2 : 0) | (p.bound && p.bound.kind === 'cuffs' ? 4 : 0) | (p.dragBy && (/^(n:|m:)/.test(String(p.dragBy)) || p.dragMode === 'lead') && !p.downed ? 8 : 0)]);
     }
     for (const m of mons) {
       if (Math.abs(m.x - r.x) > VIEW_RADIUS || Math.abs(m.y - r.y) > VIEW_RADIUS) continue;

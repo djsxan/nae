@@ -5,7 +5,7 @@
 // ============================================================
 const WEIGHT_C = { rat: 0, toad: 0, slime: 0, spider: 0, wisp: 0, wolf: 1, goblin: 1, boar: 1, deer: 2, skeleton: 2, bandit: 2, deserter: 2, orc: 2 };
 const RADIAL_MS = 220;
-const OPT_LABEL = { tie: 'Amarrar', revive: 'Reanimar', arms: 'Braços', foot: 'Pé', back: 'Costas', grip: 'Agarrar' };
+const OPT_LABEL = { lead: 'Conduzir', tie: 'Amarrar', revive: 'Reanimar', arms: 'Braços', foot: 'Pé', back: 'Costas', grip: 'Agarrar' };
 function grabCandidate() {
   const me = G.me; if (!me) return null;
   let best = null, bd = 1.9;
@@ -15,7 +15,9 @@ function grabCandidate() {
   if (best) return best;
   for (const c of G.corpses || []) { if (!c.looted || c.onBack) continue; const w = WEIGHT_C[c.type] ?? 3; if (w >= 3) continue; const d = dist(c.x, c.y, me.x, me.y); if (d < bd) { bd = d; best = { k: 'c', id: c.id, opts: w >= 2 ? ['arms', 'foot', 'back'] : ['arms', 'foot', 'back'] }; } }
   if (best) return best;
-  bd = 1.4;
+  bd = 1.6;
+  for (const id in G.players) { const q = G.players[id]; if (q === me || !q.visible || q.downed || !q.bound || q.dragged) continue; const d = dist(q.rx, q.ry, me.x, me.y); if (d < bd) { bd = d; best = { k: 'p', id, opts: ['lead'], standing: true }; } }
+  if (best) return best; bd = 1.4;
   for (const id in G.npcs) { const n = G.npcs[id]; if (n.npDown || n.npDead || n.onBackBy || n.carrying || n.sleepB) continue; const d = dist(n.rx, n.ry, me.x, me.y); if (d < bd) { bd = d; best = { k: 'n', id, opts: ['grip'], standing: true }; } }
   for (const id in G.monsters) { const q = G.monsters[id]; if (q.dieAt || !q.visible || (WEIGHT_C[q.type] ?? 3) > 2) continue; const d = dist(q.rx, q.ry, me.x, me.y); if (d < bd + (MON[q.type].rad || 0.3)) { bd = d; best = { k: 'm', id: +id, opts: ['grip'], standing: true }; } }
   for (const id in G.players) { const q = G.players[id]; if (q === me || !q.visible || q.downed || q.isNpc || q.carriedBy) continue; const d = dist(q.rx, q.ry, me.x, me.y); if (d < bd) { bd = d; best = { k: 'p', id, opts: ['grip'], standing: true }; } }

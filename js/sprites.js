@@ -275,7 +275,12 @@ function buildPose(cls, P) {
   if (P.armw && !P.act) { Q.aA = [Q.tl * -0.5, 0.18, 0.12]; Q.wp = cls === 'knight' ? Q.aA[0] + Q.aA[2] + 0.2 : Q.wp; }
   if (P.sit === 'g') { Q.lA = [2.45, -2.35]; Q.lB = [2.2, -2.0]; Q.drop = 12; Q.aA = [1.15, 0.35, 1.35]; Q.aB = [1.05, 0.4, 1.25]; Q.tl = -0.22; Q.ht = 0.12; }
   else if (P.sit) { Q.lA = [1.5, -1.55]; Q.lB = [1.45, -1.5]; Q.drop = 12; Q.aA = [0.45, 0.25, 0.7]; Q.aB = [0.45, 0.25, 0.7]; Q.tl = -0.02; }
-  if (P.tied) { Q.aA = [-0.7, 0.35, 0.9]; Q.aB = [-0.7, 0.35, 0.9]; Q.tl = 0.15; Q.ht = 0.35; }
+  if (P.tied) { Q.aA = [-0.45, -0.28, 0.35]; Q.aB = [-0.45, -0.28, 0.35]; Q.tl = 0.12; Q.ht = 0.3; Q.tie = P.tied; Q.nowp = 1; }   // mãos amarradas atrás das costas
+  if (P.surr) { Q.aA = [2.6, 1.1, 2.6]; Q.aB = [2.6, 1.1, 2.6]; Q.ht = 0.25; Q.tl = 0.05; Q.nowp = 1; }                    // rendido: mãos na nuca
+  if (P.led && P.walk >= 0) {   // andar forçado: passos curtos e desajeitados, curvado, tropeçando
+    const ph = P.walk / 12 * Math.PI * 2, st = Math.max(0, Math.sin(ph * 2 + 0.6)) > 0.92 ? 0.25 : 0;
+    Q.lA = [Q.lA[0] * 0.5, Q.lA[1] * 0.6 - 0.15 - st]; Q.lB = [Q.lB[0] * 0.5, Q.lB[1] * 0.6 - 0.15]; Q.tl += 0.28 + st * 0.5; Q.ht = (Q.ht || 0) + 0.25; Q.sway = (Q.sway || 0) * 1.8;
+  }
   if (P.smk != null || P.eat != null) {   // fumando cachimbo / comendo: a mão vai à boca de tempos em tempos
     const ph = Math.floor((P.smk ?? P.eat) * 8) / 8, up = ph >= 0.25 && ph < 0.5;
     Q.aA = up ? [1.6, 0.2, 2.45] : [0.75, 0.3, 1.25]; if (up) Q.ht = -0.12; if (P.smk != null) Q.pipe = 1;

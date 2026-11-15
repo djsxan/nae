@@ -197,13 +197,13 @@ function applySnapshot(m, now) {
   G.chests = (m.ch || []).map(c => ({ id: c[0], x: c[1] / 100, y: c[2] / 100, open: !!c[3], mine: !!c[4] }));
   G.corpses = (m.co || []).map(c => ({ id: c[0], type: MON_TYPES[c[1]], x: c[2] / 100, y: c[3] / 100, z: c[4], looted: !!c[5], ix: c[6] / 10, iy: c[7] / 10, lost: c[8] || 0, onBack: c[9] || null }));
   const seenP = new Set();
-  for (let [id, x100, y100, z, dir, fl, hpPct, carrying, lifted, bb, lp, tow] of m.p) {
+  for (let [id, x100, y100, z, dir, fl, hpPct, carrying, lifted, bb, lp, tow, stb] of m.p) {
     seenP.add(id);
     let e = G.players[id];
     if (!e) e = G.players[id] = mkEnt({ id, name: '...', cls: 'knight', skin: 'iron', color: '#888888', lvl: 1 });
     const x = x100 / 100, y = y100 / 100;
     e.flags = fl; e.visible = true; e.carrying = carrying || null; e.lifted = lifted || 0; if (id !== G.myId) { e.lost = (lp || 0) & 31; e.pro = ((lp || 0) >> 5) & 31; } e.parrying = !!((bb || 0) & 32); e.stunned = !!((bb || 0) & 64); e.duel = !!((bb || 0) & 128); e.limp = (bb || 0) & 3; e.armWeak = !!((bb || 0) & 4); e.dizzy = !!((bb || 0) & 8); e.bleeding = !!((bb || 0) & 16); e.carriedBy = !!(fl & 4); z = z / 100;
-    e.tow = tow || null; e.tied = !!(fl & 16777216); e.dragged = !!(fl & 131072); e.prone = !!(fl & 262144); e.gripped = !!(fl & 8388608);
+    e.stb = stb || 0; e.tow = tow || null; e.tied = !!(fl & 16777216); e.dragged = !!(fl & 131072); e.prone = !!(fl & 262144); e.gripped = !!(fl & 8388608);
     e.dragMode = fl & 524288 ? 'arms' : fl & 1048576 ? 'foot' : fl & 2097152 ? 'back' : fl & 4194304 ? 'grip' : null;
     if (e === G.me && e.dragged) { e.cx = x; e.cy = y; if (e.rx == null || Math.hypot(x - e.rx, y - e.ry) > 4) { e.x = e.rx = x; e.y = e.ry = y; } G.path = null; }
     e.bound = !!(fl & 1073741824); e.jailed = !!(fl & 536870912); e.choked = !!(fl & 33554432); e.choking = !!(fl & 67108864); e.escorted = !!(fl & 134217728); e.pullHelp = !!(fl & 268435456);   // sendo puxado/agarrado: a posição vem do servidor
@@ -277,7 +277,7 @@ function myInput() {
 
 function updateLocal(now, dt) {
   const me = G.me;
-  if (me && (me.carriedBy || me.dragged) && me.cx != null) { const k = Math.min(1, dt * 9); me.rx += (me.cx - me.rx) * k; me.ry += (me.cy - me.ry) * k; me.x = me.rx; me.y = me.ry; if (me.escorted || me.gripped) { me.walking = Math.hypot(me.cx - me.rx, me.cy - me.ry) > 0.03; if (me.walking) me.walkDist = (me.walkDist || 0) + Math.hypot(me.cx - me.rx, me.cy - me.ry) * k; } }
+  if (me && (me.carriedBy || me.dragged) && me.cx != null) { const k = Math.min(1, dt * 9); me.rx += (me.cx - me.rx) * k; me.ry += (me.cy - me.ry) * k; me.x = me.rx; me.y = me.ry; if (me.escorted || me.gripped || (me.stb & 8)) { me.walking = Math.hypot(me.cx - me.rx, me.cy - me.ry) > 0.03; if (me.walking) me.walkDist = (me.walkDist || 0) + Math.hypot(me.cx - me.rx, me.cy - me.ry) * k; } }
   if (!me || me.carriedBy) { if (me) { me.walking = false; } return; }
   if (now < (G.busyUntil || 0)) { me.walking = false; G.path = null; if (G.busyFace) me.dir = dirFromVec(G.busyFace.x - me.x, G.busyFace.y - me.y, me.dir); return; }   // cozinhando: parado de frente para o fogão
   if (G.climbing) { stepClimb(now); return; }
@@ -513,7 +513,7 @@ function updateHud() {
     const d = document.createElement('div'); d.className = 'buff ' + k; d.dataset.tip = BUFF_NAMES[k] || k; d.dataset.end = me.buffs[k];
     buffs.appendChild(d);
   }
-  $('downed-ui').classList.toggle('hidden', !me.downed || (G.condemned && G.condemned.has(G.myId)));
+  $('downed-ui').classList.toggle('hidden', !me.downed || (G.condemned && G.condemned.has(G.myId)) || !!(me.exec && me.exec.T && performance.now() < me.exec.t0 + me.exec.T.fall + 3000));
   if (G.dialog) refreshDialogGold();
 }
 function updateQuests() {
