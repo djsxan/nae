@@ -286,6 +286,7 @@ function heroPoseFor(e, now) {
   if (e.isNpc && e.kind === 'fruit' && typeof martaOfferPose === 'function' && !e.walking) martaOfferPose(e, P, now);
   if (e.custP && e.custP.sweep && e.walking) P.act = e.custP.act;
   if (e.walking) { P.walk = Math.floor(e.walkDist * (e.cls === 'knight' ? 8.5 : 9.5) / (e.running ? 1.45 : 1)) % 12; if (e.running) P.run = 1; if (e.dragMode === 'arms') P.walk = (12 - P.walk) % 12; }   // puxando pelos braços anda de costas
+  if (e.skin === 'weaver') { P.walk = -1; P.run = 0; }
   if (e.anim) { const t = actProg(e.anim, now); if (t >= 0 && ACTS[e.anim.a]) P.act = { k: e.anim.a, f: Math.min(11, Math.floor(t * 12)) }; }
   if (!P.act && typeof bowPose === 'function') { const bp = bowPose(e, now); if (bp) P.act = bp; }
   if (!e.isNpc) { P.lost = e.lost || 0; P.pro = e.pro || 0; }
@@ -453,7 +454,8 @@ function drawMonsterEntity(ctx, e, sx, sy, now) {
   if (R3.ok && e.type === 'dragon') { drawDragon(ctx, e, sx, sy, now); return; }
   if (R3.ok) {
     let atk = -1, ak = null;
-    if (e.anim) { const t = actProg(e.anim, now); if (t >= 0) { if (/^atk_/.test(e.anim.a)) { ak = e.anim.a; atk = Math.min(11, Math.floor(t * 12)); } else atk = Math.min(7, Math.floor(t * 8)); } }
+    if (e.skin === 'weaver') { P.walk = -1; P.run = 0; }
+  if (e.anim) { const t = actProg(e.anim, now); if (t >= 0) { if (/^atk_/.test(e.anim.a)) { ak = e.anim.a; atk = Math.min(11, Math.floor(t * 12)); } else atk = Math.min(7, Math.floor(t * 8)); } }
     if (e.anim && e.anim.W && e.anim.reach && now - e.anim.t0 < e.anim.W + 120) drawTelegraph(ctx, e, sx, sy, now);
     if (!ak && e.blockAt && now - e.blockAt < 350) { ak = 'parry'; atk = 6; }
     const f = e.walking ? Math.floor(e.walkDist * 4) % 8 : -1;
@@ -537,7 +539,7 @@ function objSprite(o, x, y) {
     case O.FRUITCRATE: return natureSprite('fcrate', 0) || smallSprite('crate');
     case O.VITRINE: return typeof vitrineSprite === 'function' ? vitrineSprite(i) : smallSprite('crate');
     case O.STAGEFLOOR: return null;
-    case O.GUILLOTINE: return natureSprite('guil', typeof guilState === 'function' ? guilState() : 0) || smallSprite('cart');
+    case O.GUILLOTINE: if (x !== STAGE.x) return natureSprite('guilp', 0); return natureSprite('guil', typeof guilState === 'function' ? guilState() : 0) || smallSprite('cart');
     case O.OAK: return natureSprite('oak', v & 1) || treeSprite(v, 1, 3);
     case O.BIRCH: return natureSprite('birch', v & 1) || treeSprite(v, 1, 1);
     case O.WILLOW: return natureSprite('willow', v & 1) || treeSprite(v, 1, 0);
@@ -586,7 +588,7 @@ function objSprite(o, x, y) {
     case O.FENCE: { const isF = j => WORLD.obj[j] === O.FENCE || WORLD.obj[j] === O.TORCH; return fenceSprite(isF(i - 1) || isF(i + 1)); }
     case O.WALL: { const wd = WORLD.wdir[i], ax = wd === 3 || wd === 4, isT = j => WORLD.obj[j] === O.PART || WORLD.obj[j] === O.TOWER, e = (isT(ax ? i - 1 : i - MAP_W) ? 1 : 0) | (isT(ax ? i + 1 : i + MAP_W) ? 2 : 0); return wallSprite(v, false, h < 0.35, wd, e); }
     case O.LOWWALL: return wallSprite(v, true, false);
-    case O.GATE: { const gi = WORLD.gateId[i]; if (gi < 0) return gateSprite(true); return x === WORLD.gates[gi].x1 ? gateHouseSprite(gi) : null; }
+    case O.GATE: { const gi = WORLD.gateId[i]; if (gi < 0) return gateSprite(true); const gq = WORLD.gates[gi]; return (gq.vert ? y === gq.y : x === gq.x1) ? gateHouseSprite(gi) : null; }
     case O.STAIRS: return stairsSprite(WORLD.stair[i], WORLD.stairK[i]);
   }
   return null;
@@ -839,6 +841,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   const items = [], upper = [], sky = [], visTrees = [], visFlowers = [], visGrass = [];
   for (const g of (G.started && G.gibs) || []) { if (now > g.until) continue; const k = Math.min(1, (now - g.t0) / 480), wx = g.x + g.dx * g.d * k, wy = g.y + g.dy * g.d * k, p = iso(wx, wy); items.push({ d: wx + wy - 0.2, k: 0, gib: g, sx: p.sx + ox, sy: p.sy + oy - (g.z || 0) * FLOOR_PX - Math.sin(Math.PI * k) * 34, gk: k }); }
   for (const c of (G.started && G.corpses) || []) { const p = iso(c.x, c.y); const it = { d: c.x + c.y - 0.35, k: 0, corpse: c, sx: p.sx + ox, sy: p.sy + oy - (c.z || 0) * FLOOR_PX }; (c.z ? upper : items).push(it); }
+  if (typeof estSignItems === 'function') estSignItems(items, ox, oy);
   for (const c of (G.started && G.chests) || []) { const p = iso(c.x, c.y); items.push({ d: c.x + c.y, k: 0, chest: c, sx: p.sx + ox, sy: p.sy + oy }); }
   for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) {
     const i = y * MAP_W + x, o = WORLD.obj[i], g = WORLD.ground[i];
@@ -846,6 +849,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     if (sx < -140 || sx > vw + 140 || sy < -60 || sy > vh + 300) continue;
     if (g === T.CLIFF) items.push({ d: x + y, k: 0, cliff: true, x, y, sx, sy, o });
     else if (o !== O.NONE && !FLAT.has(o) && o !== O.PART && g === T.CLIFF) { upper.push({ d: x + y, k: 0, x, y, o, sx, sy: sy - FLOOR_PX }); }
+    else if (o === O.PART && x === STAGE.x - 1 && y === STAGE.y) items.push({ d: x + y, k: 0, x, y, o: O.GUILLOTINE, sx, sy });   // prancha da guilhotina
     else if (o !== O.NONE && !FLAT.has(o) && o !== O.PART) { items.push({ d: x + y, k: 0, x, y, o, sx, sy }); if (o === O.TREE || o === O.PINE || o === O.OAK || o === O.BIRCH || o === O.WILLOW) visTrees.push({ wx, wy }); }
     if (o === O.FLOWER || o === O.FLOWERBED) visFlowers.push({ wx, wy });
     if ((g === T.GRASS || g === T.FOREST || g === T.SWAMP) && hash2(x, y, 5) < 0.25) visGrass.push({ wx, wy });
@@ -860,7 +864,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     const efl = e.fl || 0, ebi = (e.z || 0) < 0.5 ? (efl > 0 ? (e.fb ?? bldAt(e.rx, e.ry)) : bldAt(e.rx, e.ry)) : -1;
     if (efl > 0 && !(ebi === inB0 && efl === myFl)) return;       // quem está em outro andar não aparece
     const stH = typeof stageLift === 'function' ? stageLift(e.rx, e.ry) : 0;
-    const it = { d: stH ? Math.max(e.rx + e.ry, STAGE.x + STAGE.y + 0.6) : e.rx + e.ry, k: kind, e, sx, sy: sy - stH - (ebi >= 0 ? flRaise(BUILDINGS[ebi], efl) + (e.lift ? e.lift * flRaise(BUILDINGS[ebi], 1) : 0) : 0), tx: e.rx, ty: e.ry };
+    const it = { d: e.exec && e.exec.T ? STAGE.x + STAGE.y - 0.4 : stH ? Math.max(e.rx + e.ry, STAGE.x + STAGE.y + 0.6) : e.rx + e.ry, k: kind, e, sx, sy: sy - stH - (ebi >= 0 ? flRaise(BUILDINGS[ebi], efl) + (e.lift ? e.lift * flRaise(BUILDINGS[ebi], 1) : 0) : 0), tx: e.rx, ty: e.ry };
     if ((e.z || 0) < 0.5 && inB0 >= 0 && ebi === inB0 && efl === myFl) it.inside = true;
     if ((e.alt || 0) > 0.5) sky.push(it); else if ((e.z || 0) >= 0.5) { if (!hideUpper) upper.push(it); } else items.push(it);
   };
@@ -955,6 +959,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       if (G.loot && G.loot.id === c.id) { const k = Math.min(1, (now - G.loot.t0) / 1300); ctx.strokeStyle = '#ffe890'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(it.sx, it.sy - 34, 9, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke(); }
       return;
     }
+    if (it.rsign) { drawRentSign(ctx, it.sx, it.sy, now); return; }
     if (it.chest) {
       const c = it.chest, s = smallSprite('chest', c.open ? 1 : 0); ctx.imageSmoothingEnabled = true; if (s) pblit(ctx, s, it.sx, it.sy);
       if (c.mine && !c.open) { G.lights.push({ x: it.sx, y: it.sy - 10, r: 40, c: '255,220,120', a: 0.7 }); const t = now / 300; for (let k = 0; k < 3; k++) dab(ctx, it.sx + Math.cos(t + k * 2.1) * 12, it.sy - 22 + Math.sin(t * 1.3 + k) * 6, 2, 2, '#ffe890'); }

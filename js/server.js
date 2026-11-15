@@ -158,6 +158,7 @@ function hostOnClient(from, m) {
     np.hp = np.maxHp; np.mp = np.maxMp;
     if (!m.lvl) { np.gold = 30; np.pots.hp = 3; np.pots.mp = 2; np.pots.band = 3; } // kit inicial
     S.players[from] = np;
+    estateJoin(np);
     if (m.dev && typeof crypto !== 'undefined' && crypto.subtle) crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(m.dev).trim().toUpperCase())).then(buf => {
       const h = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
       if (h !== DEV_HASH || !S.players[from]) { Net.toOne(from, { t: 'dev', ok: 0 }); return; }
@@ -187,6 +188,7 @@ function hostOnClient(from, m) {
     case 'loose': bowLoose(p, m); break;
     case 'pullarrow': pullArrow(p); break;
     case 'grab': startGrab(p, m); break;
+    case 'estate': estateMsg(p, m); break;
     case 'appleoffer': { const n = S.npcs && S.npcs.fruit, now = now_(); if (!n || n.dead || n.downed || dist(p.x, p.y, n.x, n.y) > 5 || (p.food ?? 100) >= 45 || now < (p.appleT || 0)) break; if (!p.inv.apple && Object.keys(p.inv).length >= INV_SLOTS) { tell(p, 'Sua mochila está cheia.'); break; } p.appleT = now + 600000; p.inv.apple = (p.inv.apple || 0) + 1; Net.toOne(p.id, { t: 'loot', k: 'apple' }); tell(p, 'Marta te dá uma maçã vermelhinha.'); sendStat(p); break; }
     case 'pickstart': case 'pick': case 'opencell': case 'give': jailMsg(p, m); break;
     case 'surrender': if (now_() < (p.wanted || 0) && !p.downed && !p.escortBy && !(p.jailUntil > now_())) { p.surrendered = true; p.atk = null; tell(p, 'Você se rendeu. Fique parado: uma sentinela vem te buscar.'); sys(p.name + ' se rendeu às sentinelas.'); } break;
@@ -357,7 +359,7 @@ function handleMove(p, m) {
   const dt = Math.min(1, (now - p.lastMv) / 1000);
   const maxStep = PLAYER_SPEED * (m.sl || now < (p.dodgeAllow || 0) ? RUN_MUL * 2.6 : m.r ? RUN_MUL * 1.5 : 1.7) * (dt + 0.25) + 0.4;
   const ok = dist(p.x, p.y, x, y) <= maxStep && canStandZ(x, y, z, 0.18, p.fl || 0, p.fb ?? -1) && Math.abs(z - (+m.z || 0)) < 0.45;
-  if (!ok) { Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: p.z, fl: p.fl || 0, fb: p.fb ?? -1 }); return; }
+  if (!ok || estateBlocked(p.name, p.x, p.y, x, y, S.estateL)) { Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: p.z, fl: p.fl || 0, fb: p.fb ?? -1 }); return; }
   if (p.sit && dist(p.x, p.y, x, y) > 0.05) p.sit = null;
   p.x = x; p.y = y; p.z = z; p.dir = m.d | 0; p.walking = !!m.w; p.running = !!m.r; p.crouch = !!m.c; p.slide = !!m.sl; p.tired = !!m.ti; p.lastMv = now;
   if (p.casting && dist(p.x, p.y, p.castX, p.castY) > 0.3) { p.casting = null; near(p.x, p.y, { t: 'castend', id: p.id }); }
@@ -1706,7 +1708,7 @@ function guardThink(n, now, dt) {
   if (n.carrying) {
     const q = S.players[n.carrying]; if (!q || !q.downed) { if (q) npcDropCarried(n); else n.carrying = null; return; }
     q.x = n.x; q.y = n.y; q.downed.until = Math.max(q.downed.until, now + 4000);
-    if (n.mission === 'stage' && STAGE.x >= 0) { if (npcWalk(n, STAGE.x + 0.4, STAGE.y + 2.1, 1.7, dt)) { const v = npcDropCarried(n); if (v && !startExecution(v, n.name)) tell(v, 'Sem carrasco, a sentinela te larga no cadafalso.'); n.mission = null; } }
+    if (n.mission === 'stage' && STAGE.x >= 0) { if (npcWalk(n, STAGE.x - 1.6, STAGE.y + 1.2, 1.7, dt)) { const v = npcDropCarried(n); if (v && !startExecution(v, n.name)) tell(v, 'Sem carrasco, a sentinela te larga no cadafalso.'); n.mission = null; } }
     else { const tx = TEMPLE_SPAWN.x, ty = TEMPLE_SPAWN.y; if (npcWalk(n, tx, ty, 1.7, dt)) { const v = npcDropCarried(n); n.mission = null; if (v && npcAlive('priest')) { revivePlayer(v, 0.35, 'Irmã Lúmina'); tell(v, 'A sentinela te trouxe até a Irmã Lúmina.'); } } }
     return;
   }
@@ -1894,18 +1896,18 @@ function startExecution(v, by) {
   const now = now_(), tok = now + Math.random(), crimes = (v.crimes && v.crimes.length ? v.crimes.join(', ') : 'crimes contra Sxan');
   if (v.wanted) { v.wanted = 0; Net.toAll({ t: 'wanted', id: v.id, ms: 0 }); }
   if (v.carriedBy) v.carriedBy = null; if (v.dragBy && S.players[v.dragBy]) stopDrag(S.players[v.dragBy]);
-  v.x = STAGE.x; v.y = STAGE.y + 0.95; v.z = 0; v.execAt = now + EXEC_T.drop; v.execTok = tok; v.downed = null; v.dragBy = 'exec'; if (!v.condemned) condemn(v, true);
-  const ex = S.npcs && S.npcs.executioner; if (ex) { ex.walkTo = [STAGE.x - 1.3, STAGE.y + 2.2]; setTimeout(() => { if (v.execTok === tok && ex && !ex.dead) ex.walkTo = [STAGE.x + 1.1, STAGE.y + 0.2]; }, EXEC_T.pull - 3200); }
+  v.x = STAGE.x - 0.6; v.y = STAGE.y; v.z = 0; v.execAt = now + EXEC_T.drop; v.execTok = tok; v.downed = null; v.dragBy = 'exec'; if (!v.condemned) condemn(v, true);
+  const ex = S.npcs && S.npcs.executioner; if (ex) { ex.walkTo = [STAGE.x - 0.9, STAGE.y + 1.9]; setTimeout(() => { if (v.execTok === tok && ex && !ex.dead) ex.walkTo = [STAGE.x + 0.1, STAGE.y + 1.05]; }, EXEC_T.pull - 3200); }
   for (const s of [10, 20]) setTimeout(() => { if (v.execTok !== tok) return; sys('🔔 O sino da praça toca (' + (30 - s) + ' segundos).'); near(STAGE.x, STAGE.y, { t: 'shake', s: 1 }, VIEW_RADIUS + 12); }, s * 1000);
   near(STAGE.x, STAGE.y, { t: 'exec', id: v.id, x: STAGE.x, y: STAGE.y, T: EXEC_T, name: v.name, crimes }, VIEW_RADIUS + 12);
   sys('🔔 O sino da praça toca: ' + by + ' entregou ' + v.name + ' ao carrasco.');
   setTimeout(() => { if (v.execTok !== tok) return; sys('Mestre Corvo: "' + v.name + ', condenado por ' + crimes + '. Que Sxan tenha piedade da sua alma."'); }, EXEC_T.announce);
   setTimeout(() => { if (v.execTok !== tok || !S.npcs || !S.npcs.executioner || !npcAlive('executioner')) return; near(STAGE.x, STAGE.y, { t: 'anim', w: 'n', id: 'executioner', a: 'lever', ms: 1100 }); }, EXEC_T.pull);
-  setTimeout(() => { const q = S.players[v.id]; if (!q || q.execTok !== tok) return; q.execAt = 0; q.execTok = 0; q.downed = null; q.dragBy = null; q.bound = null; q.lost = (q.lost || 0) & ~LOST.head; Net.toAll({ t: 'condemned', id: q.id, on: 0 }); severPlayer(q, 'head', { x: STAGE.x, y: STAGE.y + 2, name: 'o Carrasco' }); if (q.downed) q.downed.until = now_() + 3500; }, EXEC_T.drop);
+  setTimeout(() => { const q = S.players[v.id]; if (!q || q.execTok !== tok) return; q.execAt = 0; q.execTok = 0; q.downed = null; q.dragBy = null; q.bound = null; q.lost = (q.lost || 0) & ~LOST.head; Net.toAll({ t: 'condemned', id: q.id, on: 0 }); severPlayer(q, 'head', { x: STAGE.x + 0.6, y: STAGE.y, name: 'o Carrasco' }); if (q.downed) q.downed.until = now_() + 3500; }, EXEC_T.drop);
   return true;
 }
 function abortExecution(why) {
-  for (const q of Object.values(S.players)) if (q.execTok) { q.execTok = 0; q.execAt = 0; q.dragBy = null; if (q.downed) q.downed.until = now_() + DOWNED_MS; q.x = STAGE.x + 0.6; q.y = STAGE.y + 1.8; near(STAGE.x, STAGE.y, { t: 'execabort', id: q.id }, VIEW_RADIUS + 12); sys(why); }
+  for (const q of Object.values(S.players)) if (q.execTok) { q.execTok = 0; q.execAt = 0; q.dragBy = null; if (q.downed) q.downed.until = now_() + DOWNED_MS; q.x = STAGE.x - 1.6; q.y = STAGE.y + 1.3; near(STAGE.x, STAGE.y, { t: 'execabort', id: q.id }, VIEW_RADIUS + 12); sys(why); }
 }
 
 
@@ -1931,7 +1933,7 @@ function leadTick(n, now, dt) {
   if (L.phase === 'cuff') { if (now >= L.t) { bindPlayer(q, 'cuffs'); L.phase = 'walk'; } return; }
   if (L.phase === 'scene') return;
   let tx, ty, sp;
-  if (L.dest === 'stage') { tx = STAGE.x + 0.4; ty = STAGE.y + 2.1; sp = 0.8; }
+  if (L.dest === 'stage') { tx = STAGE.x - 1.6; ty = STAGE.y + 1.2; sp = 0.8; }
   else { const c = JAILCELLS[L.cell], ax = c.door[0] - c.spot[0], ay = c.door[1] - c.spot[1]; tx = c.door[0] + ax * 1.6; ty = c.door[1] + ay * 1.6; sp = 1.1; }
   const ox = n.x, oy = n.y, arrived = npcWalk(n, tx, ty, sp, dt), mx = n.x - ox, my = n.y - oy, ml = Math.hypot(mx, my);
   if (ml > 0.0005) { n.dir = dirFromVecS(mx, my); const nx = n.x + mx / ml * 0.55, ny = n.y + my / ml * 0.55; if (canStand(nx, ny, 0, 0.15)) { q.x = nx; q.y = ny; } q.dir = n.dir; q.walking = true; }
@@ -2040,6 +2042,7 @@ function hostTick() {
   const dt = S.lastTick ? Math.min(0.25, (now - S.lastTick) / 1000) : 0.1;
   S.lastTick = now;
   const players = Object.values(S.players);
+  estateTick(now);
 
   if (!S.filled) {
     for (let i = 0; i < 8000 && wildCount() < MAX_WILD; i++) spawnMonster();
@@ -2095,7 +2098,8 @@ function hostTick() {
       if (buffOn(p, 'mead')) { hr = Math.ceil(hr * 1.5); mr = Math.ceil(mr * 1.5); }
       if (inSafe(p.x, p.y)) { hr *= 2; mr *= 2; }
       if (p.sit) { hr = Math.ceil(hr * 2.5); mr = Math.ceil(mr * 2.5); }
-      if (p.sleep != null) { hr = Math.ceil(hr * 4); mr = Math.ceil(mr * 4); }
+      if (p.sleep != null) { const k = estHomeBed(p) ? 6 : 4; hr = Math.ceil(hr * k); mr = Math.ceil(mr * k); }   // na própria cama descansa melhor
+      if (buffOn(p, 'rested')) { hr = Math.ceil(hr * 1.3); mr = Math.ceil(mr * 1.3); }
       p.hp = Math.min(p.maxHp, p.hp + hr); p.mp = Math.min(p.maxMp, p.mp + mr);
       sendStat(p);
     }
@@ -2130,3 +2134,110 @@ function startHostLoop() {
     w.onmessage = hostTick;
   } catch (e) { setInterval(hostTick, 100); }
 }
+
+// ============================================================
+//  MERCADO IMOBILIÁRIO (base) — aluguel de casas: contrato com o corretor ou na placa "Aluga-se",
+//  débito automático por dia do jogo, porta trancada (dono + autorizados), baú seguro, acordar em casa, descanso melhor.
+//  O contrato fica guardado neste reino (no navegador de quem hospeda).
+// ============================================================
+const ESTATE_KEY = 'nae-estate-v1', ESTATE_AUTH_MAX = 6, ESTATE_CHEST_SLOTS = 16, ESTATE_ABANDON_DAYS = 30;
+const estOwner = p => String(p.name || '').trim().toLowerCase() + '|' + p.cls;
+const estDay = () => Math.floor(Date.now() / ESTATE_DAY_MS);
+function estateLoad() {
+  if (S.estate) return S.estate; S.estate = { r: {}, lost: {} };
+  try { const j = typeof localStorage !== 'undefined' && JSON.parse(localStorage.getItem(ESTATE_KEY) || 'null'); if (j && j.r) { S.estate = { r: j.r, lost: j.lost || {} }; for (const pid in S.estate.r) if (!PROPS_BY[pid]) delete S.estate.r[pid]; } } catch (e) { }
+  S.estateL = estateLocks(); return S.estate;
+}
+function estateSave() { try { if (typeof localStorage !== 'undefined') localStorage.setItem(ESTATE_KEY, JSON.stringify(S.estate)); } catch (e) { } }
+function estateLocks() { const E = S.estate, L = {}; if (!E) return L; for (const pid in E.r) { const P = PROPS_BY[pid]; if (P) L[P.bi] = [E.r[pid].ownerName.trim().toLowerCase(), ...E.r[pid].auth]; } return L; }
+function estatePublic() { const E = estateLoad(), st = {}; for (const pid in E.r) st[pid] = E.r[pid].ownerName; return st; }
+function rentalOf(p) { const E = estateLoad(), k = estOwner(p); for (const pid in E.r) if (E.r[pid].owner === k) return pid; return null; }
+function estateMine(p) { const pid = rentalOf(p); if (!pid) return null; const r = S.estate.r[pid]; return { pid, paid: r.paid, day: estDay(), next: (r.paid + 1) * ESTATE_DAY_MS - Date.now(), auth: r.auth, chest: r.chest, dep: r.dep }; }
+function estateSend(p) { Net.toOne(p.id, { t: 'estate', st: estatePublic(), L: S.estateL || {}, mine: estateMine(p) }); }
+function estateChanged() { S.estateL = estateLocks(); estateSave(); Net.toAll({ t: 'estate', st: estatePublic(), L: S.estateL }); for (const q of Object.values(S.players)) if (q.estOpen) estateSend(q); }
+function estChestSpot(P) { return CHESTS.find(c => c.bi === P.bi) || BEDS.find(b => b.bi === P.bi) || null; }
+function estHomeSpot(P) {   // tile livre dentro da casa mais perto da cama (ou do baú)
+  const b = BUILDINGS[P.bi], ref = BEDS.find(q => q.bi === P.bi) || estChestSpot(P); let best = null, bd = 1e9;
+  for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { if (WORLD.bld[tileAt(x, y)] !== P.bi || !canStand(x, y, 0, 0.2)) continue; const d = ref ? dist(x, y, ref.x, ref.y) : 0; if (d < bd) { bd = d; best = { x, y }; } }
+  if (best) return best; const [dx, dy] = doorTile(b); return { x: dx, y: dy };
+}
+function estGive(p, items) {   // devolve itens; o que não cabe fica guardado no corretor
+  const left = {};
+  for (const k in items) { if (!LOOT[k] || !(items[k] > 0)) continue; if (p.inv[k] || Object.keys(p.inv).length < INV_SLOTS) p.inv[k] = (p.inv[k] || 0) + items[k]; else left[k] = items[k]; }
+  return left;
+}
+function estateEnd(pid, why) {
+  const E = estateLoad(), r = E.r[pid]; if (!r) return; delete E.r[pid];
+  const q = Object.values(S.players).find(o => estOwner(o) === r.owner);
+  if (q) { const left = estGive(q, r.chest || {}); if (Object.keys(left).length) E.lost[r.owner] = Object.assign(E.lost[r.owner] || {}, left); tell(q, why); sendStat(q); }
+  else if (Object.keys(r.chest || {}).length) E.lost[r.owner] = Object.assign(E.lost[r.owner] || {}, r.chest);
+  estateChanged();
+}
+function estateJoin(np) {
+  const E = estateLoad(), k = estOwner(np);
+  if (E.lost[k]) { const left = estGive(np, E.lost[k]); if (Object.keys(left).length) E.lost[k] = left; else delete E.lost[k]; estateSave(); setTimeout(() => { if (S.players[np.id]) tell(np, 'O corretor devolveu os itens do seu antigo baú.'); }, 2500); }
+  const pid = rentalOf(np); if (pid) { const s = estHomeSpot(PROPS_BY[pid]); np.x = s.x; np.y = s.y; }
+  setTimeout(() => { if (S.players[np.id]) { estateSend(np); if (pid) tell(np, 'Você acorda em casa: ' + PROPS_BY[pid].name + ' (' + PROPS_BY[pid].district + ').'); } }, 1200);
+}
+function nearBroker(p) { const n = S.npcs && S.npcs.broker; return !!n && !n.dead && !n.downed && dist(p.x, p.y, n.x, n.y) < 4.5; }
+function nearPropDoor(p, P) { const [dx, dy] = doorTile(BUILDINGS[P.bi]); return dist(p.x, p.y, dx, dy) < 3.4; }
+function estateMsg(p, m) {
+  const E = estateLoad(), P = PROPS_BY[m.pid];
+  switch (m.a) {
+    case 'open': p.estOpen = true; estateSend(p); return;
+    case 'close': p.estOpen = false; return;
+    case 'rent': {
+      if (!P) return; if (P.kind !== 'house') { tell(p, 'Contratos de lojas e oficinas ainda não estão abertos.'); return; }
+      if (E.r[P.id]) { tell(p, 'Esse imóvel já está alugado.'); return; }
+      if (!nearBroker(p) && !nearPropDoor(p, P)) { tell(p, 'O contrato se fecha com o corretor, na Imobiliária, ou na placa da porta do imóvel.'); return; }
+      if (rentalOf(p)) { tell(p, 'Você já aluga uma casa. Devolva a chave antes de alugar outra.'); return; }
+      const cost = P.rent * 2;
+      if ((p.gold || 0) < cost) { tell(p, 'Você precisa de ' + cost + ' de ouro (primeiro dia + caução de ' + P.rent + ').'); return; }
+      p.gold -= cost; E.r[P.id] = { owner: estOwner(p), ownerName: p.name, paid: estDay(), auth: [], chest: {}, dep: P.rent, since: Date.now() };
+      sendStat(p); tell(p, 'Contrato assinado! ' + P.name + ' (' + P.district + ') é sua. Aluguel: ' + P.rent + ' de ouro por dia, debitado sozinho.');
+      estateChanged(); return;
+    }
+    case 'leave': {
+      const pid = rentalOf(p); if (!pid) return; const r = E.r[pid];
+      p.gold += r.dep || 0; sendStat(p); estateEnd(pid, 'Você devolveu a chave de ' + PROPS_BY[pid].name + '. A caução de ' + (r.dep || 0) + ' de ouro voltou e o baú foi esvaziado na sua mochila.'); return;
+    }
+    case 'auth': case 'unauth': {
+      const pid = rentalOf(p); if (!pid) return; const r = E.r[pid], nm = String(m.name || '').trim().toLowerCase().slice(0, 16);
+      if (!nm || nm === p.name.trim().toLowerCase()) return;
+      if (m.a === 'auth') { if (r.auth.includes(nm)) return; if (r.auth.length >= ESTATE_AUTH_MAX) { tell(p, 'No máximo ' + ESTATE_AUTH_MAX + ' pessoas autorizadas.'); return; } r.auth.push(nm); tell(p, nm + ' agora pode entrar na sua casa.'); }
+      else r.auth = r.auth.filter(a => a !== nm);
+      estateChanged(); return;
+    }
+    case 'put': case 'take': {
+      const pid = rentalOf(p); if (!pid) { tell(p, 'Você não aluga nenhuma casa.'); return; }
+      const PP = PROPS_BY[pid], c = estChestSpot(PP), r = E.r[pid], k = String(m.k || '');
+      if (!c || WORLD.bld[tileAt(p.x, p.y)] !== PP.bi || dist(p.x, p.y, c.x, c.y) > 2.4) { tell(p, 'O baú fica dentro da sua casa.'); return; }
+      if (!LOOT[k]) return;
+      if (m.a === 'put') { const q = Math.min(p.inv[k] || 0, Math.max(1, m.q | 0)); if (!q) return; if (!r.chest[k] && Object.keys(r.chest).length >= ESTATE_CHEST_SLOTS) { tell(p, 'O baú está cheio.'); return; } p.inv[k] -= q; if (!p.inv[k]) delete p.inv[k]; r.chest[k] = (r.chest[k] || 0) + q; }
+      else { const q = Math.min(r.chest[k] || 0, Math.max(1, m.q | 0)); if (!q) return; if (!p.inv[k] && Object.keys(p.inv).length >= INV_SLOTS) { tell(p, 'Sua mochila está cheia.'); return; } r.chest[k] -= q; if (!r.chest[k]) delete r.chest[k]; p.inv[k] = (p.inv[k] || 0) + q; }
+      estateSave(); sendStat(p); estateSend(p); return;
+    }
+  }
+}
+// débito diário + descanso em casa (roda a cada ~2 s)
+function estateTick(now) {
+  if (now - (S.estT || 0) < 2000) return; const dt = S.estT ? (now - S.estT) / 1000 : 2; S.estT = now;
+  const E = estateLoad(), day = estDay();
+  for (const pid of Object.keys(E.r)) {
+    const r = E.r[pid], P = PROPS_BY[pid], owed = day - r.paid; if (owed <= 0) continue;
+    const q = Object.values(S.players).find(o => estOwner(o) === r.owner);
+    if (!q) { if (owed > ESTATE_ABANDON_DAYS) estateEnd(pid, ''); continue; }
+    let paid = 0; while (r.paid < day && q.gold >= P.rent) { q.gold -= P.rent; r.paid++; paid++; }
+    if (paid) { sendStat(q); tell(q, 'Aluguel de ' + P.name + ': -' + (P.rent * paid) + ' de ouro' + (paid > 1 ? ' (' + paid + ' dias)' : '') + '.'); estateSave(); if (q.estOpen) estateSend(q); }
+    const still = day - r.paid;
+    if (still >= 2) { estateEnd(pid, 'Sem ouro para o aluguel, você perdeu ' + P.name + '. A caução cobriu a dívida e o baú voltou para a sua mochila.'); }
+    else if (still === 1 && !r.warned) { r.warned = day; tell(q, 'Aluguel atrasado em ' + P.name + ': junte ' + P.rent + ' de ouro antes do fim do dia ou perde a casa.'); }
+    else if (!still) r.warned = 0;
+  }
+  for (const p of Object.values(S.players)) {
+    if (p.sleep == null || !estHomeBed(p)) { p.homeSleep = 0; continue; }
+    p.homeSleep = (p.homeSleep || 0) + dt;
+    if (p.homeSleep >= 20 && !buffOn(p, 'rested')) { p.buffs.rested = now + 600000; tell(p, 'Você dormiu bem na sua cama: Bem descansado (10 min, recupera vida e mana mais rápido).'); sendStat(p); }
+  }
+}
+function estHomeBed(p) { if (p.sleep == null) return false; const b = BEDS[p.sleep], pid = rentalOf(p); return !!(b && pid && PROPS_BY[pid].bi === b.bi); }

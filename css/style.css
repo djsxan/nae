@@ -424,3 +424,35 @@ body.nae[data-tp=chars] .lobby-grid > section.wide { display: none; }
 .nae-row { display: flex; gap: 8px; } .nae-row button { flex: 1; padding: 8px; background: rgba(0,0,0,.4); color: #d8ccb4; border: 1px solid rgba(226,214,188,.25); cursor: pointer; font-family: 'IM Fell English SC', serif; letter-spacing: .1em; }
 .nae-row button.on { border-color: #a83a2a; color: #f1e6cc; background: #3a120e; }
 body.nae .class-card h3, body.nae .class-card .cname, body.nae .class-card b { color: #e2d6bc !important; }
+
+/* ---------- Imobiliária ---------- */
+#estate { width: min(900px, 96vw); }
+.est-tabs { display: flex; gap: 6px; margin-bottom: 10px; }
+.est-tabs button { flex: 1; padding: 7px 6px; border-radius: 6px; border: 1px solid #5a4424; background: #1e1610; color: #d8c8a4; font: 600 14px 'Alegreya', serif; cursor: pointer; }
+.est-tabs button.on { background: #4a3418; color: #f6e2a8; border-color: #c9a24a; }
+.est-main { display: grid; grid-template-columns: minmax(0, 400px) minmax(0, 1fr); gap: 12px; }
+.est-mapbox canvas { width: 100%; height: auto; border-radius: 8px; border: 1px solid #4a3a22; background: #17130e; cursor: pointer; display: block; }
+.est-legend { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 6px; font-size: 12px; color: #c8b890; }
+.est-legend i, .est-row > i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+.est-side { max-height: 330px; overflow: auto; padding-right: 2px; }
+.est-row { display: grid; grid-template-columns: 14px 1fr auto; gap: 8px; align-items: center; padding: 7px 8px; border-radius: 6px; border: 1px solid transparent; cursor: pointer; }
+.est-row:hover { background: rgba(201, 162, 74, 0.08); }
+.est-row.sel { border-color: #c9a24a; background: rgba(201, 162, 74, 0.14); }
+.est-row small, .est-r small { display: block; font-size: 12px; color: #a8987a; }
+.est-r { text-align: right; } .est-r b { color: #f0d890; } .est-r em { display: block; font-size: 11px; font-style: normal; color: #c8b890; }
+#est-detail { margin-top: 10px; }
+.est-det { border-top: 1px solid rgba(201, 162, 74, 0.3); padding-top: 10px; }
+.est-dh b { font: 700 18px 'Cinzel', serif; color: #f0d890; margin-right: 10px; } .est-dh span { color: #b8a888; font-size: 13px; }
+.est-perks { margin: 8px 0; padding-left: 4px; list-style: none; columns: 2; font-size: 13px; color: #d8ccb0; } .est-perks li { margin: 2px 0; break-inside: avoid; }
+.est-cost { margin: 6px 0 8px; color: #d8ccb0; font-size: 14px; } .est-cost b { color: #f0d890; }
+.est-btn { padding: 8px 14px; margin: 2px 6px 2px 0; border-radius: 6px; border: 1px solid #c9a24a; background: linear-gradient(#5a4018, #3a2810); color: #f6e2a8; font: 700 14px 'Alegreya', serif; cursor: pointer; }
+.est-btn[disabled] { opacity: 0.5; cursor: default; } .est-btn.ghost { background: transparent; border-color: #6a5028; color: #d8c8a4; }
+.est-auth { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; } .est-auth span { background: #241a12; border: 1px solid #5a4424; border-radius: 12px; padding: 2px 4px 2px 10px; font-size: 13px; }
+.est-auth button { border: 0; background: none; color: #e88; cursor: pointer; }
+.est-addauth { display: flex; gap: 6px; margin-bottom: 8px; } .est-addauth input { flex: 1; min-width: 0; padding: 6px 8px; border-radius: 6px; border: 1px solid #5a4424; background: #120e0a; color: #eee; }
+.est-chest { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.est-grid { display: flex; flex-wrap: wrap; gap: 5px; }
+.est-item { width: 44px; height: 44px; position: relative; border-radius: 6px; border: 1px solid #5a4424; background: #1c150e; cursor: pointer; font-size: 20px; }
+.est-item b { position: absolute; right: 3px; bottom: 1px; font-size: 11px; color: #f0e0b0; }
+.est-item:hover { border-color: #c9a24a; }
+@media (max-width: 700px) { .est-main, .est-chest { grid-template-columns: 1fr; } .est-perks { columns: 1; } }

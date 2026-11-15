@@ -49,6 +49,7 @@ const NPC_LOOKS = {
   noble: () => Object.assign(heroLook('archer', 'scout', '#3a2a5a'), { armor: 'robe', body: tone('#3a2a5a'), body2: tone('#d8c890'), accent: tone('#d4a94a'), trim: tone('#d4a94a'), head: 'circlet', hairStyle: 'long', hair: tone('#c8a060'), weapon: null, quiver: false, capeTone: tone('#2a1a40'), skin: tone('#f0d0b8') }),
   noble2: () => Object.assign(heroLook('knight', 'iron', '#1e3a5a'), { armor: 'leather', body: tone('#1e3a5a'), body2: tone('#d8c890'), accent: tone('#d4a94a'), trim: tone('#d4a94a'), head: 'none', hair: tone('#3a2a1a'), beard: tone('#3a2a1a'), weapon: 'sword', shield: null, capeTone: tone('#5a1420'), skin: tone('#e0b898') }),
   gardener: () => Object.assign(heroLook('archer', 'scout', '#4a5a2a'), { armor: 'vest', body: tone('#5a6a3a'), body2: tone('#c8b890'), head: 'cap', headTone: tone('#6a5a3a'), weapon: null, quiver: false, hair: tone('#8a7a6a'), beard: tone('#8a7a6a'), skin: tone('#d8a880') }),
+  broker: () => Object.assign(heroLook('archer', 'scout', '#3a2a1a'), { armor: 'robe', body: tone('#4a3420'), body2: tone('#e8dcc0'), accent: tone('#c9a24a'), trim: tone('#c9a24a'), head: 'none', hair: tone('#5a5048'), beard: tone('#5a5048'), weapon: null, quiver: false, capeTone: null, skin: tone('#dcb090') }),
   tailor: () => Object.assign(heroLook('mage', 'adept', '#6e1424'), { armor: 'robe', body: tone('#5e1422'), body2: tone('#2a0e14'), accent: tone('#d4a94a'), trim: tone('#d4a94a'), head: 'none', hair: tone('#d8d4cc'), beard: tone('#d8d4cc'), weapon: null, capeTone: tone('#2a0e14'), skin: tone('#e2c0a0') }),
   fruit: () => Object.assign(heroLook('archer', 'scout', '#3e5a34'), { armor: 'robe', body: tone('#3e5a34'), body2: tone('#efe6cf'), accent: tone('#efe6cf'), trim: tone('#a8342a'), head: 'none', hairStyle: 'long', hair: tone('#3a2414'), weapon: null, quiver: false, skin: tone('#e6bea0'), capeTone: null }),
   priest: () => Object.assign(heroLook('mage', 'adept', '#e9e2cf'), { body: tone('#e9e2cf'), body2: tone('#c9a24a'), head: 'hood', accent: tone('#f2ecdc'), weapon: 'book', beard: null, hair: tone('#6b4a2b'), skin: tone('#e2b896') }),
@@ -279,6 +280,7 @@ function buildPose(cls, P) {
   if (P.sit === 'g') { Q.lA = [2.45, -2.35]; Q.lB = [2.2, -2.0]; Q.drop = 12; Q.aA = [1.15, 0.35, 1.35]; Q.aB = [1.05, 0.4, 1.25]; Q.tl = -0.22; Q.ht = 0.12; }
   else if (P.sit) { Q.lA = [1.5, -1.55]; Q.lB = [1.45, -1.5]; Q.drop = 12; Q.aA = [0.45, 0.25, 0.7]; Q.aB = [0.45, 0.25, 0.7]; Q.tl = -0.02; }
   if (P.tied) { Q.aA = [-0.45, -0.28, 0.35]; Q.aB = [-0.45, -0.28, 0.35]; Q.tl = 0.12; Q.ht = 0.3; Q.tie = P.tied; Q.nowp = 1; }   // mãos amarradas atrás das costas
+  if (P.nowp) Q.nowp = 1;
   if (P.surr) { Q.aA = [2.6, 1.1, 2.6]; Q.aB = [2.6, 1.1, 2.6]; Q.ht = 0.25; Q.tl = 0.05; Q.nowp = 1; }                    // rendido: mãos na nuca
   if (P.led && P.walk >= 0) {   // andar forçado: passos curtos e desajeitados, curvado, tropeçando
     const ph = P.walk / 12 * Math.PI * 2, st = Math.max(0, Math.sin(ph * 2 + 0.6)) > 0.92 ? 0.25 : 0;
@@ -652,7 +654,7 @@ function heroSprite(cls, skin, color, P) {
   const L = lookFor(lk, () => heroLook(cls, skin, color));
   return sprite('h|' + lk + '|' + poseKey(P), HW, HH, HAX, HAY, pc => drawHeroPC(pc, L, P, cls), { ok: 0.42 });
 }
-const NPC_CLS = { noble: 'archer', noble2: 'knight', gardener: 'archer', tailor: 'mage', jailer: 'knight', executioner: 'knight', fruit: 'archer', priest: 'mage', merchant: 'archer', innkeeper: 'archer', guard: 'knight', captain: 'knight', smith: 'knight' };
+const NPC_CLS = { broker: 'archer', noble: 'archer', noble2: 'knight', gardener: 'archer', tailor: 'mage', jailer: 'knight', executioner: 'knight', fruit: 'archer', priest: 'mage', merchant: 'archer', innkeeper: 'archer', guard: 'knight', captain: 'knight', smith: 'knight' };
 function npcSprite(kind, P) {
   const L = lookFor('npc:' + kind, NPC_LOOKS[kind]);
   return sprite('n|' + kind + '|' + poseKey(P), HW, HH, HAX, HAY, pc => drawHeroPC(pc, L, P, NPC_CLS[kind] || 'knight'), { ok: 0.42 });

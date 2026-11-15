@@ -11,7 +11,7 @@ function onExec(m, now) {
   G.execS = { t0: now, T: m.T, id: m.id };
   const v = G.players[m.id]; if (v) v.exec = { t0: now, T: m.T };
   G.shake = Math.max(G.shake, 2);
-  const ex = G.npcs.executioner; if (ex) { later(m.T.announce, () => { ex.bubble = { t: '⚖', until: performance.now() + 3500 }; ex.dir = dirFromVec(STAGE.x - ex.rx, STAGE.y + 1 - ex.ry, ex.dir); }); }
+  const ex = G.npcs.executioner; if (ex) { later(m.T.announce, () => { ex.bubble = { t: '⚖', until: performance.now() + 3500 }; ex.dir = dirFromVec(STAGE.x - 0.6 - ex.rx, STAGE.y - ex.ry, ex.dir); }); }
   // multidão: quem está perto vira para olhar e reage quando a lâmina cai
   for (const id in G.npcs) {
     const e = G.npcs[id]; if (e === ex || e.npDead || e.npDown || dist(e.rx, e.ry, STAGE.x, STAGE.y) > 15) continue;
@@ -29,9 +29,9 @@ function jailEvent(m, now) {
 // preso deitado de bruços na prancha, com o pescoço na luneta
 function drawExecVictim(ctx, e, sx, sy, now) {
   const X = e.exec; if (!X || now > X.t0 + X.T.fall + 3000) return false;
-  const P = iso(STAGE.x, STAGE.y + 0.65), x = P.sx + G.view.ox, y = P.sy + G.view.oy - 12;
-  const s = heroSprite3D(e.cls, e.skin, e.color, { dir: 2, walk: -1, down: true, prone: true, lost: now > X.t0 + X.T.drop ? (e.lost || 0) | 1 : e.lost || 0 });
-  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.translate(x, y); ctx.rotate(-0.4636); const w = woundOf(s, 2); ctx.drawImage(w.c, -w.ax, -w.ay + 8, w.w, w.h); ctx.restore(); e._spr = null; return true;
+  const P = iso(STAGE.x - 0.8, STAGE.y), x = P.sx + G.view.ox, y = P.sy + G.view.oy;
+  const s = heroSprite3D(e.cls, e.skin, e.color, { dir: 2, walk: -1, down: true, prone: true, nowp: 1, lost: now > X.t0 + X.T.drop ? (e.lost || 0) | 1 : e.lost || 0 });
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.translate(x, y); ctx.rotate(0.4636); const w = woundOf(s, 2); ctx.drawImage(w.c, -w.ax, -w.ay + 8, w.w, w.h); ctx.restore(); e._spr = null; return true;
 }
 let EXEC_DIR = 3;
 // os NPCs da multidão olham para a guilhotina

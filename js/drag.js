@@ -67,7 +67,7 @@ function drawGripBar(ctx, now) {
   const me = G.me; if (!me || !me.gripped) return;
   const p = iso(me.rx, me.ry), x = p.sx + G.view.ox, y = p.sy + G.view.oy - 66, k = Math.min(1, (me.esc || 0) / 100);
   ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - 22, y - 3, 44, 6); ctx.fillStyle = '#e8c45a'; ctx.fillRect(x - 21, y - 2, 42 * k, 4);
-  ctx.fillStyle = '#fff'; ctx.font = 'bold 7px serif'; ctx.textAlign = 'center'; ctx.fillText(Math.floor(now / 250) % 2 ? 'ESPAÇO! ESPAÇO!' : 'Solte-se!', x, y - 7); ctx.restore();
+  ctx.fillStyle = '#fff'; ctx.font = 'bold 7px serif'; ctx.textAlign = 'center'; ctx.fillText('Martele ESPAÇO para se soltar', x, y - 7); ctx.restore();
 }
 // corpo puxado: deitado (de costas pelos braços, de bruços pelo pé), cabeça/pés para o lado de quem puxa
 function dragDir(e) {

@@ -30,7 +30,7 @@ function anySprite(cls, skin, color, P, kind) {
 function later(ms, fn) { if (!ms || ms <= 0) fn(); else G.timers.push({ at: performance.now() + ms, fn }); }
 const IDLE_SETS = {
   knight: ['look', 'stretch', 'polish', 'kick', 'sit', 'look'], archer: ['look', 'stretch', 'yawn', 'polish', 'sit', 'kick'], mage: ['look', 'yawn', 'polish', 'stretch', 'sit'],
-  noble: ['look', 'wave', 'look'], noble2: ['look', 'salute', 'look'], gardener: ['polish', 'polish', 'look', 'stretch'], tailor: ['look', 'polish', 'look', 'salute'], jailer: ['look', 'yawn', 'look', 'polish'], fruit: ['look', 'wave', 'look', 'stretch'], executioner: ['look', 'polish', 'look', 'stretch'], priest: ['pray', 'read', 'look', 'pray'], merchant: ['look', 'wave', 'kick', 'look'], innkeeper: ['drink', 'look', 'wave', 'drink'], guard: ['salute', 'look', 'kick', 'look'], captain: ['look', 'salute', 'polish', 'look'],
+  noble: ['look', 'wave', 'look'], noble2: ['look', 'salute', 'look'], gardener: ['polish', 'polish', 'look', 'stretch'], tailor: ['look', 'polish', 'look', 'salute'], broker: ['look', 'polish', 'look', 'wave'], jailer: ['look', 'yawn', 'look', 'polish'], fruit: ['look', 'wave', 'look', 'stretch'], executioner: ['look', 'polish', 'look', 'stretch'], priest: ['pray', 'read', 'look', 'pray'], merchant: ['look', 'wave', 'kick', 'look'], innkeeper: ['drink', 'look', 'wave', 'drink'], guard: ['salute', 'look', 'kick', 'look'], captain: ['look', 'salute', 'polish', 'look'],
 };
 function updateIdle(e, now) {
   if (e.npDead || e.npDown) { e.idleAnim = null; return; }
@@ -52,6 +52,7 @@ function clientOnServer(m) {
   if (typeof progEvent === 'function' && progEvent(m, now)) return;
   if (typeof bowEvent === 'function' && bowEvent(m, now)) return;
   if (typeof jailEvent === 'function' && jailEvent(m, now)) return;
+  if (typeof estateEvent === 'function' && estateEvent(m)) return;
   if (typeof lawEvent === 'function' && lawEvent(m, now)) return;
   switch (m.t) {
     case 'welcome':
@@ -259,7 +260,7 @@ function monsterNear(x, y, r = 0.5) {
   for (const id in G.monsters) { const m = G.monsters[id]; if (!m.dieAt && dist(m.rx, m.ry, x, y) < r) return true; }
   return false;
 }
-function freeAt(x, y, z) { if (G.dev && G.noclip) return true; if (typeof jailBlock === 'function' && JAILCELLS.length && jailBlock(x, y)) return false; const me = G.me; if (me && me.fl > 0) return canStandFloor(x, y, me.fb, me.fl, 0.22); return canStandZ(x, y, z, 0.22) && (z >= 0.5 || G.slide || !monsterNear(x, y)); }
+function freeAt(x, y, z) { if (G.dev && G.noclip) return true; if (typeof estLockedFor === 'function' && G.me && estLockedFor(G.me.x, G.me.y, x, y)) return false; if (typeof jailBlock === 'function' && JAILCELLS.length && jailBlock(x, y)) return false; const me = G.me; if (me && me.fl > 0) return canStandFloor(x, y, me.fb, me.fl, 0.22); return canStandZ(x, y, z, 0.22) && (z >= 0.5 || G.slide || !monsterNear(x, y)); }
 
 function myInput() {
   const k = G.keys;
@@ -277,7 +278,7 @@ function myInput() {
 
 function updateLocal(now, dt) {
   const me = G.me;
-  if (me && (me.carriedBy || me.dragged) && me.cx != null) { const k = Math.min(1, dt * 9); me.rx += (me.cx - me.rx) * k; me.ry += (me.cy - me.ry) * k; me.x = me.rx; me.y = me.ry; if (me.escorted || me.gripped || (me.stb & 8)) { me.walking = Math.hypot(me.cx - me.rx, me.cy - me.ry) > 0.03; if (me.walking) me.walkDist = (me.walkDist || 0) + Math.hypot(me.cx - me.rx, me.cy - me.ry) * k; } }
+  if (me && (me.carriedBy || me.dragged) && me.cx != null) { const k = Math.min(1, dt * 9); me.rx += (me.cx - me.rx) * k; me.ry += (me.cy - me.ry) * k; me.x = me.rx; me.y = me.ry; G.towWalk = 0; if (me.escorted || me.gripped || me.bound || (me.stb & 8)) { const dd = Math.hypot(me.cx - me.rx, me.cy - me.ry); G.towSpd = (G.towSpd || 0) * 0.85 + dd * 0.15; G.towWalk = G.towSpd > 0.006 ? 1 : 0; me.walking = !!G.towWalk; if (me.walking) me.walkDist = (me.walkDist || 0) + dd * k; } } else G.towWalk = 0;
   if (!me || me.carriedBy) { if (me) { me.walking = false; } return; }
   if (now < (G.busyUntil || 0)) { me.walking = false; G.path = null; if (G.busyFace) me.dir = dirFromVec(G.busyFace.x - me.x, G.busyFace.y - me.y, me.dir); return; }   // cozinhando: parado de frente para o fogão
   if (G.climbing) { stepClimb(now); return; }
@@ -351,7 +352,7 @@ function updateLocal(now, dt) {
     if (!combatFacing()) me.dir = dirFromVec(v[0], v[1], me.dir);
     if (!moved && G.path) { G.path = null; G.pathGoal = null; }
   }
-  me.walking = moved > 0.0005;
+  me.walking = moved > 0.0005 || !!G.towWalk;
   me.walkDist += moved;
   if (me.walking && Math.random() < 0.08) { const w = tileW(me.x, me.y, me.z * FLOOR_PX); spawnPart('dust', w.x, w.y); }
   // escadas dentro dos prédios: pisar no degrau de baixo sobe andando; pisar no topo (andar de cima) desce
@@ -485,7 +486,7 @@ function resize() {
   W = window.innerWidth; H = window.innerHeight;
   canvas.width = W * DPR; canvas.height = H * DPR;
   canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
-  G.baseScale = clamp(H / 425 * 1.45 * (SET.zoom || 1), 1.8, 6.5); if (!G.zoomUser) SCALE = G.baseScale * (G.dragonZoom || 1);
+  G.baseScale = clamp(H / 425 * 1.45 * (SET.zoom || 1), 1.8, 6.5); if (!G.zoomUser) SCALE = G.baseScale;
 }
 window.addEventListener('resize', resize);
 resize();
@@ -621,7 +622,11 @@ function updateSlots(now) {
   // dica de interação (reanimar/carregar)
   const dn = !me.downed && nearestDowned();
   const pr = $('prompt');
-  if (me.carrying) { pr.textContent = '[G] Soltar · leve até a Irmã Lúmina, na capela'; pr.classList.remove('hidden'); }
+  const sp = G.survPrompt || '';
+  if (me.bound && sp) { if (pr.textContent !== sp) pr.textContent = sp; pr.classList.remove('hidden'); }
+  else if (me.carrying) { pr.textContent = '[G] Soltar · leve até a Irmã Lúmina, na capela'; pr.classList.remove('hidden'); }
+  else if (!me.downed && nearCorpse()) { /* updateLooting cuida */ }
+  else if (sp && !dn) { if (pr.textContent !== sp) pr.textContent = sp; pr.classList.remove('hidden'); }
   else if (dn) { pr.textContent = `[F segurar] Reanimar ${dn.name} · [G] Carregar`; pr.classList.remove('hidden'); }
   else pr.classList.add('hidden');
 }
@@ -646,6 +651,11 @@ function flashDamage() { const v = $('vignette'); v.classList.remove('hit'); voi
 // ---------- diálogos com NPCs ----------
 const GUARD_TEXT = 'Além do fosso: os Campos (★) logo além da paliçada; o Bosque Sombrio (★★) ao norte; o Pântano Pútrido (★★) a leste; as Colinas de Ossos (★★★) ao sul; o Acampamento Orc (★★★) a oeste. Perto do mar, as Terras Selvagens (★★★★). A cachoeira fica na montanha, a noroeste.';
 const NPC_DIALOG = {
+  broker: { greet: 'Bem-vindo à Imobiliária Chave de Bronze! Casas, lojas, oficinas: se tem porta em Sxan, eu sei de quem é a chave. Quer ver o que está livre?', opts: [
+    ['Ver imóveis (mapa e lista)', { open: 'estate' }],
+    ['Como funciona o aluguel?', { local: 'Simples: você paga o primeiro dia e uma caução, e a chave é sua. Depois o aluguel sai sozinho da sua bolsa a cada dia (12 minutos). Se faltar ouro por dois dias, a casa volta para mim e o baú vai para a sua mochila. Devolveu a chave? A caução volta.' }],
+    ['E o que ganho com uma casa?', { local: 'Porta trancada (só entra quem você autorizar), um baú seguro, você acorda lá quando chega ao reino e dorme muito melhor na sua própria cama. Nada como estar em casa.' }],
+    ['Posso alugar uma loja ou oficina?', { local: 'Ainda não. Os pontos da Rua Nova estão vagos, mas a Coroa só vai abrir esses contratos em breve. Aí sim: estoque, ajudantes, vitrine e lucro. Volte logo!' }]] },
   noble: { greet: 'Oh. Um aventureiro, aqui? Que... pitoresco. Cuidado com as botas no calçamento.', opts: [['Que bairro é este?', { local: 'O Bairro Nobre, querido. As melhores famílias de Sxan vivem aqui, longe do cheiro da feira.' }]] },
   noble2: { greet: 'Lorde Cassian Aldren. Se veio pedir favores, marque uma audiência como todo mundo.', opts: [['Só estou de passagem.', { local: 'Então passe. E não pise nos canteiros.' }]] },
   gardener: { greet: 'Bom dia! Essas sebes não se podam sozinhas, sabe? A Lady Valmont quer tudo perfeito.', opts: [['Belo jardim.', { local: 'Trinta anos de tesoura! A roseira do chafariz fui eu que plantei.' }]] },
@@ -717,7 +727,7 @@ function buildDialogOptions(id) {
     add('Como funciona a cadeia?', () => setDialogText('Quem é pego pelas sentinelas fica aqui o tempo da pena: agressão 2 minutos, ataque à traição 3, assassinato 6. Dormir no catre faz o tempo passar mais rápido. Fiança: 30 de ouro por minuto que falta. E nada de mexer nas fechaduras, ouviu?'));
   } else {
     const def = NPC_DIALOG[n.kind];
-    for (const [label, act] of def.opts) add(label, () => { if (act.local) setDialogText(act.local); else Net.send({ t: 'npc', n: id, ...act }); });
+    for (const [label, act] of def.opts) add(label, () => { if (act.open === 'estate') { closeDialog(); estToggle(true, 'house'); } else if (act.local) setDialogText(act.local); else Net.send({ t: 'npc', n: id, ...act }); });
   }
   add('Até logo', closeDialog, 'ghost');
 }
@@ -897,6 +907,7 @@ window.addEventListener('keydown', e => {
   if (k === 'f' && !e.repeat && typeof boundNear === 'function') { const q = boundNear(); if (q) { Net.send({ t: 'untie', id: q.id }); return; } }
   if (k === 'f' && !e.repeat && typeof jailKeyF === 'function' && jailKeyF()) return;
   if (k === 'f' && !e.repeat && typeof nearStove === 'function' && nearStove() && !nearestDowned()) { openCook(); return; }
+  if (k === 'f' && !e.repeat && !nearestDowned() && !nearCorpse() && typeof estateF === 'function' && estateF()) return;
   if (k === 'f' && !e.repeat && !nearestDowned() && !nearCorpse() && survivalAction()) return;
   if (k === 'f' && !e.repeat && (G.me.arw || []).length && !nearestDowned() && !nearCorpse()) { Net.send({ t: 'pullarrow' }); return; }   // arrancar flecha cravada
   if (k === 'f' && !e.repeat && inCombatZone() && !nearestDowned() && !nearCorpse() && !(G.chests || []).some(c => c.mine && !c.open && dist(c.x, c.y, G.me.x, G.me.y) < 1.8)) { Net.send({ t: 'kick', a: G.me.fa ?? 0 }); return; }
@@ -911,6 +922,7 @@ window.addEventListener('keydown', e => {
   if (k === 'escape' && G.devPlace) { G.devPlace = null; showToast('Colocação cancelada.'); return; }
   if (k === 'j' && !e.repeat) { togglePanel('journal'); return; }
   if (k === 'k' && !e.repeat) { togglePanel('tree'); return; }
+  if (k === 'l' && !e.repeat && typeof estToggle === 'function') { estToggle(null, 'mine'); return; }
   if ((k === '5' || k === '6' || k === '7') && !e.repeat) { Net.send({ t: 'tskill', b: +k - 5, a: G.me.fa ?? 0, id: G.target || 0 }); return; }
   if (k === 'm' && !e.repeat) { toggleWorldMap(); return; }
   if (k === 't') { if (!e.repeat) openEmoteWheel(); return; }
@@ -961,11 +973,6 @@ function frame() {
     if (typeof crowdLook === 'function') { crowdLook(now); jailerNight(); }
     if (G.reviveSticky && (G.me.walking || !G.reviving)) { if (G.reviving) Net.send({ t: 'revive', id: G.reviving, on: false }); G.reviving = null; G.reviveSticky = false; }
     if (G.shootHeld && inCombatZone() && now - (G.shootT || 0) > 220) { G.shootT = now; Net.send({ t: 'shoot', a: G.me.fa ?? 0, id: G.target || 0 }); }
-    { // luta com o dragão: a câmera se afasta devagar para caber tudo na tela (só se o zoom não foi mudado à mão)
-      let near = false; for (const id in G.monsters) { const q = G.monsters[id]; if (MON[q.type].dragon && !q.dieAt && !(q.flags & 4) && dist(q.rx, q.ry, G.me.rx, G.me.ry) < 22) near = true; }
-      G.dragonZoom = (G.dragonZoom || 1) + ((near ? 0.6 : 1) - (G.dragonZoom || 1)) * Math.min(1, dt * 1.2);
-      if (!G.zoomUser && G.baseScale) SCALE = G.baseScale * G.dragonZoom;
-    }
     for (const id in G.players) { const e = G.players[id]; if (id !== G.myId) { if (e.fling) stepFling(e, now); else interp(e, now); } updateIdle(e, now); bleed(e, now); }
     for (const id in G.monsters) { const q = G.monsters[id]; if (q.dieAt && !q._pool && now > q.dieAt && !NO_BLOOD.has(q.type)) { q._pool = 1; addBlood(q.rx, q.ry, q.z || 0, MON[q.type].big ? 1.3 : 0.8, 60000); } }
     for (const id in G.monsters) { const m = G.monsters[id]; interp(m, now); if (m.dieAt && now > m.dieAt + 650) delete G.monsters[id]; }
@@ -1307,7 +1314,7 @@ function drawWorldMap() {
   const mark = (wx, wy, big) => { const [px, py] = P(wx, wy), r = big ? 7 : 5; x.lineCap = 'round'; for (const [w, c] of [[big ? 6 : 5, 'rgba(240,226,190,0.9)'], [big ? 3 : 2.4, big ? '#8a1a10' : '#4a2e14']]) { x.lineWidth = w; x.strokeStyle = c; x.beginPath(); x.moveTo(px - r, py - r); x.lineTo(px + r, py + r); x.moveTo(px + r, py - r); x.lineTo(px - r, py + r); x.stroke(); } };
   for (const B of BASTIONS) if (seen(B.x, B.y)) mark(B.x, B.y, true);
   for (const n of NPCS) if (n.kind !== 'guard' && seen(n.x, n.y)) mark(n.x, n.y, false);
-  for (const gt of WORLD.gates) { const gx = (gt.x0 + gt.x1) / 2, gy = gt.y; if (gt.kind !== 'keep' && seen(gx, gy)) mark(gx, gy, false); }
+  for (const gt of WORLD.gates) { const gx = (gt.x0 + gt.x1) / 2, gy = gt.vert ? (gt.y0 + gt.y) / 2 : gt.y; if (gt.kind !== 'keep' && seen(gx, gy)) mark(gx, gy, false); }
   // jogadores
   for (const id in G.players) {
     const e = G.players[id]; if (!e.visible && id !== G.myId) continue;
@@ -1321,9 +1328,9 @@ function drawWorldMap() {
 function updateGates(dt) {
   G.gateF = G.gateF || WORLD.gates.map(() => 0);
   WORLD.gates.forEach((gt, k) => {
-    const cx = (gt.x0 + gt.x1) / 2, cy = gt.y;
+    const cx = (gt.x0 + gt.x1) / 2, cy = gt.vert ? (gt.y0 + gt.y) / 2 : gt.y, hx = gt.vert ? 4.5 : 4 + (gt.x1 - gt.x0) / 2, hy = gt.vert ? 4 + (gt.y - gt.y0) / 2 : 4.5;
     let near = false;
-    for (const id in G.players) { const e = G.players[id]; if ((e.visible || id === G.myId) && (e.z || 0) < 0.5 && Math.abs(e.rx - cx) < 4 + (gt.x1 - gt.x0) / 2 && Math.abs(e.ry - cy) < 4.5) near = true; }
+    for (const id in G.players) { const e = G.players[id]; if ((e.visible || id === G.myId) && (e.z || 0) < 0.5 && Math.abs(e.rx - cx) < hx && Math.abs(e.ry - cy) < hy) near = true; }
     const tgt = near ? 1 : 0;
     G.gateF[k] = clamp(G.gateF[k] + Math.sign(tgt - G.gateF[k]) * dt / 0.9, 0, 1);
   });
@@ -1433,7 +1440,7 @@ function updateNeeds() {
   document.body.classList.toggle('cold', (me.cold || 0) > 50); document.body.classList.toggle('fever', !!me.infect);
   const pr = $('prompt'); if (!G.loot && !nearCorpse()) { const raw = me.inv && (me.inv.venison || me.inv.pork); const stN = typeof nearStove === 'function' && nearStove(), hv = nearHarvest(), exN = me.carrying && STAGE.x >= 0 && dist(me.x, me.y, STAGE.x, STAGE.y) < 3.4; const jp = typeof jailPrompt === 'function' ? jailPrompt() : '';
   const bq = typeof boundNear === 'function' ? boundNear() : null;
-  const txt = me.bound ? (me.bnd === 'rope' ? 'Mãos amarradas com corda: martele ESPAÇO para se soltar (' + (me.bndE || 0) + '%)' : 'Algemado: só uma gazua ou o carcereiro abrem') : bq ? (bq.bound ? 'F: soltar ' + bq.name : '') : jp ? jp : me.wantedUntil > performance.now() && !me.escorted ? 'Y: render-se às sentinelas' : me.dragMode === 'grip' ? 'Segure o clique esquerdo: apertar o pescoço · H solta' : exN ? 'F: entregar ao carrasco (execução)' : stN ? 'F: cozinhar' : hv >= 0 ? (WORLD.obj[hv] === O.BERRY ? 'F: colher frutas' : 'F: colher erva') : raw && nearFireC() ? 'F: assar a carne' : nearWaterC() && (me.water ?? 100) < 98 ? 'F: beber' : ''; if (txt) { pr.textContent = txt; pr.classList.remove('hidden'); } else pr.classList.add('hidden'); }
+  const txt = me.bound ? (me.bnd === 'rope' ? 'Mãos amarradas com corda: martele ESPAÇO para se soltar (' + (me.bndE || 0) + '%)' : 'Algemado: só uma gazua ou o carcereiro abrem') : bq ? (bq.bound ? 'F: soltar ' + bq.name : '') : jp ? jp : (typeof estatePrompt === 'function' && estatePrompt()) ? estatePrompt() : me.wantedUntil > performance.now() && !me.escorted ? 'Y: render-se às sentinelas' : me.dragMode === 'grip' ? 'Segure o clique esquerdo: apertar o pescoço · H solta' : exN ? 'F: entregar ao carrasco (execução)' : stN ? 'F: cozinhar' : hv >= 0 ? (WORLD.obj[hv] === O.BERRY ? 'F: colher frutas' : 'F: colher erva') : raw && nearFireC() ? 'F: assar a carne' : nearWaterC() && (me.water ?? 100) < 98 ? 'F: beber' : ''; G.survPrompt = txt; } else G.survPrompt = '';
   if ($('pz-use') && typeof useHtml === 'function') $('pz-use').innerHTML = useHtml();
   if ($('pz-surv')) $('pz-surv').innerHTML = '<div><b>Fome</b> ' + Math.round(100 - (me.food ?? 100)) + '% · <b>Sede</b> ' + Math.round(100 - (me.water ?? 100)) + '% · <b>Frio</b> ' + Math.round(me.cold || 0) + '%</div><div><b>Infecção</b> ' + ['nenhuma', 'febre', 'grave'][me.infect || 0] + (me.sick > 0 ? ' · <b>enjoado</b>' : '') + '</div><div class="gp-note">Coma e beba, fique perto do fogo à noite, trate feridas graves com bandagem. A morte é permanente.</div>';
 }
@@ -1468,7 +1475,7 @@ function updateFalls(now) {
 function nearCorpse(r = 1.6) { const me = G.me; let best = null, bd = r; for (const c of G.corpses || []) { if (c.looted) continue; const d = dist(c.x, c.y, me.x, me.y); if (d < bd) { bd = d; best = c; } } return best; }
 function updateLooting(now) {
   const me = G.me, c = nearCorpse(), pr = $('prompt');
-  if (c && !me.downed) { pr.textContent = (MON[c.type].beh ? 'Segure F para esfolar' : 'Segure F para revistar'); pr.classList.remove('hidden'); } else if (!G.loot) pr.classList.add('hidden');
+  if (c && !me.downed) { pr.textContent = (MON[c.type].beh ? 'Segure F para esfolar' : 'Segure F para revistar'); pr.classList.remove('hidden'); }
   if (G.loot) {
     const lc = (G.corpses || []).find(q => q.id === G.loot.id);
     if (!G.keys.has('f') || !lc || lc.looted || dist(lc.x, lc.y, me.x, me.y) > 1.9 || me.walking) { G.loot = null; me.crouch = false; return; }

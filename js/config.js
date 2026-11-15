@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.30.0';
-const VERSION_NAME = 'Nae';
+const VERSION = 'v1.31.0';
+const VERSION_NAME = 'Nae · Imobiliária';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -250,7 +250,7 @@ const RECIPES = {
 };
 const KNOCK_MS = 1700, PROSTH_PRICE = 75, RITUAL_PRICE = 300;
 const STRIKE_PART = { head: ['head', 'head', 'torso', 'armA'], legs: ['legL', 'legR', 'legL', 'torso'], torso: ['torso', 'torso', 'armA', 'armB'] };
-const BUFF_NAMES = { warcry: 'Grito de Guerra', wall: 'Muralha de Ferro', agile: 'Passo Ágil', bless: 'Bênção da Aurora', mead: 'Hidromel', whet: 'Lâmina Afiada' };
+const BUFF_NAMES = { warcry: 'Grito de Guerra', wall: 'Muralha de Ferro', agile: 'Passo Ágil', bless: 'Bênção da Aurora', mead: 'Hidromel', whet: 'Lâmina Afiada', rested: 'Bem descansado' };
 const BUFF_BITS = { wall: 16, agile: 32, bless: 64, warcry: 128 };
 
 const need = l => Math.floor(20 * Math.pow(l, 1.75));
