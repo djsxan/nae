@@ -119,6 +119,12 @@ const BUILDINGS = TEST3D ? [] : [
 // portas: lado S (+y, padrão), N (-y), E (+x) ou W (-x). O layout interno usa um "quadro local":
 // i = posição ao longo da parede da porta (largura A), j = profundidade (0 = fundo, D-1 = linha da porta)
 const DOOR_V = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] };
+// jeito de andar de cada tipo de NPC: idoso (curvado, devagar), nobre (empertigado, mãos para trás), apressado, pesado (trabalhador), leve, sereno (mãos juntas)
+const NPC_GAIT = { v_elderm: 'old', v_elderf: 'old', jailer: 'old', noble: 'noble', noble2: 'noble', v_noblef: 'noble', v_noblem: 'noble', banker: 'noble', broker: 'noble', tailor: 'noble', banker2: 'light', banker3: 'calm',
+  courier1: 'hurry', courier2: 'hurry', courier3: 'hurry', v_thug1: 'hurry', v_thug2: 'hurry', supplier: 'hurry', v_trav1: 'hurry', smith: 'heavy', st_saw: 'heavy', st_mine: 'heavy', st_carp: 'heavy', merchant: 'heavy', executioner: 'heavy', v_peasm: 'heavy',
+  v_house1: 'light', v_house2: 'light', v_house3: 'light', v_house4: 'light', innkeeper: 'light', fruit: 'light', v_peasf: 'light', st_apoth: 'light', st_tailor: 'light', v_vis1: 'light', v_vis2: 'light', priest: 'calm', v_monk: 'calm', gardener: 'normal' };
+const GAIT_SPD = { old: 0.62, noble: 0.85, hurry: 1.28, heavy: 0.95, light: 1.0, calm: 0.8, normal: 1, drunk: 0.75 };
+const GAIT_CAD = { old: 14, noble: 10, hurry: 8.6, heavy: 8.8, light: 10.8, calm: 10.4, normal: 9.5, drunk: 10 };
 const DOOR_ROT = { S: 0, N: Math.PI, E: Math.PI / 2, W: -Math.PI / 2 };
 function bDims(b) { const s = b.door || 'S'; return s === 'S' || s === 'N' ? [b.w, b.h] : [b.h, b.w]; }
 function bLocal(b, i, j) {

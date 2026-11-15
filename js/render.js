@@ -288,7 +288,8 @@ function heroPoseFor(e, now) {
   if (e.custP && !e.walking) { Object.assign(P, e.custP); if (P.sit) P.walk = -1; if (e.isNpc && typeof martaOfferPose === 'function') martaOfferPose(e, P, now); return P; }
   if (e.isNpc && e.kind === 'fruit' && typeof martaOfferPose === 'function' && !e.walking) martaOfferPose(e, P, now);
   if (e.custP && e.custP.sweep && e.walking) P.act = e.custP.act;
-  if (e.walking) { P.walk = Math.floor(e.walkDist * (e.cls === 'knight' ? 8.5 : 9.5) / (e.running ? 1.45 : 1)) % 12; if (e.running) P.run = 1; if (e.dragMode === 'arms') P.walk = (12 - P.walk) % 12; }   // puxando pelos braços anda de costas
+  if (e.isNpc) { P.gait = e.drunk ? 'drunk' : NPC_GAIT[e.kind] || undefined; const h = typeof npcHeld === 'function' ? npcHeld(e) : null; if (h) P.hold = h; }
+  if (e.walking) { P.walk = Math.floor(e.walkDist * (e.isNpc ? (GAIT_CAD[P.gait] || 9.5) : e.cls === 'knight' ? 8.5 : 9.5) / (e.running ? 1.45 : 1)) % 12; if (e.running) P.run = 1; if (e.dragMode === 'arms') P.walk = (12 - P.walk) % 12; }   // puxando pelos braços anda de costas
   if (e.skin === 'weaver') { P.walk = -1; P.run = 0; }
   P.uni = ((e.stb || 0) >> 7) & 7 || undefined;
   P.wpn = e.cls === 'knight' && ((e === G.me ? e.wpn === 'halberd' : (e.stb & 64))) ? 'halberd' : undefined;
@@ -928,6 +929,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     if (meP) { const c = Math.floor((meP.x - bx) / 32), d = c < -b.h ? dl : c > b.w - 1 ? dr : depthOf(c); if (meP.d < d && covers(sp, bx, by, meP.x, meP.y)) { al = 0.38; meP.e._hid = true; } }
     for (const q of PL) { if (q.me) continue; const c = Math.floor((q.x - bx) / 32), d = c < -b.h ? dl : c > b.w - 1 ? dr : depthOf(c); if (q.d < d && covers(sp, bx, by, q.x, q.y)) q.e._hid = true; }
     for (let c = cA; c <= cB; c++) items.push({ d: c < -b.h ? dl : c > b.w - 1 ? dr : depthOf(c), k: 4, b, bi, sp, col: c, al, first: c === cA, sx: bx, sy: by });
+    if (b.door === 'S' || b.door === 'E' || !b.door) { const f = doorOpenF(bi, b, now); if (f > 0.03) { const D = doorGeo(b), pc = iso(D.cx, D.cy), c = Math.floor((pc.sx + ox - bx) / 32); items.push({ d: (c < -b.h ? dl : c > b.w - 1 ? dr : depthOf(c)) + 0.01, k: 7, b, f, D, al }); } }
   });
   // perto de uma porta: já prepara o interior (sem engasgo ao entrar)
   if (me && (me.z || 0) < 0.5 && inB < 0) for (const b of BUILDINGS) { const d0 = doorOf(b); if (Math.abs(d0.x - me.rx) + Math.abs(d0.y - me.ry) < 3) { const t = S3.budget; S3.budget = Math.max(1, S3.budget); interiorSprite(b); S3.budget = t; break; } }
@@ -1019,6 +1021,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       return;
     }
     if (it.k === 6) { drawCellDoor(ctx, it); return; }
+    if (it.k === 7) { drawDoorOpen(ctx, it); return; }
     if (it.k === 5) { pblit(ctx, slabSprite(Math.floor(hash2(it.x, it.y, 4) * 3)), it.sx, it.sy - FLOOR_PX); return; }
     const e = it.e;
     ctx.imageSmoothingEnabled = false;
@@ -1279,4 +1282,32 @@ function tintOf(s, col) {
   const c = document.createElement('canvas'); c.width = s.c.width; c.height = s.c.height;
   const x = c.getContext('2d'); x.drawImage(s.c, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = col; x.fillRect(0, 0, c.width, c.height);
   const o = { c, w: s.w, h: s.h, ax: s.ax, ay: s.ay }; TINTS.set(s, { col, s: o }); return o;
+}
+
+// ---------- portas que abrem quando alguém passa (vão escuro + folha girando para dentro) ----------
+function doorGeo(b) { const [dx, dy] = doorTile(b), s = b.door || 'S', v = DOOR_V[s], tm = b.kind === 'temple'; return { cx: dx + v[0] * 0.5, cy: dy + v[1] * 0.5, ux: s === 'S' || s === 'N' ? 1 : 0, uy: s === 'S' || s === 'N' ? 0 : 1, vx: v[0], vy: v[1], hw: (tm ? 1.3 : 0.95) * 0.31, H: (tm ? 2.5 : 1.85) * 0.62 }; }
+function doorOpenF(bi, b, now) {
+  G.doorF = G.doorF || {}; G.doorT = G.doorT || {};
+  const D = doorGeo(b), near = e => e && !e.npDead && Math.abs((e.rx ?? e.x) - D.cx) + Math.abs((e.ry ?? e.y) - D.cy) < 1.15 && dist(e.rx ?? e.x, e.ry ?? e.y, D.cx, D.cy) < 0.95;
+  let want = 0; for (const id in G.players) if (near(G.players[id]) && (G.players[id].z || 0) < 0.5) { want = 1; break; }
+  if (!want) for (const id in G.npcs) if (near(G.npcs[id])) { want = 1; break; }
+  const dt = Math.min(0.1, (now - (G.doorT[bi] || now)) / 1000); G.doorT[bi] = now;
+  const f = (G.doorF[bi] || 0) + (want - (G.doorF[bi] || 0)) * Math.min(1, dt * (want ? 9 : 3.5)); G.doorF[bi] = f < 0.01 ? 0 : f; return G.doorF[bi];
+}
+function drawDoorOpen(ctx, it) {
+  const D = it.D, f = it.f, ox = G.view.ox, oy = G.view.oy, up = D.H * HV, P = (x, y, z = 0) => { const p = iso(x, y); return [p.sx + ox, p.sy + oy - z]; };
+  const bl = P(D.cx - D.ux * D.hw, D.cy - D.uy * D.hw), br = P(D.cx + D.ux * D.hw, D.cy + D.uy * D.hw), sh = up - D.hw * 1.2 * HV * 0.55, tc = P(D.cx, D.cy, up);
+  ctx.save(); if (it.al) ctx.globalAlpha = it.al;
+  ctx.beginPath(); ctx.moveTo(bl[0], bl[1]); ctx.lineTo(br[0], br[1]); ctx.lineTo(br[0], br[1] - sh); ctx.quadraticCurveTo(tc[0] + (br[0] - bl[0]) * 0.5, tc[1] - 4, tc[0], tc[1]); ctx.quadraticCurveTo(tc[0] - (br[0] - bl[0]) * 0.5, tc[1] - 4, bl[0], bl[1] - sh); ctx.closePath();
+  ctx.clip();
+  const g = ctx.createLinearGradient(0, tc[1], 0, bl[1]); g.addColorStop(0, 'rgba(10,6,3,' + (0.95 * f).toFixed(2) + ')'); g.addColorStop(1, 'rgba(40,26,14,' + (0.9 * f).toFixed(2) + ')'); ctx.fillStyle = g; ctx.fillRect(Math.min(bl[0], br[0]) - 2, tc[1] - 10, Math.abs(br[0] - bl[0]) + 4, bl[1] - tc[1] + 14);
+  // luz de dentro (de dia mais clara, de noite a lareira)
+  ctx.fillStyle = 'rgba(255,190,110,' + (0.12 * f).toFixed(2) + ')'; ctx.fillRect(Math.min(bl[0], br[0]), (bl[1] + tc[1]) / 2, Math.abs(br[0] - bl[0]), (bl[1] - tc[1]) / 2);
+  // folha da porta girando para dentro a partir da dobradiça (lado direito)
+  const a = f * 1.35, L = D.hw * 2, hx = D.cx + D.ux * D.hw, hy = D.cy + D.uy * D.hw, ex = hx - D.ux * L * Math.cos(a) - D.vx * L * Math.sin(a), ey = hy - D.uy * L * Math.cos(a) - D.vy * L * Math.sin(a);
+  const h0 = P(hx, hy), e0 = P(ex, ey), h1 = P(hx, hy, up * 0.92), e1 = P(ex, ey, up * 0.92);
+  ctx.beginPath(); ctx.moveTo(h0[0], h0[1]); ctx.lineTo(e0[0], e0[1]); ctx.lineTo(e1[0], e1[1]); ctx.lineTo(h1[0], h1[1]); ctx.closePath();
+  ctx.fillStyle = '#6e4626'; ctx.fill(); ctx.strokeStyle = 'rgba(30,18,8,0.8)'; ctx.lineWidth = 0.8; ctx.stroke();
+  ctx.strokeStyle = 'rgba(60,60,64,0.9)'; ctx.lineWidth = 1; for (const t of [0.2, 0.75]) { ctx.beginPath(); ctx.moveTo(h0[0] + (h1[0] - h0[0]) * t, h0[1] + (h1[1] - h0[1]) * t); ctx.lineTo(e0[0] + (e1[0] - e0[0]) * t, e0[1] + (e1[1] - e0[1]) * t); ctx.stroke(); }
+  ctx.restore();
 }

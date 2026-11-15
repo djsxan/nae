@@ -348,6 +348,7 @@ function applyPose(R, Q, P, walkPh) {
   { const bm = (Q.broom || 0) > 0.5; if (bm && !R.broom) { const g = new THREE.Group(), wd = mat('#7a5a34', 'wood'); g.add(mesh(cylG(0.012, 0.012, 1.15, 6), wd, 0, -0.2, 0)); const br = mesh(coneG(0.09, 0.26, 8), mat('#c8a860', 'cloth'), 0, -0.85, 0); br.rotation.x = Math.PI; g.add(br); g.rotation.x = 0.5; R.A.hand.add(g); R.broom = g; } if (R.broom) R.broom.visible = bm; if (bm && R.weapon && !R.weapon.bow) R.weapon.obj.visible = false; }
   { const ha = (Q.harrow || 0) > 0.5; if (ha && !R.harrow) { const g = new THREE.Group(); g.add(mesh(cylG(0.006, 0.006, 0.72, 5), mat('#6a4a2a', 'wood'), 0, -0.02, 0)); g.add(mesh(coneG(0.014, 0.05, 4), mat('#8a8f96', 'metal'), 0, 0.36, 0)); for (const s of [-1, 1]) { const f = mesh(boxG(0.003, 0.08, 0.03), mat('#e8e0cc', 'cloth'), s * 0.008, -0.34, 0); g.add(f); } R.B.hand.add(g); R.harrow = g; } if (R.harrow) R.harrow.visible = ha; }
   { const pp = (Q.pipe || 0) > 0.5; if (pp && !R.pipe) { const g = new THREE.Group(), wd = mat('#4a2e1a', 'wood'); g.add(mesh(cylG(0.006, 0.006, 0.12, 6), wd, 0, -0.02, 0.06)); g.children[0].rotation.x = Math.PI / 2; g.add(mesh(cylG(0.018, 0.014, 0.035, 8), wd, 0, 0.0, 0.12)); R.A.hand.add(g); R.pipe = g; } if (R.pipe) R.pipe.visible = pp; }
+  holdProps(R, Q);
   // arco e escudo seguem a mão, mas ficam "de pé" (orientados pelo tronco)
   if ((R.weapon && R.weapon.bow) || R.shield) {
     R.root.updateMatrixWorld(true);
@@ -441,7 +442,7 @@ function applyLost(R, mask = 0, pro = 0) {
   if (R.shield) R.shield.visible = !lost('armB');
   for (const k in R.stumps) { R.stumps[k].visible = lost(k) && !pr(k); if (R.pegs[k]) R.pegs[k].visible = lost(k) && pr(k); }
 }
-function pose3Key(P) { return (P.dir | 0) + '|' + (P.walk >= 0 ? (P.run ? 'r' : 'w') + P.walk : '') + (P.act ? P.act.k + P.act.f : '') + (P.idle ? P.idle.k + P.idle.f : '') + (P.sit ? 's' + P.sit + (P.sv || '') : '') + (P.smk != null ? 'k' + Math.floor(P.smk * 8) : '') + (P.eat != null ? 'e' + Math.floor(P.eat * 8) : '') + (P.carry ? 'c' : '') + (P.down ? 'd' + (P.prone ? 'p' : '') : '') + (P.nowp ? 'nw' : '') + (P.wpn === 'halberd' ? 'hb' : '') + (P.crawl ? 'cw' + P.crawl : '') + (P.drag ? 'D' + P.drag : '') + (P.tied ? 'T' + P.tied : '') + (P.surr ? 'U' : '') + (P.led ? 'L' : '') + (P.held ? 'H' + P.held + (P.held === 2 ? Math.floor(Date.now() / 90) % 4 : '') : '') + (P.cr ? 'K' : '') + (P.sl ? 'L' : '') + (P.hs ? 'h' + P.hs : '') + (P.br != null ? 'b' + P.br : '') + (P.limp ? 'm' + P.limp : '') + (P.armw ? 'W' : '') + (P.lost ? 'X' + P.lost + '_' + (P.pro || 0) : ''); }
+function pose3Key(P) { return (P.dir | 0) + '|' + (P.gait ? 'g' + P.gait : '') + (P.hold ? 'o' + P.hold : '') + (P.walk >= 0 ? (P.run ? 'r' : 'w') + P.walk : '') + (P.act ? P.act.k + P.act.f : '') + (P.idle ? P.idle.k + P.idle.f : '') + (P.sit ? 's' + P.sit + (P.sv || '') : '') + (P.smk != null ? 'k' + Math.floor(P.smk * 8) : '') + (P.eat != null ? 'e' + Math.floor(P.eat * 8) : '') + (P.carry ? 'c' : '') + (P.down ? 'd' + (P.prone ? 'p' : '') : '') + (P.nowp ? 'nw' : '') + (P.wpn === 'halberd' ? 'hb' : '') + (P.crawl ? 'cw' + P.crawl : '') + (P.drag ? 'D' + P.drag : '') + (P.tied ? 'T' + P.tied : '') + (P.surr ? 'U' : '') + (P.led ? 'L' : '') + (P.held ? 'H' + P.held + (P.held === 2 ? Math.floor(Date.now() / 90) % 4 : '') : '') + (P.cr ? 'K' : '') + (P.sl ? 'L' : '') + (P.hs ? 'h' + P.hs : '') + (P.br != null ? 'b' + P.br : '') + (P.limp ? 'm' + P.limp : '') + (P.armw ? 'W' : '') + (P.lost ? 'X' + P.lost + '_' + (P.pro || 0) : ''); }
 function heroSprite3D(cls, skin, color, P) {
   const lk = cls + ':' + skin + ':' + color + (P.wpn === 'halberd' && !P.uni ? ':hb' : '') + (P.uni ? ':u' + P.uni : '');
   return cache3('h3|' + lk + '|' + pose3Key(P) , () => {
@@ -723,4 +724,17 @@ function scaryCreature(type, C) {
   }
   if (type === 'slime') { const sk = mesh(sphG(0.07), mat('#e2dcc6', 'bone'), -0.05, 0.02, 0.02); sk.scale.set(1, 0.9, 1); b.add(sk); { const bn = mesh(cylG(0.01, 0.01, 0.2, 5), mat('#e2dcc6', 'bone'), 0.08, -0.05, -0.05); bn.rotation.z = 1.1; b.add(bn); } }
   if (type === 'toad') { const mouth = mesh(boxG(0.4, 0.02, 0.05), mat('#3a1a14', 'skin'), 0, -0.02, 0.3); b.add(mouth); for (const s of [-1, 1]) b.add(mesh(sphG(0.02), glowEye('#e8c040'), s * 0.14, 0.27, 0.24)); }
+}
+
+// objetos que os moradores carregam (criados na primeira vez, depois só mostra/esconde)
+function holdProps(R, Q) {
+  const mk = (k, build, parent) => { if (!R['hp_' + k]) { const g = new THREE.Group(); build(g); parent.add(g); R['hp_' + k] = g; } return R['hp_' + k]; };
+  const on = k => (Q[k] || 0) > 0.5, wood = () => mat('#8a6438', 'wood'), wick = () => mat('#b08a50', 'cloth');
+  const show = (k, v, build, parent) => { if (v) mk(k, build, parent).visible = true; else if (R['hp_' + k]) R['hp_' + k].visible = false; };
+  show('basket', on('basket'), g => { const b = mesh(cylG(0.1, 0.075, 0.1, 10), wick(), 0, -0.16, 0.02); g.add(b); g.add(mesh(cylG(0.095, 0.095, 0.012, 10), mat('#7a5a30', 'cloth'), 0, -0.11, 0.02)); const hd = mesh(torG(0.075, 0.008), wood(), 0, -0.1, 0.02); hd.scale.set(1, 0.9, 1); g.add(hd); g.add(mesh(sphG(0.035), mat('#c02a1e', 'gem', { emissiveIntensity: 0 }), 0.03, -0.1, 0.03)); g.add(mesh(sphG(0.03), mat('#d8b040', 'gem', { emissiveIntensity: 0 }), -0.03, -0.1, 0.0)); }, R.B.hand);
+  show('bucket', on('bucket'), g => { g.add(mesh(cylG(0.08, 0.065, 0.13, 10), wood(), 0, -0.2, 0)); g.add(mesh(cylG(0.082, 0.082, 0.012, 10), mat('#4a4a4e', 'metal'), 0, -0.16, 0)); g.add(mesh(cylG(0.07, 0.07, 0.005, 10), mat('#3a6aa8', 'gem', { emissiveIntensity: 0 }), 0, -0.14, 0)); const h = mesh(torG(0.07, 0.006), mat('#4a4a4e', 'metal'), 0, -0.12, 0); g.add(h); }, R.A.hand);
+  show('sack', on('sack'), g => { const s = mesh(sphG(0.16), mat('#a8916a', 'cloth'), -0.2, 0.3, -0.05); s.scale.set(0.95, 0.72, 1.35); g.add(s); const t = mesh(cylG(0.03, 0.045, 0.08, 6), mat('#8a7550', 'cloth'), -0.2, 0.36, -0.27); t.rotation.x = 1.3; g.add(t); }, R.chest);
+  show('book', on('book'), g => { g.add(mesh(boxG(0.13, 0.17, 0.035), mat('#6a1e18', 'leather'), 0, -0.04, 0.05)); g.add(mesh(boxG(0.12, 0.16, 0.03), mat('#efe6cc', 'cloth'), 0.008, -0.04, 0.05)); }, R.B.hand);
+  show('mug', on('mug'), g => { g.add(mesh(cylG(0.038, 0.034, 0.08, 10), wood(), 0, -0.03, 0.05)); g.add(mesh(cylG(0.033, 0.033, 0.004, 10), mat('#f2ead8', 'cloth'), 0, 0.012, 0.05)); const h = mesh(torG(0.025, 0.007), wood(), 0.045, -0.03, 0.05); h.rotation.y = Math.PI / 2; g.add(h); }, R.A.hand);
+  if (on('bucket') || on('sack') || on('mug') || on('basket') || on('book')) { if (R.weapon) R.weapon.obj.visible = false; if (R.shield) R.shield.visible = false; }
 }

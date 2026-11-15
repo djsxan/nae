@@ -38,11 +38,44 @@ const IDLE_SETS = {
   knight: ['look', 'stretch', 'polish', 'kick', 'sit', 'look'], archer: ['look', 'stretch', 'yawn', 'polish', 'sit', 'kick'], mage: ['look', 'yawn', 'polish', 'stretch', 'sit'],
   noble: ['look', 'wave', 'look'], noble2: ['look', 'salute', 'look'], gardener: ['polish', 'polish', 'look', 'stretch'], tailor: ['look', 'polish', 'look', 'salute'], broker: ['look', 'polish', 'look', 'wave'], jailer: ['look', 'yawn', 'look', 'polish'], fruit: ['look', 'wave', 'look', 'stretch'], executioner: ['look', 'polish', 'look', 'stretch'], priest: ['pray', 'read', 'look', 'pray'], merchant: ['look', 'wave', 'kick', 'look'], innkeeper: ['drink', 'look', 'wave', 'drink'], guard: ['salute', 'look', 'kick', 'look'], captain: ['look', 'salute', 'polish', 'look'],
 };
+// ---------- vida dos NPCs parados: conversa em dupla, gestos conforme o tipo e o lugar ----------
+const npcHash = e => e._h ?? (e._h = [...String(e.id)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) & 0xffff, 7));
+function npcHeld(e) {
+  if (e.pkg || e.npDown || e.npDead || e.onBackBy || e.dragged) return null;
+  const k = e.kind || '', h = npcHash(e), bi = WORLD.bld[tileAt(e.rx, e.ry)], B = bi >= 0 ? BUILDINGS[bi] : null;
+  if (B && B.kind === 'tavern' && !e.walking && !/innkeeper|guard|captain/.test(k)) return 'mug';
+  if (/^v_house/.test(k) || k === 'v_peasf') return h % 3 ? 'basket' : null;
+  if (k === 'v_peasm' || /^v_trav/.test(k) || ((k === 'st_mine' || k === 'st_farm') && e.walking)) return 'sack';
+  if (k === 'v_monk' || k === 'banker3' || (k === 'priest' && !e.walking)) return 'book';
+  if (k === 'gardener') return 'bucket';
+  return null;
+}
+const NPC_IDLE_POOL = {
+  old: ['lookup', 'scratch', 'look', 'handsback', 'lean', 'yawn'], noble: ['handsback', 'handsback', 'look', 'crossarms', 'point'], hurry: ['look', 'stretch', 'scratch', 'shrug', 'point'],
+  heavy: ['stretch', 'crossarms', 'scratch', 'look', 'kick', 'eatstand'], light: ['look', 'wave', 'lookup', 'shrug', 'eatstand', 'scratch'], calm: ['pray', 'look', 'lookup', 'read'], normal: ['look', 'scratch', 'lookup', 'crossarms', 'stretch', 'yawn', 'shrug'],
+};
+function npcIdlePick(e, now) {
+  const g = NPC_GAIT[e.kind] || 'normal', worker = IDLE_SETS[e.kind];
+  // alguém parado por perto: conversa em dupla (um fala e gesticula, o outro escuta e balança a cabeça; depois trocam)
+  if (!e.npSleep && Math.random() < 0.6) for (const id in G.npcs) { const q = G.npcs[id]; if (q === e || q.walking || q.npDown || q.npDead || q.npSleep || q.idleAnim && q.idleAnim.k !== 'look') continue; const d = dist(e.rx, e.ry, q.rx, q.ry); if (d > 0.7 && d < 2.0) {
+      const dur = 3500 + Math.random() * 2500, a = Math.random() < 0.85 ? 'talk' : 'laugh';
+      e.idleAnim = { k: a, t0: now, dur }; q.idleAnim = { k: a === 'laugh' ? 'laugh' : 'listen', t0: now, dur }; q.idleT = now; q.idleWait = 1500 + Math.random() * 2500;
+      e.dir = dirFromVec(q.rx - e.rx, q.ry - e.ry, e.dir || 0); q.dir = dirFromVec(e.rx - q.rx, e.ry - q.ry, q.dir || 0); return; } }
+  let set = worker && Math.random() < 0.55 ? worker : NPC_IDLE_POOL[g];
+  if (npcHeld(e)) set = set.filter(k => k !== 'crossarms' && k !== 'eatstand');
+  const bi = WORLD.bld[tileAt(e.rx, e.ry)], B = bi >= 0 ? BUILDINGS[bi] : null;
+  if (B && B.kind === 'tavern' && Math.random() < 0.5) set = ['drink', 'laugh', 'look', 'drink'];
+  if (B && B.kind === 'temple' && Math.random() < 0.5) set = ['pray', 'look', 'pray'];
+  const k = pick(set.length ? set : ['look']);
+  e.idleAnim = { k, t0: now, dur: k === 'sit' ? 6000 + Math.random() * 4000 : /talk|listen|crossarms|handsback|lean|read|pray/.test(k) ? 3000 + Math.random() * 3000 : 1800 + Math.random() * 900 };
+  if (Math.random() < 0.4) e.dir = pick([0, 0, 1, 3, 7]);
+}
 function updateIdle(e, now) {
   if (e.npDead || e.npDown) { e.idleAnim = null; return; }
   if (e.walking || (e.anim && now - e.anim.t0 < 700) || e.downed || (e.cast && e.cast.end > now)) { e.idleT = now; e.idleAnim = null; return; }
-  if (e.idleAnim) { if (now - e.idleAnim.t0 > e.idleAnim.dur) { e.idleAnim = null; e.idleT = now; e.idleWait = 3500 + Math.random() * 6000; } return; }
+  if (e.idleAnim) { if (now - e.idleAnim.t0 > e.idleAnim.dur) { e.idleAnim = null; e.idleT = now; e.idleWait = e.isNpc ? 1200 + Math.random() * 3500 : 3500 + Math.random() * 6000; } return; }
   if (now - e.idleT > e.idleWait) {
+    if (e.isNpc && e.kind !== 'guard' && e.kind !== 'fruit') { npcIdlePick(e, now); return; }
     const set = IDLE_SETS[e.isNpc ? e.kind : e.cls] || IDLE_SETS.knight;
     const k = pick(set);
     e.idleAnim = { k, t0: now, dur: k === 'sit' ? 6000 + Math.random() * 4000 : 1800 + Math.random() * 600 };

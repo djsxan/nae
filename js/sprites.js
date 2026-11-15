@@ -220,6 +220,19 @@ const IDLES = {
   drink: [[0, {}], [0.3, { aA: [1.5, 0.1, 1.8], ht: -0.2 }], [0.7, { aA: [1.5, 0.1, 1.8], ht: -0.25 }], [1, {}]],
   read: [[0, {}], [0.2, { aA: [0.9, 0.0, 1.1], aB: [0.9, 0.0, 1.1], ht: 0.3 }], [0.9, { aA: [0.9, 0.0, 1.1], aB: [0.9, 0.0, 1.1], ht: 0.3 }], [1, {}]],
   wave: [[0, {}], [0.25, { aA: [2.6, 0.5, 0.5] }], [0.45, { aA: [2.6, 0.8, 0.2] }], [0.65, { aA: [2.6, 0.5, 0.5] }], [1, {}]],
+  // ---- vida na cidade: conversar gesticulando, ouvir balançando a cabeça, rir, apontar, braços cruzados, mãos para trás,
+  //      coçar a cabeça, olhar o céu, dar de ombros, encostar, comer em pé ----
+  talk: [[0, {}], [0.12, { aA: [0.9, 0.25, 1.3], aB: [0.35, 0.15, 0.6], hw: 0.08 }], [0.3, { aA: [1.25, 0.4, 0.85], aB: [0.6, 0.25, 1.0], hw: -0.05, mouth: 1 }], [0.48, { aA: [0.8, 0.2, 1.45], aB: [0.35, 0.15, 0.7], hw: 0.12 }], [0.66, { aA: [1.15, 0.5, 0.7], aB: [0.75, 0.3, 1.1], mouth: 1 }], [0.84, { aA: [0.95, 0.3, 1.2], aB: [0.4, 0.15, 0.7], hw: -0.08 }], [1, {}]],
+  listen: [[0, {}], [0.15, { ht: 0.12, aB: [0.25, 0.1, 0.5] }], [0.3, { ht: -0.04, aB: [0.25, 0.1, 0.5] }], [0.45, { ht: 0.14, aB: [0.25, 0.1, 0.5], hw: 0.06 }], [0.6, { ht: -0.02, aB: [0.25, 0.1, 0.5] }], [0.8, { ht: 0.1, hw: -0.06, aB: [0.25, 0.1, 0.5] }], [1, {}]],
+  laugh: [[0, {}], [0.15, { tl: -0.14, ht: -0.32, mouth: 1, aB: [0.55, 0.1, 1.7] }], [0.32, { tl: 0.16, ht: 0.12, mouth: 1, aB: [0.6, 0.1, 1.7] }], [0.5, { tl: -0.12, ht: -0.28, mouth: 1, aB: [0.55, 0.1, 1.7] }], [0.7, { tl: 0.14, ht: 0.08, mouth: 1, aB: [0.6, 0.1, 1.6] }], [1, {}]],
+  point: [[0, {}], [0.25, { aA: [1.62, 0.25, 0.05], hw: 0.12, tl: 0.04 }], [0.5, { aA: [1.66, 0.3, 0.05], hw: 0.15, tl: 0.04, mouth: 1 }], [0.8, { aA: [1.62, 0.25, 0.05], hw: 0.12 }], [1, {}]],
+  crossarms: [[0, {}], [0.2, { aA: [0.75, -0.45, 2.05], aB: [0.7, -0.45, 2.0], tl: -0.05 }], [0.55, { aA: [0.75, -0.45, 2.05], aB: [0.7, -0.45, 2.0], tl: -0.05, hw: 0.35 }], [0.85, { aA: [0.75, -0.45, 2.05], aB: [0.7, -0.45, 2.0], tl: -0.05, hw: -0.2 }], [1, {}]],
+  handsback: [[0, {}], [0.2, { aA: [-0.45, 0.12, 1.25], aB: [-0.45, 0.12, 1.25], tl: -0.06, ht: -0.05 }], [0.6, { aA: [-0.45, 0.12, 1.25], aB: [-0.45, 0.12, 1.25], tl: -0.06, hw: 0.4 }], [0.85, { aA: [-0.45, 0.12, 1.25], aB: [-0.45, 0.12, 1.25], tl: -0.06, hw: -0.3 }], [1, {}]],
+  scratch: [[0, {}], [0.25, { aA: [2.3, 0.65, 2.55], ht: 0.18, hw: 0.1 }], [0.45, { aA: [2.4, 0.6, 2.65], ht: 0.2, hw: 0.12 }], [0.65, { aA: [2.3, 0.65, 2.55], ht: 0.18, hw: 0.1 }], [1, {}]],
+  lookup: [[0, {}], [0.3, { ht: -0.55, tl: -0.1, hw: 0.2 }], [0.7, { ht: -0.55, tl: -0.1, hw: -0.25 }], [1, {}]],
+  shrug: [[0, {}], [0.3, { aA: [0.35, 0.55, 1.5], aB: [0.35, 0.55, 1.5], ht: 0.12, hw: 0.15, mouth: 1 }], [0.7, { aA: [0.35, 0.6, 1.55], aB: [0.35, 0.6, 1.55], ht: 0.14, hw: 0.15 }], [1, {}]],
+  lean: [[0, {}], [0.2, { tl: -0.14, lA: [0.35, -0.75], lB: [-0.08, -0.04], aA: [0.15, 0.25, 0.3], aB: [0.1, 0.3, 0.2], kn: -0.05 }], [0.85, { tl: -0.14, lA: [0.35, -0.75], lB: [-0.08, -0.04], aA: [0.15, 0.25, 0.3], aB: [0.1, 0.3, 0.2], hw: 0.3 }], [1, {}]],
+  eatstand: [[0, { apple: 1 }], [0.2, { aA: [1.55, 0.1, 2.35], apple: 1, ht: -0.05 }], [0.35, { aA: [1.6, 0.1, 2.45], apple: 1, ht: -0.08, mouth: 1 }], [0.55, { aA: [1.1, 0.12, 1.4], apple: 1 }], [0.75, { aA: [1.6, 0.1, 2.45], apple: 1, mouth: 1 }], [1, { apple: 1 }]],
 };
 
 function sampleKeys(keys, p) {
@@ -259,6 +272,7 @@ function buildPose(cls, P) {
     Q.tw += -Math.sin(ph) * (0.06 + heavy * 0.06);          // ombros giram ao contrário do quadril
     Q.sway = Math.sin(ph) * (0.035 + heavy * 0.02);            // quadril balança para os lados
     Q.ht += Math.abs(Math.cos(ph)) * 0.03;
+    if (P.gait) gaitPose(Q, P.gait, ph);
   }
   if (P.drag === 'arms') {   // de costas, curvado para trás fazendo força, as duas mãos nos pulsos do corpo; tranco a cada passo
     const ph = P.walk >= 0 ? P.walk / 12 * Math.PI * 2 : 0, jerk = P.walk >= 0 ? Math.max(0, Math.sin(ph * 2)) * 0.12 : 0;
@@ -287,6 +301,7 @@ function buildPose(cls, P) {
   };
   if (P.act && ACTS[P.act.k]) apply(ACTS[P.act.k], (P.act.f + 0.5) / 12);
   else if (P.idle && IDLES[P.idle.k]) apply(IDLES[P.idle.k], (P.idle.f + 0.5) / 12);
+  if (P.hold && !P.act) holdPose(Q, P.hold, P);
   if (P.sl) { Q.lA = [1.4, -0.12]; Q.lB = [0.35, -2.15]; Q.tl = -0.6; Q.tw = 0; Q.aA = [0.5, 1.0, 0.25]; Q.aB = [0.3, 1.1, 0.35]; Q.drop = 10; }
   else if (P.cr) {
     const ph = P.walk >= 0 ? P.walk / 12 * Math.PI * 2 : 0, s = P.walk >= 0 ? 0.3 : 0;
@@ -895,3 +910,24 @@ function uniformLook(L, code) {
 // funcionários NPC com o uniforme do lugar onde trabalham
 { const map = { st_saw: 1, st_carp: 1, st_mine: 7, st_farm: 7, st_alch: 2, st_apoth: 2, st_arcane: 3, st_tailor: 3, st_scroll: 3, courier1: 5, courier2: 5, courier3: 5, banker2: 6, banker3: 6 };
   for (const k in map) { const f = NPC_LOOKS[k]; if (f) NPC_LOOKS[k] = () => uniformLook(f(), map[k]); } }
+
+// ---------- jeitos de andar dos moradores ----------
+function gaitPose(Q, g, ph) {
+  const s = Math.sin(ph), legs = k => { Q.lA = [Q.lA[0] * k, Q.lA[1] * k]; Q.lB = [Q.lB[0] * k, Q.lB[1] * k]; };
+  if (g === 'old') { Q.tl += 0.3; Q.ht -= 0.18; legs(0.5); Q.sway *= 0.5; Q.tw *= 0.4; Q.kn = (Q.kn || 0) - 0.12; Q.aA = [0.25 + s * 0.06, 0.12, 0.5]; Q.aB = [-0.3, 0.15, 1.1]; }
+  else if (g === 'noble') { Q.tl -= 0.07; Q.ht -= 0.06; legs(0.85); Q.tw *= 0.3; Q.aA = [-0.45, 0.12, 1.25]; Q.aB = [-0.45, 0.12, 1.25]; }
+  else if (g === 'hurry') { Q.tl += 0.15; Q.ht -= 0.06; legs(1.15); Q.aB[0] += s * 0.28; Q.aA[0] -= s * 0.25; Q.aB[2] += 0.35; Q.aA[2] += 0.3; }
+  else if (g === 'heavy') { legs(0.9); Q.sway *= 1.9; Q.tw *= 1.5; Q.aA[1] += 0.16; Q.aB[1] += 0.16; Q.tl += 0.04; }
+  else if (g === 'light') { Q.tl -= 0.03; Q.sway *= 1.7; Q.tw *= 0.6; Q.aB[0] *= 0.8; }
+  else if (g === 'calm') { legs(0.8); Q.tl += 0.04; Q.ht += 0.1; Q.tw *= 0.3; Q.aA = [0.62, -0.12, 1.25]; Q.aB = [0.62, -0.12, 1.25]; }
+  else if (g === 'drunk') { const w = Math.sin(ph * 0.5); Q.sway = (Q.sway || 0) * 2.5 + w * 0.14; Q.tw = Q.tw * 2 + w * 0.12; Q.tl += 0.1 + Math.abs(w) * 0.1; Q.ht += 0.15 + w * 0.12; Q.hw = w * 0.25; Q.aA = [s * 0.45, 0.35, 0.3]; Q.aB = [-s * 0.45, 0.35, 0.35]; legs(0.85); }
+}
+// ---------- objetos nas mãos: cesto, balde, saco no ombro, livro, caneca ----------
+function holdPose(Q, h, P) {
+  const busyA = P.idle && /^(talk|point|scratch|wave|salute|eatstand|drink|stretch)$/.test(P.idle.k), busyB = P.idle && /^(crossarms|handsback|shrug|stretch|pray|read)$/.test(P.idle.k);
+  if (h === 'basket') { if (!busyB) Q.aB = [0.1, 0.28, 0.15]; Q.basket = 1; }
+  else if (h === 'bucket') { if (!busyA) Q.aA = [0.05, 0.24, 0.08]; Q.bucket = 1; }
+  else if (h === 'sack') { Q.aA = [2.55, 0.32, 2.75]; Q.tl += 0.05; Q.sack = 1; }
+  else if (h === 'book') { if (!busyB) Q.aB = [0.5, -0.18, 1.75]; Q.book = 1; }
+  else if (h === 'mug') { if (!busyA) Q.aA = [0.5, 0.1, 1.45]; Q.mug = 1; }
+}

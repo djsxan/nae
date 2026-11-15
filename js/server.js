@@ -1717,7 +1717,7 @@ function npcDie(n, p) {
 function entCarry(c, q, tag) { c.carrying = q.id; q.carriedBy = tag; q.revive = null; if (q.dragBy && S.players[q.dragBy]) stopDrag(S.players[q.dragBy]); }
 function npcDropCarried(c) { const q = S.players[c.carrying]; c.carrying = null; if (!q) return; q.carriedBy = null; q.x = c.x + 0.5; q.y = c.y; q.z = 0; return q; }
 // movimento simples de NPC (sem a regra de "monstro não entra na cidade"), seguindo um caminho quando o anfitrião tem o pathfinder
-function npcWalk(n, tx, ty, speed, dt) {
+function npcWalkOld(n, tx, ty, speed, dt) {
   if (n.path && n.path.length && (n.pathTo[0] !== Math.round(tx) || n.pathTo[1] !== Math.round(ty))) n.path = null;
   if (!n.path && typeof findPath === 'function' && dist(n.x, n.y, tx, ty) > 2) { try { n.path = findPath(n.x, n.y, tx, ty, 0, 0) || findPath(n.x, n.y, tx, ty, 0, 1) || []; } catch (e) { n.path = []; } n.pathTo = [Math.round(tx), Math.round(ty)]; }
   let gx = tx, gy = ty; if (n.path && n.path.length) { [gx, gy] = n.path[0]; if (dist(n.x, n.y, gx, gy) < 0.35) n.path.shift(); }
@@ -2215,7 +2215,7 @@ function hostTick() {
     }
     const ch = []; for (const id in S.chests) { const c = S.chests[id]; if (Math.abs(c.x - r.x) <= VIEW_RADIUS && Math.abs(c.y - r.y) <= VIEW_RADIUS) ch.push([c.id, Math.round(c.x * 100), Math.round(c.y * 100), c.opened.has(r.id) ? 1 : 0, c.who.has(r.id) ? 1 : 0]); }
     const co = []; for (const id in S.corpses || {}) { const c = S.corpses[id]; if (Math.abs(c.x - r.x) <= VIEW_RADIUS && Math.abs(c.y - r.y) <= VIEW_RADIUS) co.push([c.id, MON_TYPES.indexOf(c.type), Math.round(c.x * 100), Math.round(c.y * 100), c.z, c.looted ? 1 : 0, Math.round(c.ix * 10), Math.round(c.iy * 10), c.lost || 0, c.onBack || 0]); }
-    const np = []; for (const n of Object.values(S.npcs || {})) { if (Math.abs(n.x - r.x) > VIEW_RADIUS + 4 || Math.abs(n.y - r.y) > VIEW_RADIUS + 4) continue; np.push([n.id, Math.round(n.x * 100), Math.round(n.y * 100), (n.downed ? 1 : 0) | (n.dead ? 2 : 0) | (n.dragBy && n.dragMode !== 'back' ? 4 : 0) | (n.dragMode === 'foot' ? 8 : 0) | (n.walk ? 32 : 0) | (n.lead && n.lead.phase === 'walk' ? 64 : 0) | (n.crawl ? 128 : 0) | (n.sleeping ? 256 : 0) | (n.job && n.job.st === 'levando' ? 512 : 0), n.onBack || 0, n.carrying || 0]); }
+    const np = []; for (const n of Object.values(S.npcs || {})) { if (Math.abs(n.x - r.x) > VIEW_RADIUS + 4 || Math.abs(n.y - r.y) > VIEW_RADIUS + 4) continue; np.push([n.id, Math.round(n.x * 100), Math.round(n.y * 100), (n.downed ? 1 : 0) | (n.dead ? 2 : 0) | (n.dragBy && n.dragMode !== 'back' ? 4 : 0) | (n.dragMode === 'foot' ? 8 : 0) | (n.walk ? 32 : 0) | (n.lead && n.lead.phase === 'walk' ? 64 : 0) | (n.crawl ? 128 : 0) | (n.sleeping ? 256 : 0) | (n.job && n.job.st === 'levando' ? 512 : 0) | (n.drunkT > now ? 1024 : 0), n.onBack || 0, n.carrying || 0]); }
     Net.toOne(r.id, { t: 's', p: pl, m: ml, ch, co, np, jc: (S.cells || []).map(c => c.open ? 1 : 0) }, true);
   }
 }
@@ -2559,7 +2559,7 @@ function residentTick(n, now, dt) {
   N.food = Math.max(0, N.food - dt * perDay * 4); N.social = Math.max(0, N.social - dt * perDay * 3); if (!n.sleeping) N.rest = Math.max(0, N.rest - dt * perDay * 5);
   let act = hr >= 22 || hr < 6 ? 'sleep' : N.rest < 12 ? 'sleep' : N.food < 25 ? 'eat' : hr < 7 ? 'home' : hr < 12 ? 'work' : hr < 13 ? 'eat' : hr < 18 ? 'work' : N.social < 75 ? 'social' : 'home';
   if (n.role === 'courier' && act === 'work') act = 'work';
-  if (act !== n.act) { n.act = act; n.sleeping = false; const [tx, ty] = resSpot(n, act); n.rpath = planRoute(n, tx, ty); n.arrived = false; }
+  if (act !== n.act) { if (n.act === 'social' && (act === 'home' || act === 'sleep') && hr >= 20.5 && Math.random() < 0.4) n.drunkT = now + 150000; n.act = act; n.sleeping = false; const [tx, ty] = resSpot(n, act); n.rpath = planRoute(n, tx, ty); n.arrived = false; }
   if (n.rpath && n.rpath.length) { const [wx, wy] = n.rpath[0]; if (npcWalk(n, wx, wy, 1.15, dt) || dist(n.x, n.y, wx, wy) < 0.45) { n.rpath.shift(); if (!n.rpath.length) { n.arrived = true; n.x = wx; n.y = wy; } } return; }
   // chegou: efeito da atividade
   if (act === 'sleep') { n.sleeping = true; N.rest = Math.min(100, N.rest + dt * perDay * 14); }
@@ -2878,4 +2878,104 @@ function wvMsg(p, m) {
   else if (m.op === 'free' && m.kind === 'p') { if (q.jailUntil > now_()) releasePlayer(q, 'O Tecelão abriu a sua cela.'); if (q.condemned) condemn(q, false); q.wanted = 0; q.sentence = 0; q.crimes = []; q.murderer = false; q.bound = null; q.surrendered = false; Net.toAll({ t: 'wanted', id: q.id, ms: 0 }); sendStat(q); }
   else if (m.op === 'gold' && m.kind === 'p') { const g = Math.round(+v || 0); q.gold = Math.max(0, q.gold + g); tell(q, g >= 0 ? 'O Tecelão te deu ' + g + ' de ouro.' : 'O Tecelão tirou ' + (-g) + ' de ouro de você.'); sendStat(q); }
   Net.toOne(p.id, wvSnap());
+}
+
+// ============================================================
+//  ANDAR DOS NPCs — caminho A* pelo mapa todo (preferindo as ruas), sempre pela porta (vai até a frente, entra reto),
+//  fila na porta, desvio de quem está na frente, curvas suaves, cada um no seu ritmo e na sua "faixa". Nunca atravessa parede.
+// ============================================================
+const ROAD_T = new Set([T.COBBLE, T.STONE, T.BRIDGE, T.DIRT, T.FLOORSTONE]);
+function npcPath(sx, sy, tx, ty, maxN = 26000) {
+  const W = MAP_W; sx = Math.round(sx); sy = Math.round(sy); const gx = Math.round(tx), gy = Math.round(ty);
+  if (!inBounds(sx, sy) || !inBounds(gx, gy)) return null;
+  const start = sy * W + sx, goal = gy * W + gx; if (start === goal) return [[tx, ty]];
+  const g = new Map([[start, 0]]), prev = new Map([[start, -1]]), closed = new Set(), H = [];
+  const hf = (x, y) => { const dx = Math.abs(x - gx), dy = Math.abs(y - gy); return Math.max(dx, dy) + 0.414 * Math.min(dx, dy); };
+  const push = (k, f) => { H.push([f, k]); let i = H.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (H[p][0] <= H[i][0]) break; [H[p], H[i]] = [H[i], H[p]]; i = p; } };
+  const pop = () => { const top = H[0], last = H.pop(); if (H.length) { H[0] = last; let i = 0; for (;;) { const l = i * 2 + 1, r = l + 1; let m = i; if (l < H.length && H[l][0] < H[m][0]) m = l; if (r < H.length && H[r][0] < H[m][0]) m = r; if (m === i) break; [H[m], H[i]] = [H[i], H[m]]; i = m; } } return top[1]; };
+  push(start, hf(sx, sy)); let n = 0, best = start, bestH = hf(sx, sy), found = false;
+  while (H.length && n++ < maxN) {
+    const k = pop(); if (closed.has(k)) continue; closed.add(k); if (k === goal) { found = true; break; }
+    const x = k % W, y = (k - x) / W, gk = g.get(k);
+    for (const [dx, dy] of DIRS8) {
+      const nx = x + dx, ny = y + dy; if (!inBounds(nx, ny)) continue; const nk = ny * W + nx; if (closed.has(nk)) continue;
+      if (nk !== goal && !walkableTile(nx, ny, 0)) continue;
+      if (!edgeOk(x, y, nx, ny)) continue;
+      if (dx && dy && (!walkableTile(x + dx, y, 0) || !walkableTile(x, y + dy, 0))) continue;
+      if (WORLD.stair[nk]) continue;
+      const c = gk + (dx && dy ? 1.414 : 1) * (ROAD_T.has(WORLD.ground[nk]) || WORLD.bld[nk] >= 0 ? 0.82 : 1);
+      if (c < (g.get(nk) ?? 1e9)) { g.set(nk, c); prev.set(nk, k); const h = hf(nx, ny); push(nk, c + h * 0.9); if (h < bestH) { bestH = h; best = nk; } }
+    }
+  }
+  let end = found ? goal : (bestH <= 1.5 ? best : -1); if (end < 0) return null;
+  const path = []; for (let k = end; k !== start && k !== -1; k = prev.get(k)) path.push([k % W, Math.floor(k / W)]);
+  path.reverse(); if (found) path[path.length - 1] = [tx, ty]; return path;
+}
+// espaço livre para NPC: paredes, tiles sólidos e objetos redondos (sem contar os postos fixos de outros NPCs)
+function npcStand(x, y, r) {
+  if (wallHit(x, y, r)) return false;
+  for (const [ox, oy] of [[-r, -r], [r, -r], [-r, r], [r, r]]) if (solidTile(Math.round(x + ox), Math.round(y + oy), 0)) return false;
+  const tx = Math.round(x), ty = Math.round(y);
+  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) { const xx = tx + dx, yy = ty + dy; if (!inBounds(xx, yy)) continue; const i = yy * MAP_W + xx; if (WORLD.ground[i] === T.CLIFF && WORLD.fl1[i] > 0) continue; const rr = OBJ_R[WORLD.obj[i]]; if (rr && (x - xx) * (x - xx) + (y - yy) * (y - yy) < (rr + r) * (rr + r)) return false; }
+  return true;
+}
+const npcLine = (ax, ay, bx, by) => { const d = Math.hypot(bx - ax, by - ay), n = Math.ceil(d / 0.3); for (let k = 1; k <= n; k++) { const t = k / n; if (!npcStand(ax + (bx - ax) * t, ay + (by - ay) * t, 0.24)) return false; } return true; };
+let DOOR_TILES = null;
+const doorTiles = () => DOOR_TILES || (DOOR_TILES = BUILDINGS.map((b, bi) => { const [x, y] = doorTile(b), v = DOOR_V[b.door || 'S']; return { bi, x, y, k: y * MAP_W + x, ox: x + v[0] * 1.3, oy: y + v[1] * 1.3 }; }));
+function npcLegs(n, tx, ty) {   // pontos de passagem: sai pela porta de onde está e entra pela porta de onde vai (de frente)
+  const D = doorTiles(), ti = tileAt(tx, ty), here = WORLD.bld[tileAt(n.x, n.y)], onDoor = D.find(d => d.k === ti), there = onDoor ? -1 : WORLD.bld[ti], L = [];
+  if (here >= 0 && here !== there && D[here]) L.push([D[here].x, D[here].y, 1], [D[here].ox, D[here].oy, 1]);
+  if (there >= 0 && there !== here && D[there]) L.push([D[there].ox, D[there].oy, 1], [D[there].x, D[there].y, 1]);
+  L.push([tx, ty, 0]); return L;
+}
+function npcPace(n) {
+  if (n._pace == null) { let h = 7; for (const c of String(n.id)) h = (h * 31 + c.charCodeAt(0)) & 0xffff; n._pace = (GAIT_SPD[NPC_GAIT[n.kind] || 'normal'] || 1) * (0.92 + (h % 17) / 100); n._lane = ((h >> 4) % 7 - 3) * 0.07; }
+  return n._pace * (n.drunkT > now_() ? GAIT_SPD.drunk : 1);
+}
+function npcWalk(n, tx, ty, speed, dt) {
+  const now = now_(), calm = speed < 1.8; if (calm) speed *= npcPace(n);
+  const key = Math.round(tx * 4) + ',' + Math.round(ty * 4);
+  if (n.walkKey !== key) { n.walkKey = key; n.legs = npcLegs(n, tx, ty); n.path = null; n._stuck = 0; n.doorWait = 0; }
+  if (!n.legs || !n.legs.length) n.legs = [[tx, ty, 0]];
+  let leg = n.legs[0];
+  if (n.legs.length > 1 && dist(n.x, n.y, leg[0], leg[1]) < 0.4) { n.legs.shift(); leg = n.legs[0]; n.path = null; }
+  if (!n.path) {   // caminho até o próximo ponto (limite de buscas por instante para não pesar)
+    if (npcLine(n.x, n.y, leg[0], leg[1])) n.path = [[leg[0], leg[1]]];
+    else { S.pathWin = S.pathWin || { t: 0, n: 0 }; if (now - S.pathWin.t > 100) S.pathWin = { t: now, n: 0 }; if (S.pathWin.n >= 4) { n.walk = false; return false; } S.pathWin.n++; n.path = npcPath(n.x, n.y, leg[0], leg[1]) || [[leg[0], leg[1]]]; }
+  }
+  // corta caminho quando a linha está livre (vira diagonal suave em vez de zigue-zague de tiles)
+  while (n.path.length > 1 && npcLine(n.x, n.y, n.path[1][0], n.path[1][1])) n.path.shift();
+  let [gx, gy] = n.path[0]; const last = n.path.length === 1 && n.legs.length === 1;
+  if (!last && dist(n.x, n.y, gx, gy) < 0.35) { n.path.shift(); if (!n.path.length) { if (n.legs.length > 1) { n.legs.shift(); n.path = null; } else n.path = [[tx, ty]]; } return false; }
+  let dx = gx - n.x, dy = gy - n.y, d = Math.hypot(dx, dy);
+  if (d < 0.05) { n.walk = false; return dist(n.x, n.y, tx, ty) < 0.6; }
+  let ux = dx / d, uy = dy / d;
+  if (calm && !leg[2] && d > 1.2) { const ox = gx - uy * n._lane, oy = gy + ux * n._lane; if (npcStand(ox, oy, 0.24)) { dx = ox - n.x; dy = oy - n.y; d = Math.hypot(dx, dy); ux = dx / d; uy = dy / d; } }   // cada um na sua faixa
+  // desvia de quem está logo à frente (gente parada ou vindo de frente)
+  if (calm) { let ax = 0, ay = 0; const near = q => { const ex = q.x - n.x, ey = q.y - n.y, dd = Math.hypot(ex, ey); if (dd < 0.05 || dd > 1.0) return; const ahead = (ex * ux + ey * uy) / dd; if (ahead < 0.35) return; const side = (ex * -uy + ey * ux) >= 0 ? -1 : 1, w = (1.0 - dd) * ahead * 1.6; ax += -uy * side * w; ay += ux * side * w; };
+    for (const q of Object.values(S.npcs)) if (q !== n && !q.dead && Math.abs(q.x - n.x) < 1.1 && Math.abs(q.y - n.y) < 1.1) near(q);
+    for (const q of Object.values(S.players)) if (Math.abs(q.x - n.x) < 1.1 && Math.abs(q.y - n.y) < 1.1) near(q);
+    if (ax || ay) { ux += ax; uy += ay; const l = Math.hypot(ux, uy) || 1; ux /= l; uy /= l; } }
+  // curvas suaves: o rumo gira para o desejado (não vira de uma vez)
+  if (n.hx == null) { n.hx = ux; n.hy = uy; } { const k = Math.min(1, dt * (calm ? 7 : 14)); let hx = n.hx + (ux - n.hx) * k, hy = n.hy + (uy - n.hy) * k; const l = Math.hypot(hx, hy) || 1; n.hx = hx / l; n.hy = hy / l; if (n.hx * ux + n.hy * uy < 0.2) { n.hx = ux; n.hy = uy; } }
+  const st = Math.min(d, speed * dt), nx = n.x + n.hx * st, ny = n.y + n.hy * st;
+  // fila na porta: se alguém está passando pela porta, espera a vez (no máximo uns 3 s)
+  let nearDoor = false; if (calm) { const D = doorTiles(); for (const dr of D) { if (Math.abs(dr.x - nx) > 1.3 || Math.abs(dr.y - ny) > 1.3) continue; const dd = dist(nx, ny, dr.x, dr.y); if (dd > 1.05) continue; nearDoor = true;
+      S.doorQ = S.doorQ || {}; const c = S.doorQ[dr.k], other = c && c.id !== n.id && now - c.t < 500 && S.npcs[c.id] && dist(S.npcs[c.id].x, S.npcs[c.id].y, dr.x, dr.y) < 1.1;
+      const pl = Object.values(S.players).some(p => !p.dragBy && !p.carriedBy && !(n.lead && n.lead.id === p.id) && n.carrying !== p.id && dist(p.x, p.y, dr.x, dr.y) < 0.6);
+      if ((other || pl) && (n.doorWait || 0) < 3) { n.doorWait = (n.doorWait || 0) + dt; n.walk = false; return false; }
+      S.doorQ[dr.k] = { id: n.id, t: now }; } }
+  const px = n.x, py = n.y, free = npcStand(n.x, n.y, 0.2);
+  if (npcStand(nx, ny, 0.22) || !free) { n.x = nx; n.y = ny; }
+  else if (Math.abs(nx - n.x) > 0.002 && npcStand(nx, n.y, 0.22)) n.x = nx;
+  else if (Math.abs(ny - n.y) > 0.002 && npcStand(n.x, ny, 0.22)) n.y = ny;
+  const moved = Math.hypot(n.x - px, n.y - py);
+  if (moved < st * 0.3) {   // travou: refaz o caminho; depois tenta um passo de lado; nunca atravessa parede
+    n._stuck = (n._stuck || 0) + 1;
+    if (n._stuck === 6 || n._stuck === 20) n.path = null;
+    if (n._stuck > 30 && n._stuck % 10 === 0) { const a = Math.random() * Math.PI * 2, sx = n.x + Math.cos(a) * 0.3, sy = n.y + Math.sin(a) * 0.3; if (npcStand(sx, sy, 0.22)) { n.x = sx; n.y = sy; } }
+    if (n._stuck > 120) { n._stuck = 0; n.walkKey = null; }
+    if (n._stuck > 8 && n.legs.length === 1 && dist(n.x, n.y, tx, ty) < 1.25) { n.walk = false; return true; }   // destino exato bloqueado (grade, balcão): chegou perto o bastante
+  } else { n._stuck = 0; if (!nearDoor) n.doorWait = 0; }
+  n.walk = moved > 0.001; return dist(n.x, n.y, tx, ty) < 0.6;
 }
