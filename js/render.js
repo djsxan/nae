@@ -15,7 +15,7 @@ function wind(x, y, now) { return Math.sin(now / 1400 + x * 0.37 + y * 0.21) + M
 const DAY_CYCLE_MS = 12 * 60 * 1000;
 function dayInfo() {
   const ph = typeof G !== 'undefined' && G.devTime ? (G.devTime === 'day' ? 0.06 : 0.5) : (Date.now() % DAY_CYCLE_MS) / DAY_CYCLE_MS;
-  const sun = Math.cos(ph * Math.PI * 2);
+  const sk = typeof seasonNow === 'function' ? seasonNow().k : 'spring', sun = Math.cos(ph * Math.PI * 2) + ({ summer: 0.16, winter: -0.14, autumn: -0.04, spring: 0.04 })[sk];
   const k = clamp((0.15 - sun) / 0.65, 0, 1);
   const dark = smooth(k) * 0.62;
   const dusk = Math.max(0, 1 - Math.abs(sun + 0.05) / 0.35);
@@ -287,7 +287,7 @@ function heroPoseFor(e, now) {
   if (e.custP && e.custP.sweep && e.walking) P.act = e.custP.act;
   if (e.walking) { P.walk = Math.floor(e.walkDist * (e.cls === 'knight' ? 8.5 : 9.5) / (e.running ? 1.45 : 1)) % 12; if (e.running) P.run = 1; if (e.dragMode === 'arms') P.walk = (12 - P.walk) % 12; }   // puxando pelos braços anda de costas
   if (e.skin === 'weaver') { P.walk = -1; P.run = 0; }
-  if (e.anim) { const t = actProg(e.anim, now); if (t >= 0 && ACTS[e.anim.a]) P.act = { k: e.anim.a, f: Math.min(11, Math.floor(t * 12)) }; }
+  if (e.anim) { const t = actProg(e.anim, now); if (e.anim.a === 'adore' && (e.anim.ms || 0) > 3000) { if (now - e.anim.t0 < e.anim.ms) P.act = { k: 'adore', f: Math.min(9, Math.floor((now - e.anim.t0) / 80)) }; } else if (t >= 0 && ACTS[e.anim.a]) P.act = { k: e.anim.a, f: Math.min(11, Math.floor(t * 12)) }; }
   if (!P.act && typeof bowPose === 'function') { const bp = bowPose(e, now); if (bp) P.act = bp; }
   if (!e.isNpc) { P.lost = e.lost || 0; P.pro = e.pro || 0; }
   if (e.knockUntil && now < e.knockUntil && now >= e.knockUntil - 650) P.act = { k: 'getup', f: Math.min(11, Math.floor((1 - (e.knockUntil - now) / 650) * 12)) };
@@ -342,6 +342,20 @@ function stoolSprite() {
   _stoolSpr = { c, w: W, h: H, ax: cx, ay: by }; return _stoolSpr;
 }
 // altura do tablado do cadafalso (com a rampa da escada na frente)
+// cores da estação nas plantas: outono alaranjado, inverno pálido com neve; cada sprite é refeito uma vez por estação
+const SEASON_PLANTS = new Set([O.TREE, O.PINE, O.OAK, O.BIRCH, O.WILLOW, O.BUSH, O.TALLGRASS, O.FERN, O.BERRY, O.FLOWER, O.HERB]);
+const _stint = new Map();
+function seasonTint(s, o) {
+  if (!s || !SEASON_PLANTS.has(o) || typeof seasonNow !== 'function') return s; const sk = seasonNow().k; if (sk === 'spring' || sk === 'summer') return s;
+  let m = _stint.get(s); if (!m) { m = {}; _stint.set(s, m); if (_stint.size > 600) _stint.delete(_stint.keys().next().value); }
+  if (m[sk]) return m[sk];
+  const c = document.createElement('canvas'); c.width = s.c.width; c.height = s.c.height; const x = c.getContext('2d');
+  const pine = o === O.PINE;
+  try { x.filter = sk === 'autumn' ? (pine ? 'saturate(0.85)' : 'sepia(0.5) hue-rotate(-28deg) saturate(1.7) brightness(1.02)') : (pine ? 'saturate(0.6) brightness(1.05)' : 'saturate(0.2) brightness(1.12)'); } catch (e) { }
+  x.drawImage(s.c, 0, 0); x.filter = 'none';
+  if (sk === 'winter') { x.globalCompositeOperation = 'source-atop'; const g = x.createLinearGradient(0, 0, 0, c.height); g.addColorStop(0, 'rgba(255,255,255,0.55)'); g.addColorStop(0.6, 'rgba(240,245,255,0.18)'); g.addColorStop(1, 'rgba(240,245,255,0)'); x.fillStyle = g; x.fillRect(0, 0, c.width, c.height); }
+  return (m[sk] = { ...s, c });
+}
 function stageLift(x, y) {
   return 0;   // a guilhotina agora fica no chão
   if (STAGE.x < 0) return 0; const dx = x - STAGE.x, dy = y - STAGE.y, H = 0.82 * (typeof HV !== 'undefined' ? HV : 25);
@@ -352,6 +366,7 @@ function stageLift(x, y) {
 function drawHeroEntity(ctx, e, sx, sy, now) {
   if (R3.ok && e.tied && !e.isNpc && typeof drawTied === 'function') { drawTied(ctx, e, sx, sy, now); e._spr = null; return; }
   if (R3.ok && e.downed && !e.isNpc && typeof drawTow === 'function' && TOWS['p:' + e.id] && drawTow(ctx, 'p:' + e.id, now)) { e._spr = null; return; }
+  if (R3.ok && e.exec && e.exec.T && typeof drawExecVictim === 'function' && drawExecVictim(ctx, e, sx, sy, now)) return;
   if (R3.ok && e.downed && e.dragged && !e.isNpc && typeof drawDragged === 'function') { drawDragged(ctx, e, sx, sy, now); e._spr = null; return; }
   if (R3.ok && e.exec && e.exec.T && typeof drawExecVictim === 'function' && drawExecVictim(ctx, e, sx, sy, now)) return;
   if (R3.ok && e.exec && !e.exec.T && now < e.exec.t0 + e.exec.ms + 1500) {   // deitado na guilhotina, com a cabeça na luneta
@@ -672,8 +687,11 @@ function updateAtmosphere(px_, py, dt) {
   const k = Math.min(1, dt * 0.0012);
   for (const key of ['ta', 'fog', 'rays', 'crows', 'embers', 'dust']) ATM[key] += (tgt[key] - ATM[key]) * k;
   for (let i = 0; i < 3; i++) { ATM.tint[i] += (tgt.tint[i] - ATM.tint[i]) * k; ATM.fogC[i] += (tgt.fogC[i] - ATM.fogC[i]) * k; }
-  ATM.snow += (nearMountain - ATM.snow) * k;
-  ATM.rain += (clamp(w.rain + tgt.rainBias * (w.rain > 0 ? 1 : 0.35), 0, 1) * (nearMountain ? 0.3 : 1) - ATM.rain) * k;
+  const sk = typeof seasonNow === 'function' ? seasonNow().k : 'spring', wint = sk === 'winter';
+  ATM.snow += ((nearMountain ? 1 : wint ? 0.35 + 0.65 * w.rain : 0) - ATM.snow) * k;
+  ATM.rain += (clamp(w.rain + tgt.rainBias * (w.rain > 0 ? 1 : 0.35), 0, 1) * (nearMountain ? 0.3 : wint ? 0 : 1) - ATM.rain) * k;
+  ATM.leaves = (ATM.leaves || 0) + ((sk === 'autumn' ? 0.6 + 0.4 * w.wind : 0) - (ATM.leaves || 0)) * k;
+  ATM.frost = (ATM.frost || 0) + ((wint ? 1 : 0) - (ATM.frost || 0)) * k;
   ATM.wind = w.wind;
 }
 const FOG_TEX = (() => {
@@ -728,6 +746,10 @@ function drawAtmosphere(ctx, W, H, now, day, cam) {
     if (ATM.rain > 0.75 && (Math.floor(t / 7) % 5 === 0) && (t % 7) < 0.15) { ctx.fillStyle = 'rgba(230,235,255,0.35)'; ctx.fillRect(0, 0, W, H); }
   }
   // neve perto da montanha
+  if (ATM.leaves > 0.02) {   // outono: folhas laranja caindo e rodopiando
+    for (let k = 0; k < 26 * ATM.leaves; k++) { const sp = 0.4 + hash2(k, 4, 9) * 0.6, x = (hash2(k, 5, 9) * W + t * 40 * (0.3 + ATM.wind) * sp + Math.sin(t * 0.8 + k) * 22) % W, y = (hash2(k, 6, 9) * H + t * 22 * sp) % H, a = t * (1 + sp) + k;
+      ctx.save(); ctx.translate(x, y); ctx.rotate(a); ctx.scale(1, Math.abs(Math.cos(a * 1.3)) * 0.8 + 0.2); ctx.fillStyle = ['#c8642a', '#d89a3a', '#a8402a', '#e0b048'][k % 4]; ctx.globalAlpha = 0.75 * ATM.leaves; ctx.beginPath(); ctx.ellipse(0, 0, 3 + sp * 2, 1.6 + sp, 0, 0, 7); ctx.fill(); ctx.restore(); }
+  }
   if (ATM.snow > 0.02) {
     ctx.fillStyle = `rgba(245,250,255,${0.8 * ATM.snow})`;
     for (let k = 0; k < 160 * ATM.snow; k++) { const sp = 0.5 + hash2(k, 1, 9) * 0.7, x = (hash2(k, 2, 9) * W + t * 30 * ATM.wind * sp + Math.sin(t + k) * 12) % W, y = (hash2(k, 3, 9) * H + t * 50 * sp) % H, r = 1 + sp * 1.6; ctx.beginPath(); ctx.arc(x, y, r, 0, 7); ctx.fill(); }
@@ -785,6 +807,8 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     if (!ch) { if (budget-- <= 0) continue; ch = buildChunk(cx, cy); chunks.set(key, ch); }
     ctx.drawImage(ch, cx * CHUNK + ox - 0.3, cy * CHUNK + oy - 0.3, CHUNK + 0.6, CHUNK + 0.6);
   }
+  if (typeof drawWeaverFlora === 'function' && G.started) { weaverFloraTick(now); drawWeaverFlora(ctx, ox, oy, now); }
+  if ((ATM.frost || 0) > 0.02) { ctx.save(); ctx.globalCompositeOperation = 'screen'; ctx.fillStyle = 'rgba(215,224,238,' + (0.55 * ATM.frost).toFixed(3) + ')'; ctx.fillRect(-20, -20, vw + 40, vh + 40); ctx.restore(); }
   if (budget > 0) { outer: for (let cy = cy0 - 1; cy <= cy1 + 1; cy++) for (let cx = cx0 - 1; cx <= cx1 + 1; cx++) { const key = chunkKey(cx, cy); if (!chunks.has(key)) { chunks.set(key, buildChunk(cx, cy)); break outer; } } }
 
   // 3) marcadores
@@ -865,7 +889,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     const efl = e.fl || 0, ebi = (e.z || 0) < 0.5 ? (efl > 0 ? (e.fb ?? bldAt(e.rx, e.ry)) : bldAt(e.rx, e.ry)) : -1;
     if (efl > 0 && !(ebi === inB0 && efl === myFl)) return;       // quem está em outro andar não aparece
     const stH = typeof stageLift === 'function' ? stageLift(e.rx, e.ry) : 0;
-    const it = { d: e.exec && e.exec.T ? STAGE.x + STAGE.y - 0.4 : stH ? Math.max(e.rx + e.ry, STAGE.x + STAGE.y + 0.6) : e.rx + e.ry, k: kind, e, sx, sy: sy - stH - (ebi >= 0 ? flRaise(BUILDINGS[ebi], efl) + (e.lift ? e.lift * flRaise(BUILDINGS[ebi], 1) : 0) : 0), tx: e.rx, ty: e.ry };
+    const it = { d: e.exec && e.exec.T ? STAGE.x + STAGE.y - 0.4 : stH ? Math.max(e.rx + e.ry, STAGE.x + STAGE.y + 0.6) : e.rx + e.ry + ((e.sit || (e.custP && e.custP.sit)) ? 0.15 : 0), k: kind, e, sx, sy: sy - stH - (ebi >= 0 ? flRaise(BUILDINGS[ebi], efl) + (e.lift ? e.lift * flRaise(BUILDINGS[ebi], 1) : 0) : 0), tx: e.rx, ty: e.ry };
     if ((e.z || 0) < 0.5 && inB0 >= 0 && ebi === inB0 && efl === myFl) it.inside = true;
     if ((e.alt || 0) > 0.5) sky.push(it); else if ((e.z || 0) >= 0.5) { if (!hideUpper) upper.push(it); } else items.push(it);
   };
@@ -974,7 +998,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
         return;
       }
       if (it.o === O.TOWER) { const p = iso(it.x - 0.5, it.y - 0.5), s = towerSprite(WORLD.tvar[it.y * MAP_W + it.x], WORLD.toff[it.y * MAP_W + it.x]); blitV(s, p.sx + ox, p.sy + oy, it.d); return; }
-      const s = objSprite(it.o, it.x, it.y);
+      const s = seasonTint(objSprite(it.o, it.x, it.y), it.o);
       if (s) { const sw = SWAY[it.o] ? wind(it.x, it.y, now) * SWAY[it.o] * (0.7 + ATM.wind * 0.6) : 0; if (s.h > 60 && occTest(s, it.sx, it.sy, it.d)) pblit(ctx, s, it.sx, it.sy, 0.42); else drawSway(ctx, s, it.sx, it.sy, sw); }
       liveParts(ctx, it.o, it.sx, it.sy, it.x, it.y, now);
       if (it.o === O.MUSHROOM) { const z = zoneAt(it.x, it.y); if (z === Z.SWAMP || (z === Z.FOREST && hash2(it.x, it.y, 17) < 0.3)) G.lights.push({ x: it.sx, y: it.sy - 8, r: 16, c: '90,200,240', a: 0.6 }); }
@@ -1152,7 +1176,7 @@ function drawLabels(ctx, labels, now) {
     }
     if (l.npc && l.npc.id === 'captain' && G.me && Object.keys(G.me.quests || {}).length < MAX_ACTIVE_QUESTS) pxText(ctx, '!', x, yy - 18 + Math.round(Math.sin(now / 200) * 2), '#f0c840', 26, '"Cinzel", serif', '900');
     if (!e) continue;
-    if (e.downed && l.player) {
+    if (e.downed && l.player && !e.exec) {
       const left = Math.max(0, (e.downUntil || 0) - now);
       pxText(ctx, e.revive ? 'Reanimando...' : `Caído · ${Math.ceil(left / 1000)}s`, x, yy - 18, '#f08a7a', 13);
       if (e.revive) { const pr = clamp((now - e.revive.t0) / REVIVE_MS, 0, 1); ctx.fillStyle = 'rgba(0,0,0,0.8)'; ctx.fillRect(x - 26, yy - 12, 52, 6); ctx.fillStyle = '#7ad87a'; ctx.fillRect(x - 25, yy - 11, Math.round(50 * pr), 4); }

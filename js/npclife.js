@@ -6,7 +6,7 @@ function applyNpcRows(rows, now) {
   const seen = new Set();
   for (const [id, x100, y100, fl, onBack, carrying] of rows || []) {
     const e = G.npcs[id]; if (!e) continue; seen.add(id);
-    e.srv = true; e.dragMode = fl & 64 ? 'lead' : (e.dragMode === 'lead' ? null : e.dragMode); e.npDown = !!(fl & 1); e.npDead = !!(fl & 2); e.dragged = !!(fl & 4); e.prone = !!(fl & 8); e.npWalk = !!(fl & 32);
+    e.srv = true; e.dragMode = fl & 64 ? 'lead' : (e.dragMode === 'lead' ? null : e.dragMode); e.npDown = !!(fl & 1); e.npDead = !!(fl & 2); e.dragged = !!(fl & 4); e.prone = !!(fl & 8); e.npWalk = !!(fl & 32); e.crawl = !!(fl & 128); e.npSleep = !!(fl & 256);
     e.onBackBy = onBack || null; e.carrying = carrying || null;
     e.tx = x100 / 100; e.ty = y100 / 100;
     if (e.kind !== 'fruit' || e.npDown || e.npDead || e.dragged || e.onBackBy) { if (e._snap == null || Math.hypot(e.tx - e.rx, e.ty - e.ry) > 4) { e.x = e.rx = e.tx; e.y = e.ry = e.ty; } e._snap = 1; }
@@ -17,17 +17,21 @@ function updateNpcMotion(now, dt) {
   for (const id in G.npcs) {
     const e = G.npcs[id]; if (e.tx == null || (e.kind === 'fruit' && !e.npDown && !e.npDead && !e.dragged && !e.onBackBy)) continue;
     const dx = e.tx - e.rx, dy = e.ty - e.ry, d = Math.hypot(dx, dy);
-    if (d > 0.01) { const k = Math.min(1, dt * 9); e.rx += dx * k; e.ry += dy * k; e.x = e.rx; e.y = e.ry; if (!e.npDown && !e.npDead && !e.dragged) { e.dir = dirFromVec(dx, dy, e.dir); e.walking = e.npWalk || d > 0.05; e.walkDist = (e.walkDist || 0) + d * k; } }
+    if (d > 0.01) { const k = Math.min(1, dt * 9); e.rx += dx * k; e.ry += dy * k; e.x = e.rx; e.y = e.ry; if (e.crawl && d > 0.004) { e.dir = dirFromVec(dx, dy, e.dir); e.crawlD = (e.crawlD || 0) + d * k; if (e.crawlD - (e.bloodD || 0) > 0.28) { e.bloodD = e.crawlD; addBlood(e.rx + (Math.random() - 0.5) * 0.2, e.ry + (Math.random() - 0.5) * 0.2, 0, 0.18 + Math.random() * 0.22, 90000); } }
+    if (!e.npDown && !e.npDead && !e.dragged) { e.dir = dirFromVec(dx, dy, e.dir); e.walking = e.npWalk || d > 0.05; e.walkDist = (e.walkDist || 0) + d * k; } }
     else if (!e.npWalk) e.walking = false;
   }
 }
 // NPC caído ou morto: deitado; puxado: arrastado; nas costas de alguém: não aparece no chão
 function drawNpcState(ctx, e, sx, sy, now) {
   if (e.onBackBy) return true;
+  if (e.npSleep && !e.npDown && !e.npDead) { const s = npcSprite3D(e.kind, { dir: e.dir || 0, walk: -1, down: true }); ctx.imageSmoothingEnabled = true; pblit(ctx, s, sx, sy); if (typeof drawZzz === 'function') drawZzz(ctx, sx, sy - 22, now); return true; }   // dormindo
   if (!(e.npDown || e.npDead)) return false;
   if (typeof TOWS !== 'undefined' && TOWS['n:' + e.id] && drawTow(ctx, 'n:' + e.id, now)) return true;
   if (FALLS['n' + e.id] && e.npDead) { drawFall(ctx, FALLS['n' + e.id], sx, sy, now, 1, 0); return true; }
-  const P = { dir: e.dragged && typeof dragDir === 'function' ? dragDir(e) : (e.dir || 0), walk: -1, down: true, prone: !!e.prone };
+  const P = { dir: e.dragged && typeof dragDir === 'function' ? dragDir(e) : (e.dir || 0), walk: -1, down: true, prone: !!e.prone || !!e.crawl };
+  if (e.crawl || (e.npDown && !e.npDead && !e.dragged)) { P.prone = true; P.crawl = e.crawl ? 1 + Math.floor(now / 260) % 4 : 5; }   // se arrastando (ou parado, com a mão estendida)
+  if (e.npDown && !e.npDead && !e.dragged && Math.random() < 0.004) addBlood(e.rx, e.ry, 0, 0.3 + Math.random() * 0.2, 90000);
   const s = npcSprite3D(e.kind, P); ctx.imageSmoothingEnabled = true; pblit(ctx, s, sx, sy);
   if (e.npDead) { ctx.save(); ctx.globalAlpha = 0.5; ctx.fillStyle = '#5a0c0c'; ctx.beginPath(); ctx.ellipse(sx + 6, sy + 2, 14, 5, 0, 0, 7); ctx.fill(); ctx.restore(); }
   return true;
@@ -67,7 +71,40 @@ function npcReactions(now) {
 function drawNpcBubble(ctx, e, sx, sy, now) {
   if (e.custP && e.custP.doze && typeof drawZzz === 'function') drawZzz(ctx, sx, sy - 30, now);
   if (!e.bubble || now > e.bubble.until) return;
-  const k = 1 - Math.max(0, (e.bubble.until - now - 200) / 1200), y = sy - 70 - Math.sin(Math.min(1, k * 3) * Math.PI) * 3;
-  ctx.save(); ctx.font = 'bold 12px serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,248,225,0.95)'; ctx.strokeStyle = 'rgba(40,24,10,0.9)'; ctx.lineWidth = 3;
+  const k = 1 - Math.max(0, (e.bubble.until - now - 200) / 1200), y = sy - (e.npDown ? 30 : 70) - Math.sin(Math.min(1, k * 3) * Math.PI) * 3, long = e.bubble.t.length > 3;
+  ctx.save(); ctx.font = long ? 'italic bold 9px serif' : 'bold 12px serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,248,225,0.95)'; ctx.strokeStyle = 'rgba(40,24,10,0.9)'; ctx.lineWidth = 3;
   ctx.strokeText(e.bubble.t, sx, y); ctx.fillText(e.bubble.t, sx, y); ctx.restore();
+}
+
+// ---------- a presença do Tecelão faz brotar plantinhas e flores no chão onde ele fica parado (só em grama, terra e areia) ----------
+G.flora = [];
+const FLORA_OK = new Set([T.GRASS, T.DIRT, T.SAND, T.FOREST]);
+function weaverFloraTick(now) {
+  for (const id in G.players) {
+    const e = G.players[id]; if (e.skin !== 'weaver' || !e.visible || (e.z || 0) >= 0.5) continue;
+    const moving = e.walking || (e._fx != null && Math.hypot(e.rx - e._fx, e.ry - e._fy) > 0.05); if (moving) { e._fx = e.rx; e._fy = e.ry; e._still = now; continue; }
+    if (e._still == null) e._still = now; if (now - e._still < 3000 || now < (e._floraT || 0)) continue;
+    e._floraT = now + 380 + Math.random() * 300;
+    if (G.flora.filter(f => !f.wilt && Math.hypot(f.x - e.rx, f.y - e.ry) < 2).length >= 22) continue;
+    const a = Math.random() * Math.PI * 2, r = 0.25 + Math.sqrt(Math.random()) * 1.35, x = e.rx + Math.cos(a) * r, y = e.ry + Math.sin(a) * r, i = tileAt(x, y);
+    if (!FLORA_OK.has(WORLD.ground[i]) || WORLD.bld[i] >= 0 || WORLD.rdir[i] && WORLD.ground[i] !== T.GRASS) continue;
+    G.flora.push({ x, y, t0: now, k: Math.random() < 0.45 ? 'sprout' : 'flower', c: ['#f4f0e8', '#f2d860', '#e8a0c0', '#b8c8f0'][Math.floor(Math.random() * 4)], s: 0.7 + Math.random() * 0.6, rot: Math.random() * 6.28, wilt: 0, src: id });
+  }
+  for (const f of G.flora) { const e = G.players[f.src]; if (!f.wilt && (!e || e.skin !== 'weaver' || Math.hypot(e.rx - f.x, e.ry - f.y) > 2.2 || (e._still && now - e._still < 200))) f.wilt = now; }
+  G.flora = G.flora.filter(f => !f.wilt || now - f.wilt < 20000);
+  if (G.flora.length > 160) G.flora.splice(0, G.flora.length - 160);
+}
+function drawWeaverFlora(ctx, ox, oy, now) {
+  if (!G.flora.length) return; ctx.save();
+  for (const f of G.flora) {
+    const grow = Math.min(1, (now - f.t0) / 2500), w = f.wilt ? Math.max(0, 1 - (now - f.wilt) / 20000) : 1, k = grow * (0.4 + 0.6 * w), p = iso(f.x, f.y), x = p.sx + ox, y = p.sy + oy;
+    if (k <= 0.02) continue; ctx.globalAlpha = 0.85 * (f.wilt ? w : 1);
+    const hgt = 4.5 * k * f.s, droop = f.wilt ? (1 - w) * 2.5 : 0;
+    ctx.strokeStyle = f.wilt ? '#7a8a4a' : '#5a9a3a'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(x, y); ctx.quadraticCurveTo(x + droop, y - hgt * 0.6, x + droop * 1.5, y - hgt); ctx.stroke();
+    ctx.fillStyle = f.wilt ? '#8a9a52' : '#6ab84a';
+    for (const sd of [-1, 1]) { ctx.beginPath(); ctx.ellipse(x + sd * 1.3 * k, y - hgt * 0.45, 1.3 * k, 0.6 * k, sd * 0.5, 0, 7); ctx.fill(); }
+    if (f.k === 'flower' && grow > 0.5) { const fx = x + droop * 1.5, fy = y - hgt, pr = 1.1 * k * f.s; ctx.fillStyle = f.c; for (let q = 0; q < 5; q++) { const a = f.rot + q * 1.2566; ctx.beginPath(); ctx.arc(fx + Math.cos(a) * pr, fy + Math.sin(a) * pr * 0.6, pr * 0.75, 0, 7); ctx.fill(); } ctx.fillStyle = '#f0b830'; ctx.beginPath(); ctx.arc(fx, fy, pr * 0.55, 0, 7); ctx.fill(); }
+    if (!f.wilt && grow < 1 && Math.random() < 0.03) spawnPart('ember', p.sx + (Math.random() - 0.5) * 4, p.sy - hgt);
+  }
+  ctx.restore();
 }

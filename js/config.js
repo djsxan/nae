@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.32.0';
-const VERSION_NAME = 'Nae · Negócios';
+const VERSION = 'v1.33.0';
+const VERSION_NAME = 'Nae · Moradores';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -153,6 +153,8 @@ const ITEMS = {
 const DYING_HP = 0.25, KNEEL_HP = 0.15, KNEEL_MUL = 0.5, AID_MS = 2000, AID_HEAL = 0.2;
 const CROUCH_MUL = 0.5, SLIDE_MS = 600, SLIDE_COST = 22;
 const LOOT = {
+  wand:     { name: 'Varinha entalhada', price: 10, icon: '🪄', color: '#c8a070', desc: 'Feita na Carpintaria da Vila. Magos e colecionadores pagam bem.' },
+  map:      { name: 'Mapa da região',    price: 7,  icon: '🗺', color: '#e8d8a8', desc: 'Copiado à mão em Pergaminhos & Mapas. Vale no Empório.' },
   rattail:  { name: 'Rabo de Ratazana', price: 4,   icon: '〰', color: '#c8a090', desc: 'Fino e pelado. Alguém paga por isso.' },
   goo:      { name: 'Gosma Viva',       price: 6,   icon: '●', color: '#6ad84a', desc: 'Ainda se mexe um pouco.' },
   pelt:     { name: 'Pele de Lobo',     price: 22,  icon: '▰', color: '#9a9a9a', desc: 'Grossa e quente. Os alfaiates adoram.' },
@@ -197,7 +199,7 @@ const MON_LOOT = {
 };
 const INV_SLOTS = 24;
 // modo criador (O Tecelão): abrir com ?criador e digitar a senha. Aqui fica só o hash SHA-256 da senha.
-const DEV_HASH = '28d187fa0b8863acc0ac63f8abaa45bd8f2871bf1e5c1f03564a805168fafbbc';
+const DEV_HASH = 'f1ee529ef49111208f1c1646c53c8c311c9f093fd7891c1b46d77e98210b018d';
 // bastiões: cada monstro volta ~3 min depois de morrer (sem jogador perto); chefe ~10 min; o baú do chefe dura 2 min
 const BASTION_RESPAWN = 180000, BOSS_RESPAWN = 600000, CHEST_MS = 120000, MAX_WILD = 200;
 // ===== corpo: partes, feridas e sangramento (fase 1) =====

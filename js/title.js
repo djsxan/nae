@@ -83,6 +83,16 @@ function titleMenu() {
   const opts = document.createElement('section'); opts.id = 'nae-opts'; opts.className = 'nae-opts';
   opts.innerHTML = '<h2>Configurações</h2><label>Qualidade gráfica</label><div class="nae-row" id="nae-q"><button data-q="low">Baixa</button><button data-q="med">Média</button><button data-q="high">Alta</button></div><p class="hint">As demais opções ficam no menu de pausa, dentro do jogo (Esc).</p>';
   lob.querySelector('.scroll').appendChild(opts);
+  { // senha do criador: fica salva neste navegador; ao entrar, pergunta se é o Tecelão ou um herói normal
+    const box = document.createElement('div'); box.className = 'nae-dev';
+    box.innerHTML = '<label>Senha do Criador</label><div class="nae-row"><input id="nae-devpw" type="password" maxlength="24" placeholder="(opcional)" autocomplete="off"><button id="nae-devsave">Salvar</button><button id="nae-devclr">Apagar</button></div><small id="nae-devst"></small>';
+    opts.appendChild(box);
+    const st = () => { let has = false; try { has = !!localStorage.getItem('nae-dev'); } catch (e) { } box.querySelector('#nae-devst').textContent = has ? 'Senha salva neste navegador. Ao entrar você escolhe: Tecelão ou herói normal.' : 'Nenhuma senha salva.'; };
+    box.querySelector('#nae-devsave').onclick = () => { const v = box.querySelector('#nae-devpw').value.trim(); if (!v) return; try { localStorage.setItem('nae-dev', v.toUpperCase()); } catch (e) { } box.querySelector('#nae-devpw').value = ''; st(); };
+    box.querySelector('#nae-devclr').onclick = () => { try { localStorage.removeItem('nae-dev'); } catch (e) { } st(); };
+    st();
+  }
+  document.body.classList.add('nae-ready');
   const markQ = () => opts.querySelectorAll('[data-q]').forEach(b => b.classList.toggle('on', (typeof SET !== 'undefined' && (SET.quality || 'high')) === b.dataset.q));
   opts.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { if (typeof SET !== 'undefined') { SET.quality = b.dataset.q; try { saveSettings(); } catch (e) { } } markQ(); }); markQ();
   const open = k => {

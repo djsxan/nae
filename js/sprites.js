@@ -293,6 +293,12 @@ function buildPose(cls, P) {
   else if (P.sit) { Q.lA = [1.5, -1.55]; Q.lB = [1.45, -1.5]; Q.drop = 12; Q.aA = [0.45, 0.25, 0.7]; Q.aB = [0.45, 0.25, 0.7]; Q.tl = -0.02; }
   if (P.tied) { Q.aA = [-0.45, -0.28, 0.35]; Q.aB = [-0.45, -0.28, 0.35]; Q.tl = 0.12; Q.ht = 0.3; Q.tie = P.tied; Q.nowp = 1; }   // mãos amarradas atrás das costas
   if (P.nowp) Q.nowp = 1;
+  if (P.down && P.crawl) {   // rastejando de bruços: braços se alternam puxando o corpo; 5 = parado com uma mão estendida pedindo piedade
+    const ph = (P.crawl - 1) / 4 * Math.PI * 2;
+    if (P.crawl === 5) { Q.aA = [2.4, 0.2, 0.3]; Q.aB = [0.6, 0.7, 0.8]; Q.lA = [0.2, -0.3]; Q.lB = [0.1, -0.2]; }
+    else { Q.aA = [2.2 + Math.sin(ph) * 0.6, 0.25, 0.5 + Math.max(0, Math.sin(ph)) * 0.5]; Q.aB = [2.2 - Math.sin(ph) * 0.6, 0.25, 0.5 + Math.max(0, -Math.sin(ph)) * 0.5]; Q.lA = [0.3 + Math.sin(ph) * 0.25, -0.4 - Math.max(0, Math.sin(ph)) * 0.5]; Q.lB = [0.3 - Math.sin(ph) * 0.25, -0.4 - Math.max(0, -Math.sin(ph)) * 0.5]; }
+    Q.nowp = 1;
+  }
   if (P.surr) { Q.aA = [2.6, 1.1, 2.6]; Q.aB = [2.6, 1.1, 2.6]; Q.ht = 0.25; Q.tl = 0.05; Q.nowp = 1; }                    // rendido: mãos na nuca
   if (P.led && P.walk >= 0) {   // andar forçado: passos curtos e desajeitados, curvado, tropeçando
     const ph = P.walk / 12 * Math.PI * 2, st = Math.max(0, Math.sin(ph * 2 + 0.6)) > 0.92 ? 0.25 : 0;

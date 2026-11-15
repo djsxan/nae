@@ -114,6 +114,7 @@ function clientOnServer(m) {
       const e = (m.w === 'p' ? G.players : m.w === 'n' ? G.npcs : G.monsters)[m.id];
       if (!e) break;
       e.anim = { a: m.a, t0: now, tx: m.tx, ty: m.ty, ms: m.ms, W: m.W, ang: m.ang, reach: m.reach, arc: m.arc }; e.emote = null;
+      if (m.w === 'n') { if (m.a === 'adore' && m.ms > 3000) { e.bubble = { t: '✦', until: now + m.ms }; e.reactT = now + m.ms; if (m.tx != null) e.dir = dirFromVec(m.tx - e.rx, m.ty - e.ry, e.dir); } else if (m.a === 'look' && e.bubble && e.bubble.t === '✦') e.bubble = null; if (m.a === 'shout') { e.bubble = { t: m.txt || 'Guardas!', until: now + 2500 }; e.anim = null; } if (m.a === 'talk') { e.bubble = { t: m.txt || '...', until: now + 2600 + (m.txt || '').length * 60 }; e.anim = null; } if (m.a === 'mercy') { e.bubble = { t: m.txt || 'Misericórdia!', until: now + 3000 }; e.anim = null; } }
       if (m.a === 'execute' && m.id === G.myId) later(380, () => { G.shake = Math.max(G.shake, 6); });
       if (m.tx != null && m.w === 'p' && m.a !== 'spin') e.dir = dirFromVec(m.tx - e.rx, m.ty - e.ry, e.dir);
 
@@ -660,16 +661,16 @@ const NPC_DIALOG = {
   st_farm: { greet: "Ervas para o alambique, linho para o tear. A terra daqui é boa, só falta mão.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_carp: { greet: "Madeira boa vira varinha, cabo, caixa ou papel. Me dê toras e eu faço o resto.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_alch: { greet: "Cuidado com o caldeirão! Erva certa, fogo baixo, paciência… e sai um tônico que levanta defunto.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
-  st_apoth: { greet: "Bem-vindo ao Boticário. Poções, ervas secas, unguentos. Tudo fresquinho, quando o patrão abastece.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
-  st_arcane: { greet: "Cristais, varinhas, coisas que zumbem. Não encoste no que brilha.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
-  st_tailor: { greet: "Linho, lã e linha. Se o patrão mandar tecido, eu deixo a loja cheia de cor.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
-  st_scroll: { greet: "Papel, pergaminho, tinta. Um bom mapa vale mais que uma espada, acredite.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  st_apoth: { greet: "Bem-vindo ao Boticário. Poções, ervas secas, unguentos. Tudo fresquinho, quando o patrão abastece.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  st_arcane: { greet: "Cristais, varinhas, coisas que zumbem. Não encoste no que brilha.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  st_tailor: { greet: "Linho, lã e linha. Se o patrão mandar tecido, eu deixo a loja cheia de cor.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  st_scroll: { greet: "Papel, pergaminho, tinta. Um bom mapa vale mais que uma espada, acredite.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   courier1: { greet: "Pip, mensageiro! Levo e trago o que for, da vila até a Rua Nova, num pé só.", opts: [['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
   courier2: { greet: "Lia Ventura. Conheço cada viela daqui até o rio. Ninguém me alcança.", opts: [['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
   courier3: { greet: "Tomé, carroceiro. Devagar, mas a carga chega inteira. Quase sempre.", opts: [['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
   broker: { greet: 'Bem-vindo à Imobiliária Chave de Bronze! Casas, lojas, oficinas: se tem porta em Sxan, eu sei de quem é a chave. Quer ver o que está livre?', opts: [
     ['Ver imóveis (mapa e lista)', { open: 'estate' }],
-    ['Como funciona o aluguel?', { local: 'Simples: você paga o primeiro dia e uma caução, e a chave é sua. Depois o aluguel sai sozinho da sua bolsa a cada dia (12 minutos). Se faltar ouro por dois dias, a casa volta para mim e o baú vai para a sua mochila. Devolveu a chave? A caução volta.' }],
+    ['Como funciona o aluguel?', { local: 'Simples: você paga a primeira semana e uma caução, e a chave é sua. Depois o aluguel sai sozinho da sua bolsa uma vez por semana (7 dias do jogo). Se faltar ouro por duas semanas, a casa volta para mim e o baú vai para a sua mochila. Devolveu a chave? A caução volta. E lembre: perto do castelo é caro, na periferia é barato.' }],
     ['E o que ganho com uma casa?', { local: 'Porta trancada (só entra quem você autorizar), um baú seguro, você acorda lá quando chega ao reino e dorme muito melhor na sua própria cama. Nada como estar em casa.' }],
     ['Posso ter uma loja ou oficina?', { local: 'Pode! Os pontos vagos da Rua Nova e as oficinas da Vila do Oeste estão à venda e para alugar. Cada um vem com um funcionário. As oficinas produzem, os mensageiros levam para as suas lojas e as lojas vendem sozinhas. O lucro fica no cofre: vá buscar!' }],
     ['Comprar ou alugar?', { local: 'Alugar sai barato para começar, mas cobra todo dia. Comprar custa 60 dias de aluguel de uma vez, e depois só 1 ouro de imposto por dia. Se cansar, a Coroa compra de volta pela metade.' }]] },
@@ -744,7 +745,7 @@ function buildDialogOptions(id) {
     add('Como funciona a cadeia?', () => setDialogText('Quem é pego pelas sentinelas fica aqui o tempo da pena: agressão 2 minutos, ataque à traição 3, assassinato 6. Dormir no catre faz o tempo passar mais rápido. Fiança: 30 de ouro por minuto que falta. E nada de mexer nas fechaduras, ouviu?'));
   } else {
     const def = NPC_DIALOG[n.kind];
-    for (const [label, act] of def.opts) add(label, () => { const P = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null; if (act.open === 'biz') { if (P && estMine(P.id)) { closeDialog(); bizOpen(P.id); } else setDialogText('Só o dono pode mexer nos livros. ' + (P && G.est.st[P.id] ? 'Este ponto é de ' + G.est.st[P.id].replace('★', '') + '.' : 'Este ponto está à venda: fale com Mestre Anselmo, na Imobiliária.')); } else if (act.owner) setDialogText(P && G.est.st[P.id] ? 'Trabalho para ' + G.est.st[P.id].replace('★', '') + '. Paga em dia… quase sempre.' : 'Ninguém, por enquanto. A Coroa vende ou aluga o ponto, e eu venho junto!'); else if (act.open === 'estate') { closeDialog(); estToggle(true, 'house'); } else if (act.local) setDialogText(act.local); else Net.send({ t: 'npc', n: id, ...act }); });
+    for (const [label, act] of def.opts) add(label, () => { const P = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null; if (act.open === 'biz') { if (P && estMine(P.id)) { closeDialog(); bizOpen(P.id); } else setDialogText('Só o dono pode mexer nos livros. ' + (P && G.est.st[P.id] ? 'Este ponto é de ' + G.est.st[P.id].replace('★', '') + '.' : 'Este ponto está à venda: fale com Mestre Anselmo, na Imobiliária.')); } else if (act.counter) { if (P) counterOpen(P.id); } else if (act.owner) setDialogText(P && G.est.st[P.id] ? 'Trabalho para ' + G.est.st[P.id].replace('★', '') + '. Paga em dia… quase sempre.' : 'Ninguém, por enquanto. A Coroa vende ou aluga o ponto, e eu venho junto!'); else if (act.open === 'estate') { closeDialog(); estToggle(true, 'house'); } else if (act.local) setDialogText(act.local); else Net.send({ t: 'npc', n: id, ...act }); });
   }
   add('Até logo', closeDialog, 'ghost');
 }
@@ -1238,9 +1239,9 @@ function buildLobby() {
   refreshSkinLocks();
   const urlCode = new URLSearchParams(location.search).get('sala');
   if (urlCode) $('code').value = urlCode.toUpperCase();
-  $('btn-create').onclick = () => createRoom();
-  $('btn-join').onclick = joinRoom;
-  $('code').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
+  $('btn-create').onclick = () => devGate(() => createRoom());
+  $('btn-join').onclick = () => devGate(joinRoom);
+  $('code').addEventListener('keydown', e => { if (e.key === 'Enter') devGate(joinRoom); });
   $('btn-copy').onclick = () => { const link = location.origin + location.pathname + '?sala=' + Net.room; navigator.clipboard.writeText(link).then(() => showToast('Convite copiado. Mande para seus amigos.'), () => showToast(link)); };
   $('btn-help').onclick = () => $('help').classList.toggle('hidden');
   if (chars[0]) $('name').value = chars[0].name;
@@ -1392,7 +1393,17 @@ $('pz-quit').addEventListener('click', () => { try { saveChar(); saveFog && G.fo
 applySettings();
 
 // ---------- modo criador: O Tecelão ----------
-if (/[?&]criador\b/.test(location.search)) { const pw = window.prompt('Senha do Tecelão:'); if (pw) { G.devPw = pw.trim().toUpperCase(); G.devMode = 'weaver';
+// a senha fica salva nas Configurações (localStorage 'nae-dev'); ao entrar no reino, pergunta como entrar
+function devGate(go) {
+  let pw = null; try { pw = localStorage.getItem('nae-dev'); } catch (e) { }
+  if (!pw) { G.devPw = null; go(); return; }
+  const old = document.getElementById('devask'); if (old) old.remove();
+  const d = document.createElement('div'); d.id = 'devask';
+  d.innerHTML = '<div class="devask-box"><h3>Entrar como</h3><button class="btn gold" data-m="weaver">✦ O Tecelão</button><button class="btn" data-m="normal">Criador com a vocação escolhida</button><button class="btn ghost" data-m="none">Herói comum</button></div>';
+  document.body.appendChild(d);
+  d.querySelectorAll('button').forEach(b => b.onclick = () => { const m = b.dataset.m; d.remove(); if (m === 'none') G.devPw = null; else { G.devPw = pw; G.devMode = m; } go(); });
+}
+if (false && /[?&]criador\b/.test(location.search)) { const pw = window.prompt('Senha do Tecelão:'); if (pw) { G.devPw = pw.trim().toUpperCase(); G.devMode = 'weaver';
   const box = document.createElement('div'); box.id = 'devmode'; box.style.cssText = 'margin:10px 0;display:flex;gap:8px;align-items:center;justify-content:center';
   box.innerHTML = '<b>Entrar como:</b><button class="btn gold" data-m="weaver">O Tecelão</button><button class="btn" data-m="normal">Vocação escolhida</button>';
   const set = m => { G.devMode = m; box.querySelectorAll('button').forEach(b => b.className = 'btn' + (b.dataset.m === m ? ' gold' : '')); };
@@ -1455,6 +1466,7 @@ function updateNeeds() {
   if (me.sick > 0) out.push(['🤢', 'Enjoado', 1]);
   el.innerHTML = out.map(([i, t, s]) => '<span class="nd s' + s + '" title="' + t + '">' + i + '</span>').join('');
   document.body.classList.toggle('cold', (me.cold || 0) > 50); document.body.classList.toggle('fever', !!me.infect);
+  if (typeof survMedalsUpdate === 'function') survMedalsUpdate(me);
   const pr = $('prompt'); if (!G.loot && !nearCorpse()) { const raw = me.inv && (me.inv.venison || me.inv.pork); const stN = typeof nearStove === 'function' && nearStove(), hv = nearHarvest(), exN = me.carrying && STAGE.x >= 0 && dist(me.x, me.y, STAGE.x, STAGE.y) < 3.4; const jp = typeof jailPrompt === 'function' ? jailPrompt() : '';
   const bq = typeof boundNear === 'function' ? boundNear() : null;
   const txt = me.bound ? (me.bnd === 'rope' ? 'Mãos amarradas com corda: martele ESPAÇO para se soltar (' + (me.bndE || 0) + '%)' : 'Algemado: só uma gazua ou o carcereiro abrem') : bq ? (bq.bound ? 'F: soltar ' + bq.name : '') : jp ? jp : (typeof estatePrompt === 'function' && estatePrompt()) ? estatePrompt() : me.wantedUntil > performance.now() && !me.escorted ? 'Y: render-se às sentinelas' : me.dragMode === 'grip' ? 'Segure o clique esquerdo: apertar o pescoço · H solta' : exN ? 'F: entregar ao carrasco (execução)' : stN ? 'F: cozinhar' : hv >= 0 ? (WORLD.obj[hv] === O.BERRY ? 'F: colher frutas' : 'F: colher erva') : raw && nearFireC() ? 'F: assar a carne' : nearWaterC() && (me.water ?? 100) < 98 ? 'F: beber' : ''; G.survPrompt = txt; } else G.survPrompt = '';

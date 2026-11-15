@@ -29,7 +29,8 @@ function jailEvent(m, now) {
 // preso deitado de bruços na prancha, com o pescoço na luneta
 function drawExecVictim(ctx, e, sx, sy, now) {
   const X = e.exec; if (!X || now > X.t0 + X.T.fall + 3000) return false;
-  const P = iso(STAGE.x - 0.8, STAGE.y), x = P.sx + G.view.ox, y = P.sy + G.view.oy;
+  // corpo deitado de bruços na prancha: o desenho deitado (direção 2, cabeça para a direita) girado para o eixo x do mundo
+  const P = iso(STAGE.x - 0.8, STAGE.y), x = P.sx + G.view.ox + (G.evx ?? 0), y = P.sy + G.view.oy + (G.evy ?? 0);
   const s = heroSprite3D(e.cls, e.skin, e.color, { dir: 2, walk: -1, down: true, prone: true, nowp: 1, lost: now > X.t0 + X.T.drop ? (e.lost || 0) | 1 : e.lost || 0 });
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.translate(x, y); ctx.rotate(0.4636); const w = woundOf(s, 2); ctx.drawImage(w.c, -w.ax, -w.ay + 8, w.w, w.h); ctx.restore(); e._spr = null; return true;
 }

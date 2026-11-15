@@ -1045,6 +1045,8 @@ const GOODS = {
   wood: { n: 'Madeira', p: 2, ic: '🪵' }, ore: { n: 'Minério', p: 3, ic: '🪨' }, crystal: { n: 'Cristais', p: 14, ic: '💎' }, herb: { n: 'Ervas', p: 2, ic: '🌿' }, flax: { n: 'Linho e tecidos', p: 3, ic: '🧵' },
   woodgoods: { n: 'Varinhas e artigos de madeira', p: 7, ic: '🪄' }, paper: { n: 'Papel e pergaminho', p: 5, ic: '📜' }, potion: { n: 'Poções e tônicos', p: 9, ic: '🧪' },
 };
+// o que a mercadoria vira quando um jogador compra no balcão
+const GOOD_ITEM = { potion: { pot: 'hp' }, flax: { pot: 'band' }, herb: { loot: 'herb' }, crystal: { loot: 'gem' }, woodgoods: { loot: 'wand' }, paper: { loot: 'map' }, wood: { loot: 'firewood' }, ore: { loot: 'gem' } };
 const SHOP_GOODS = { apoth: ['potion', 'herb'], arcane: ['crystal', 'woodgoods'], tailor: ['flax'], scroll: ['paper'] };
 const WORKS = {
   saw: { n: 'Serraria', make: { wood: 2 } }, mine: { n: 'Mina', make: { ore: 2, crystal: 0.2 } }, farm: { n: 'Horta', make: { herb: 2, flax: 1 } },
@@ -1060,6 +1062,10 @@ const BIZ_UP = {   // melhorias: custo por nível (até 3)
 // ---------- mercado imobiliário: imóveis da cidade (casas para alugar; lojas e oficinas por enquanto com donos NPC) ----------
 const ESTATE_DAY_MS = 12 * 60 * 1000;   // um dia do jogo
 const BIZ_HOUR_MS = ESTATE_DAY_MS / 24;   // uma hora do jogo = 30 s
+const RENT_DAYS = 7;   // o aluguel é cobrado por semana (7 dias do jogo)
+// estações: cada uma dura 7 dias do jogo (84 min reais); o ano tem 4
+const SEASONS = [{ k: 'spring', n: 'Primavera' }, { k: 'summer', n: 'Verão' }, { k: 'autumn', n: 'Outono' }, { k: 'winter', n: 'Inverno' }];
+function seasonNow(t) { const day = Math.floor((t ?? Date.now()) / ESTATE_DAY_MS), i = Math.floor(day / 7) % 4; return { i, k: SEASONS[i].k, n: SEASONS[i].n, day: (day % 7) + 1 }; }
 const PROPS = [], PROPS_BY = {};
 (function buildProps() {
   if (TEST3D) return;
@@ -1073,9 +1079,31 @@ const PROPS = [], PROPS_BY = {};
     else if (b.kind === 'shop' || b.kind === 'boutique' || b.kind === 'tavern') P = { ...base, id: 's' + bi, kind: 'shop', shopType: b.shopType, name: b.name || 'Loja', npc: b.shopType ? null : ownerOf(b), rent: 20 + Math.round(area * 0.8) + (fl - 1) * 6 };
     else if (b.kind === 'workshop') P = { ...base, id: 'w' + bi, kind: 'workshop', wk: b.wk, name: b.name, rent: 16 + Math.round(area * 0.7) };
     else if (b.kind === 'smith' || b.kind === 'stable') P = { ...base, id: 'w' + bi, kind: 'workshop', name: b.name || (b.kind === 'stable' ? 'Estábulo' : 'Oficina'), npc: b.kind === 'stable' ? 'a Guarda' : ownerOf(b), rent: 16 + Math.round(area * 0.7) };
-    if (P) { P.buy = P.rent * 60; PROPS.push(P); PROPS_BY[P.id] = P; }
+    if (P) { // localização: perto do castelo é área nobre (mais caro), na periferia e na vila é barato
+      const d = Math.hypot(b.x + b.w / 2 - C, b.y + b.h / 2 - (C - 14)); P.loc = clamp(1.75 - d / 30, 0.55, 1.75); P.locName = P.loc > 1.35 ? 'área nobre' : P.loc > 0.95 ? 'centro' : P.loc > 0.7 ? 'bairro' : 'periferia';
+      P.rent = Math.max(3, Math.round(P.rent * P.loc)); P.week = P.rent * 7; P.buy = P.rent * 60; PROPS.push(P); PROPS_BY[P.id] = P; }
   });
 })();
+// ---------- moradores: cada um mora numa casa da cidade ou da vila (as casas com inquilino não ficam para alugar, mas podem ser compradas) ----------
+const RES_HOME = {}, RES_LINES = {
+  any: ['Que dia comprido...', 'Viu o preço do pão?', 'Dizem que o dragão voltou a voar.', 'A guarda anda nervosa.', 'Vai chover, minhas costas sabem.', 'Amanhã tem mais.', 'Sxan já foi mais calma.', 'Ouvi um grito na floresta ontem.', 'Saúde!', 'Ha! Essa é boa.'],
+  st_saw: ['A serra não para.', 'O rio subiu de novo.', 'Elias, madeira não é manteiga!'], st_mine: ['Achei um veio novo... talvez.', 'Lua cheia não é dia de cavar.', 'Bruno, mais uma rodada?'],
+  st_farm: ['As ervas estão lindas.', 'Um dia ainda faço uma estufa.', 'Tomé passou por aqui hoje?'], st_carp: ['Fiz uma varinha nova!', 'O mestre Bruno só reclama.', 'Teodoro me mandou outra carta.'],
+  st_alch: ['Fogo baixo, paciência.', 'Não pergunte do porto.', 'Rosa, as suas ervas são as melhores.'], st_apoth: ['Ninguém sabe da Elva...', 'O estoque está fraco.', 'Essa Odila não me engana.'],
+  st_arcane: ['Já contei do arquimago?', 'Não encoste no que brilha.', 'Os magos do castelo me ignoram.'], st_tailor: ['Sabia que o Aurélio tinge com chá?', 'Vou vencer aquele Aurélio!', 'Pip, já comeu hoje?'],
+  st_scroll: ['Um bom mapa vale mais que uma espada.', 'Há túneis sob o castelo...', 'Shh. Esqueça o que eu disse.'],
+  courier1: ['Num pé só!', 'Quero botas de verdade.', 'Lia corre mais que eu... às vezes.'], courier2: ['Ninguém me alcança!', 'Um dia entro para a guarda.', 'Pip, cuidado na viela!'], courier3: ['Devagar se vai longe.', 'Saudade da minha mula.', 'Bom dia, Rosa...'],
+};
+if (!TEST3D) {
+  const houses = PROPS.filter(P => P.kind === 'house'), used = new Set();
+  const take = (ids, P) => { if (!P) return; used.add(P.id); P.tenants = ids; for (const id of ids) RES_HOME[id] = P.bi; };
+  const nearestTo = (x, y, pool) => pool.filter(P => !used.has(P.id)).sort((a, b) => Math.hypot(BUILDINGS[a.bi].x - x, BUILDINGS[a.bi].y - y) - Math.hypot(BUILDINGS[b.bi].x - x, BUILDINGS[b.bi].y - y))[0];
+  const vila = houses.filter(P => P.district === 'Vila do Oeste'), city = houses.filter(P => P.district !== 'Vila do Oeste');
+  const staffAt = id => { const n = NPCS.find(q => q.id === id); return n ? [n.x, n.y] : [C, C]; };
+  for (const ids of [['st_saw', 'st_mine'], ['st_farm', 'courier2'], ['st_carp', 'courier1'], ['st_alch', 'courier3']]) { const [x, y] = staffAt(ids[0]); take(ids, nearestTo(x, y, vila)); }
+  for (const id of ['st_apoth', 'st_arcane', 'st_tailor', 'st_scroll']) { const [x, y] = staffAt(id); take([id], nearestTo(x, y, city)); }
+  for (const n of NPCS) if (RES_HOME[n.id] != null) n.home = RES_HOME[n.id];
+}
 // porta trancada: L = { bi: [nomes em minúsculas que podem entrar] }; só bloqueia ENTRAR (quem já está dentro sai)
 function estateBlocked(name, ox, oy, x, y, L) {
   if (!L) return false; const bi = WORLD.bld[tileAt(x, y)]; if (bi == null || bi < 0) return false;

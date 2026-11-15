@@ -76,3 +76,30 @@ function medalize(el, id) {
   let m = el.querySelector('.medal-wrap'); if (!m) { m = document.createElement('div'); m.className = 'medal-wrap'; el.insertBefore(m, el.firstChild); }
   if (m.dataset.id !== id) { m.dataset.id = id; m.innerHTML = medalSVG(id); }
 }
+
+// ---------- sobrevivência em dois medalhões ao lado do chat: fome + sede (dois arcos) e frio (termômetro) ----------
+function survBuild() {
+  if (document.getElementById('surv-medals')) return;
+  const d = document.createElement('div'); d.id = 'surv-medals';
+  const face = (id, inner) => '<svg viewBox="0 0 64 64" class="sv-m" id="' + id + '"><defs><radialGradient id="' + id + 'g" cx="40%" cy="35%"><stop offset="0" stop-color="#efe2c2"/><stop offset=".7" stop-color="#cdb98e"/><stop offset="1" stop-color="#9c8458"/></radialGradient></defs>' +
+    '<circle cx="32" cy="32" r="31" fill="#3a2a14"/><circle cx="32" cy="32" r="30" fill="#6e5428"/><circle cx="32" cy="32" r="28" fill="#c79b4c"/><circle cx="32" cy="32" r="25.5" fill="url(#' + id + 'g)"/>' + inner + '</svg>';
+  const arc = (cls, r) => '<circle class="sv-bg" cx="32" cy="32" r="' + r + '"/><circle class="sv-arc ' + cls + '" cx="32" cy="32" r="' + r + '" transform="rotate(-90 32 32)"/>';
+  d.innerHTML = '<div class="sv-w" data-tip="Fome (fora) e sede (dentro)">' + face('sv-fw', arc('sv-food', 22) + arc('sv-water', 16.5) +
+      '<g fill="none" stroke="#3a2a16" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M24 34c0-5 3.5-8 8-8s8 3 8 8z"/><path d="M26 34v4h12v-4"/></g><path d="M32 18c-2 3-3.5 5-3.5 6.5a3.5 3.5 0 0 0 7 0c0-1.5-1.5-3.5-3.5-6.5z" fill="#3a6aa8" transform="translate(0 -1) scale(.62) translate(19.6 6)"/>') + '</div>' +
+    '<div class="sv-w" data-tip="Frio">' + face('sv-cw', arc('sv-cold', 21) +
+      '<g fill="none" stroke="#3a2a16" stroke-width="1.8" stroke-linecap="round"><path d="M32 20v14"/><circle cx="32" cy="38" r="4"/><path d="M29 22h-2M29 26h-2M29 30h-2"/></g><circle id="sv-bulb" cx="32" cy="38" r="2.6" fill="#5a8ad8"/>') + '</div>' +
+    '<div id="sv-season"></div>';
+  document.body.appendChild(d);
+}
+function survMedalsUpdate(me) {
+  if (!me) return; survBuild();
+  const set = (sel, v, col) => { const c = document.querySelector('#surv-medals .' + sel); if (!c) return; const r = +c.getAttribute('r'), L = 2 * Math.PI * r; c.style.strokeDasharray = L; c.style.strokeDashoffset = L * (1 - Math.max(0, Math.min(1, v))); if (col) c.style.stroke = col; };
+  const food = (me.food ?? 100) / 100, water = (me.water ?? 100) / 100, cold = (me.cold || 0) / 100;
+  set('sv-food', food, food < 0.3 ? '#c8402a' : '#c8822a'); set('sv-water', water, water < 0.3 ? '#c8402a' : '#3a7ac8');
+  const warm = (me.cold || 0) < (G._lastCold ?? 0) - 0.1; G._lastCold = me.cold || 0;
+  set('sv-cold', cold, warm ? '#e8902a' : cold > 0.5 ? '#3a5ad8' : '#7aa8e8');
+  const b = document.getElementById('sv-bulb'); if (b) b.setAttribute('fill', warm ? '#e8902a' : cold > 0.5 ? '#3a5ad8' : '#7aa8e8');
+  document.querySelector('#surv-medals .sv-w').classList.toggle('low', food < 0.25 || water < 0.25);
+  document.querySelectorAll('#surv-medals .sv-w')[1].classList.toggle('low', cold > 0.75);
+  const sn = typeof seasonNow === 'function' ? seasonNow() : null, se = document.getElementById('sv-season'); if (sn && se) se.textContent = sn.n + ' · dia ' + sn.day;
+}

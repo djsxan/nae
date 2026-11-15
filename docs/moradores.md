@@ -1,7 +1,7 @@
 # Nae — Os 12 primeiros moradores (fichas para revisão, v0.1)
 
 > Status: **rascunho para você revisar** (nomes, idades, histórias, traços).
-> Os 12 já existem no jogo desde a v1.32 como **funcionários dos negócios e mensageiros**, com aparência própria. Por enquanto eles só trabalham. A rotina, a memória e a fofoca (ver `populacao.md`) vêm depois.
+> **v1.33:** os 12 moram em casas de verdade (4 na Vila do Oeste, 4 na cidade), têm rotina (dormem 22h–6h, café, trabalho, almoço, conversa à noite na taverna ou na pracinha), fome/cansaço/vontade de conversar, e trocam frases quando se encontram. Casas com inquilino podem ser compradas (o aluguel vai para você) e o despejo tem 1 dia de aviso.
 > Religião e política ficaram de fora por enquanto, como você pediu. Os campos estão reservados para quando definirmos isso.
 
 Legenda dos campos: **Classe** (nobreza · burguesia · artesãos · trabalhadores · pobres) · **Origem** (cidade de Sxan · montanhas do norte · pântano · porto do sul) · **Traços** (2, usados no trabalho e, no futuro, nas conversas).

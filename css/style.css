@@ -479,3 +479,22 @@ body.nae .class-card h3, body.nae .class-card .cname, body.nae .class-card b { c
 .biz-up em { color: #a8d890; font-style: normal; font-size: 13px; }
 .biz-log { max-height: 320px; overflow: auto; font-size: 13px; } .biz-log div { padding: 4px 0; border-bottom: 1px solid rgba(201,162,74,0.12); } .biz-log small { color: #a8987a; margin-right: 6px; }
 .est-row.biz { cursor: default; } .est-row.biz .est-r .est-btn { padding: 4px 8px; font-size: 12px; margin: 2px 0 2px 4px; }
+
+/* título: enquanto o menu novo não fica pronto, nada do lobby antigo aparece */
+body.nae { background: #0b0a08; }
+body.nae:not(.nae-ready) #lobby > *:not(#title3d) { visibility: hidden; }
+.nae-dev { margin-top: 14px; } .nae-dev input { flex: 1; min-width: 0; padding: 6px 8px; border-radius: 4px; border: 1px solid #4a3a22; background: #0f0c08; color: #eee; } .nae-dev small { display: block; margin-top: 4px; color: #a8987a; font-size: 12px; }
+#devask { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center; }
+.devask-box { background: #15110c; border: 1px solid #6a5028; border-radius: 10px; padding: 18px 20px; display: flex; flex-direction: column; gap: 8px; min-width: 280px; }
+.devask-box h3 { margin: 0 0 6px; font: 700 20px 'Cinzel', serif; color: #f0d890; text-align: center; }
+
+/* ---------- medalhões de sobrevivência ao lado do chat ---------- */
+#surv-medals { position: fixed; z-index: 12; left: calc(min(400px, calc(100vw - 24px)) + 24px); bottom: 14px; display: flex; gap: 8px; align-items: flex-end; pointer-events: auto; }
+#surv-medals .sv-w { width: 58px; height: 58px; filter: drop-shadow(0 4px 6px rgba(0,0,0,.6)); }
+#surv-medals .sv-w.low { animation: svPulse 1s ease-in-out infinite; }
+@keyframes svPulse { 50% { filter: drop-shadow(0 0 8px rgba(255,80,50,.9)) drop-shadow(0 4px 6px rgba(0,0,0,.6)); } }
+#surv-medals svg { width: 100%; height: 100%; display: block; }
+#surv-medals .sv-bg { fill: none; stroke: rgba(58,42,22,.25); stroke-width: 4.2; }
+#surv-medals .sv-arc { fill: none; stroke-width: 4.2; stroke-linecap: round; transition: stroke-dashoffset .6s, stroke .6s; }
+#sv-season { font: 600 12px 'Alegreya', serif; color: #e8dcc0; text-shadow: 0 1px 2px #000; margin: 0 0 4px 2px; white-space: nowrap; }
+@media (max-width: 760px) { #surv-medals { left: auto; right: 12px; bottom: 210px; } }

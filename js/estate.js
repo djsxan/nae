@@ -12,24 +12,28 @@ const WK_LABEL = { saw: 'Serraria: tira madeira sozinha', mine: 'Mina: tira min�
 
 function estateEvent(m) {
   if (m.t === 'biz') { bizEvent(m); return true; }
+  if (m.t === 'counter') { counterShow(m); return true; }
   if (m.t !== 'estate') return false;
   if (m.st) G.est.st = m.st; if (m.L) G.est.L = m.L;
   if ('mine' in m) { G.est.mine = m.mine; G.est.mineT = performance.now(); }
-  if (m.biz) G.est.biz = m.biz;
+  if (m.biz) G.est.biz = m.biz; if (m.ten) G.est.ten = m.ten;
   if (estOpen()) estRender();
   return true;
 }
 const estOpen = () => { const el = document.getElementById('estate'); return el && !el.classList.contains('hidden'); };
 const estMine = pid => (G.est.mine && G.est.mine.pid === pid) || G.est.biz.some(b => b.pid === pid);
 const isBizP = P => P && P.kind !== 'house' && !P.npc;
+const tenOf = P => (P && P.tenants && P.tenants.length && !(G.est.ten && G.est.ten.gone && G.est.ten.gone[P.id])) ? P.tenants : [];
+const tenNames = P => tenOf(P).map(id => (NPCS.find(n => n.id === id) || { name: id }).name.split(',')[0]).join(' e ');
 function estStatus(P) {
   const who = G.est.st[P.id];
-  if (estMine(P.id)) return { k: 'mine', t: (who || '')[0] === '★' ? 'Seu (comprado)' : 'Seu (alugado)' };
+  if (estMine(P.id)) return { k: 'mine', t: tenOf(P).length ? 'Seu · inquilinos: ' + tenNames(P) : (who || '')[0] === '★' ? 'Seu (comprado)' : 'Seu (alugado)' };
+  if (P.kind === 'house' && tenOf(P).length && !who) return { k: 'npc', t: 'Ocupada · mora ' + tenNames(P) };
   if (P.kind !== 'house' && P.npc) return { k: 'npc', t: 'Ocupado · ' + P.npc };
   if (who) return { k: 'rent', t: (who[0] === '★' ? 'Comprado · ' + who.slice(1) : 'Alugado · ' + who) };
   return { k: 'free', t: P.kind === 'house' ? 'Aluga-se / vende-se' : 'Vago · à venda' };
 }
-const EST_COL = { free: '#7cc35e', rent: '#8a7d6c', mine: '#e8c45a', npc: '#5f84c4', office: '#d8743a', other: '#4a4338' };
+const EST_COL = { ten: '#9a6ab8', free: '#7cc35e', rent: '#8a7d6c', mine: '#e8c45a', npc: '#5f84c4', office: '#d8743a', other: '#4a4338' };
 
 // ---------- painel da Imobiliária ----------
 function estBuild() {
@@ -38,7 +42,7 @@ function estBuild() {
   d.innerHTML = '<div class="gp-head"><span>Imobiliária · Sxan</span><span class="gp-gold"><span class="coin"></span><b id="est-gold">0</b></span><button class="gp-x" id="est-x">✕</button></div>' +
     '<div class="est-tabs">' + Object.keys(EST_KIND).map(k => '<button data-tab="' + k + '">' + EST_KIND[k] + '</button>').join('') + '</div>' +
     '<div class="est-main"><div class="est-mapbox"><canvas id="est-map" width="380" height="280"></canvas><div class="est-legend">' +
-    [['free', 'Livre'], ['mine', 'Seu'], ['rent', 'De outro jogador'], ['npc', 'Comerciante'], ['office', 'Imobiliária']].map(([k, t]) => '<span><i style="background:' + EST_COL[k] + '"></i>' + t + '</span>').join('') +
+    [['free', 'Livre'], ['mine', 'Seu'], ['rent', 'De outro jogador'], ['npc', 'Comerciante'], ['ten', 'Morador'], ['office', 'Imobiliária']].map(([k, t]) => '<span><i style="background:' + EST_COL[k] + '"></i>' + t + '</span>').join('') +
     '</div></div><div class="est-side"><div id="est-list"></div></div></div><div id="est-detail"></div>';
   document.body.appendChild(d);
   d.querySelector('#est-x').onclick = () => estToggle(false);
@@ -60,18 +64,23 @@ function estRender() {
   const list = document.getElementById('est-list'), det = document.getElementById('est-detail');
   if (E.tab === 'mine') { list.innerHTML = estMineHtml(); det.innerHTML = estChestHtml(); estWire(); return; }
   const items = PROPS.filter(P => P.kind === E.tab);
-  list.innerHTML = items.length ? items.map(P => { const s = estStatus(P); return '<div class="est-row' + (E.sel === P.id ? ' sel' : '') + '" data-pid="' + P.id + '"><i style="background:' + EST_COL[s.k] + '"></i><div><b>' + P.name + '</b><small>' + P.district + ' · ' + P.w + '×' + P.h + (P.floors > 1 ? ' · ' + P.floors + ' andares' : '') + '</small></div><div class="est-r"><b>' + P.rent + '</b><small>ouro/dia</small><em>' + s.t + '</em></div></div>'; }).join('') : '<div class="gp-note">Nenhum imóvel nesta categoria ainda.</div>';
+  list.innerHTML = items.length ? items.map(P => { const s = estStatus(P); return '<div class="est-row' + (E.sel === P.id ? ' sel' : '') + '" data-pid="' + P.id + '"><i style="background:' + EST_COL[s.k] + '"></i><div><b>' + P.name + '</b><small>' + P.district + ' · ' + P.locName + ' · ' + P.w + '×' + P.h + (P.floors > 1 ? ' · ' + P.floors + ' andares' : '') + '</small></div><div class="est-r"><b>' + P.week + '</b><small>ouro/semana</small><em>' + s.t + '</em></div></div>'; }).join('') : '<div class="gp-note">Nenhum imóvel nesta categoria ainda.</div>';
   const P = PROPS_BY[E.sel];
-  if (!P || P.kind !== E.tab) det.innerHTML = '<div class="gp-note">' + (E.tab === 'house' ? 'Escolha uma casa na lista ou no mapa. Alugando, você paga por dia do jogo (12 minutos), sozinho, enquanto houver ouro; comprando, paga uma vez e só 1 ouro de imposto por dia.' : 'Lojas vendem sozinhas o que você abastece; oficinas produzem e os mensageiros levam a produção para as suas lojas. O lucro fica no cofre de cada negócio: vá buscar. Até ' + 3 + ' negócios por personagem.') + '</div>';
+  if (!P || P.kind !== E.tab) det.innerHTML = '<div class="gp-note">' + (E.tab === 'house' ? 'Escolha uma casa na lista ou no mapa. Alugando, o aluguel sai sozinho uma vez por semana do jogo (7 dias = 84 minutos); comprando, paga uma vez e só 7 ouro de imposto por semana. Perto do castelo é área nobre (caro); na periferia e na vila, barato.' : 'Lojas vendem sozinhas o que você abastece; oficinas produzem e os mensageiros levam a produção para as suas lojas. O lucro fica no cofre de cada negócio: vá buscar. Até ' + 3 + ' negócios por personagem.') + '</div>';
   else det.innerHTML = estDetailHtml(P);
   estWire();
 }
 function estDetailHtml(P) {
-  const s = estStatus(P), cost = P.rent * 2, hasHouse = !!G.est.mine, nBiz = G.est.biz.length;
+  const s = estStatus(P), cost = P.rent * 9, hasHouse = !!G.est.mine, nBiz = G.est.biz.length;
   let h = '<div class="est-det"><div class="est-dh"><b>' + P.name + '</b><span>' + P.district + ' · ' + P.area + ' m² de chão · ' + P.floors + (P.floors > 1 ? ' andares' : ' andar') + '</span></div>';
   if (P.kind === 'house') h += '<ul class="est-perks">' + EST_PERKS.map(t => '<li>' + t + '</li>').join('') + '</ul>';
   else if (isBizP(P)) h += '<div class="est-cost">' + (P.kind === 'shop' ? '🛒 ' + (SHOP_LABEL[P.shopType] || '') : '⚒ ' + (WK_LABEL[P.wk] || '')) + ' · funcionário incluso (salário ' + (P.kind === 'shop' ? 6 : 8) + ' ouro/dia, pago do cofre)</div>';
-  h += '<div class="est-cost">Alugar: <b>' + P.rent + '</b> ouro/dia (entrada ' + cost + ', com caução) · Comprar: <b>' + P.buy + '</b> ouro (imposto 1/dia; vende de volta pela metade)</div>';
+  h += '<div class="est-cost">Localização: <b>' + P.locName + '</b> · Alugar: <b>' + P.week + '</b> ouro/semana (entrada ' + cost + ': 1ª semana + caução) · Comprar: <b>' + P.buy + '</b> ouro (imposto 7/semana; vende de volta pela metade)</div>';
+  if (P.kind === 'house' && tenOf(P).length && !G.est.st[P.id]) {   // casa com inquilino: só dá para comprar (e receber o aluguel)
+    h += '<div class="est-cost">🏠 Mora aqui: <b>' + tenNames(P) + '</b>. Quem comprar recebe <b>' + P.week + '</b> ouro/semana de aluguel (menos 7 de imposto). Dá para despejar com 1 dia de aviso.</div>';
+    h += G.est.biz.length >= 3 ? '<button class="est-btn" disabled>Limite de 3 negócios/investimentos</button>' : '<button class="est-btn" data-buy="' + P.id + '"' + (G.me.gold < P.buy ? ' disabled' : '') + '>Comprar com inquilino por ' + P.buy + '</button>';
+    return h + '</div>';
+  }
   if (s.k === 'free' && (P.kind === 'house' || isBizP(P))) {
     const block = P.kind === 'house' ? (hasHouse ? 'Você já tem uma casa' : '') : (nBiz >= 3 ? 'Limite de 3 negócios' : '');
     h += block ? '<button class="est-btn" disabled>' + block + '</button>' : '<button class="est-btn" data-rent="' + P.id + '"' + (G.me.gold < cost ? ' disabled' : '') + '>Alugar por ' + cost + '</button><button class="est-btn" data-buy="' + P.id + '"' + (G.me.gold < P.buy ? ' disabled' : '') + '>Comprar por ' + P.buy + '</button>';
@@ -80,19 +89,21 @@ function estDetailHtml(P) {
   else h += '<div class="est-cost">' + s.t + '</div>';
   return h + '</div>';
 }
-const estClock = info => { const left = Math.max(0, info.next - (performance.now() - G.est.mineT)); return Math.floor(left / 60000) + ':' + String(Math.floor(left / 1000) % 60).padStart(2, '0'); };
+const estClock = info => { const left = Math.max(0, info.next - (performance.now() - G.est.mineT)), h = Math.floor(left / 3600000), m = Math.floor(left / 60000) % 60; return (h ? h + 'h ' : '') + m + 'min'; };
 function estMineHtml() {
   const M = G.est.mine; let h = '';
   if (!M) h += '<div class="gp-note">Você ainda não tem casa. Procure as placas nas portas ou fale com Mestre Anselmo, na Imobiliária Chave de Bronze.</div>';
   else {
     const P = PROPS_BY[M.pid], late = M.day > M.paid, own = M.mode === 'own';
-    h += '<div class="est-det"><div class="est-dh"><b>🏠 ' + P.name + '</b><span>' + P.district + ' · ' + (own ? 'comprada · imposto 1 ouro/dia' : 'alugada · ' + P.rent + ' ouro/dia · caução ' + (M.dep || 0)) + '</span></div>' +
+    h += '<div class="est-det"><div class="est-dh"><b>🏠 ' + P.name + '</b><span>' + P.district + ' · ' + (own ? 'comprada · imposto 7 ouro/semana' : 'alugada · ' + P.week + ' ouro/semana · caução ' + (M.dep || 0)) + '</span></div>' +
       '<div class="est-cost">' + (late ? '<b style="color:#ff8a7a">Pagamento atrasado!</b> Junte ' + M.due + ' de ouro.' : 'Em dia · próxima cobrança em <b class="est-next">' + estClock(M) + '</b>') + '</div>' +
       '<div class="gp-sub">Quem pode entrar</div><div class="est-auth">' + (M.auth.length ? M.auth.map(a => '<span>' + a + ' <button data-unauth="' + a + '" data-upid="' + M.pid + '">✕</button></span>').join('') : '<small>Só você.</small>') + '</div>' +
       '<div class="est-addauth"><input id="est-name" maxlength="16" placeholder="Nome do personagem"><button class="est-btn" id="est-add" data-apid="' + M.pid + '">Autorizar</button></div>' +
       (own ? '' : '<button class="est-btn" data-buy="' + M.pid + '">Comprar de vez por ' + (P.buy - (M.dep || 0)) + '</button>') + '<button class="est-btn ghost" data-leave="' + M.pid + '" data-own="' + (own ? 1 : 0) + '">' + (own ? 'Vender à Coroa (' + Math.floor(P.buy / 2) + ')' : 'Devolver a chave') + '</button></div>';
   }
-  if (G.est.biz.length) h += '<div class="gp-sub">Negócios</div>' + G.est.biz.map(b => { const P = PROPS_BY[b.pid], own = b.mode === 'own'; return '<div class="est-row biz"><i style="background:' + EST_COL.mine + '"></i><div><b>' + (P.kind === 'shop' ? '🛒 ' : '⚒ ') + P.name + '</b><small>' + P.district + ' · ' + (own ? 'comprado' : 'alugado ' + P.rent + '/dia') + ' · cofre ' + (b.cofre || 0) + '</small></div><div class="est-r"><button class="est-btn" data-manage="' + b.pid + '">Gestão</button><button class="est-btn ghost" data-leave="' + b.pid + '" data-own="' + (own ? 1 : 0) + '">' + (own ? 'Vender' : 'Devolver') + '</button></div></div>'; }).join('');
+  if (G.est.biz.length) h += '<div class="gp-sub">Negócios e investimentos</div>' + G.est.biz.map(b => { const P = PROPS_BY[b.pid], own = b.mode === 'own';
+    if (P.kind === 'house') return '<div class="est-row biz"><i style="background:' + EST_COL.mine + '"></i><div><b>🏘 ' + P.name + '</b><small>' + P.district + ' · inquilinos: ' + tenNames(P) + ' · renda ' + P.week + '/semana · caixa ' + (b.box || 0) + (b.ev ? ' · <b style="color:#ff9a8a">despejo em andamento</b>' : '') + '</small></div><div class="est-r">' + (b.box ? '<button class="est-btn" data-tcol="' + b.pid + '">Receber ' + b.box + '</button>' : '') + (b.ev ? '' : '<button class="est-btn ghost" data-evict="' + b.pid + '">Despejar</button>') + '<button class="est-btn ghost" data-leave="' + b.pid + '" data-own="1">Vender</button></div></div>';
+    return '<div class="est-row biz"><i style="background:' + EST_COL.mine + '"></i><div><b>' + (P.kind === 'shop' ? '🛒 ' : '⚒ ') + P.name + '</b><small>' + P.district + ' · ' + (own ? 'comprado' : 'alugado ' + P.week + '/semana') + ' · cofre ' + (b.cofre || 0) + '</small></div><div class="est-r"><button class="est-btn" data-manage="' + b.pid + '">Gestão</button><button class="est-btn ghost" data-leave="' + b.pid + '" data-own="' + (own ? 1 : 0) + '">' + (own ? 'Vender' : 'Devolver') + '</button></div></div>'; }).join('');
   else h += '<div class="gp-note">Nenhum negócio ainda: veja as abas Lojas e Oficinas.</div>';
   return h;
 }
@@ -110,6 +121,8 @@ function estWire() {
   for (const r of root.querySelectorAll('.est-row:not(.biz)')) r.onclick = () => { G.est.sel = r.dataset.pid; estRender(); };
   for (const b of root.querySelectorAll('[data-rent]')) b.onclick = () => Net.send({ t: 'estate', a: 'rent', pid: b.dataset.rent });
   for (const b of root.querySelectorAll('[data-buy]')) b.onclick = () => { const P = PROPS_BY[b.dataset.buy]; if (confirm('Comprar ' + P.name + '? Fica seu para sempre (imposto de 1 ouro por dia).')) Net.send({ t: 'estate', a: 'buy', pid: b.dataset.buy }); };
+  for (const b of root.querySelectorAll('[data-tcol]')) b.onclick = ev => { ev.stopPropagation(); Net.send({ t: 'estate', a: 'collect', pid: b.dataset.tcol }); };
+  for (const b of root.querySelectorAll('[data-evict]')) b.onclick = ev => { ev.stopPropagation(); const P = PROPS_BY[b.dataset.evict]; if (confirm('Despejar ' + tenNames(P) + ' de ' + P.name + '? Eles saem em 1 dia do jogo e vão guardar rancor (podem te atacar se você entrar).')) Net.send({ t: 'estate', a: 'evict', pid: b.dataset.evict }); };
   for (const b of root.querySelectorAll('[data-manage]')) b.onclick = ev => { ev.stopPropagation(); bizOpen(b.dataset.manage); };
   for (const b of root.querySelectorAll('[data-go]')) b.onclick = () => { G.est.sel = b.dataset.go; G.est.flash = performance.now(); estDrawMap(); };
   for (const b of root.querySelectorAll('[data-unauth]')) b.onclick = () => Net.send({ t: 'estate', a: 'unauth', name: b.dataset.unauth, pid: b.dataset.upid });
@@ -125,7 +138,7 @@ function estBounds() {
   return (G.est.bb = { x0: x0 - 3, y0: y0 - 3, x1: x1 + 3, y1: y1 + 3 });
 }
 function estProj(cv) { const B = estBounds(), k = Math.min(cv.width / (B.x1 - B.x0), cv.height / (B.y1 - B.y0)), ox = (cv.width - (B.x1 - B.x0) * k) / 2, oy = (cv.height - (B.y1 - B.y0) * k) / 2; return (x, y) => [ox + (x - y - B.x0) * k, oy + ((x + y) / 2 - B.y0) * k]; }
-function estBldColor(b, bi) { if (b.office) return EST_COL.office; const P = PROPS.find(q => q.bi === bi); if (!P) return EST_COL.other; return EST_COL[estStatus(P).k]; }
+function estBldColor(b, bi) { if (b.office) return EST_COL.office; { const P = PROPS.find(q => q.bi === bi); if (P && tenOf(P).length && !estMine(P.id)) return '#9a6ab8'; } const P = PROPS.find(q => q.bi === bi); if (!P) return EST_COL.other; return EST_COL[estStatus(P).k]; }
 function estDrawMap() {
   const cv = document.getElementById('est-map'); if (!cv) return; const c = cv.getContext('2d'), pr = estProj(cv);
   c.clearRect(0, 0, cv.width, cv.height); c.fillStyle = '#17130e'; c.fillRect(0, 0, cv.width, cv.height);
@@ -156,12 +169,12 @@ function estPick(mx, my) {
 }
 // ---------- no mundo: placas, F, porta trancada ----------
 function estDoorOut(P) { const b = BUILDINGS[P.bi], [dx, dy] = doorTile(b), v = DOOR_V[b.door || 'S']; return { x: dx + v[0] * 0.9, y: dy + v[1] * 0.9, side: [v[1], -v[0]] }; }
-function estFreeSigns() { return PROPS.filter(P => (P.kind === 'house' || isBizP(P)) && !G.est.st[P.id]); }
+function estFreeSigns() { return PROPS.filter(P => (P.kind === 'house' || isBizP(P)) && !G.est.st[P.id] && !tenOf(P).length); }
 function estNearSign() { const me = G.me; if (!me) return null; let best = null, bd = 2.6; for (const P of estFreeSigns()) { const o = estDoorOut(P), d = dist(me.x, me.y, o.x, o.y); if (d < bd) { bd = d; best = P; } } return best; }
 function estatePrompt() {
   if (estInHome()) return 'F: abrir o baú · L: seus imóveis';
   const b = estInBiz(); if (b) return 'F: gestão de ' + PROPS_BY[b.pid].name;
-  const P = estNearSign(); if (P) return 'F: ' + (P.kind === 'house' ? 'Aluga-se' : 'À venda') + ' — ' + P.name + ' (' + P.rent + ' ouro/dia · compra ' + P.buy + ')';
+  const P = estNearSign(); if (P) return 'F: ' + (P.kind === 'house' ? 'Aluga-se' : 'À venda') + ' — ' + P.name + ' (' + P.week + ' ouro/semana · compra ' + P.buy + ')';
   return '';
 }
 function estateF() {
@@ -251,4 +264,19 @@ function bizRender() {
   for (const s of body.querySelectorAll('[data-brec]')) s.onchange = () => bsend('recipe', { v: s.value });
   for (const c of body.querySelectorAll('[data-btog]')) c.onchange = () => bsend('toggle', { k: c.dataset.btog });
   for (const b of body.querySelectorAll('[data-bup]')) b.onclick = () => bsend('up', { k: b.dataset.bup });
+}
+
+// ---------- balcão (na conversa com o balconista) ----------
+function counterOpen(pid) { G.counterPid = pid; Net.send({ t: 'biz', a: 'counter', pid }); }
+function counterShow(m) {
+  if (!G.dialog || m.pid !== G.counterPid) return; const box = document.getElementById('dlg-opts'); if (!box) return;
+  if (m.none) { setDialogText('Esta loja ainda não tem dono, não tenho nada para vender.'); return; }
+  setDialogText(m.own ? 'Patrão! Pode pegar o que quiser do estoque, é seu.' : m.closed ? 'Desculpe, a loja está fechada: o patrão não pagou meu salário.' : (m.items.length ? 'Loja de ' + m.owner + '. O que vai levar?' : 'Acabou tudo! O patrão precisa reabastecer.'));
+  box.innerHTML = '';
+  const add = (label, fn, cls) => { const b = document.createElement('button'); b.textContent = label; b.onclick = fn; if (cls) b.className = cls; box.appendChild(b); };
+  for (const it of m.items) { const G2 = GOODS[it.g], I = GOOD_ITEM[it.g], what = I.pot ? (I.pot === 'hp' ? 'Poção de vida' : 'Bandagem') : LOOT[I.loot].name;
+    add(G2.ic + ' ' + what + ' · ' + (m.own ? 'pegar' : it.price + ' ouro') + ' (' + it.q + ' no estoque)', () => Net.send({ t: 'biz', a: 'cbuy', pid: m.pid, g: it.g, q: 1 }));
+    if (it.q >= 5) add('   ×5 · ' + (m.own ? 'pegar 5' : it.price * 5 + ' ouro'), () => Net.send({ t: 'biz', a: 'cbuy', pid: m.pid, g: it.g, q: 5 }), 'ghost'); }
+  add('Voltar', () => buildDialogOptions(G.dialog.id), 'ghost');
+  refreshDialogGold();
 }
