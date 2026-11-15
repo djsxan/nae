@@ -474,10 +474,6 @@ function drawMonsterEntity(ctx, e, sx, sy, now) {
   if (R3.ok && e.type === 'dragon') { drawDragon(ctx, e, sx, sy, now); return; }
   if (R3.ok) {
     let atk = -1, ak = null;
-    if (e.skin === 'weaver') { P.walk = -1; P.run = 0; }
-  P.uni = ((e.stb || 0) >> 7) & 7 || undefined;
-  P.wpn = e.cls === 'knight' && ((e === G.me ? e.wpn === 'halberd' : (e.stb & 64))) ? 'halberd' : undefined;
-  if (e === G.me && G.melee && !e.anim) { const k = G.melee.k, held = now - G.melee.t0; P.act = { k: 'atk_' + k, f: Math.min(4, Math.floor(held / 60)) }; }
   if (e.anim) { const t = actProg(e.anim, now); if (t >= 0) { if (/^atk_/.test(e.anim.a)) { ak = e.anim.a; atk = Math.min(11, Math.floor(t * 12)); } else atk = Math.min(7, Math.floor(t * 8)); } }
     if (e.anim && e.anim.W && e.anim.reach && now - e.anim.t0 < e.anim.W + 120) drawTelegraph(ctx, e, sx, sy, now);
     if (!ak && e.blockAt && now - e.blockAt < 350) { ak = 'parry'; atk = 6; }

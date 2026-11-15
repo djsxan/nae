@@ -1933,7 +1933,7 @@ function jailPlayer(q, ms, opt = {}) {
   if (!opt.noTp) Net.toOne(q.id, { t: 'tp', x: q.x, y: q.y, z: 0, fl: 0, fb: -1 });
   tell(q, 'Você está preso por ' + Math.ceil((q.jailUntil - now) / 60000) + ' min. Dormir no catre faz o tempo passar 2x mais rápido; fale com o carcereiro para pagar fiança; F na porta da cela tenta arrombar.'); sendStat(q); return true;
 }
-function releasePlayer(q, why) { q.murderer = false;
+function releasePlayer(q, why) { q.murderer = false; q.sleep = null; q.sit = null;
   const st = cellsState(), i = q.cell; if (i != null && st[i] && st[i].who === q.id) { st[i].who = null; st[i].locked = true; }
   const c = i != null ? JAILCELLS[i] : null; q.jailUntil = 0; q.cell = null;
   if (c) { const b = BUILDINGS[c.bi], d0 = doorOf(b), [dtx, dty] = doorTile(b); let best = null, bd = 1e9; for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { if (WORLD.bld[y * MAP_W + x] !== c.bi || !canStand(x, y, 0, 0.25) || JAILCELLS.some(z => z.tiles.has(y * MAP_W + x) || (z.door[0] === x && z.door[1] === y))) continue; const jl = S.npcs && S.npcs.jailer; if (jl && dist(jl.x, jl.y, x, y) < 1.2) continue; const dd = dist(x, y, dtx, dty); if (dd < bd) { bd = dd; best = [x, y]; } } if (best) { q.x = best[0]; q.y = best[1]; } else { q.x = d0.x; q.y = d0.y; } Net.toOne(q.id, { t: 'tp', x: q.x, y: q.y, z: 0, fl: 0, fb: -1 }); }
@@ -1947,7 +1947,7 @@ function jailTick(p, now, dt) {
 const bailPrice = q => Math.max(10, Math.ceil((q.jailUntil - now_()) / 60000) * 30);
 // fechadura: o preso arromba com o minijogo; um amigo abre de noite com o carcereiro dormindo
 function escapeCell(q, by) {
-  const st = cellsState(), i = q.cell; if (i == null) return; st[i].who = null; st[i].locked = true; q.jailUntil = 0; q.cell = null;
+  const st = cellsState(), i = q.cell; if (i == null) return; q.sleep = null; q.sit = null; st[i].who = null; st[i].locked = true; q.jailUntil = 0; q.cell = null;
   const c = JAILCELLS[i]; q.x = c.door[0] + (c.door[0] - c.spot[0]); q.y = c.door[1] + (c.door[1] - c.spot[1]); Net.toOne(q.id, { t: 'tp', x: q.x, y: q.y, z: 0, fl: 0, fb: -1 });
   q.wanted = now_() + 300000; q.sentence = (q.sentence || 0) + 180000; Net.toAll({ t: 'wanted', id: q.id, ms: 300000 });
   sys(q.name + ' fugiu da cadeia' + (by ? ' com a ajuda de ' + by : '') + '! As sentinelas estão atrás dele.'); sendStat(q);

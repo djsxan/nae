@@ -90,7 +90,7 @@ function clientOnServer(m) {
       if (oldLvl && m.lvl > oldLvl) showBanner(`Nível ${m.lvl}`, 'Sua força cresce.');
       break;
     }
-    case 'tp': if (G.me && G.climbing && G.climbing.sent) { G.me.fl = m.fl | 0; G.me.fb = m.fb ?? -1; break; } if (G.me) { G.floorWait = 0; G.climbing = null; G.me.lift = 0; Object.assign(G.me, { x: m.x, y: m.y, rx: m.x, ry: m.y, z: +m.z || 0, fl: m.fl | 0, fb: m.fb ?? -1 }); G.path = null; G.pathGoal = null; if (m.climb) G.climbArm = m.climb - 1; } break;
+    case 'tp': if (G.me && G.climbing && G.climbing.sent) { G.me.fl = m.fl | 0; G.me.fb = m.fb ?? -1; break; } if (G.me) { G.me.sleep = null; G.me.sleepB = null; G.me.sit = null; G.floorWait = 0; G.climbing = null; G.me.lift = 0; Object.assign(G.me, { x: m.x, y: m.y, rx: m.x, ry: m.y, z: +m.z || 0, fl: m.fl | 0, fb: m.fb ?? -1 }); G.path = null; G.pathGoal = null; if (m.climb) G.climbArm = m.climb - 1; } break;
     case 'hit':
       later(m.d, () => {
         const t = performance.now();
