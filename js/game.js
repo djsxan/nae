@@ -147,6 +147,8 @@ function clientOnServer(m) {
       break;
     }
     case 'err': showToast(m.text); break;
+    case 'wv': gmWvEvent(m); break;
+    case 'wt': WT.ph = m.ph ?? null; WT.rain = m.rain ?? null; break;
     case 'denied': askRoomPw(m.why === 'pwbad'); break;
     case 'roompw': G.roomLocked = m.on; pzRoomRefresh(); break;
     case 'npc': if (G.dialog && G.dialog.id === m.n) { setDialogText(m.text); if (m.n === 'captain') later(50, () => G.dialog && buildDialogOptions('captain')); } break;
@@ -547,6 +549,7 @@ function updateQuests() {
 }
 // ---------- painéis: inventário (I) e jornada (J) ----------
 function togglePanel(id, force) {
+  if (typeof gmToggle === 'function') { const t = { inv: 'char', journal: 'journal', tree: 'skills' }[id]; if (force === false) { if (GM.on && GM.tab === t) gmClose(); } else if (force === true) gmOpen(t); else gmToggle(t); return; }
   const el = $(id), open = force != null ? force : el.classList.contains('hidden');
   for (const o of ['inv', 'journal', 'tree']) $(o).classList.add('hidden');
   if (!open) return;
@@ -941,8 +944,8 @@ window.addEventListener('keydown', e => {
   if (!G.started) return;
   if (/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '')) return;
   const k = e.key.toLowerCase();
-  if (G.paused && k !== 'escape') return;
-  if (k === 'escape') { if (G.mapOpen) { toggleWorldMap(); return; } if (!$('inv').classList.contains('hidden') || !$('journal').classList.contains('hidden')) { togglePanel('inv', false); return; } if (G.dialog) { closeDialog(); return; } togglePause(); return; }
+  if (G.paused) { if (typeof gmKey === 'function' && gmKey(k, e)) e.preventDefault(); return; }
+  if (k === 'escape') { if (G.dialog) { closeDialog(); return; } for (const id of ['bankp', 'biz', 'jobboard', 'counterp', 'estate', 'bizhub', 'roompw-ask']) { const el = $(id); if (el && !el.classList.contains('hidden') && el.parentNode === document.body && el.offsetParent !== null) { if (id === 'biz' && typeof bizClose === 'function') bizClose(); else if (id === 'estate') estToggle(false); else if (id === 'bizhub') hubToggle(false); else el.classList.add('hidden'); return; } } togglePause(); return; }
   if (k >= '1' && k <= '4') { castSkill(+k - 1); return; }
   if (k === 'q') { drinkPot('hp'); return; }
   if (k === 'e') { drinkPot('mp'); return; }
@@ -973,8 +976,8 @@ window.addEventListener('keydown', e => {
   if (k === 'escape' && G.devPlace) { G.devPlace = null; showToast('Colocação cancelada.'); return; }
   if (k === 'j' && !e.repeat) { togglePanel('journal'); return; }
   if (k === 'k' && !e.repeat) { togglePanel('tree'); return; }
-  if (k === 'l' && !e.repeat && typeof estToggle === 'function') { estToggle(null, 'mine'); return; }
-  if (k === 'n' && !e.repeat && typeof hubToggle === 'function') { hubToggle(); return; }
+  if (k === 'l' && !e.repeat) { GM.biz = 'est'; gmToggle('biz'); return; }
+  if (k === 'n' && !e.repeat) { GM.biz = 'hub'; gmToggle('biz'); return; }
   if ((k === '5' || k === '6' || k === '7') && !e.repeat) { Net.send({ t: 'tskill', b: +k - 5, a: G.me.fa ?? 0, id: G.target || 0 }); return; }
   if (k === 'm' && !e.repeat) { toggleWorldMap(); return; }
   if (k === 't') { if (!e.repeat) openEmoteWheel(); return; }
@@ -1367,6 +1370,7 @@ const ZONE_LABELS = (() => {
   return out;
 })();
 function toggleWorldMap() {
+  if (typeof gmToggle === 'function') { gmToggle('map'); return; }
   G.mapOpen = !G.mapOpen;
   $('worldmap').classList.toggle('hidden', !G.mapOpen);
   if (G.mapOpen) drawWorldMap();
@@ -1432,6 +1436,7 @@ for (const b of document.querySelectorAll('#pz-duel button')) b.addEventListener
 for (const b of document.querySelectorAll('#pz-phys button')) b.addEventListener('click', () => { SET.phys = b.dataset.p; saveSettings(); applySettings(); });
 $('pz-pad').addEventListener('input', e => { SET.pad = +e.target.value; saveSettings(); applySettings(); });
 function togglePause(force) {
+  if (typeof gmToggle === 'function') { if (force === false) gmClose(); else if (force === true) gmOpen(); else gmToggle(); return; }
   G.paused = force != null ? force : !G.paused;
   $('pause').classList.toggle('hidden', !G.paused);
   if (G.paused) { applySettings(); G.keys.clear(); updateHud(); }

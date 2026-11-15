@@ -13,8 +13,9 @@ function wind(x, y, now) { return Math.sin(now / 1400 + x * 0.37 + y * 0.21) + M
 
 // ---------- dia e noite (igual para todos: usa o relógio) ----------
 const DAY_CYCLE_MS = 12 * 60 * 1000;
+const WT = { ph: null, rain: null };   // hora (fase do dia) e chuva fixadas pelo Tecelão; null = natural
 function dayInfo() {
-  const ph = typeof G !== 'undefined' && G.devTime ? (G.devTime === 'day' ? 0.06 : 0.5) : (Date.now() % DAY_CYCLE_MS) / DAY_CYCLE_MS;
+  const ph = typeof G !== 'undefined' && G.devTime ? (G.devTime === 'day' ? 0.06 : 0.5) : WT.ph != null ? WT.ph : (Date.now() % DAY_CYCLE_MS) / DAY_CYCLE_MS;
   const sk = typeof seasonNow === 'function' ? seasonNow().k : 'spring', sun = Math.cos(ph * Math.PI * 2) + ({ summer: 0.16, winter: -0.14, autumn: -0.04, spring: 0.04 })[sk];
   const k = clamp((0.15 - sun) / 0.65, 0, 1);
   const dark = smooth(k) * 0.62;
@@ -30,7 +31,7 @@ function sunShadow(day) {
 // clima global (chuva em alguns períodos — igual para todos)
 function weatherNow() {
   const t = Date.now() / 1000;
-  const rain = clamp((Math.sin(t / 260) + Math.sin(t / 97) * 0.4 - 0.75) * 2.2, 0, 1);
+  const rain = WT.rain != null ? WT.rain : clamp((Math.sin(t / 260) + Math.sin(t / 97) * 0.4 - 0.75) * 2.2, 0, 1);
   return { rain, wind: 0.6 + Math.sin(t / 40) * 0.4 };
 }
 function spawnPart(kind, x, y, extra) {
@@ -1200,6 +1201,7 @@ function drawLabels(ctx, labels, now) {
       pxText(ctx, e.shout, x, yy - 22 - t * 8, '#f6e4a0', Math.round(18 * s), '"Cinzel", serif', '900');
       ctx.restore();
     }
+    if ((e.stb & 1024) && e !== G.me && !(e.say && e.sayUntil > now)) pxText(ctx, '📜 no menu', x, yy - 20, '#e8dcc0', 11, '"Alegreya", serif', '600');
     if (e.say && e.sayUntil > now) {
       ctx.font = 'italic 500 15px "Alegreya", serif';
       const text = e.say, w = Math.min(260, ctx.measureText(text).width) + 16, by = yy - (e.shout && e.shoutUntil > now ? 46 : 22);

@@ -37,7 +37,7 @@ function near(x, y, msg, r = VIEW_RADIUS + 4) {
   for (const id in S.players) { const q = S.players[id]; if (dist(q.x, q.y, x, y) <= r) Net.toOne(id, msg); }
 }
 function sfx(x, y, text, color, d = 0, big = false) { near(x, y, { t: 'fx', x, y, text: String(text), color, d, big }); }
-function sys(text) { Net.toAll({ t: 'chat', name: '', text }); }
+function sys(text) { if (typeof S !== 'undefined') { (S.events = S.events || []).push([Date.now(), text]); if (S.events.length > 80) S.events.shift(); } Net.toAll({ t: 'chat', name: '', text }); }
 function tell(p, text) { Net.toOne(p.id, { t: 'err', text }); }
 function anim(w, e, a, tx, ty, extra) { near(e.x, e.y, { t: 'anim', w, id: e.id, a, tx, ty, ...extra }); }
 function aoe(a, x, y, extra) { near(x, y, { t: 'aoe', a, x, y, ...extra }); }
@@ -134,6 +134,7 @@ function hostOnClient(from, m) {
   if (m.t === 'hello') {
     if (p) return;
     if (S.roomPw && from !== Net.myId && String(m.pw || '').trim().toUpperCase() !== S.roomPw) { Net.toOne(from, { t: 'denied', why: m.pw ? 'pwbad' : 'pw' }); return; }
+    if (WTs().ph != null || WTs().rain != null) setTimeout(() => Net.toOne(from, { t: 'wt', ph: WTs().ph, rain: WTs().rain }), 1500);
     const cls = CLASSES[m.cls] ? m.cls : 'knight';
     const lvl = clamp(m.lvl | 0 || 1, 1, 300);
     const si = SKINS[cls].findIndex(s => s.id === m.skin), skin = si >= 0 && lvl >= SKIN_LVL[si] ? m.skin : SKINS[cls][0].id;
@@ -218,6 +219,8 @@ function hostOnClient(from, m) {
     case 'gather': gather(p, m); break;
     case 'gathering': near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: m.a === 'crouch' ? 'gather' : 'atk_slashR', ms: 700 }); break;
     case 'job': jobMsg(p, m); break;
+    case 'wv': wvMsg(p, m); break;
+    case 'menu': p.inMenu = !!m.on; break;
     case 'roompw': if (from === Net.myId) { S.roomPw = String(m.pw || '').trim().toUpperCase().slice(0, 24) || null; tell(p, S.roomPw ? 'Reino trancado: quem chegar agora precisa da senha.' : 'Reino aberto: qualquer um pode entrar.'); Net.toOne(from, { t: 'roompw', on: !!S.roomPw }); } break;
     case 'bank': bankMsg(p, m); break;
     case 'shift': shiftMsg(p, m); break;
@@ -2204,7 +2207,7 @@ function hostTick() {
       if (p.devHidden && p.id !== r.id) continue;
       let fl = (p.walking ? 1 : 0) | (p.downed ? 2 : 0) | (p.carriedBy ? 4 : 0) | (p.carrying ? 8 : 0) | (p.running && p.walking ? 256 : 0) | (p.sit ? 512 : 0) | (p.sit === 'c' ? 1024 : 0) | (p.sleep != null ? 32768 : 0) | (p.drawT ? 65536 : 0) | (p.dragBy ? 131072 : 0) | (p.dragMode === 'foot' ? 262144 : 0) | (p.drag && p.drag.mode === 'arms' ? 524288 : 0) | (p.drag && p.drag.mode === 'foot' ? 1048576 : 0) | (p.drag && p.drag.mode === 'back' ? 2097152 : 0) | (p.drag && p.drag.mode === 'grip' ? 4194304 : 0) | (p.gripBy ? 8388608 : 0) | (p.tied ? 16777216 : 0) | (p.choked ? 33554432 : 0) | (p.choking ? 67108864 : 0) | (p.escortBy || p.surrendered ? 134217728 : 0) | (p.jailUntil > now ? 536870912 : 0) | (p.bound ? 1073741824 : 0) | (p.drag && (p.drag.helper || ((dragTarget(p.drag.k, p.drag.id) || {}).dragBy2)) ? 268435456 : 0) | ((p.fl || 0) << 11) | (p.crouch ? 8192 : 0) | (p.slide ? 16384 : 0);
       for (const b in BUFF_BITS) if (buffOn(p, b)) fl |= BUFF_BITS[b];
-      pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0, (p.surrendered ? 1 : 0) | (p.bound && p.bound.kind === 'rope' ? 2 : 0) | (p.bound && p.bound.kind === 'cuffs' ? 4 : 0) | (p.dragBy && (/^(n:|m:)/.test(String(p.dragBy)) || p.dragMode === 'lead') && !p.downed ? 8 : 0) | (p.pkg ? 16 : 0) | (p.shift ? 32 : 0) | (p.wpn === 'halberd' ? 64 : 0) | ((p.uni || 0) << 7)]);
+      pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0, (p.surrendered ? 1 : 0) | (p.bound && p.bound.kind === 'rope' ? 2 : 0) | (p.bound && p.bound.kind === 'cuffs' ? 4 : 0) | (p.dragBy && (/^(n:|m:)/.test(String(p.dragBy)) || p.dragMode === 'lead') && !p.downed ? 8 : 0) | (p.pkg ? 16 : 0) | (p.shift ? 32 : 0) | (p.wpn === 'halberd' ? 64 : 0) | ((p.uni || 0) << 7) | (p.inMenu ? 1024 : 0)]);
     }
     for (const m of mons) {
       if (Math.abs(m.x - r.x) > VIEW_RADIUS || Math.abs(m.y - r.y) > VIEW_RADIUS) continue;
@@ -2839,4 +2842,40 @@ function bankTick(now) {
     const take = Math.min(A.loan, Math.floor(A.g)); if (take) { A.g -= take; A.loan -= take; ch = true; tell(p, 'O banco tirou ' + take + ' do seu saldo para cobrir a dívida vencida.'); }
     if (A.loan > 0 && !(now < (p.wanted || 0)) && now > (p.debtT || 0)) { p.debtT = now + 600000; p.wanted = now + 300000; crimeSentence(p, 'assault'); Net.toAll({ t: 'wanted', id: p.id, ms: 300000 }); tell(p, 'Dívida vencida com o Banco de Nae: as sentinelas foram chamadas para te levar!'); } }
   if (ch) bankSave();
+}
+
+// ============================================================
+//  PAINEL DO TECELÃO — retrato do reino (pessoas, negócios, banco, mundo) e ações de criador
+// ============================================================
+const WTs = () => typeof WT !== 'undefined' ? WT : (globalThis.__WT || (globalThis.__WT = { ph: null, rain: null }));
+function wvSnap() {
+  const plist = Object.values(S.players), B = bankLoad(), bldName = bi => { if (bi == null || bi < 0 || !BUILDINGS[bi]) return ''; const P = PROPS.find(q => q.bi === bi); return (P && P.name) || BUILDINGS[bi].name || 'Casa'; };
+  const owned = {}; const E = S.estate && S.estate.r || {}; for (const id in E) { const r = E[id], P = PROPS_BY[id]; if (P) (owned[r.ownerName] = owned[r.ownerName] || []).push(P.name); }
+  const players = plist.map(p => { const A = B.acc[estOwner(p)] || {}; return { id: p.id, name: p.name, cls: CLASSES[p.cls] ? CLASSES[p.cls].name : p.cls, lvl: p.lvl, hp: Math.round(p.hp), maxHp: p.maxHp, gold: p.gold, bank: Math.floor(A.g || 0), debt: Math.ceil(A.loan || 0), x: +p.x.toFixed(1), y: +p.y.toFixed(1), food: Math.round(p.food ?? 100), water: Math.round(p.water ?? 100), rep: repOf(p), crimes: p.crimes || [], wanted: now_() < (p.wanted || 0), jailed: p.jailUntil > now_(), downed: !!p.downed, dev: !!p.dev, menu: !!p.inMenu, prof: p.prof || {}, props: owned[p.name] || [] }; });
+  const npcs = Object.values(S.npcs || {}).map(n => { const ops = []; for (const p of plist) { const o = S.op && S.op[n.id] && S.op[n.id][memKey(p)]; if (o && Math.round(o.v)) ops.push([p.name, Math.round(o.v), o.why || '']); } return { id: n.id, name: n.name, kind: n.kind, role: n.role || '', act: n.act || '', hp: Math.round(n.hp), maxHp: n.maxHp || 90, x: +n.x.toFixed(1), y: +n.y.toFixed(1), downed: !!n.downed, dead: !!n.dead, sleeping: !!n.sleeping, transient: !!n.transient, need: n.need ? { food: Math.round(n.need.food), rest: Math.round(n.need.rest), social: Math.round(n.need.social) } : null, home: bldName(n.home), work: n.bi !== n.home ? bldName(n.bi) : '', ops }; });
+  const props = PROPS.map(P => { const r = E[P.id], b = r && r.biz, ten = P.tenants && P.tenants.length ? P.tenants.map(t => ((S.npcs || {})[t] || {}).name || t).join(', ') : ''; return { name: P.name, kind: P.kind, owner: r ? r.ownerName : '', mode: r ? r.mode : '', npc: P.npc ? 'dono morador' : '', tenants: ten, cofre: b ? Math.floor(b.cofre) : null, stock: b ? Math.round(Object.values(b.stock || b.store || {}).reduce((a, v) => a + v, 0)) : null, rev: b && b.today ? Math.round(b.today.rev) : null }; });
+  const bank = Object.entries(B.acc).map(([k, A]) => ({ who: k.split('|')[0], g: Math.floor(A.g), loan: Math.ceil(A.loan || 0) })).filter(a => a.g || a.loan);
+  const O = bankOwnerRec(), pop = { jogadores: plist.length, moradores: 0, visitantes: 0, guardas: 0, caídos: 0, mortos: 0 };
+  for (const n of Object.values(S.npcs || {})) { if (n.dead) pop.mortos++; else if (n.downed) pop.caídos++; if (n.transient) pop.visitantes++; else if (n.kind === 'guard' || n.kind === 'captain') pop.guardas++; else pop.moradores++; }
+  const mons = {}; for (const m of Object.values(S.monsters)) mons[m.type] = (mons[m.type] || 0) + 1;
+  const bast = BASTIONS.map(b => ({ name: b.name, n: Object.values(S.monsters).filter(m => dist(m.x, m.y, b.x, b.y) < b.r + 6).length }));
+  const se = typeof seasonNow === 'function' ? seasonNow() : { n: '' }, wx = typeof weatherNow === 'function' ? weatherNow() : { rain: 0 };
+  return { t: 'wv', players, npcs, props, bank, bankOwner: O ? O.ownerName : 'a Coroa', world: { day: estDay() - (S.day0 ?? (S.day0 = estDay())) + 1, hour: resHour(), season: se.n + (se.day != null ? ' · dia ' + (se.day + 1) : ''), rain: wx.rain, ph: WTs().ph, rainSet: WTs().rain, pop, mons, bast, events: (S.events || []).slice(-40) } };
+}
+function wvMsg(p, m) {
+  if (!p.dev && !p.devPowers) return;
+  if (m.a === 'snap') { Net.toOne(p.id, wvSnap()); return; }
+  if (m.a !== 'act') return;
+  const q = m.kind === 'p' ? S.players[m.id] : m.kind === 'n' ? S.npcs && S.npcs[m.id] : null, v = m.v;
+  if (m.op === 'time' || m.op === 'rain') { if (m.op === 'time') WTs().ph = v == null ? null : clamp(+v, 0, 1); else WTs().rain = v == null ? null : clamp(+v, 0, 1); Net.toAll({ t: 'wt', ph: WTs().ph, rain: WTs().rain }); }
+  else if (!q) return;
+  else if (m.op === 'tp') { p.x = clamp(q.x + 1.2, 1, MAP_W - 2); p.y = clamp(q.y + 0.6, 1, MAP_H - 2); p.z = 0; p.fl = 0; p.fb = -1; Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: 0, fl: 0, fb: -1 }); }
+  else if (m.op === 'heal') {
+    if (m.kind === 'p') { if (q.downed) revivePlayer(q, 1, 'O Tecelão'); q.hp = q.maxHp; q.mp = q.maxMp; if (q.body) for (const k in q.body) q.body[k] = 100; if (q.bleed) for (const k in q.bleed) q.bleed[k] = 0; q.food = 100; q.water = 100; tell(q, 'Uma luz dourada te envolve: o Tecelão te curou.'); sendStat(q); }
+    else { q.dead = false; q.downed = null; q.hp = q.maxHp || 90; q.fight = null; q.flee = null; }
+  }
+  else if (m.op === 'jail' && m.kind === 'p') { if (!(q.jailUntil > now_())) { q.sentence = Math.max(30000, +v || 120000); jailPlayer(q, q.sentence); sys(q.name + ' foi levado à cadeia pelo Tecelão.'); } }
+  else if (m.op === 'free' && m.kind === 'p') { if (q.jailUntil > now_()) releasePlayer(q, 'O Tecelão abriu a sua cela.'); if (q.condemned) condemn(q, false); q.wanted = 0; q.sentence = 0; q.crimes = []; q.murderer = false; q.bound = null; q.surrendered = false; Net.toAll({ t: 'wanted', id: q.id, ms: 0 }); sendStat(q); }
+  else if (m.op === 'gold' && m.kind === 'p') { const g = Math.round(+v || 0); q.gold = Math.max(0, q.gold + g); tell(q, g >= 0 ? 'O Tecelão te deu ' + g + ' de ouro.' : 'O Tecelão tirou ' + (-g) + ' de ouro de você.'); sendStat(q); }
+  Net.toOne(p.id, wvSnap());
 }
