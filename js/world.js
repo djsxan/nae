@@ -44,14 +44,14 @@ const DIRS8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, 
 
 const Z = { VILLAGE: 0, FIELDS: 1, FOREST: 2, SWAMP: 3, BONES: 4, ORCS: 5, WILD: 6, OUTSKIRTS: 7 };
 const ZONES = [
-  { name: 'Cidadela de Sxan', stars: 0, mons: [] },
-  { name: 'Campos de Sxan', stars: 1, mons: ['rat', 'deer', 'deer', 'boar'] },
+  { name: 'Cidadela de Nae', stars: 0, mons: [] },
+  { name: 'Campos de Nae', stars: 1, mons: ['rat', 'deer', 'deer', 'boar'] },
   { name: 'Bosque Sombrio', stars: 2, mons: ['wolf', 'wolf', 'spider', 'deer', 'boar'] },
   { name: 'Pântano Pútrido', stars: 2, mons: ['toad', 'toad', 'rat'] },
   { name: 'Colinas de Ossos', stars: 3, mons: ['spider', 'rat', 'wolf'] },
   { name: 'Terras do Oeste', stars: 3, mons: ['boar', 'wolf', 'deer'] },
   { name: 'Terras Selvagens', stars: 4, mons: ['wolf', 'boar', 'deer', 'spider'] },
-  { name: 'Arredores de Sxan', stars: 0, mons: [] },
+  { name: 'Arredores de Nae', stars: 0, mons: [] },
 ];
 
 function hash2(x, y, s) {
@@ -90,7 +90,7 @@ function zoneOf(x, y) {
   return Z.ORCS;
 }
 
-// ---------- cidade de Sxan (coordenadas relativas ao centro) ----------
+// ---------- cidade de Nae (coordenadas relativas ao centro) ----------
 const CASTLE = { x0: C - 32, y0: C - 32, x1: C + 33, y1: C + 33 };   // muralha externa
 const KEEP = { x0: C - 9, y0: C - 22, x1: C + 10, y1: C - 3 };       // castelo central
 const WALL_UNITS = 176 / (32 * Math.SQRT2 * Math.cos(Math.PI / 6));   // altura da muralha em tiles
@@ -103,13 +103,13 @@ const BUILDINGS = TEST3D ? [] : [
   { x: C + 5, y: C + 22, ...BH('barracks', 8, 5, 4.0, 2.6, 'Quartel da Guarda') },
   { x: C - 28, y: C + 24, ...BH('stable', 5, 4, 2.6, 2.4, 'Estábulo', { floors: 1 }) },
   { x: C - 29, y: C + 10, ...BH('shop', 5, 5, 2.4, 2.2, 'Boticário de Elva', { v: 1, door: 'N', floors: 1 }) },
-  { x: C - 22, y: C - 8, ...BH('shop', 5, 5, 5.0, 3.2, 'Arcanos & Varinhas', { v: 2, door: 'W' }) },
+  { x: C - 22, y: C - 8, ...BH('shop', 5, 5, 2.4, 1.6, 'Arcanos & Varinhas', { v: 2, door: 'W' }) },
   { x: C - 22, y: C + 10, ...BH('shop', 5, 5, 2.4, 2.2, 'Alfaiataria Real', { v: 3, door: 'N', floors: 1 }) },
   { x: C - 30, y: C - 8, ...BH('shop', 5, 5, 3.6, 2.6, 'Pergaminhos & Mapas', { v: 4, door: 'E' }) },
-  { x: C - 5, y: C - 19, ...BH('castle', 12, 10, 10, 6.5, 'Castelo de Sxan', { floors: 2 }) },
-  { x: C - 30, y: C - 21, ...BH('bank', 5, 10, 5.6, 2.4, 'Banco de Sxan', { floors: 1, door: 'E' }) },   // fachada para a rua (lado que a câmera vê)   // colunas, salão comprido de mesas altas e a porta redonda do cofre
-  { x: C + 22, y: C + 20, ...BH('jail', 6, 8, 3.2, 2.4, 'Cadeia de Sxan', { floors: 1, door: 'W' }) },
-  { x: C - 16, y: C, ...BH('boutique', 5, 4, 4.2, 3.0, 'Ateliê Real de Sxan', { floors: 1, door: 'S' }) },
+  { x: C - 5, y: C - 19, ...BH('castle', 12, 10, 10, 6.5, 'Castelo de Nae', { floors: 2 }) },
+  { x: C - 30, y: C - 21, ...BH('bank', 5, 10, 5.6, 2.4, 'Banco de Nae', { floors: 1, door: 'E' }) },   // fachada para a rua (lado que a câmera vê)   // colunas, salão comprido de mesas altas e a porta redonda do cofre
+  { x: C + 22, y: C + 20, ...BH('jail', 6, 8, 3.2, 2.4, 'Cadeia de Nae', { floors: 1, door: 'W' }) },
+  { x: C - 16, y: C, ...BH('boutique', 5, 4, 4.2, 3.0, 'Ateliê Real de Nae', { floors: 1, door: 'S' }) },
   { x: C - 13, y: C + 18, ...BH('fruithouse', 5, 4, 2.9, 2.6, '', { floors: 1, door: 'E' }) },
   // bairro nobre (à direita do castelo): casarões de pedra clara com jardins murados
   { x: C + 24, y: C - 18, ...BH('manor', 6, 6, 4.8, 3.2, 'Casa Valmont', { door: 'W' }) },
@@ -1111,7 +1111,7 @@ const PROPS = [], PROPS_BY = {};
 })();
 // ---------- moradores: cada um mora numa casa da cidade ou da vila (as casas com inquilino não ficam para alugar, mas podem ser compradas) ----------
 const RES_HOME = {}, RES_LINES = {
-  any: ['Que dia comprido...', 'Viu o preço do pão?', 'Dizem que o dragão voltou a voar.', 'A guarda anda nervosa.', 'Vai chover, minhas costas sabem.', 'Amanhã tem mais.', 'Sxan já foi mais calma.', 'Ouvi um grito na floresta ontem.', 'Saúde!', 'Ha! Essa é boa.'],
+  any: ['Que dia comprido...', 'Viu o preço do pão?', 'Dizem que o dragão voltou a voar.', 'A guarda anda nervosa.', 'Vai chover, minhas costas sabem.', 'Amanhã tem mais.', 'Nae já foi mais calma.', 'Ouvi um grito na floresta ontem.', 'Saúde!', 'Ha! Essa é boa.'],
   st_saw: ['A serra não para.', 'O rio subiu de novo.', 'Elias, madeira não é manteiga!'], st_mine: ['Achei um veio novo... talvez.', 'Lua cheia não é dia de cavar.', 'Bruno, mais uma rodada?'],
   st_farm: ['As ervas estão lindas.', 'Um dia ainda faço uma estufa.', 'Tomé passou por aqui hoje?'], st_carp: ['Fiz uma varinha nova!', 'O mestre Bruno só reclama.', 'Teodoro me mandou outra carta.'],
   st_alch: ['Fogo baixo, paciência.', 'Não pergunte do porto.', 'Rosa, as suas ervas são as melhores.'], st_apoth: ['Ninguém sabe da Elva...', 'O estoque está fraco.', 'Essa Odila não me engana.'],

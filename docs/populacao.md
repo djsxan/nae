@@ -7,7 +7,7 @@
 
 ## 1. A ideia em uma frase
 
-Cada morador de Sxan é uma pessoa: tem casa, trabalho, fé, lado político, família, opinião sobre você, e conta para os outros o que viu.
+Cada morador de Nae é uma pessoa: tem casa, trabalho, fé, lado político, família, opinião sobre você, e conta para os outros o que viu.
 
 ## 2. Quem é cada morador (ficha)
 
@@ -18,7 +18,7 @@ Cada morador de Sxan é uma pessoa: tem casa, trabalho, fé, lado político, fam
 | **Classe social** | nobreza · burguesia · artesãos · trabalhadores · pobres |
 | **Religião** | Fé da Aurora (oficial) · Velhos Deuses da Floresta · Culto da Lua (escondido) · cético |
 | **Política / lealdade** | Coroa · Guilda dos Mercadores · Velha Nobreza · Irmandade do Javali (o povo descontente) |
-| **Origem / cultura** | sxanês da cidade · nortenho das montanhas · gente do pântano · estrangeiro do porto do sul |
+| **Origem / cultura** | naense da cidade · nortenho das montanhas · gente do pântano · estrangeiro do porto do sul |
 | Personalidade (2 traços) | corajosa, fofoqueira |
 | Relações | casada com Bram (ferreiro), rival de Elsa (outra padeira), mãe de Pip |
 | Necessidades | fome, descanso, dinheiro, convívio, fé, segurança (0–100) |

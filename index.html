@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&family=Cinzel:wght@500;700;900&family=Cinzel+Decorative:wght@700;900&family=Alegreya:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Alegreya+Sans+SC:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=1.35.1">
+<link rel="stylesheet" href="css/style.css?v=1.36.0">
 </head>
 <body class="nae">
 <canvas id="game"></canvas>
@@ -18,7 +18,7 @@
   <div class="scroll">
     <div class="logo-small">⚔</div>
     <h1>Nae</h1>
-    <p class="sub">Erga a espada, retese o arco ou invoque o fogo. A Cidadela de Sxan espera por você.</p>
+    <p class="sub">Erga a espada, retese o arco ou invoque o fogo. A Cidadela de Nae espera por você.</p>
     <div class="lobby-grid">
       <section>
         <h2>I · Seu herói</h2>
@@ -95,10 +95,7 @@
   </div>
 
 
-  <div id="chat" class="panel parch">
-    <div id="chat-log"></div>
-    <input type="text" id="chat-input" maxlength="140" placeholder="Enter para falar...">
-  </div>
+  <div id="notes"></div>
 
   <!-- comandos em círculo (estilo MOBA) -->
   <div id="combat-pad">
@@ -147,6 +144,7 @@
       <div class="pz-sec">Sala</div>
       <div class="pz-room">Código <b id="room-code"></b></div>
       <button class="pz-btn" id="btn-copy">Copiar convite</button>
+      <div id="pz-roompw" style="display:none"><div class="pz-sec">Senha do reino (só o anfitrião)</div><div class="pz-row"><input id="pz-rpw" type="text" maxlength="24" placeholder="Senha" autocomplete="off" style="flex:1;min-width:0"><button id="pz-rpw-lock">Trancar</button><button id="pz-rpw-open">Abrir</button></div><small id="pz-rpw-st"></small></div>
       </div><div class="pz-col">
       <button class="pz-btn" id="pz-resume">Voltar ao jogo</button>
       <div class="pz-sec">Qualidade gráfica</div>
@@ -175,7 +173,7 @@
         <div><b>Sobreviver</b> clique na comida/odre no inventário · F perto do fogo assa carne · F perto da água bebe · lenha acende fogueira</div>
         <div><b>Mira</b> cursor na cabeça / tronco / pernas do alvo · <b>Bandagem</b> B · <b>Revistar/esfolar</b> segurar F · <b>Pegar/arremessar</b> G</div>
         <div><b>Reanimar</b> segurar F · <b>Carregar</b> G · <b>Desistir</b> R (caído)</div>
-        <div><b>Chat</b> Enter · <b>Zoom</b> roda do mouse · <b>Menu</b> Esc</div>
+        <div><b>Zoom</b> roda do mouse · <b>Menu</b> Esc</div>
       </details>
       <button class="pz-btn pz-quit" id="pz-quit">Sair para o menu</button>
       </div></div>
@@ -190,12 +188,12 @@
     <div><kbd>R</kbd> desistir quando caído (morte permanente) · <kbd>Roda</kbd> zoom</div>
     <div><kbd>C</kbd> agachar · <kbd>C</kbd>+<kbd>Shift</kbd> deslizar · <kbd>V</kbd> sentar</div>
     <div><kbd>I</kbd> inventário · <kbd>J</kbd> jornada · <kbd>M</kbd> mapa · <kbd>T</kbd> emojis</div>
-    <div><kbd>Enter</kbd> chat · <kbd>Esc</kbd> cancelar</div>
+    <div><kbd>Esc</kbd> menu · os avisos ficam guardados na aba Avisos</div>
     <div>As rampas de pedra levam às muralhas e ao salão da torre de menagem.</div>
   </div>
 </div>
 
-<div id="worldmap" class="hidden"><div class="wm-frame"><div class="wm-title">Reino de Sxan</div><canvas id="wm-canvas"></canvas><div class="wm-hint">M ou Esc para fechar · X marca lugares que você já encontrou</div></div></div>
+<div id="worldmap" class="hidden"><div class="wm-frame"><div class="wm-title">Reino de Nae</div><canvas id="wm-canvas"></canvas><div class="wm-hint">M ou Esc para fechar · X marca lugares que você já encontrou</div></div></div>
 <div id="dialog" class="hidden">
   <div class="panel parch dlg">
     <canvas id="dlg-portrait" width="96" height="140"></canvas>
@@ -219,32 +217,32 @@
 </div>
 
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<script src="js/config.js?v=1.35.1"></script>
-<script src="js/world.js?v=1.35.1"></script>
-<script src="js/net.js?v=1.35.1"></script>
-<script src="js/pixel.js?v=1.35.1"></script>
-<script src="js/paint.js?v=1.35.1"></script>
-<script src="js/sprites.js?v=1.35.1"></script>
-<script src="js/props.js?v=1.35.1"></script>
-<script src="js/terrain.js?v=1.35.1"></script>
+<script src="js/config.js?v=1.36.0"></script>
+<script src="js/world.js?v=1.36.0"></script>
+<script src="js/net.js?v=1.36.0"></script>
+<script src="js/pixel.js?v=1.36.0"></script>
+<script src="js/paint.js?v=1.36.0"></script>
+<script src="js/sprites.js?v=1.36.0"></script>
+<script src="js/props.js?v=1.36.0"></script>
+<script src="js/terrain.js?v=1.36.0"></script>
 <script src="https://unpkg.com/three@0.149.0/build/three.min.js"></script>
-<script src="js/render.js?v=1.35.1"></script>
-<script src="js/render3d.js?v=1.35.1"></script>
-<script src="js/dragon.js?v=1.35.1"></script>
-<script src="js/ragdoll.js?v=1.35.1"></script>
-<script src="js/scene3d.js?v=1.35.1"></script>
-<script src="js/server.js?v=1.35.1"></script>
-<script src="js/game.js?v=1.35.1"></script>
-<script src="js/life.js?v=1.35.1"></script>
-<script src="js/progress.js?v=1.35.1"></script>
-<script src="js/bow.js?v=1.35.1"></script>
-<script src="js/drag.js?v=1.35.1"></script>
-<script src="js/npclife.js?v=1.35.1"></script>
-<script src="js/kitchen.js?v=1.35.1"></script>
-<script src="js/jail.js?v=1.35.1"></script>
-<script src="js/showcase.js?v=1.35.1"></script>
-<script src="js/estate.js?v=1.35.1"></script>
-<script src="js/jobs.js?v=1.35.1"></script>
-<script src="js/title.js?v=1.35.1"></script>
+<script src="js/render.js?v=1.36.0"></script>
+<script src="js/render3d.js?v=1.36.0"></script>
+<script src="js/dragon.js?v=1.36.0"></script>
+<script src="js/ragdoll.js?v=1.36.0"></script>
+<script src="js/scene3d.js?v=1.36.0"></script>
+<script src="js/server.js?v=1.36.0"></script>
+<script src="js/game.js?v=1.36.0"></script>
+<script src="js/life.js?v=1.36.0"></script>
+<script src="js/progress.js?v=1.36.0"></script>
+<script src="js/bow.js?v=1.36.0"></script>
+<script src="js/drag.js?v=1.36.0"></script>
+<script src="js/npclife.js?v=1.36.0"></script>
+<script src="js/kitchen.js?v=1.36.0"></script>
+<script src="js/jail.js?v=1.36.0"></script>
+<script src="js/showcase.js?v=1.36.0"></script>
+<script src="js/estate.js?v=1.36.0"></script>
+<script src="js/jobs.js?v=1.36.0"></script>
+<script src="js/title.js?v=1.36.0"></script>
 </body>
 </html>

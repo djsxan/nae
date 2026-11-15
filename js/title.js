@@ -104,6 +104,7 @@ function titleMenu() {
       q.innerHTML = nm.trim() ? '<div class="nq-card"><div class="nq-who"><b>' + nm.replace(/</g, '') + '</b><span>' + cn + (sv ? ' · nível ' + (sv.lvl || 1) + ' · ' + (sv.gold || 0) + ' ouro' : ' · herói novo') + '</span></div><button class="btn ghost" id="nq-change">Trocar herói</button></div>'
         : '<div class="nq-card"><div class="nq-who"><b>Nenhum herói ainda</b><span>Crie o seu em Personagens.</span></div><button class="btn gold" id="nq-change">Criar herói</button></div>';
       q.querySelector('#nq-change').onclick = () => open('chars');
+      if (nm.trim()) { const e = document.createElement('div'); e.className = 'nq-enter'; e.innerHTML = '<button class="btn gold" id="nq-enter">Entrar no reino ▸</button><small>Entra no reino aberto ou abre um com você de anfitrião. Outros reinos e código de sala em Reinos online.</small>'; q.appendChild(e); e.querySelector('button').onclick = ev => quickEnter(ev.currentTarget); }
     };
   }
   document.body.classList.add('nae-ready');

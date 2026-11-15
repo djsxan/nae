@@ -42,7 +42,7 @@ const EST_COL = { ten: '#9a6ab8', free: '#7cc35e', rent: '#8a7d6c', mine: '#e8c4
 function estBuild() {
   if (document.getElementById('estate')) return;
   const d = document.createElement('div'); d.id = 'estate'; d.className = 'gpanel hidden';
-  d.innerHTML = '<div class="gp-head"><span>Imobiliária · Sxan</span><span class="gp-gold"><span class="coin"></span><b id="est-gold">0</b></span><button class="gp-x" id="est-x">✕</button></div>' +
+  d.innerHTML = '<div class="gp-head"><span>Imobiliária · Nae</span><span class="gp-gold"><span class="coin"></span><b id="est-gold">0</b></span><button class="gp-x" id="est-x">✕</button></div>' +
     '<div class="est-tabs">' + Object.keys(EST_KIND).map(k => '<button data-tab="' + k + '">' + EST_KIND[k] + '</button>').join('') + '</div>' +
     '<div class="est-main"><div class="est-mapbox"><canvas id="est-map" width="380" height="280"></canvas><div class="est-legend">' +
     [['free', 'Livre'], ['mine', 'Seu'], ['rent', 'De outro jogador'], ['npc', 'Comerciante'], ['ten', 'Morador'], ['office', 'Imobiliária']].map(([k, t]) => '<span><i style="background:' + EST_COL[k] + '"></i>' + t + '</span>').join('') +
@@ -322,7 +322,7 @@ function bankOpen() { Net.send({ t: 'bank', a: 'open' }); }
 function bankShow(m) {
   let d = document.getElementById('bankp'); if (!d) { d = document.createElement('div'); d.id = 'bankp'; d.className = 'gpanel'; document.body.appendChild(d); }
   const dueTxt = m.loan ? (m.due > 0 ? 'vence em ' + Math.max(1, Math.round(m.due / 60000)) + ' min' : '<b style="color:#ff8a7a">VENCIDA</b>') : '';
-  d.innerHTML = '<div class="gp-head"><span>🏛 Banco de Sxan</span><span class="gp-gold"><span class="coin"></span><b>' + G.me.gold + '</b></span><button class="gp-x" id="bk-x">✕</button></div>' +
+  d.innerHTML = '<div class="gp-head"><span>🏛 Banco de Nae</span><span class="gp-gold"><span class="coin"></span><b>' + G.me.gold + '</b></span><button class="gp-x" id="bk-x">✕</button></div>' +
     '<div class="hub-top"><div><small>Saldo guardado</small><b>' + m.g + '</b></div><div><small>Dívida</small><b class="' + (m.loan ? 'neg' : '') + '">' + m.loan + '</b></div><div><small>Reputação</small><b>' + m.rep + '</b></div></div>' +
     '<div class="bk-row"><input id="bk-q" type="number" min="1" placeholder="Quantia"><button class="est-btn" data-bk="dep">Depositar</button><button class="est-btn" data-bk="wd">Sacar</button><button class="est-btn ghost" data-bk="depall">Depositar tudo</button></div>' +
     '<div class="gp-sub">Empréstimo</div><div class="est-cost">' + (m.loan ? 'Você deve <b>' + m.loan + '</b> · ' + dueTxt : 'Pode pegar até <b>' + m.max + '</b> de ouro (cresce com a reputação). Juros de 10% por semana; prazo de 2 semanas.') + '</div>' +

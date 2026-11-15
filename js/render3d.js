@@ -475,7 +475,7 @@ MON_LOOK.deserter = () => ({ skin: tone('#c09878'), hair: tone('#4a3a2a'), armor
 MON_LOOK.deserterchief = () => ({ skin: tone('#b89070'), hair: tone('#2a1a10'), armor: 'plate', body: tone('#4a4c50'), body2: tone('#2a1a10'), accent: tone('#7a1a14'), legs: tone('#2d1b0a'), boots: tone('#1a1008'), trim: tone('#a8843a'), head: 'greathelm', headTone: tone('#3a3c40'), weapon: 'sword', shield: 'kite', capeTone: tone('#6a1410') });
 MON_LOOK.orcchief = () => ({ ...MON_LOOK.orc(), accent: tone('#9a1a14'), trim: tone('#c8a040'), head: 'horned', weapon: 'axe', capeTone: tone('#5a0e0a') });
 MON_LOOK.cryptlord = () => ({ ...MON_LOOK.skeleton(), head: 'circlet', weapon: 'darkblade', accent: tone('#3a1a4a'), trim: tone('#c8a850'), capeTone: tone('#2a1a3a') });
-// O Tecelão de Sxan: manto cinza esfarrapado com fios de ouro, capuz sem rosto, olhos de luz
+// O Tecelão de Nae: manto cinza esfarrapado com fios de ouro, capuz sem rosto, olhos de luz
 // O Tecelão: entidade careca, pele pálida, olhos brancos de luz, todo de branco e descalço
 const WEAVER_LOOK = () => ({ skin: tone('#d8b096'), hair: null, armor: 'cloth', body: tone('#c9c8c2'), body2: tone('#b4b3ad'), accent: tone('#d0cfc9'), legs: tone('#bdbcb6'), boots: tone('#d8b096'), trim: tone('#a8a7a1'), head: 'none', weapon: null });   // roupa e pele foscas: só os olhos brilham
 function weaverExtras(R) {

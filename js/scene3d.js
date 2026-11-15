@@ -1414,7 +1414,7 @@ function mBuilding(b, night) {
   if (b.kind === 'bank') {   // pórtico de colunas brancas, frontão com o brasão dourado e escadaria (estilo Gringotts)
     const marble = smat('stoneblock', '#f2ede2', { bump: 0.8 }), gold = smat(null, '#d4a94a', { metal: 1, rough: 0.3 }), n = 6, z0 = h + 0.75, Hc = H - 0.2;
     for (let k = 0; k < 3; k++) o.add(wbox(w + 0.6 - k * 0.2, 0.14, 1.3 - k * 0.32, w / 2, 0.07 + k * 0.14, h + 0.65 - k * 0.16, marble, 1));
-    for (let k = 0; k < n; k++) { const x = 0.45 + k * (w - 0.9) / (n - 1); o.add(mk(new THREE.CylinderGeometry(0.17, 0.2, Hc - 0.5, 14).translate(x, 0.42 + (Hc - 0.5) / 2, z0), marble)); o.add(wbox(0.46, 0.14, 0.46, x, 0.49, z0, marble, 1)); o.add(wbox(0.46, 0.16, 0.46, x, Hc - 0.02, z0, marble, 1)); }
+    for (let k = 0; k < n; k++) { const x = k < 3 ? 0.45 + k * 1.1 : w - 0.45 - (5 - k) * 1.1;   /* 3 de cada lado: vão largo na frente da porta */ o.add(mk(new THREE.CylinderGeometry(0.17, 0.2, Hc - 0.5, 14).translate(x, 0.42 + (Hc - 0.5) / 2, z0), marble)); o.add(wbox(0.46, 0.14, 0.46, x, 0.49, z0, marble, 1)); o.add(wbox(0.46, 0.16, 0.46, x, Hc - 0.02, z0, marble, 1)); }
     o.add(wbox(w + 0.3, 0.32, 1.0, w / 2, Hc + 0.22, h + 0.55, marble, 1));
     const tri = new THREE.Shape(); tri.moveTo(-w / 2 - 0.15, 0); tri.lineTo(w / 2 + 0.15, 0); tri.lineTo(0, 1.0); tri.closePath();
     o.add(mk(new THREE.ExtrudeGeometry(tri, { depth: 0.9, bevelEnabled: false }).translate(w / 2, Hc + 0.38, h + 0.1), marble));

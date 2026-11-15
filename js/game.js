@@ -147,6 +147,8 @@ function clientOnServer(m) {
       break;
     }
     case 'err': showToast(m.text); break;
+    case 'denied': askRoomPw(m.why === 'pwbad'); break;
+    case 'roompw': G.roomLocked = m.on; pzRoomRefresh(); break;
     case 'npc': if (G.dialog && G.dialog.id === m.n) { setDialogText(m.text); if (m.n === 'captain') later(50, () => G.dialog && buildDialogOptions('captain')); } break;
     case 'down': { const e = G.players[m.id]; if (e) { e.downed = true; e.downUntil = now + DOWNED_MS; } if (m.id === G.myId) { setTarget(null); G.path = null; } break; }
     case 'up': { const e = G.players[m.id]; if (e) { e.downed = false; e.revive = null; } if (m.id === G.myId) showBanner('De pé outra vez', ''); break; }
@@ -194,7 +196,7 @@ function clientOnServer(m) {
     case 'miss': { const e = G.monsters[m.id]; if (e) { const w = tileW(e.rx, e.ry, 30); for (let k = 0; k < 5; k++) spawnPart('dust', w.x, w.y); } break; }
     case 'dead': {
       G.dead = true; $('downed-ui').classList.add('hidden'); $('hud').classList.add('hidden'); try { const all = loadChars(); delete all[charKey(G.me.name, G.me.cls)]; localStorage.setItem(SAVE_KEY, JSON.stringify(all)); } catch (e) { }
-      const d = document.createElement('div'); d.id = 'deathscreen'; d.innerHTML = '<div class="ds-box"><div class="ds-title">Você morreu</div><div class="ds-sub">' + m.name + ', nível ' + m.lvl + ' — ' + m.reason + '</div><div class="ds-note">Em Sxan a morte é para sempre. Seu personagem se foi.</div><button class="btn gold" onclick="location.reload()">Começar de novo</button></div>';
+      const d = document.createElement('div'); d.id = 'deathscreen'; d.innerHTML = '<div class="ds-box"><div class="ds-title">Você morreu</div><div class="ds-sub">' + m.name + ', nível ' + m.lvl + ' — ' + m.reason + '</div><div class="ds-note">Em Nae a morte é para sempre. Seu personagem se foi.</div><button class="btn gold" onclick="location.reload()">Começar de novo</button></div>';
       document.body.appendChild(d); break;
     }
     case 'lootgold': showToast('+ ' + m.g + ' de ouro'); break;
@@ -473,7 +475,7 @@ function nearestDowned() {
 }
 
 // ---------------- salvar no navegador ----------------
-const SAVE_KEY = 'wos-chars-v4';
+const SAVE_KEY = 'nae-chars-v4';
 function loadChars() { try { return JSON.parse(localStorage.getItem(SAVE_KEY)) || {}; } catch (e) { return {}; } }
 function charKey(name, cls) { return name.trim().toLowerCase() + '|' + cls; }
 function saveChar() {
@@ -643,16 +645,18 @@ function updateSlots(now) {
   else pr.classList.add('hidden');
 }
 
+// sem chat: avisos aparecem no canto e somem sozinhos; tudo fica guardado no histórico (aba Avisos do menu)
+G.noteLog = [];
+function noteLog(name, text, kind) { G.noteLog.push({ t: Date.now(), name: name || '', text: String(text), kind: kind || (name ? 'say' : 'sys') }); if (G.noteLog.length > 300) G.noteLog.shift(); if (typeof pauseNotesRefresh === 'function') pauseNotesRefresh(); }
 function addChat(name, text) {
-  const log = $('chat-log'), line = document.createElement('div');
-  if (name) { const b = document.createElement('b'); b.textContent = name + ': '; line.append(b, document.createTextNode(text)); }
-  else { line.className = 'sys'; line.textContent = text; }
-  log.appendChild(line);
-  while (log.children.length > 80) log.firstChild.remove();
-  log.scrollTop = log.scrollHeight;
+  noteLog(name, text);
+  const box = $('notes'); if (!box) return; const line = document.createElement('div'); line.className = 'note' + (name ? ' say' : '');
+  if (name) { const b = document.createElement('b'); b.textContent = name + ': '; line.append(b, document.createTextNode(text)); } else line.textContent = text;
+  box.appendChild(line); while (box.children.length > 5) box.firstChild.remove();
+  setTimeout(() => { line.classList.add('out'); setTimeout(() => line.remove(), 700); }, 6500 + Math.min(4000, text.length * 25));
 }
 let toastTimer = 0;
-function showToast(text) { const t = $('toast'); t.textContent = text; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600); }
+function showToast(text) { noteLog('', text, 'tip'); const t = $('toast'); t.textContent = text; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600); }
 let bannerTimer = 0;
 function showBanner(title, sub, dark) {
   const b = $('banner'); $('banner-title').textContent = title; $('banner-sub').textContent = sub;
@@ -667,19 +671,19 @@ const NPC_DIALOG = {
   v_house4: { greet: "No meu tempo o pão era mais barato.", opts: [['Tudo bem?', { local: 'Tudo, tudo. Bom dia para você.' }]] },
   v_trav3: { greet: "Uma moeda para uma canção, senhor?", opts: [['Tudo bem?', { local: 'Tudo, tudo. Bom dia para você.' }]] },
   v_monk: { greet: "Que a Aurora ilumine o seu caminho.", opts: [['Tudo bem?', { local: 'Tudo, tudo. Bom dia para você.' }]] },
-  v_noblef: { greet: "Hm. Sxan é... pitoresca.", opts: [['Tudo bem?', { local: 'Tudo, tudo. Bom dia para você.' }]] },
+  v_noblef: { greet: "Hm. Nae é... pitoresca.", opts: [['Tudo bem?', { local: 'Tudo, tudo. Bom dia para você.' }]] },
   v_noblem: { greet: "Vim ver o Lorde Cassian. Negócios.", opts: [['Tudo bem?', { local: 'Tudo, tudo. Bom dia para você.' }]] },
   v_peasm: { greet: "Trouxe batata da roça para vender.", opts: [['Tudo bem?', { local: 'Tudo, tudo. Bom dia para você.' }]] },
   v_peasf: { greet: "A colheita foi boa este ano.", opts: [['Tudo bem?', { local: 'Tudo, tudo. Bom dia para você.' }]] },
   v_elderm: { greet: "Eu lembro quando o dragão queimou a ponte velha.", opts: [['Tudo bem?', { local: 'Tudo, tudo. Bom dia para você.' }]] },
   v_elderf: { greet: "Cuidado com a viela à noite, criança.", opts: [['Tudo bem?', { local: 'Tudo, tudo. Bom dia para você.' }]] },
-  banker: { greet: 'Bem-vindo ao Banco de Sxan. Aqui o seu ouro dorme tranquilo atrás de uma porta que nem um dragão abre.', opts: [['Minha conta', { open: 'bank' }], ['Como funciona o banco?', { local: 'Você deposita e o ouro rende 2% por semana. Ninguém rouba, nem quando você cai. Emprestamos também, a 10% por semana, por duas semanas... e quem não paga conhece as sentinelas.' }], ['E se eu morrer?', { local: 'Então, com todo o respeito, o seu saldo fica com o banco. Ouro não tem herdeiro por aqui.' }], ['Posso comprar o banco?', { local: 'Só quem o Conselho respeita: reputação 70 ou mais, e uma fortuna. Fale com Mestre Anselmo, na Imobiliária.' }]] },
+  banker: { greet: 'Bem-vindo ao Banco de Nae. Aqui o seu ouro dorme tranquilo atrás de uma porta que nem um dragão abre.', opts: [['Minha conta', { open: 'bank' }], ['Como funciona o banco?', { local: 'Você deposita e o ouro rende 2% por semana. Ninguém rouba, nem quando você cai. Emprestamos também, a 10% por semana, por duas semanas... e quem não paga conhece as sentinelas.' }], ['E se eu morrer?', { local: 'Então, com todo o respeito, o seu saldo fica com o banco. Ouro não tem herdeiro por aqui.' }], ['Posso comprar o banco?', { local: 'Só quem o Conselho respeita: reputação 70 ou mais, e uma fortuna. Fale com Mestre Anselmo, na Imobiliária.' }]] },
   banker2: { greet: 'Caixa aberto! Depósito ou saque?', opts: [['Minha conta', { open: 'bank' }]] },
   banker3: { greet: 'Os números nunca mentem. As pessoas, sim.', opts: [['Minha conta', { open: 'bank' }]] },
   v_house1: { greet: "Bom dia! Vim fazer as compras da semana.", opts: [['Tudo bem?', { local: "Tudo tão caro hoje em dia..." }]] },
   v_house2: { greet: "Bom dia! Vim fazer as compras da semana.", opts: [['Tudo bem?', { local: "Tudo tão caro hoje em dia..." }]] },
-  v_trav1: { greet: "Acabei de chegar de longe. Onde fica a taverna?", opts: [['Tudo bem?', { local: "Estrada perigosa, essa até Sxan." }]] },
-  v_trav2: { greet: "Acabei de chegar de longe. Onde fica a taverna?", opts: [['Tudo bem?', { local: "Estrada perigosa, essa até Sxan." }]] },
+  v_trav1: { greet: "Acabei de chegar de longe. Onde fica a taverna?", opts: [['Tudo bem?', { local: "Estrada perigosa, essa até Nae." }]] },
+  v_trav2: { greet: "Acabei de chegar de longe. Onde fica a taverna?", opts: [['Tudo bem?', { local: "Estrada perigosa, essa até Nae." }]] },
   v_vis1: { greet: "Que cidade bonita! Já viu o chafariz?", opts: [['Tudo bem?', { local: "Estou só de passagem." }]] },
   v_vis2: { greet: "Que cidade bonita! Já viu o chafariz?", opts: [['Tudo bem?', { local: "Estou só de passagem." }]] },
   v_thug1: { greet: "Tá olhando o quê?", opts: [['Tudo bem?', { local: "Circulando, circulando." }]] },
@@ -698,20 +702,20 @@ const NPC_DIALOG = {
   courier1: { greet: "Pip, mensageiro! Levo e trago o que for, da vila até a Rua Nova, num pé só.", opts: [['Tem alguma entrega para mim?', { job: 'delivery' }], ['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
   courier2: { greet: "Lia Ventura. Conheço cada viela daqui até o rio. Ninguém me alcança.", opts: [['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
   courier3: { greet: "Tomé, carroceiro. Devagar, mas a carga chega inteira. Quase sempre.", opts: [['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
-  broker: { greet: 'Bem-vindo à Imobiliária Chave de Bronze! Casas, lojas, oficinas: se tem porta em Sxan, eu sei de quem é a chave. Quer ver o que está livre?', opts: [
+  broker: { greet: 'Bem-vindo à Imobiliária Chave de Bronze! Casas, lojas, oficinas: se tem porta em Nae, eu sei de quem é a chave. Quer ver o que está livre?', opts: [
     ['Ver imóveis (mapa e lista)', { open: 'estate' }],
     ['Como funciona o aluguel?', { local: 'Simples: você paga a primeira semana e uma caução, e a chave é sua. Depois o aluguel sai sozinho da sua bolsa uma vez por semana (7 dias do jogo). Se faltar ouro por duas semanas, a casa volta para mim e o baú vai para a sua mochila. Devolveu a chave? A caução volta. E lembre: perto do castelo é caro, na periferia é barato.' }],
     ['E o que ganho com uma casa?', { local: 'Porta trancada (só entra quem você autorizar), um baú seguro, você acorda lá quando chega ao reino e dorme muito melhor na sua própria cama. Nada como estar em casa.' }],
     ['Posso ter uma loja ou oficina?', { local: 'Pode! Os pontos vagos da Rua Nova e as oficinas da Vila do Oeste estão à venda e para alugar. Cada um vem com um funcionário. As oficinas produzem, os mensageiros levam para as suas lojas e as lojas vendem sozinhas. O lucro fica no cofre: vá buscar!' }],
     ['Comprar ou alugar?', { local: 'Alugar sai barato para começar, mas cobra todo dia. Comprar custa 60 dias de aluguel de uma vez, e depois só 1 ouro de imposto por dia. Se cansar, a Coroa compra de volta pela metade.' }]] },
-  noble: { greet: 'Oh. Um aventureiro, aqui? Que... pitoresco. Cuidado com as botas no calçamento.', opts: [['Que bairro é este?', { local: 'O Bairro Nobre, querido. As melhores famílias de Sxan vivem aqui, longe do cheiro da feira.' }]] },
+  noble: { greet: 'Oh. Um aventureiro, aqui? Que... pitoresco. Cuidado com as botas no calçamento.', opts: [['Que bairro é este?', { local: 'O Bairro Nobre, querido. As melhores famílias de Nae vivem aqui, longe do cheiro da feira.' }]] },
   noble2: { greet: 'Lorde Cassian Aldren. Se veio pedir favores, marque uma audiência como todo mundo.', opts: [['Só estou de passagem.', { local: 'Então passe. E não pise nos canteiros.' }]] },
   gardener: { greet: 'Bom dia! Essas sebes não se podam sozinhas, sabe? A Lady Valmont quer tudo perfeito.', opts: [['Precisa de ajuda? (varrer a praça)', { job: 'sweep' }], ['Belo jardim.', { local: 'Trinta anos de tesoura! A roseira do chafariz fui eu que plantei.' }]] },
-  tailor: { greet: 'Bem-vindo ao Ateliê Real. Aqui só entra o que há de mais fino em Sxan: armaduras de gala, mantos de seda e couro trabalhado à mão. Admire as vitrines.', opts: [
+  tailor: { greet: 'Bem-vindo ao Ateliê Real. Aqui só entra o que há de mais fino em Nae: armaduras de gala, mantos de seda e couro trabalhado à mão. Admire as vitrines.', opts: [
     ['O que está nas vitrines?', { local: 'As peças mais raras do reino, vestidas nos manequins lá fora. Elas trocam de tempos em tempos. Em breve poderão ser encomendadas, mas não serão baratas.' }],
     ['Como estou vestido?', { local: 'Hmm... o corte é honesto, mas o tecido já viu dias melhores. Volte quando quiser algo à altura do seu nome.' }]] },
-  jailer: { greet: 'Cadeia de Sxan. Quem entra, cumpre a pena — ou paga a fiança.', opts: [] },
-  executioner: { greet: 'A justiça de Sxan é rápida e limpa. Traga o condenado caído até o cadafalso — carregue-o e aperte F aqui perto — e eu cuido do resto.', opts: [] },
+  jailer: { greet: 'Cadeia de Nae. Quem entra, cumpre a pena — ou paga a fiança.', opts: [] },
+  executioner: { greet: 'A justiça de Nae é rápida e limpa. Traga o condenado caído até o cadafalso — carregue-o e aperte F aqui perto — e eu cuido do resto.', opts: [] },
   fruit: { greet: 'Frutas fresquinhas do pomar, colhidas hoje cedo! Maçã docinha, amora do mato... leva uma?', opts: [
     ['Maçã — 3 ouro', { a: 'buyl', item: 'apple', qty: 1 }], ['5 Maçãs — 15 ouro', { a: 'buyl', item: 'apple', qty: 5 }],
     ['Frutas Silvestres — 3 ouro', { a: 'buyl', item: 'berries', qty: 1 }], ['5 Frutas Silvestres — 15 ouro', { a: 'buyl', item: 'berries', qty: 5 }]] },
@@ -850,7 +854,7 @@ function standUp() {
 canvas.addEventListener('mousedown', e => {
   if (!G.started) return;
   if (inCombatZone() && !((G.dev || G.devTools) && G.devPlace) && !interactHere(e)) {
-    const me = G.me; $('chat-input').blur();
+    const me = G.me;
     if (e.button === 3 || e.button === 4) { e.preventDefault(); strike('under'); return; }
     if (e.button === 2) { G.parrying = true; Net.send({ t: 'parry', on: 1, a: me.fa ?? 0 }); return; }
     if (e.button === 0) G.mouse0 = true;
@@ -868,7 +872,6 @@ canvas.addEventListener('mousedown', e => {
     }
   }
   if ((G.dev || G.devTools) && G.devPlace) { if (e.button === 2) { G.devPlace = null; return; } const w = screenToWorld(e.clientX, e.clientY); Net.send({ t: 'dev', a: 'summon', kind: G.devPlace.kind, v: G.devPlace.v, x: w.x, y: w.y }); return; }
-  $('chat-input').blur();
   const me = G.me;
   const mon = monsterUnderMouse(e.clientX, e.clientY);
   if (mon) {
@@ -936,15 +939,9 @@ window.addEventListener('mouseup', e => { if (e.button === 2 && G.parrying) { G.
 
 window.addEventListener('keydown', e => {
   if (!G.started) return;
-  const input = $('chat-input');
-  if (document.activeElement === input) {
-    if (e.key === 'Enter') { const text = input.value.trim(); if (text) Net.send({ t: 'chat', text }); input.value = ''; input.blur(); }
-    else if (e.key === 'Escape') input.blur();
-    return;
-  }
+  if (/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '')) return;
   const k = e.key.toLowerCase();
   if (G.paused && k !== 'escape') return;
-  if (k === 'enter') { input.focus(); e.preventDefault(); return; }
   if (k === 'escape') { if (G.mapOpen) { toggleWorldMap(); return; } if (!$('inv').classList.contains('hidden') || !$('journal').classList.contains('hidden')) { togglePanel('inv', false); return; } if (G.dialog) { closeDialog(); return; } togglePause(); return; }
   if (k >= '1' && k <= '4') { castSkill(+k - 1); return; }
   if (k === 'q') { drinkPot('hp'); return; }
@@ -1117,7 +1114,7 @@ function startGame() {
   $('btn-attack').onclick = attackNearest;
   if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
   if (!$('btn-crouch')) { const b = document.createElement('button'); b.id = 'btn-crouch'; b.textContent = '⤓'; b.title = 'Agachar'; document.body.appendChild(b); b.addEventListener('click', () => { G.crouchToggle = !G.crouchToggle; b.classList.toggle('on', G.crouchToggle); }); }
-  addChat('', `Bem-vindo a Nae, ${G.me.name}. Fale com os moradores clicando neles. Enter abre o chat.`);
+  addChat('', `Bem-vindo a Nae, ${G.me.name}. Fale com os moradores clicando neles. Esc abre o menu.`);
 
 }
 
@@ -1148,9 +1145,29 @@ function lockLobby(b) { for (const el of document.querySelectorAll('#lobby butto
 function helloMsg() {
   const name = $('name').value.trim() || 'Aventureiro';
   const saved = loadChars()[charKey(name, chosenClass)] || {};
-  return { t: 'hello', dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
+  return { t: 'hello', pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
 }
-function showRoom(code) { $('room-code').textContent = Net.offline ? 'offline' : code; }
+// reino trancado: pede a senha e manda o hello de novo pela mesma conexão
+function askRoomPw(bad) {
+  let d = $('roompw-ask'); if (!d) { d = document.createElement('div'); d.id = 'roompw-ask'; d.className = 'gpanel'; document.body.appendChild(d); }
+  d.innerHTML = '<div class="gp-head"><span>🔒 Reino trancado</span></div><div class="est-cost">' + (bad ? '<b style="color:#ff8a7a">Senha errada.</b> ' : '') + 'O anfitrião trancou este reino. Digite a senha para entrar.</div><div class="bk-row"><input id="rpw-in" type="password" maxlength="24" autocomplete="off" placeholder="Senha do reino"><button class="est-btn" id="rpw-ok">Entrar</button><button class="est-btn ghost" id="rpw-no">Voltar</button></div>';
+  d.classList.remove('hidden'); const inp = d.querySelector('#rpw-in'); inp.focus();
+  const ok = () => { G.roomPw = inp.value.trim(); if (!G.roomPw) return; d.remove(); Net.send(helloMsg()); };
+  d.querySelector('#rpw-ok').onclick = ok; inp.onkeydown = e => { if (e.key === 'Enter') ok(); };
+  d.querySelector('#rpw-no').onclick = () => location.reload();
+}
+function pzRoomRefresh() {
+  const box = $('pz-roompw'); if (!box) return; box.style.display = Net.isHost && !Net.offline ? '' : 'none';
+  const st = $('pz-rpw-st'); if (st) st.textContent = G.roomLocked ? '🔒 Trancado: quem chegar precisa da senha.' : '🔓 Aberto: qualquer um entra.';
+}
+// botão grande da tela inicial: entra no reino aberto (mesma versão, sem senha); se não houver, abre um com você de anfitrião
+function quickEnter(btn) {
+  if (!$('name').value.trim()) { setStatus('Crie ou escolha um herói em Personagens.', true); return; }
+  const old = btn.textContent; btn.disabled = true; btn.textContent = 'Procurando o reino...';
+  const go = list => { btn.disabled = false; btn.textContent = old; const s = (list || []).find(r => !r.lock && (!r.ver || r.ver === VERSION)); if (s) { $('code').value = s.code; devGate(joinRoom); } else devGate(() => createRoom()); };
+  const L = typeof LIFE !== 'undefined' && LIFE.lastScan; if (L && Date.now() - L.t < 15000) go(L.list); else Net.scan(list => { if (typeof LIFE !== 'undefined') LIFE.lastScan = { t: Date.now(), list }; go(list); });
+}
+function showRoom(code) { $('room-code').textContent = Net.offline ? 'offline' : code; pzRoomRefresh(); }
 function createRoom(code = 'S1', tries = 0) {
   if (!$('name').value.trim()) { setStatus('Escolha um nome para seu herói.', true); $('name').focus(); return; }
   lockLobby(true); setStatus('Erguendo o reino...');
@@ -1160,7 +1177,7 @@ function createRoom(code = 'S1', tries = 0) {
       if (err.type === 'unavailable-id' && tries < Net.SLOTS + 3) { const sl = /^S(\d+)$/.exec(code); createRoom(sl && +sl[1] < Net.SLOTS ? 'S' + (+sl[1] + 1) : randomCode(), tries + 1); return; }
       setStatus('Não foi possível criar a sala: ' + (err.type || err), true); lockLobby(false); return;
     }
-    Net.infoFn = () => ({ name: (S.players[Net.myId] || {}).name || $('name').value.trim() || 'Aventureiro', n: Object.keys(S.players).length, ver: VERSION });
+    Net.infoFn = () => ({ name: (S.players[Net.myId] || {}).name || $('name').value.trim() || 'Aventureiro', n: Object.keys(S.players).length, ver: VERSION, lock: !!S.roomPw });
     startHostLoop(); hostTick(); showRoom(code); Net.send(helloMsg());
     if (G.devPw) setTimeout(() => { if (!G.devAnswered) showToast('O pedido de criador não foi respondido. Recarregue a página (Ctrl+F5) e tente de novo.'); }, 6000);
   });
@@ -1279,6 +1296,8 @@ function buildLobby() {
   const urlCode = new URLSearchParams(location.search).get('sala');
   if (urlCode) $('code').value = urlCode.toUpperCase();
   $('btn-create').onclick = () => devGate(() => createRoom());
+  $('pz-rpw-lock').onclick = () => { const v = $('pz-rpw').value.trim(); if (!v) { showToast('Digite uma senha para trancar.'); return; } Net.send({ t: 'roompw', pw: v }); };
+  $('pz-rpw-open').onclick = () => { $('pz-rpw').value = ''; Net.send({ t: 'roompw', pw: '' }); };
   $('btn-join').onclick = () => devGate(joinRoom);
   $('code').addEventListener('keydown', e => { if (e.key === 'Enter') devGate(joinRoom); });
   $('btn-copy').onclick = () => { const link = location.origin + location.pathname + '?sala=' + Net.room; navigator.clipboard.writeText(link).then(() => showToast('Convite copiado. Mande para seus amigos.'), () => showToast(link)); };
@@ -1303,7 +1322,7 @@ requestAnimationFrame(frame);
 //  NÉVOA DO MAPA (o que você já explorou) e MAPA DO MUNDO (M)
 // ============================================================
 const FOG_R = 13;
-function fogKey() { return 'wos-fog-' + MAP_W + '-' + ((G.me && G.me.name) || 'x'); }
+function fogKey() { return 'nae-fog-' + MAP_W + '-' + ((G.me && G.me.name) || 'x'); }
 function loadFog() {
   G.fog = new Uint8Array(MAP_W * MAP_H);
   try { const s = localStorage.getItem(fogKey()); if (s) { const bin = atob(s); for (let i = 0; i < MAP_W * MAP_H; i++) if (bin.charCodeAt(i >> 3) & (1 << (i & 7))) G.fog[i] = 1; } } catch (e) { }
@@ -1640,7 +1659,7 @@ function prebakeCity(done) {
   }
   WORLD.gates.forEach((gt, gi) => { for (let q = 0; q <= 4; q++) jobs.push(() => scen3('gh|' + gi + '|' + q, () => mGateHouse(gt, q / 4))); });
   const ov = document.createElement('div'); ov.id = 'prebake';
-  ov.innerHTML = '<div class="pb-box"><div class="pb-title">Preparando Sxan</div><div class="pb-bar"><div id="pb-fill"></div></div><div class="pb-txt" id="pb-txt">0%</div></div>';
+  ov.innerHTML = '<div class="pb-box"><div class="pb-title">Preparando Nae</div><div class="pb-bar"><div id="pb-fill"></div></div><div class="pb-txt" id="pb-txt">0%</div></div>';
   document.body.appendChild(ov);
   const total = jobs.length; let k = 0;
   S3.pinning = true;

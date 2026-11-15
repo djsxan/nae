@@ -165,7 +165,7 @@ function renderServers(list) {
   box.innerHTML = '';
   for (const s of list) {
     const row = document.createElement('div'); row.className = 'sv-row';
-    const txt = document.createElement('span'); txt.textContent = 'Reino de ' + (s.name || '?') + ' · ' + (s.n || 0) + (s.n === 1 ? ' jogador' : ' jogadores') + (s.ver && s.ver !== VERSION ? ' · ' + s.ver : '');
+    const txt = document.createElement('span'); txt.textContent = 'Reino de ' + (s.name || '?') + ' · ' + (s.n || 0) + (s.n === 1 ? ' jogador' : ' jogadores') + (s.ver && s.ver !== VERSION ? ' · ' + s.ver : '') + (s.lock ? ' · 🔒' : '');
     const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Entrar';
     b.onclick = () => { document.getElementById('code').value = s.code; joinRoom(); };
     row.appendChild(txt); row.appendChild(b); box.appendChild(row);
@@ -174,7 +174,7 @@ function renderServers(list) {
 function scanServers() {
   const box = document.getElementById('sv-list'); if (!box || LIFE.scanning || (typeof G !== 'undefined' && G.started)) return;
   LIFE.scanning = true; box.innerHTML = '<div class="sv-empty">Procurando reinos...</div>';
-  Net.scan(list => { LIFE.scanning = false; renderServers(list); });
+  Net.scan(list => { LIFE.scanning = false; LIFE.lastScan = { t: Date.now(), list }; renderServers(list); });
 }
 (function lobbyServers() {
   const go = () => { const b = document.getElementById('btn-scan'); if (b) b.onclick = scanServers; scanServers(); setInterval(() => { if (!G.started && !document.getElementById('lobby').classList.contains('hidden')) scanServers(); }, 30000); };

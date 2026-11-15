@@ -1,8 +1,8 @@
-# World of Sxan
+# Nae
 
 RPG multiplayer isométrico de fantasia medieval com visual pré-renderizado (modelos 3D transformados em imagens, como no Diablo II), direto no navegador.
 
-**Jogar:** https://djsxan.github.io/world-of-sxan/
+**Jogar:** https://djsxan.github.io/nae/
 
 ## Como jogar com os amigos
 
@@ -37,7 +37,7 @@ Cada vocação tem 3 skins (Comum, Rara, Lendária) e cada ataque tem sua própr
 
 ## O mundo
 
-- **Cidadela de Sxan** (zona protegida): fosso com pontes, muralhas com caminho de ronda, torres, torre de menagem com salão superior, capela, mercado, empório, taverna, estábulo, forja, quartel e pátio de treino.
+- **Cidadela de Nae** (zona protegida): fosso com pontes, muralhas com caminho de ronda, torres, torre de menagem com salão superior, capela, mercado, empório, taverna, estábulo, forja, quartel e pátio de treino.
 - **Andares fluidos**: rampas de pedra levam às muralhas e ao salão — o personagem sobe de verdade, sem teletransporte.
 - **Caído (downed)**: aliados podem reanimar (F) ou carregar (G) até a capela. A Luz Curativa também reanima.
 - **Contratos** com a Capitã Varn, **lâmina afiada** com o ferreiro Hrodgar, **bênção** na capela, **hidromel** na taverna.

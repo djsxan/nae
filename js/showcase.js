@@ -37,9 +37,9 @@ function martaApple(now) {
   if (G.appleOffer && (now > G.appleOffer.until || d > 4.5)) { G.appleOffer = null; e.custP = e.custP && e.custP.offer ? null : e.custP; }
   if (d > 3.6) { G.appleNear = false; return; }
   if (G.appleNear || !hungry) { G.appleNear = true; return; }
-  G.appleNear = true; let last = 0; try { last = +localStorage.getItem('sxan_apple') || 0; } catch (er) { }
+  G.appleNear = true; let last = 0; try { last = +localStorage.getItem('nae_apple') || 0; } catch (er) { }
   if (Date.now() - last < APPLE_CD || Math.random() > APPLE_CHANCE) return;
-  try { localStorage.setItem('sxan_apple', String(Date.now())); } catch (er) { }
+  try { localStorage.setItem('nae_apple', String(Date.now())); } catch (er) { }
   G.appleOffer = { until: now + 9000 }; e.bubble = { t: '🍎', until: now + 9000 };
   showToast('Marta: "Ô, querido, que cara de fome! Toma uma maçã, é por minha conta." — F para aceitar');
 }

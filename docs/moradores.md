@@ -4,7 +4,7 @@
 > **v1.33:** os 12 moram em casas de verdade (4 na Vila do Oeste, 4 na cidade), têm rotina (dormem 22h–6h, café, trabalho, almoço, conversa à noite na taverna ou na pracinha), fome/cansaço/vontade de conversar, e trocam frases quando se encontram. Casas com inquilino podem ser compradas (o aluguel vai para você) e o despejo tem 1 dia de aviso.
 > Religião e política ficaram de fora por enquanto, como você pediu. Os campos estão reservados para quando definirmos isso.
 
-Legenda dos campos: **Classe** (nobreza · burguesia · artesãos · trabalhadores · pobres) · **Origem** (cidade de Sxan · montanhas do norte · pântano · porto do sul) · **Traços** (2, usados no trabalho e, no futuro, nas conversas).
+Legenda dos campos: **Classe** (nobreza · burguesia · artesãos · trabalhadores · pobres) · **Origem** (cidade de Nae · montanhas do norte · pântano · porto do sul) · **Traços** (2, usados no trabalho e, no futuro, nas conversas).
 
 ---
 
@@ -38,7 +38,7 @@ Legenda dos campos: **Classe** (nobreza · burguesia · artesãos · trabalhador
 - **Frase:** "A terra daqui é boa, só falta mão."
 
 ### 4. Elias Plaina, o Carpinteiro (Carpintaria da Vila)
-- **Idade:** 27 · **Classe:** artesãos · **Origem:** cidade de Sxan
+- **Idade:** 27 · **Classe:** artesãos · **Origem:** cidade de Nae
 - **Aparência:** magro, cabelo castanho curto, lápis atrás da orelha, serragem na roupa.
 - **Traços:** *Perfeccionista* (menos peças, mais bonitas: no futuro, chance de "peça fina" que vale o dobro) · *Ansioso*.
 - **História:** aprendiz que saiu da oficina do mestre na cidade "para fazer do meu jeito". Esculpe varinhas por encomenda dos Arcanos.
@@ -60,7 +60,7 @@ Legenda dos campos: **Classe** (nobreza · burguesia · artesãos · trabalhador
 ## Lojas da Rua Nova
 
 ### 6. Clara Malva, a Boticária (Boticário)
-- **Idade:** 44 · **Classe:** burguesia · **Origem:** cidade de Sxan
+- **Idade:** 44 · **Classe:** burguesia · **Origem:** cidade de Nae
 - **Aparência:** cabelo preto preso em coque, xale vinho, voz baixa.
 - **Traços:** *Honesta* (nunca rouba) · *Exigente* (reclama de estoque fraco).
 - **História:** trabalhou décadas para a antiga dona do Boticário, Elva, que sumiu numa viagem. Ficou cuidando da loja "até alguém de verdade aparecer".
@@ -78,7 +78,7 @@ Legenda dos campos: **Classe** (nobreza · burguesia · artesãos · trabalhador
 - **Frase:** "Não encoste no que brilha."
 
 ### 8. Berta Agulha, a Costureira (Alfaiataria)
-- **Idade:** 58 · **Classe:** artesãos · **Origem:** cidade de Sxan
+- **Idade:** 58 · **Classe:** artesãos · **Origem:** cidade de Nae
 - **Aparência:** cabelo grisalho longo, vestido vermelho com avental creme, fita métrica no pescoço.
 - **Traços:** *Fofoqueira* (no futuro, espalha notícias mais rápido) · *Generosa*.
 - **História:** costurou para metade da cidade e sabe o segredo de todo mundo. Rival antiga de Mestre Aurélio, do Ateliê Real.
@@ -87,10 +87,10 @@ Legenda dos campos: **Classe** (nobreza · burguesia · artesãos · trabalhador
 - **Frase:** "Se o patrão mandar tecido, eu deixo a loja cheia de cor."
 
 ### 9. Teodoro Tinta, o Copista (Pergaminhos & Mapas)
-- **Idade:** 55 · **Classe:** burguesia · **Origem:** cidade de Sxan
+- **Idade:** 55 · **Classe:** burguesia · **Origem:** cidade de Nae
 - **Aparência:** barba grisalha aparada, dedos manchados de tinta, túnica marrom.
 - **Traços:** *Meticuloso* · *Curioso*.
-- **História:** copiou mapas para a Coroa durante 30 anos. Tem um mapa de Sxan "que não devia existir", com túneis embaixo do castelo.
+- **História:** copiou mapas para a Coroa durante 30 anos. Tem um mapa de Nae "que não devia existir", com túneis embaixo do castelo.
 - **Quer:** terminar o mapa completo do reino antes de morrer.
 - **Relações:** correspondente de Elias; consulta os mensageiros sobre atalhos.
 - **Frase:** "Um bom mapa vale mais que uma espada."
@@ -100,7 +100,7 @@ Legenda dos campos: **Classe** (nobreza · burguesia · artesãos · trabalhador
 ## Mensageiros (servem todos os donos de negócio)
 
 ### 10. Pip, o Mensageiro
-- **Idade:** 14 · **Classe:** pobres · **Origem:** cidade de Sxan
+- **Idade:** 14 · **Classe:** pobres · **Origem:** cidade de Nae
 - **Aparência:** cabelo loiro desgrenhado, casaco azul grande demais, pés sempre descalços.
 - **Traços:** *Rápido* · *Distraído* (às vezes para para ver uma briga no caminho).
 - **História:** órfão das vielas. Começou entregando recados por migalhas; hoje leva cargas pela cidade toda.
@@ -121,7 +121,7 @@ Legenda dos campos: **Classe** (nobreza · burguesia · artesãos · trabalhador
 - **Idade:** 41 · **Classe:** trabalhadores · **Origem:** montanhas do norte
 - **Aparência:** barba castanha, ombros caídos, casaco cinza remendado.
 - **Traços:** *Lento* (no futuro: leva mais carga por viagem) · *Leal*.
-- **História:** fazia a rota de carroça entre as montanhas e Sxan até perder a mula num ataque de lobos. Agora carrega tudo nas costas.
+- **História:** fazia a rota de carroça entre as montanhas e Nae até perder a mula num ataque de lobos. Agora carrega tudo nas costas.
 - **Quer:** comprar uma mula nova (gancho: o jogador pode dar uma).
 - **Relações:** a queda de Rosa é recíproca, mas ele é tímido demais; compatriota de Bruno e Gunnar.
 - **Frase:** "Devagar, mas a carga chega inteira. Quase sempre."

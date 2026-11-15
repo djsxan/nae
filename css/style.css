@@ -175,11 +175,6 @@ input[type=text]:focus { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(2
 .map-foot { display: flex; justify-content: space-between; font-size: 12px; color: #d8c8a6; margin: 3px 4px 6px; text-shadow: 0 1px 2px #000; }
 .map-foot b { color: var(--gold-l); letter-spacing: 1px; }
 
-#chat { left: 12px; bottom: 12px; width: min(400px, calc(100vw - 24px)); padding: 10px 12px; }
-#chat-log { height: 130px; overflow-y: auto; font-size: 15px; line-height: 1.3; margin-bottom: 6px; }
-#chat-log b { color: #6a1a12; font-family: 'Cinzel', serif; font-size: 13px; }
-#chat-log .sys { color: #6a4a2a; font-style: italic; }
-#chat-input { padding: 6px 8px; font-size: 15px; }
 
 /* ---------- comandos circulares (MOBA) ---------- */
 #combat-pad { position: fixed; z-index: 6; right: 18px; bottom: 18px; width: 300px; height: 280px; pointer-events: none; }
@@ -211,7 +206,7 @@ input[type=text]:focus { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(2
 #joystick { display: none; position: fixed; z-index: 6; left: 36px; bottom: 170px; width: 130px; height: 130px; border-radius: 50%; background: radial-gradient(circle, rgba(0,0,0,.25), rgba(0,0,0,.45)); box-shadow: 0 0 0 2px rgba(201,162,74,.5); touch-action: none; }
 #joy-knob { position: absolute; left: 40px; top: 40px; width: 50px; height: 50px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #c9a24a, #6a4a1a); box-shadow: 0 0 0 2px #000, 0 4px 10px rgba(0,0,0,.6); }
 body.touch #joystick { display: block; }
-body.touch #chat { width: 260px; } body.touch #chat-log { height: 70px; }
+
 
 #prompt { position: fixed; bottom: 300px; left: 50%; transform: translateX(-50%); z-index: 6; font-family: 'Alegreya Sans SC', sans-serif; font-size: 17px; font-weight: 700; color: #f2e6c8; text-shadow: 0 1px 3px #000; background: rgba(20,14,8,.78); padding: 6px 14px; border-radius: 6px; box-shadow: 0 0 0 1px var(--gold-d); }
 #downed-ui { top: 34%; left: 50%; transform: translate(-50%, -50%); width: 380px; text-align: center; }
@@ -263,12 +258,6 @@ kbd { font-family: 'Alegreya Sans SC', sans-serif; font-size: 12px; font-weight:
 }
 
 /* ===== HUD minimalista (v1.2) ===== */
-#chat.panel.parch { background: transparent; border: 0; box-shadow: none; color: #f2e8d2; padding: 4px 6px; }
-#chat #chat-log { text-shadow: 0 1px 2px #000, 0 0 4px #000; font-size: 13px; height: 110px; mask-image: linear-gradient(transparent, #000 30%); -webkit-mask-image: linear-gradient(transparent, #000 30%); }
-#chat #chat-log b { color: #f0c870; }
-#chat #chat-log .sys { color: #d8c8a8; }
-#chat #chat-input { background: rgba(0,0,0,0.3); border: 1px solid rgba(201,162,74,0.25); color: #f2e8d2; font-size: 13px; padding: 4px 8px; }
-#chat #chat-input::placeholder { color: rgba(242,232,210,0.45); }
 .class-card .skin.locked { opacity: .45; cursor: not-allowed; position: relative; }
 .class-card .skin.locked::after { content: '🔒 ' attr(data-lvl); position: absolute; right: 4px; font-size: 10px; }
 
@@ -489,15 +478,15 @@ body.nae:not(.nae-ready) #lobby > *:not(#title3d) { visibility: hidden; }
 .devask-box h3 { margin: 0 0 6px; font: 700 20px 'Cinzel', serif; color: #f0d890; text-align: center; }
 
 /* ---------- medalhões de sobrevivência ao lado do chat ---------- */
-#surv-medals { position: fixed; z-index: 12; left: calc(min(400px, calc(100vw - 24px)) + 24px); bottom: 14px; display: flex; gap: 8px; align-items: flex-end; pointer-events: auto; }
+#surv-medals { position: fixed; z-index: 12; left: 12px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: auto; }
 #surv-medals .sv-w { width: 58px; height: 58px; filter: drop-shadow(0 4px 6px rgba(0,0,0,.6)); }
 #surv-medals .sv-w.low { animation: svPulse 1s ease-in-out infinite; }
 @keyframes svPulse { 50% { filter: drop-shadow(0 0 8px rgba(255,80,50,.9)) drop-shadow(0 4px 6px rgba(0,0,0,.6)); } }
 #surv-medals svg { width: 100%; height: 100%; display: block; }
 #surv-medals .sv-bg { fill: none; stroke: rgba(58,42,22,.25); stroke-width: 4.2; }
 #surv-medals .sv-arc { fill: none; stroke-width: 4.2; stroke-linecap: round; transition: stroke-dashoffset .6s, stroke .6s; }
-#sv-season { font: 600 12px 'Alegreya', serif; color: #e8dcc0; text-shadow: 0 1px 2px #000; margin: 0 0 4px 2px; white-space: nowrap; }
-@media (max-width: 760px) { #surv-medals { left: auto; right: 12px; bottom: 210px; } }
+#sv-season { font: 600 11px 'Alegreya', serif; color: #e8dcc0; text-shadow: 0 1px 2px #000; text-align: center; max-width: 70px; line-height: 1.2; }
+@media (max-width: 760px) { #surv-medals { left: 8px; } #surv-medals .sv-w { width: 46px; height: 46px; } }
 
 /* título: Jogar (continuar) × Personagens (criar/escolher) */
 .nae-quick, .nae-toplay { display: none; }
@@ -530,3 +519,16 @@ body.nae[data-tp=chars] .scroll > .nae-toplay { display: block; text-align: cent
 .jb-profs i { display: block; height: 5px; border-radius: 3px; background: #2a2016; margin-top: 2px; } .jb-profs em { display: block; height: 100%; border-radius: 3px; background: #c9a24a; }
 
 #bankp { width: min(520px, 94vw); z-index: 33; } .bk-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; } .bk-row input { flex: 1; min-width: 100px; padding: 6px 8px; border-radius: 6px; border: 1px solid #5a4424; background: #120e0a; color: #eee; }
+
+/* avisos no canto (o chat saiu): somem sozinhos, histórico na aba Avisos do menu */
+#notes { position: fixed; left: 14px; bottom: 14px; z-index: 12; width: min(380px, calc(100vw - 28px)); display: flex; flex-direction: column; gap: 3px; pointer-events: none; }
+#notes .note { font: 13px/1.3 'Alegreya', serif; color: #e8dcc0; font-style: italic; text-shadow: 0 1px 2px #000, 0 0 4px #000; animation: noteIn .35s ease-out; transition: opacity .7s; }
+#notes .note.say { font-style: normal; color: #f2e8d2; } #notes .note b { color: #f0c870; font-family: 'Cinzel', serif; font-size: 12px; }
+#notes .note.out { opacity: 0; }
+@keyframes noteIn { from { opacity: 0; transform: translateX(-10px); } }
+
+/* entrada rápida */
+.nq-enter { text-align: center; margin: 14px 0 4px; } .nq-enter .btn { font-size: 20px; padding: 12px 34px; } .nq-enter small { display: block; margin-top: 8px; opacity: .7; font-size: 12px; }
+body.nae[data-tp=play] .start .start-row, body.nae[data-tp=play] .start h2, body.nae[data-tp=play] .start .hint { display: none; }
+#roompw-ask { width: min(420px, 92vw); z-index: 60; }
+#pz-roompw small { display: block; opacity: .8; margin-top: 4px; font-size: 12px; }

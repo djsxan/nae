@@ -3,13 +3,15 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.35.1';
-const VERSION_NAME = 'Nae · Banco e Armas';
+const VERSION = 'v1.36.0';
+const VERSION_NAME = 'Nae · Entrada Rápida';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
-const SET = (() => { const d = { quality: (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) ? 'low' : 'high', bright: 1, zoom: 1, phys: 'ragdoll', tele: 'soft', duel: false, pad: (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) ? 0.75 : 0.5 }; try { return Object.assign(d, JSON.parse(localStorage.getItem('wos-settings') || '{}')); } catch (e) { return d; } })();
-function saveSettings() { try { localStorage.setItem('wos-settings', JSON.stringify(SET)); } catch (e) { } }
+// migração do nome antigo (World of Sxan) para Nae: copia os saves para as chaves novas
+try { for (const [a, b] of [['wos-settings', 'nae-settings'], ['wos-chars-v4', 'nae-chars-v4'], ['sxan_apple', 'nae_apple']]) { const v = localStorage.getItem(a); if (v != null && localStorage.getItem(b) == null) localStorage.setItem(b, v); } for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('wos-fog-')) { const n = 'nae-fog-' + k.slice(8); if (localStorage.getItem(n) == null) localStorage.setItem(n, localStorage.getItem(k)); } } } catch (e) { }
+const SET = (() => { const d = { quality: (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) ? 'low' : 'high', bright: 1, zoom: 1, phys: 'ragdoll', tele: 'soft', duel: false, pad: (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) ? 0.75 : 0.5 }; try { return Object.assign(d, JSON.parse(localStorage.getItem('nae-settings') || '{}')); } catch (e) { return d; } })();
+function saveSettings() { try { localStorage.setItem('nae-settings', JSON.stringify(SET)); } catch (e) { } }
 const STAIR_N = 5;                 // escadas: 5 tiles de rampa até o alto da muralha
 const SKIN_LVL = [1, 10, 20];      // nível para liberar cada skin (comum, rara, lendária)
 const RUN_MUL = 1.65;              // correr (SHIFT) multiplica a velocidade
@@ -184,7 +186,7 @@ const LOOT = {
   insignia: { name: 'Insígnia do Capitão', price: 170, icon: '✠', color: '#c8c8d0', desc: 'Prova de que Varrick caiu.' },
   slimecore: { name: 'Núcleo do Lodo Ancião', price: 130, icon: '◉', color: '#5ad84a', desc: 'Pulsa como um coração verde.' },
   trolltusk: { name: 'Presa do Troll',  price: 150, icon: '◣', color: '#f0e8d0', desc: 'Do tamanho de um braço.' },
-  dragonscale: { name: 'Escama de Dragão', price: 420, icon: '⬢', color: '#c83a2a', desc: 'Dura como aço e ainda morna. O troféu mais raro de Sxan.' },
+  dragonscale: { name: 'Escama de Dragão', price: 420, icon: '⬢', color: '#c83a2a', desc: 'Dura como aço e ainda morna. O troféu mais raro de Nae.' },
   bread:    { name: 'Pão',              price: 4,   icon: '◒', color: '#d8a860', desc: 'Pão dormido da taverna. Mata a fome. Clique para comer.' },
   cookedmeat: { name: 'Carne Assada',   price: 12,  icon: '◖', color: '#a8582a', desc: 'Carne de caça assada no fogo. Alimenta bem. Clique para comer.' },
   stew:     { name: 'Ensopado', price: 18, icon: '♨', color: '#b8743a', desc: 'Ensopado quente de carne e ervas. Sacia, mata a sede e cura um pouco. Clique para comer.' },

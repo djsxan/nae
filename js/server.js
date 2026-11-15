@@ -133,6 +133,7 @@ function hostOnClient(from, m) {
   const p = S.players[from];
   if (m.t === 'hello') {
     if (p) return;
+    if (S.roomPw && from !== Net.myId && String(m.pw || '').trim().toUpperCase() !== S.roomPw) { Net.toOne(from, { t: 'denied', why: m.pw ? 'pwbad' : 'pw' }); return; }
     const cls = CLASSES[m.cls] ? m.cls : 'knight';
     const lvl = clamp(m.lvl | 0 || 1, 1, 300);
     const si = SKINS[cls].findIndex(s => s.id === m.skin), skin = si >= 0 && lvl >= SKIN_LVL[si] ? m.skin : SKINS[cls][0].id;
@@ -171,7 +172,7 @@ function hostOnClient(from, m) {
     Net.toOthers({ t: 'pinfo', p: pinfo(np) }, from);
     setTimeout(() => { if (S.players[from] && S.npcs) Net.toOne(from, { t: 'vlist', list: Object.values(S.npcs).filter(n => n.transient).map(visPublic) }); }, 600);
     sendStat(np);
-    sys(`${np.name}, ${CLASSES[cls].name}, chegou à Cidadela de Sxan.`);
+    sys(`${np.name}, ${CLASSES[cls].name}, chegou à Cidadela de Nae.`);
     return;
   }
   if (!p) return;
@@ -217,6 +218,7 @@ function hostOnClient(from, m) {
     case 'gather': gather(p, m); break;
     case 'gathering': near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: m.a === 'crouch' ? 'gather' : 'atk_slashR', ms: 700 }); break;
     case 'job': jobMsg(p, m); break;
+    case 'roompw': if (from === Net.myId) { S.roomPw = String(m.pw || '').trim().toUpperCase().slice(0, 24) || null; tell(p, S.roomPw ? 'Reino trancado: quem chegar agora precisa da senha.' : 'Reino aberto: qualquer um pode entrar.'); Net.toOne(from, { t: 'roompw', on: !!S.roomPw }); } break;
     case 'bank': bankMsg(p, m); break;
     case 'shift': shiftMsg(p, m); break;
     case 'op': { const n = S.npcs && S.npcs[m.id]; if (n) Net.toOne(p.id, { t: 'op', id: n.id, ...opInfo(n, p) }); break; }
@@ -1771,7 +1773,7 @@ function guardThink(n, now, dt) {
   let tgt = null, bd = 14;
   for (const q of Object.values(S.players)) { if (q.dev || q.carriedBy || q.execAt || q.condemned || q.bound || q.jailUntil > now || q.escortBy || q.surrendered || !(now < (q.wanted || 0) || n.aggro === q.id || n.arrest === q.id)) continue; const d = dist(n.x, n.y, q.x, q.y), mine = n.arrest === q.id && now < (q.wanted || 0); if ((d < bd && (d < 3 || sightClear(n.x, n.y, q.x, q.y))) || (mine && d < 40)) { bd = mine ? -1 : d; tgt = q; } }
   if (tgt) bd = dist(n.x, n.y, tgt.x, tgt.y);
-  if (tgt && n.arrest !== tgt.id && !tgt.downed) { n.arrest = tgt.id; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'shout', txt: ['Pare! Em nome de Sxan!', 'Alto lá! Largue a arma!', 'Renda-se!'][Math.floor(Math.random() * 3)], ms: 1 }); }
+  if (tgt && n.arrest !== tgt.id && !tgt.downed) { n.arrest = tgt.id; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'shout', txt: ['Pare! Em nome de Nae!', 'Alto lá! Largue a arma!', 'Renda-se!'][Math.floor(Math.random() * 3)], ms: 1 }); }
   if (!tgt && n.arrest) { const q = S.players[n.arrest]; if (!q || !(now < (q.wanted || 0)) || q.jailUntil > now) n.arrest = null; }
   if (!tgt) for (const q of Object.values(S.players)) {   // procurado caído por perto (mesmo sem linha de visão): vai buscar
     if (!q.downed || q.dev || q.carriedBy || q.execAt || q.condemned || q.jailUntil > now || q.dragBy || !(now < (q.wanted || 0))) continue;
@@ -1980,7 +1982,7 @@ function crimeSentence(p, kind) { if (kind === 'murder') p.murderer = true; p.se
 const EXEC_T = { lock: 1400, announce: 3000, pull: 28400, drop: 30000, fall: 33500 };
 function startExecution(v, by) {
   if (!npcAlive('executioner') || v.execAt || STAGE.x < 0) return false;
-  const now = now_(), tok = now + Math.random(), crimes = (v.crimes && v.crimes.length ? v.crimes.join(', ') : 'crimes contra Sxan');
+  const now = now_(), tok = now + Math.random(), crimes = (v.crimes && v.crimes.length ? v.crimes.join(', ') : 'crimes contra Nae');
   if (v.wanted) { v.wanted = 0; Net.toAll({ t: 'wanted', id: v.id, ms: 0 }); }
   if (v.carriedBy) v.carriedBy = null; if (v.dragBy && S.players[v.dragBy]) stopDrag(S.players[v.dragBy]);
   v.x = STAGE.x - 0.6; v.y = STAGE.y; v.z = 0; v.execAt = now + EXEC_T.drop; v.execTok = tok; v.downed = null; v.revive = null; v.hp = Math.max(1, Math.round(v.maxHp * 0.1)); v.bleedT = 0; if (v.bleed) for (const k in v.bleed) v.bleed[k] = 0; v.dragBy = 'exec'; if (!v.condemned) condemn(v, true);
@@ -1988,7 +1990,7 @@ function startExecution(v, by) {
   for (const s of [10, 20]) setTimeout(() => { if (v.execTok !== tok) return; sys('🔔 O sino da praça toca (' + (30 - s) + ' segundos).'); near(STAGE.x, STAGE.y, { t: 'shake', s: 1 }, VIEW_RADIUS + 12); }, s * 1000);
   near(STAGE.x, STAGE.y, { t: 'exec', id: v.id, x: STAGE.x, y: STAGE.y, T: EXEC_T, name: v.name, crimes }, VIEW_RADIUS + 12); memEvent(v, STAGE.x, STAGE.y, 'executed');
   sys('🔔 O sino da praça toca: ' + by + ' entregou ' + v.name + ' ao carrasco.');
-  setTimeout(() => { if (v.execTok !== tok) return; sys('Mestre Corvo: "' + v.name + ', condenado por ' + crimes + '. Que Sxan tenha piedade da sua alma."'); }, EXEC_T.announce);
+  setTimeout(() => { if (v.execTok !== tok) return; sys('Mestre Corvo: "' + v.name + ', condenado por ' + crimes + '. Que Nae tenha piedade da sua alma."'); }, EXEC_T.announce);
   setTimeout(() => { if (v.execTok !== tok || !S.npcs || !S.npcs.executioner || !npcAlive('executioner')) return; near(STAGE.x, STAGE.y, { t: 'anim', w: 'n', id: 'executioner', a: 'lever', ms: 1100 }); }, EXEC_T.pull);
   setTimeout(() => { const q = S.players[v.id]; if (!q || q.execTok !== tok) return; q.execAt = 0; q.execTok = 0; q.downed = null; q.dragBy = null; q.bound = null; q.lost = (q.lost || 0) & ~LOST.head; Net.toAll({ t: 'condemned', id: q.id, on: 0 }); severPlayer(q, 'head', { x: STAGE.x + 0.6, y: STAGE.y, name: 'o Carrasco' }); if (q.downed) q.downed.until = now_() + 3500; }, EXEC_T.drop);
   return true;
@@ -2806,7 +2808,7 @@ function repOf(p) {
 }
 function featAdd(p, k, n = 1) { p.feats = p.feats || {}; p.feats[k] = (p.feats[k] || 0) + n; }
 // ============================================================
-//  BANCO DE SXAN — guardar ouro (não se perde nem é furtado), juros de 2% por semana, empréstimos (10%/semana, 2 semanas),
+//  BANCO DE NAE — guardar ouro (não se perde nem é furtado), juros de 2% por semana, empréstimos (10%/semana, 2 semanas),
 //  e quem morre de vez deixa o saldo para o dono do banco (ou para a Coroa). Guardado neste reino.
 // ============================================================
 const BANK_KEY = 'nae-bank-v1', BANK_INT = 0.02, LOAN_INT = 0.10, LOAN_WEEKS = 2;
@@ -2820,7 +2822,7 @@ function bankView(p) { const A = bankAcc(p), O = bankOwnerRec(); return { t: 'ba
 function nearBanker(p) { return Object.values(S.npcs || {}).some(n => (n.kind === 'banker' || n.kind === 'banker2' || n.kind === 'banker3') && !n.dead && !n.downed && dist(n.x, n.y, p.x, p.y) < 4.5); }
 function bankMsg(p, m) {
   const A = bankAcc(p), q = Math.max(0, Math.floor(+m.q || 0));
-  if (m.a !== 'open' && !nearBanker(p)) { tell(p, 'Fale com um dos banqueiros, no Banco de Sxan.'); return; }
+  if (m.a !== 'open' && !nearBanker(p)) { tell(p, 'Fale com um dos banqueiros, no Banco de Nae.'); return; }
   if (m.a === 'dep') { const v = Math.min(q, p.gold); if (!v) return; p.gold -= v; A.g += v; tell(p, 'Depositado: ' + v + ' de ouro. Saldo: ' + Math.floor(A.g) + '.'); }
   else if (m.a === 'wd') { const v = Math.min(q, Math.floor(A.g)); if (!v) return; A.g -= v; p.gold += v; tell(p, 'Sacado: ' + v + ' de ouro.'); }
   else if (m.a === 'loan') { if (A.loan > 0) { tell(p, 'Você já tem um empréstimo. Pague antes de pedir outro.'); return; } const v = Math.min(q, loanMax(p)); if (!v) return; A.loan = Math.ceil(v * (1 + LOAN_INT)); A.due = estDay() + LOAN_WEEKS * RENT_DAYS; p.gold += v; tell(p, 'Empréstimo de ' + v + ' de ouro. Você deve ' + A.loan + ' (juros de 10% por semana) em até 2 semanas.'); }
@@ -2835,6 +2837,6 @@ function bankTick(now) {
     if (A.loan > 0) A.loan = Math.ceil(A.loan * Math.pow(1 + LOAN_INT, wks)); }
   for (const p of Object.values(S.players)) { const A = B.acc[estOwner(p)]; if (!A || !A.loan || !A.due || day < A.due) continue;
     const take = Math.min(A.loan, Math.floor(A.g)); if (take) { A.g -= take; A.loan -= take; ch = true; tell(p, 'O banco tirou ' + take + ' do seu saldo para cobrir a dívida vencida.'); }
-    if (A.loan > 0 && !(now < (p.wanted || 0)) && now > (p.debtT || 0)) { p.debtT = now + 600000; p.wanted = now + 300000; crimeSentence(p, 'assault'); Net.toAll({ t: 'wanted', id: p.id, ms: 300000 }); tell(p, 'Dívida vencida com o Banco de Sxan: as sentinelas foram chamadas para te levar!'); } }
+    if (A.loan > 0 && !(now < (p.wanted || 0)) && now > (p.debtT || 0)) { p.debtT = now + 600000; p.wanted = now + 300000; crimeSentence(p, 'assault'); Net.toAll({ t: 'wanted', id: p.id, ms: 300000 }); tell(p, 'Dívida vencida com o Banco de Nae: as sentinelas foram chamadas para te levar!'); } }
   if (ch) bankSave();
 }

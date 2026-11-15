@@ -7,7 +7,7 @@
 
 ## 1. A ideia em uma frase
 
-Você aluga (e depois compra) **pontos comerciais** em Sxan, contrata **NPCs** para trabalhar neles, e a cidade gera **ouro, influência, materiais e inquilinos** para você, mesmo enquanto você está caçando lá fora.
+Você aluga (e depois compra) **pontos comerciais** em Nae, contrata **NPCs** para trabalhar neles, e a cidade gera **ouro, influência, materiais e inquilinos** para você, mesmo enquanto você está caçando lá fora.
 
 ## 2. Pilares
 

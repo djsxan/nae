@@ -7,7 +7,7 @@
 //             atrasar, o próximo já substitui — evita "engasgos")
 // ============================================================
 const Net = {
-  PREFIX: 'world-of-sxan-v4-',
+  PREFIX: 'nae-v1-',
   SLOTS: 20, infoFn: null,       // vagas fixas S1..S20: a tela inicial procura reinos abertos nelas
   peer: null, isHost: false, offline: false, myId: null, room: null,
   rel: {}, fast: {},          // (anfitrião) conexões por jogador
