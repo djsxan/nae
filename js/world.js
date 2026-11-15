@@ -96,7 +96,7 @@ const KEEP = { x0: C - 9, y0: C - 22, x1: C + 10, y1: C - 3 };       // castelo 
 const WALL_UNITS = 176 / (32 * Math.SQRT2 * Math.cos(Math.PI / 6));   // altura da muralha em tiles
 const BH = (kind, w, h, H, RH, name, extra) => ({ kind, w, h, H, RH, floors: Math.max(1, Math.min(3, Math.round(H / 1.75))), name: name || '', wall: Math.round(H * 19.6), roof: Math.round(RH * 19.6), ...extra });
 const BUILDINGS = TEST3D ? [] : [
-  { x: C - 28, y: C - 29, ...BH('temple', 9, 8, 6.5, 5.0, 'Catedral da Aurora', { floors: 1 }) },
+  { x: C - 21, y: C - 30, ...BH('temple', 8, 9, 6.5, 5.0, 'Catedral da Aurora', { floors: 1, door: 'W' }) },
   { x: C - 30, y: C - 1, ...BH('shop', 5, 5, 4.0, 2.8, 'Empório do Borin') },
   { x: C - 22, y: C - 1, ...BH('smith', 5, 5, 2.6, 2.6, 'Forja de Hrodgar') },
   { x: C - 15, y: C + 10, ...BH('tavern', 6, 7, 4.2, 3.0, 'Taverna do Javali', { door: 'E' }) },   // de frente para a praça do mercado
@@ -105,8 +105,9 @@ const BUILDINGS = TEST3D ? [] : [
   { x: C - 29, y: C + 10, ...BH('shop', 5, 5, 2.4, 2.2, 'Boticário de Elva', { v: 1, door: 'N', floors: 1 }) },
   { x: C - 22, y: C - 8, ...BH('shop', 5, 5, 5.0, 3.2, 'Arcanos & Varinhas', { v: 2, door: 'W' }) },
   { x: C - 22, y: C + 10, ...BH('shop', 5, 5, 2.4, 2.2, 'Alfaiataria Real', { v: 3, door: 'N', floors: 1 }) },
-  { x: C - 29, y: C - 8, ...BH('shop', 5, 5, 3.6, 2.6, 'Pergaminhos & Mapas', { v: 4, door: 'E' }) },
+  { x: C - 30, y: C - 8, ...BH('shop', 5, 5, 3.6, 2.6, 'Pergaminhos & Mapas', { v: 4, door: 'E' }) },
   { x: C - 5, y: C - 19, ...BH('castle', 12, 10, 10, 6.5, 'Castelo de Sxan', { floors: 2 }) },
+  { x: C - 30, y: C - 21, ...BH('bank', 5, 10, 5.6, 2.4, 'Banco de Sxan', { floors: 1, door: 'E' }) },   // fachada para a rua (lado que a câmera vê)   // colunas, salão comprido de mesas altas e a porta redonda do cofre
   { x: C + 22, y: C + 20, ...BH('jail', 6, 8, 3.2, 2.4, 'Cadeia de Sxan', { floors: 1, door: 'W' }) },
   { x: C - 16, y: C, ...BH('boutique', 5, 4, 4.2, 3.0, 'Ateliê Real de Sxan', { floors: 1, door: 'S' }) },
   { x: C - 13, y: C + 18, ...BH('fruithouse', 5, 4, 2.9, 2.6, '', { floors: 1, door: 'E' }) },
@@ -229,7 +230,7 @@ function interiorLayout0(b, fl = 0) {
   } else if (k === 'shop') {
     npcAt(dc, 0);
     for (let i = 0; i < w; i++) if (i !== dc) put('shelf', i, 0, { v: b.v });
-    put('counter', 1, 1, { w: w - 2, v: b.v });
+    if (dc - 1 >= 1) put('counter', 1, 1, { w: dc - 1, v: b.v }); if (w - 2 - dc >= 1) put('counter', dc + 1, 1, { w: w - 2 - dc, v: b.v });   // balcão com passagem na frente do balconista
     put('display', 0, h - 2, { v: b.v }); put('display', w - 1, h - 2, { v: b.v });
     if (b.v === 3) put('mannequin', w - 1, 2); else if (b.v === 2) put('orb', w - 1, 2); else if (b.v === 1) put('cauldron', w - 1, 2); else put('crate', w - 1, 2);
   } else if (k === 'smith') {
@@ -237,8 +238,12 @@ function interiorLayout0(b, fl = 0) {
     for (let j = 0; j < 3; j++) put('rack', w - 1, j);
     put('trough', 0, 2, { w: 2 });
   } else if (k === 'tavern') {
-    npcAt(1, 0); put('barrel', 0, 0); put('barrel', 2, 0); put('counter', 0, 1, { w: 3 }); put('fireplace', w - 2, 0); put('shelf', 3, 0); for (const [i, j, fi, fj] of [[4, 0, 4, 1], [w - 1, 1, w - 2, 1], [w - 1, 2, w - 2, 2]]) if (can(i, j) && can(fi, fj)) { put('stove', i, j); taken.add(key(fi, fj)); break; }
+    npcAt(1, 0); put('barrel', 0, 0); put('counter', 0, 1, { w: 2 }); put('barrel', 0, 2);   // passagem atrás do balcão pelo lado put('fireplace', w - 2, 0); put('shelf', 3, 0); for (const [i, j, fi, fj] of [[4, 0, 4, 1], [w - 1, 1, w - 2, 1], [w - 1, 2, w - 2, 2]]) if (can(i, j) && can(fi, fj)) { put('stove', i, j); taken.add(key(fi, fj)); break; }
     for (const [ti, tj] of [[5, 2], [1, 3], [5, 4]]) if (put('table', ti, tj)) { put('chair', ti - 1, tj, { seat: 1 }); put('chair', ti + 1, tj, { seat: 5 }); }
+  } else if (k === 'bank') {   // salão comprido: mesas altas dos banqueiros dos dois lados, tapete no meio e a porta redonda do cofre no fundo
+    put('vault', dc - 1, 0, { w: 3 }); npcAt(dc, 1);
+    if (h >= 7) { for (let j = 2; j < h - 2; j += 2) { put('bankdesk', 1, j, { v: 1 }); put('bankdesk', w - 2, j, { v: 2 }); } put('rug', dc, 2, { h: h - 4, block: false }); }
+    else { for (let i = 1; i < w - 1; i++) if (Math.abs(i - dc) > 1) put('bankdesk', i, 2, { v: 1 }); put('rug', dc, 2, { h: h - 2, block: false }); }   // salão largo: fila de mesas altas dos dois lados do corredor até o cofre put('candles', 0, 1); put('candles', w - 1, 1);
   } else if (k === 'temple') {
     put('altar', dc - 1, 0, { w: 3 }); npcAt(dc, 1); put('candles', 1, 0); put('candles', w - 2, 0);
     for (const j of [3, 5]) { put('pew', 1, j, { w: dc - 1, seat: 3 }); put('pew', dc + 1, j, { w: w - dc - 2, seat: 3 }); }
@@ -327,7 +332,7 @@ if (TEST3D) {
     { id: 'guard2', name: 'Sentinela Bren', kind: 'guard', x: 42.4, y: 19.8 },
   );
 }
-const TEMPLE_SPAWN = TEST3D ? { x: 40, y: 44 } : { x: BUILDINGS[0].x + 4, y: BUILDINGS[0].y + BUILDINGS[0].h + 2 };
+const TEMPLE_SPAWN = TEST3D ? { x: 40, y: 44 } : (() => { const b = BUILDINGS[0], [dx, dy] = doorTile(b), v = DOOR_V[b.door || 'S']; return { x: dx + v[0] * 2.2, y: dy + v[1] * 2.2 }; })();
 const MOUNTAIN = TEST3D ? { x: -100, y: -100, r: 1 } : { x: 50, y: 52, r: 20 };
 // ---------- bastiões: lugares onde os inimigos se concentram (o resto do mundo é da fauna) ----------
 const bpos = (a, d) => { const r = d * Math.SQRT2; return { x: Math.round(CENTER + r * (Math.cos(a) + Math.sin(a)) / 2), y: Math.round(CENTER + r * (Math.sin(a) - Math.cos(a)) / 2) }; };
@@ -753,7 +758,8 @@ function generateWorld() {
   street(C + 13, C - 5, C + 23, C + 1);    // praça do chafariz   // quintal da Marta; lado direito da feira sem casa
   street(C + 19, C - 20, C + 20, y1 - 3);                  // beco dos mercadores (estreito, como o Beco Diagonal)
   street(C - 7, C + 9, C + 8, C + 17);                     // praça do mercado
-  street(x0 + 2, C - 16, KEEP.x0 - 3, C - 15);             // rua do templo
+  street(C - 25, C - 16, KEEP.x0 - 3, C - 15);             // rua do templo (do banco ao castelo)
+  street(C - 25, C - 30, C - 23, C + 3);                   // rua do Banco e da Catedral (a travessa do Empório, alargada até a muralha norte)
   street(C - 24, C - 20, C - 23, C + 5);
   street(C - 24, C + 19, C + 18, C + 20);                  // rua de baixo
   street(KEEP.x1 + 3, C - 24, x1 - 2, C - 23);
@@ -890,9 +896,11 @@ function generateWorld() {
     if (best) { const [cx, cy] = best; obj[idx(cx, cy)] = O.GUILLOTINE; obj[idx(cx - 1, cy)] = O.PART; obj[idx(cx - 2, cy)] = O.NONE; STAGE.x = cx; STAGE.y = cy; } }
   for (const [x, y, o] of [[C - 4, KEEP.y1 - 3, O.FLOWERBED], [C + 5, KEEP.y1 - 3, O.FLOWERBED], [C - 1, KEEP.y1 - 2, O.BRAZIER], [C + 2, KEEP.y1 - 2, O.BRAZIER], [C - 6, KEEP.y1 - 2, O.BENCH], [C + 7, KEEP.y1 - 2, O.BENCH], [C - 4, KEEP.y1 - 6, O.STATUE], [C + 5, KEEP.y1 - 6, O.STATUE]]) decoAny(x, y, o);
   // catedral: cemitério e jardim
-  const T0 = BUILDINGS[0];
-  for (let k = 0; k < 12; k++) { const gx = T0.x + [0, 1, 2, 6, 7, 8][k % 6], gy = T0.y + T0.h + 2 + Math.floor(k / 6) * 2; deco(gx, gy, O.GRAVE); }
-  deco(T0.x - 1, T0.y + T0.h + 2, O.TREE); deco(T0.x + T0.w + 1, T0.y + 2, O.TREE);
+  for (let yy = C - 21; yy <= C - 12; yy++) decoAny(x0 + 1, yy, yy % 2 ? O.CRATE : O.BARREL);   // vão estreito atrás do banco, junto à muralha
+  // cemitério onde ficava a catedral (do outro lado da rua)
+  for (let gy = C - 29; gy <= C - 24; gy += 2) for (const gx of [C - 30, C - 28]) deco(gx, gy, O.GRAVE);
+  deco(C - 31, C - 29, O.TREE); deco(C - 27, C - 26, O.TREE);
+  for (let gy = C - 30; gy <= C - 23; gy++) deco(C - 26, gy, gy === C - 26 ? O.NONE : O.LOWWALL);   // muro baixo do cemitério com portão
   // forja, quartel, estábulo, taverna
   const sm = BUILDINGS[2]; decoAny(sm.x - 1, sm.y + sm.h + 1, O.ANVIL); decoAny(sm.x + sm.w, sm.y + sm.h + 1, O.WEAPONRACK); decoAny(sm.x + sm.w, sm.y + 1, O.BARREL);
   const bk = BUILDINGS[4]; for (let k = 0; k < 4; k++) decoAny(bk.x + 1 + k * 2, bk.y + bk.h + 3, O.DUMMY); decoAny(bk.x + bk.w, bk.y + bk.h + 1, O.WEAPONRACK);
@@ -1041,6 +1049,7 @@ if (STAGE.x >= 0) { const ex = NPCS.find(n => n.id === 'executioner'); if (ex) {
 // corretor de imóveis (a casa do escritório só existe depois de gerar o mundo)
 if (!TEST3D) { const ob = BUILDINGS.find(b => b.office === 'estate'); if (ob) NPCS.push({ id: 'broker', name: 'Mestre Anselmo, o Corretor', kind: 'broker', ...npcIn(ob, { x: ob.x + 1, y: ob.y + 1 }) }); }
 // ---------- gente dos negócios: artesãos das oficinas, balconistas das lojas vagas e mensageiros (os 12 primeiros moradores) ----------
+if (!TEST3D) { const bb = BUILDINGS.find(b => b.kind === 'bank'); if (bb) { NPCS.push({ id: 'banker', name: 'Mestre Varkas, o Banqueiro', kind: 'banker', ...npcIn(bb, { x: bb.x + 1, y: bb.y + 1 }) }); const [w, h] = bDims(bb); [['banker2', 'Edda, a Caixa', 2, 1], ['banker3', 'Osric, o Contador', w - 3, 1]].forEach(([id, name, i, j]) => { const [x, y] = bLocal(bb, i, j); NPCS.push({ id, name, kind: id, x, y }); }); } }
 const STAFF_NAMES = {
   saw: 'Bruno Serra, o Serrador', mine: 'Gunnar Pedrafunda, o Mineiro', farm: 'Rosa Quintal, a Hortelã', carp: 'Elias Plaina, o Carpinteiro', alch: 'Odila Varga, a Destiladora',
   apoth: 'Clara Malva, a Boticária', arcane: 'Silas Runa, o Balconista', tailor: 'Berta Agulha, a Costureira', scroll: 'Teodoro Tinta, o Copista',
@@ -1092,6 +1101,7 @@ const PROPS = [], PROPS_BY = {};
     let P = null;
     if (b.kind === 'house' && !b.office) { n++; P = { ...base, id: 'h' + bi, kind: 'house', name: 'Casa ' + n, rent: 4 + Math.round(area * 0.3) + (fl - 1) * 4 }; }
     else if (b.kind === 'shop' || b.kind === 'boutique' || b.kind === 'tavern') P = { ...base, id: 's' + bi, kind: 'shop', shopType: b.shopType, name: b.name || 'Loja', npc: b.shopType ? null : ownerOf(b), rent: 20 + Math.round(area * 0.8) + (fl - 1) * 6 };
+    else if (b.kind === 'bank') P = { ...base, id: 'b' + bi, kind: 'bank', name: b.name, rent: 450, repMin: 70 };
     else if (b.kind === 'workshop') P = { ...base, id: 'w' + bi, kind: 'workshop', wk: b.wk, name: b.name, rent: 16 + Math.round(area * 0.7) };
     else if (b.kind === 'smith' || b.kind === 'stable') P = { ...base, id: 'w' + bi, kind: 'workshop', name: b.name || (b.kind === 'stable' ? 'Estábulo' : 'Oficina'), npc: b.kind === 'stable' ? 'a Guarda' : ownerOf(b), rent: 16 + Math.round(area * 0.7) };
     if (P) { // localização: perto do castelo é área nobre (mais caro), na periferia e na vila é barato

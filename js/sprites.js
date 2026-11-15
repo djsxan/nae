@@ -70,6 +70,19 @@ const NPC_LOOKS = {
   v_thug1: () => Object.assign(heroLook('archer', 'scout', '#2a2a2a'), { armor: 'leather', body: tone('#2a2a2a'), body2: tone('#4a3a2a'), accent: tone('#1a1a1a'), trim: tone('#5a1a1a'), head: 'hood', hair: tone('#1a1a1a'), weapon: null, quiver: false, capeTone: tone('#1e1e1e'), skin: tone('#c89878') }),
   v_thug2: () => Object.assign(heroLook('knight', 'iron', '#3a2a2a'), { armor: 'leather', body: tone('#3a2a2a'), body2: tone('#2a2420'), accent: tone('#1a1a1a'), trim: tone('#3a1a1a'), head: 'none', hair: tone('#2a1a10'), beard: tone('#2a1a10'), weapon: null, capeTone: null, skin: tone('#b8886a') }),
   supplier: () => Object.assign(heroLook('knight', 'iron', '#6a4a2a'), { armor: 'leather', body: tone('#6a4a2a'), body2: tone('#c8b890'), accent: tone('#3a2a1a'), trim: tone('#3a2a1a'), head: 'none', hair: tone('#5a4030'), beard: tone('#5a4030'), weapon: null, capeTone: null, skin: tone('#d8a880') }),
+  banker: () => Object.assign(heroLook('mage', 'adept', '#1e2a3a'), { armor: 'robe', body: tone('#1e2a3a'), body2: tone('#c9a24a'), accent: tone('#c9a24a'), trim: tone('#e2b74e'), head: 'none', hair: tone('#c8c4bc'), beard: tone('#c8c4bc'), weapon: null, capeTone: tone('#14141e'), skin: tone('#e2c0a0') }),
+  banker2: () => Object.assign(heroLook('mage', 'adept', '#2a2a3a'), { armor: 'robe', body: tone('#2a2a3a'), body2: tone('#e8dcc0'), accent: tone('#c9a24a'), trim: tone('#c9a24a'), head: 'none', hairStyle: 'long', hair: tone('#5a3a20'), beard: null, weapon: null, capeTone: null, skin: tone('#e8c4a4') }),
+  banker3: () => Object.assign(heroLook('mage', 'adept', '#2a2a3a'), { armor: 'robe', body: tone('#2a2a3a'), body2: tone('#e8dcc0'), accent: tone('#c9a24a'), trim: tone('#c9a24a'), head: 'none', hair: tone('#3a2a1a'), beard: tone('#3a2a1a'), weapon: null, capeTone: null, skin: tone('#c89878') }),
+  v_house3: () => Object.assign(heroLook('archer', 'scout', '#6a7a3a'), { armor: 'robe', body: tone('#6a7a3a'), body2: tone('#efe6cf'), accent: tone('#c84a3a'), trim: tone('#4a3a1a'), head: 'hood', hairStyle: 'long', hair: tone('#a8682a'), weapon: null, quiver: false, capeTone: null, skin: tone('#ecc8a8') }),
+  v_house4: () => Object.assign(heroLook('archer', 'scout', '#7a4a3a'), { armor: 'robe', body: tone('#7a4a3a'), body2: tone('#d8c8a0'), accent: tone('#d8c8a0'), trim: tone('#3a2a1a'), head: 'none', hairStyle: 'long', hair: tone('#888078'), weapon: null, quiver: false, capeTone: null, skin: tone('#d8a888') }),
+  v_trav3: () => Object.assign(heroLook('archer', 'scout', '#8a2a4a'), { armor: 'robe', body: tone('#8a2a4a'), body2: tone('#e8c84a'), accent: tone('#e8c84a'), trim: tone('#3a8a6a'), head: 'none', hair: tone('#c8962a'), beard: null, weapon: null, quiver: false, capeTone: tone('#3a8a6a'), skin: tone('#e8c0a0') }),
+  v_monk: () => Object.assign(heroLook('mage', 'adept', '#7a5a3a'), { armor: 'robe', body: tone('#7a5a3a'), body2: tone('#5a4028'), accent: tone('#3a2a1a'), trim: tone('#3a2a1a'), head: 'hood', hair: tone('#3a2a1a'), beard: tone('#5a4a3a'), weapon: 'staff', capeTone: null, skin: tone('#d8a880') }),
+  v_noblef: () => Object.assign(heroLook('mage', 'adept', '#5a1a4a'), { armor: 'robe', body: tone('#5a1a4a'), body2: tone('#f0e0b0'), accent: tone('#e2b74e'), trim: tone('#e2b74e'), head: 'none', hairStyle: 'long', hair: tone('#2a1a10'), weapon: null, capeTone: tone('#3a0e2a'), skin: tone('#f0d0b8') }),
+  v_noblem: () => Object.assign(heroLook('knight', 'iron', '#1e3a5a'), { armor: 'leather', body: tone('#1e3a5a'), body2: tone('#e8dcc0'), accent: tone('#e2b74e'), trim: tone('#e2b74e'), head: 'none', hair: tone('#d8c8a0'), beard: tone('#d8c8a0'), weapon: null, shield: null, capeTone: tone('#5a1a1a'), skin: tone('#ecc8a8') }),
+  v_peasm: () => Object.assign(heroLook('knight', 'iron', '#7a6a4a'), { armor: 'leather', body: tone('#7a6a4a'), body2: tone('#a89878'), accent: tone('#4a3a2a'), trim: tone('#4a3a2a'), head: 'none', hair: tone('#5a3a20'), beard: tone('#5a3a20'), weapon: null, shield: null, capeTone: null, skin: tone('#c8946a') }),
+  v_peasf: () => Object.assign(heroLook('archer', 'scout', '#8a7a5a'), { armor: 'robe', body: tone('#8a7a5a'), body2: tone('#e8dcc0'), accent: tone('#e8dcc0'), trim: tone('#5a4a2a'), head: 'hood', hairStyle: 'long', hair: tone('#3a2414'), weapon: null, quiver: false, capeTone: null, skin: tone('#c89070') }),
+  v_elderm: () => Object.assign(heroLook('mage', 'adept', '#4a4a4a'), { armor: 'robe', body: tone('#4a4a4a'), body2: tone('#8a8a8a'), accent: tone('#2a2a2a'), trim: tone('#2a2a2a'), head: 'none', hair: tone('#e8e4dc'), beard: tone('#e8e4dc'), weapon: 'staff', capeTone: null, skin: tone('#d8b096') }),
+  v_elderf: () => Object.assign(heroLook('archer', 'scout', '#3a3a5a'), { armor: 'robe', body: tone('#3a3a5a'), body2: tone('#d8d0c0'), accent: tone('#d8d0c0'), trim: tone('#2a2a3a'), head: 'hood', hairStyle: 'long', hair: tone('#d8d4cc'), weapon: null, quiver: false, capeTone: null, skin: tone('#e2bca0') }),
   broker: () => Object.assign(heroLook('archer', 'scout', '#3a2a1a'), { armor: 'robe', body: tone('#4a3420'), body2: tone('#e8dcc0'), accent: tone('#c9a24a'), trim: tone('#c9a24a'), head: 'none', hair: tone('#5a5048'), beard: tone('#5a5048'), weapon: null, quiver: false, capeTone: null, skin: tone('#dcb090') }),
   tailor: () => Object.assign(heroLook('mage', 'adept', '#6e1424'), { armor: 'robe', body: tone('#5e1422'), body2: tone('#2a0e14'), accent: tone('#d4a94a'), trim: tone('#d4a94a'), head: 'none', hair: tone('#d8d4cc'), beard: tone('#d8d4cc'), weapon: null, capeTone: tone('#2a0e14'), skin: tone('#e2c0a0') }),
   fruit: () => Object.assign(heroLook('archer', 'scout', '#3e5a34'), { armor: 'robe', body: tone('#3e5a34'), body2: tone('#efe6cf'), accent: tone('#efe6cf'), trim: tone('#a8342a'), head: 'none', hairStyle: 'long', hair: tone('#3a2414'), weapon: null, quiver: false, skin: tone('#e6bea0'), capeTone: null }),
@@ -146,8 +159,8 @@ const ACTS = {
   // ---- combate direcional ----
   atk_over:   [[0, {}], [0.36, { aA: [2.9, 0.25, 1.5], wp: 3.7, tl: -0.12, ht: -0.15 }], [0.5, { aA: [0.85, 0.1, 0.1], wp: 0.6, tl: 0.35, ht: 0.15 }], [0.62, { aA: [0.6, 0.12, 0.15], wp: 0.3, tl: 0.3 }], [1, {}]],
   atk_under:  [[0, {}], [0.36, { aA: [-0.7, 0.35, 0.3], wp: -1.0, tl: 0.3 }], [0.5, { aA: [1.9, 0.12, 0.2], wp: 2.4, tl: -0.15 }], [0.62, { aA: [2.1, 0.12, 0.25], wp: 2.6, tl: -0.12 }], [1, {}]],
-  atk_slashR: [[0, {}], [0.36, { tw: 0.95, yaw: 0.35, aA: [2.05, 0.15, 1.45], wp: 2.75, tl: 0.02 }], [0.47, { tw: 0.1, yaw: 0, aA: [1.5, 0.1, 0.35], wp: 1.75 }], [0.55, { tw: -0.85, yaw: -0.45, aA: [1.45, 0.05, 0.15], wp: 1.6, tl: 0.15 }], [0.66, { tw: -0.95, yaw: -0.5, aA: [1.3, 0.05, 0.25], wp: 1.4, tl: 0.12 }], [1, {}]],
-  atk_slashL: [[0, {}], [0.36, { tw: -0.95, yaw: -0.35, aA: [1.7, -0.55, 1.35], wp: 2.45, tl: 0.02 }], [0.47, { tw: -0.1, yaw: 0, aA: [1.5, -0.1, 0.4], wp: 1.8 }], [0.55, { tw: 0.85, yaw: 0.45, aA: [1.45, 0.55, 0.15], wp: 1.6, tl: 0.15 }], [0.66, { tw: 0.95, yaw: 0.5, aA: [1.3, 0.6, 0.25], wp: 1.4, tl: 0.12 }], [1, {}]],
+  atk_slashR_old: [[0, {}], [0.36, { tw: 0.95, yaw: 0.35, aA: [2.05, 0.15, 1.45], wp: 2.75, tl: 0.02 }], [0.47, { tw: 0.1, yaw: 0, aA: [1.5, 0.1, 0.35], wp: 1.75 }], [0.55, { tw: -0.85, yaw: -0.45, aA: [1.45, 0.05, 0.15], wp: 1.6, tl: 0.15 }], [0.66, { tw: -0.95, yaw: -0.5, aA: [1.3, 0.05, 0.25], wp: 1.4, tl: 0.12 }], [1, {}]],
+  atk_slashL_old: [[0, {}], [0.36, { tw: -0.95, yaw: -0.35, aA: [1.7, -0.55, 1.35], wp: 2.45, tl: 0.02 }], [0.47, { tw: -0.1, yaw: 0, aA: [1.5, -0.1, 0.4], wp: 1.8 }], [0.55, { tw: 0.85, yaw: 0.45, aA: [1.45, 0.55, 0.15], wp: 1.6, tl: 0.15 }], [0.66, { tw: 0.95, yaw: 0.5, aA: [1.3, 0.6, 0.25], wp: 1.4, tl: 0.12 }], [1, {}]],
   atk_stab:   [[0, {}], [0.36, { aA: [0.55, 0.2, 1.95], wp: 1.5, tl: -0.08, lA: [-0.25, -0.2] }], [0.5, { aA: [1.52, 0.05, 0.05], wp: 1.55, tl: 0.3, lA: [0.5, -0.3], lB: [-0.35, -0.1] }], [0.62, { aA: [1.5, 0.05, 0.08], wp: 1.55, tl: 0.28, lA: [0.45, -0.3] }], [1, {}]],
   parry:      [[0, { aA: [1.35, 0.55, 1.35], wp: 2.7, aB: [1.25, 0.25, 1.0], tl: 0.05 }], [1, { aA: [1.35, 0.55, 1.35], wp: 2.7, aB: [1.25, 0.25, 1.0], tl: 0.05 }]],
   // cavaleiro: saudação e apontar com a espada (braço da espada)
@@ -173,6 +186,20 @@ const ACTS = {
   lever: [[0, {}], [0.3, { aA: [2.6, 0.2, 0.4], tl: -0.1, ht: -0.1 }], [0.55, { aA: [0.9, 0.25, 0.2], tl: 0.35, kn: -0.3 }], [1, { aA: [0.8, 0.25, 0.2], tl: 0.25, kn: -0.2 }]],
   // ---- casa: mexer a panela e varrer ----
   cook: [[0, { aA: [1.1, 0.15, 1.0], aB: [0.9, 0.1, 1.5], tl: 0.22, ht: 0.3 }], [0.25, { aA: [1.15, 0.38, 1.1], aB: [0.9, 0.1, 1.5], tl: 0.22, ht: 0.3 }], [0.5, { aA: [1.22, 0.15, 1.2], aB: [0.9, 0.1, 1.5], tl: 0.22, ht: 0.3 }], [0.75, { aA: [1.15, -0.08, 1.1], aB: [0.9, 0.1, 1.5], tl: 0.22, ht: 0.3 }], [1, { aA: [1.1, 0.15, 1.0], aB: [0.9, 0.1, 1.5], tl: 0.22, ht: 0.3 }]],
+  atk_slashR: [[0, {}],
+    [0.14, { tw: 0.55, yaw: 0.2, aA: [1.6, 0.6, 1.2], ay: 0.55, wp: 2.6, aB: [0.6, -0.2, 0.8] }],
+    [0.36, { tw: 1.15, yaw: 0.42, tl: -0.05, aA: [1.85, 1.0, 1.35], ay: 0.9, wp: 3.0, wr: -0.5, aB: [0.9, -0.5, 1.0], lA: [0.1, -0.1], lB: [-0.25, -0.2] }],
+    [0.46, { tw: 0.35, yaw: 0.15, tl: 0.1, aA: [1.6, 0.55, 0.35], ay: 0.6, wp: 1.75, wr: -1.2, aB: [0.7, -0.2, 0.9], lA: [0.35, -0.3], lB: [-0.15, -0.15] }],
+    [0.53, { tw: -0.55, yaw: -0.25, tl: 0.2, aA: [1.55, 0.05, 0.05], ay: -0.2, wp: 1.55, wr: -1.45, aB: [0.5, 0.3, 0.7], lA: [0.4, -0.3], lB: [-0.2, -0.15] }],
+    [0.64, { tw: -1.05, yaw: -0.5, tl: 0.18, aA: [1.35, -0.45, 0.35], ay: -0.85, wp: 1.25, wr: -1.2, aB: [0.4, 0.6, 0.6], lA: [0.3, -0.25] }],
+    [0.8, { tw: -0.5, yaw: -0.2, aA: [1.1, -0.1, 0.5], wp: 1.3, wr: -0.4 }], [1, {}]],
+  atk_slashL: [[0, {}],
+    [0.14, { tw: -0.55, yaw: -0.2, aA: [1.55, -0.55, 1.3], ay: -0.6, wp: 2.5, aB: [0.6, 0.3, 0.8] }],
+    [0.36, { tw: -1.1, yaw: -0.4, tl: -0.05, aA: [1.75, -0.7, 1.45], ay: -0.95, wp: 2.85, wr: 0.6, aB: [0.8, 0.6, 1.0], lB: [0.15, -0.1], lA: [-0.2, -0.2] }],
+    [0.46, { tw: -0.3, yaw: -0.15, tl: 0.1, aA: [1.6, -0.3, 0.4], ay: -0.5, wp: 1.75, wr: 1.25, aB: [0.7, 0.3, 0.9], lB: [0.35, -0.3] }],
+    [0.53, { tw: 0.6, yaw: 0.25, tl: 0.2, aA: [1.55, 0.25, 0.05], ay: 0.25, wp: 1.55, wr: 1.45, aB: [0.5, -0.3, 0.7], lB: [0.4, -0.3], lA: [-0.2, -0.15] }],
+    [0.64, { tw: 1.05, yaw: 0.5, tl: 0.18, aA: [1.4, 0.9, 0.3], ay: 0.85, wp: 1.25, wr: 1.2, aB: [0.4, -0.6, 0.6] }],
+    [0.8, { tw: 0.5, yaw: 0.2, aA: [1.1, 0.4, 0.5], wp: 1.3, wr: 0.4 }], [1, {}]],
   gather: [[0, { aA: [0.7, 0.15, 0.4], aB: [0.6, 0.2, 0.5], tl: 0.55, ht: 0.25, lA: [0.9, -1.4], lB: [0.4, -0.5], drop: 6 }], [0.5, { aA: [1.25, 0.1, 0.8], aB: [0.7, 0.2, 0.5], tl: 0.65, ht: 0.3, lA: [0.9, -1.4], lB: [0.4, -0.5], drop: 6 }], [1, { aA: [0.7, 0.15, 0.4], aB: [0.6, 0.2, 0.5], tl: 0.55, ht: 0.25, lA: [0.9, -1.4], lB: [0.4, -0.5], drop: 6 }]],
   sweep: [[0, { aA: [0.85, 0.12, 0.5], aB: [0.55, 0.15, 1.0], tl: 0.3, tw: 0.45, ht: 0.3, broom: 1 }], [0.5, { aA: [0.85, 0.12, 0.5], aB: [0.55, 0.15, 1.0], tl: 0.34, tw: -0.45, ht: 0.3, broom: 1 }], [1, { aA: [0.85, 0.12, 0.5], aB: [0.55, 0.15, 1.0], tl: 0.3, tw: 0.45, ht: 0.3, broom: 1 }]],
   // ---- beber: do cantil (gole com a cabeça para trás) e com as mãos num riacho/poça (ajoelhado) ----
@@ -211,7 +238,7 @@ function mixField(base, a, b, t, key) {
 // calcula a pose final (ângulos) a partir de caminhada + ação + idle
 function buildPose(cls, P) {
   const base = BASE[cls] || BASE.knight;
-  const Q = { aA: base.aA.slice(), aB: base.aB.slice(), wp: base.wp, tl: base.tl, tw: 0, lA: [0.04, -0.06], lB: [-0.04, -0.06], kn: 0, drop: 0, ht: 0, hw: 0, mouth: 0, pull: 0, glow: 0, bot: 0, harrow: 0, broom: 0, apple: 0 };
+  const Q = { aA: base.aA.slice(), aB: base.aB.slice(), wp: base.wp, tl: base.tl, tw: 0, lA: [0.04, -0.06], lB: [-0.04, -0.06], kn: 0, drop: 0, ht: 0, hw: 0, mouth: 0, pull: 0, glow: 0, bot: 0, harrow: 0, broom: 0, apple: 0, ay: 0, wr: 0 };
   if (P.walk >= 0) {
     // ciclo de passada: a perna de apoio fica quase reta; o joelho dobra quando a perna avança
     const ph = P.walk / 12 * Math.PI * 2;
@@ -252,7 +279,7 @@ function buildPose(cls, P) {
   }
   const apply = (keys, p) => {
     const { a, b, t } = sampleKeys(keys, p);
-    for (const k of ['aA', 'aB', 'wp', 'tl', 'tw', 'lA', 'lB', 'kn', 'drop', 'ht', 'hw', 'mouth', 'pull', 'glow', 'yaw', 'bot', 'harrow', 'broom', 'apple']) {
+    for (const k of ['aA', 'aB', 'wp', 'tl', 'tw', 'lA', 'lB', 'kn', 'drop', 'ht', 'hw', 'mouth', 'pull', 'glow', 'yaw', 'bot', 'harrow', 'broom', 'apple', 'ay', 'wr']) {
       if (a[k] == null && b[k] == null) continue;
       const v = mixField(Q, a, b, t, k);
       if (v !== undefined) Q[k] = v;
@@ -303,6 +330,7 @@ function buildPose(cls, P) {
   else if (P.sit) { Q.lA = [1.5, -1.55]; Q.lB = [1.45, -1.5]; Q.drop = 12; Q.aA = [0.45, 0.25, 0.7]; Q.aB = [0.45, 0.25, 0.7]; Q.tl = -0.02; }
   if (P.tied) { Q.aA = [-0.45, -0.28, 0.35]; Q.aB = [-0.45, -0.28, 0.35]; Q.tl = 0.12; Q.ht = 0.3; Q.tie = P.tied; Q.nowp = 1; }   // mãos amarradas atrás das costas
   if (P.nowp) Q.nowp = 1;
+  if (P.wpn === 'halberd' && !P.down && !P.sit) { if (!P.act) { Q.aA = [0.55, 0.12, 0.9]; Q.wp = 3.05; } Q.aB = [Q.aA[0] - 0.12, 0.28, Math.max(0.2, Q.aA[2] + 0.35)]; }   // em repouso: haste em pé, lâmina para cima   // alabarda: a mão esquerda segura a haste mais abaixo
   if (P.down && P.crawl) {   // rastejando de bruços: braços se alternam puxando o corpo; 5 = parado com uma mão estendida pedindo piedade
     const ph = (P.crawl - 1) / 4 * Math.PI * 2;
     if (P.crawl === 5) { Q.aA = [2.4, 0.2, 0.3]; Q.aB = [0.6, 0.7, 0.8]; Q.lA = [0.2, -0.3]; Q.lB = [0.1, -0.2]; }
@@ -682,7 +710,7 @@ function heroSprite(cls, skin, color, P) {
   const L = lookFor(lk, () => heroLook(cls, skin, color));
   return sprite('h|' + lk + '|' + poseKey(P), HW, HH, HAX, HAY, pc => drawHeroPC(pc, L, P, cls), { ok: 0.42 });
 }
-const NPC_CLS = { v_house1: 'archer', v_house2: 'archer', v_trav1: 'knight', v_trav2: 'archer', v_vis1: 'mage', v_vis2: 'archer', v_thug1: 'archer', v_thug2: 'knight', supplier: 'knight', st_saw: 'knight', st_mine: 'knight', st_farm: 'archer', st_carp: 'archer', st_alch: 'mage', st_apoth: 'mage', st_arcane: 'mage', st_tailor: 'archer', st_scroll: 'mage', courier1: 'archer', courier2: 'archer', courier3: 'knight', broker: 'archer', noble: 'archer', noble2: 'knight', gardener: 'archer', tailor: 'mage', jailer: 'knight', executioner: 'knight', fruit: 'archer', priest: 'mage', merchant: 'archer', innkeeper: 'archer', guard: 'knight', captain: 'knight', smith: 'knight' };
+const NPC_CLS = { v_house3: 'archer', v_house4: 'archer', v_trav3: 'archer', v_monk: 'mage', v_noblef: 'mage', v_noblem: 'knight', v_peasm: 'knight', v_peasf: 'archer', v_elderm: 'mage', v_elderf: 'archer', banker: 'mage', banker2: 'mage', banker3: 'mage', v_house1: 'archer', v_house2: 'archer', v_trav1: 'knight', v_trav2: 'archer', v_vis1: 'mage', v_vis2: 'archer', v_thug1: 'archer', v_thug2: 'knight', supplier: 'knight', st_saw: 'knight', st_mine: 'knight', st_farm: 'archer', st_carp: 'archer', st_alch: 'mage', st_apoth: 'mage', st_arcane: 'mage', st_tailor: 'archer', st_scroll: 'mage', courier1: 'archer', courier2: 'archer', courier3: 'knight', broker: 'archer', noble: 'archer', noble2: 'knight', gardener: 'archer', tailor: 'mage', jailer: 'knight', executioner: 'knight', fruit: 'archer', priest: 'mage', merchant: 'archer', innkeeper: 'archer', guard: 'knight', captain: 'knight', smith: 'knight' };
 function npcSprite(kind, P) {
   const L = lookFor('npc:' + kind, NPC_LOOKS[kind]);
   return sprite('n|' + kind + '|' + poseKey(P), HW, HH, HAX, HAY, pc => drawHeroPC(pc, L, P, NPC_CLS[kind] || 'knight'), { ok: 0.42 });
@@ -858,3 +886,12 @@ function iconSprite(id) {
     }
   }, { k: ART });
 }
+
+// uniforme por cima da aparência (mantém pele, cabelo e barba; troca roupa, tira arma e escudo)
+function uniformLook(L, code) {
+  const U = UNIFORMS[code]; if (!U) return L;
+  return Object.assign(L, { armor: 'robe', body: tone(U.body), body2: tone(U.b2), accent: tone(U.b2), trim: tone(U.trim), head: U.head || 'none', weapon: null, shield: null, pauldron: null, cape: false, capeTone: null, quiver: false, pattern: null });
+}
+// funcionários NPC com o uniforme do lugar onde trabalham
+{ const map = { st_saw: 1, st_carp: 1, st_mine: 7, st_farm: 7, st_alch: 2, st_apoth: 2, st_arcane: 3, st_tailor: 3, st_scroll: 3, courier1: 5, courier2: 5, courier3: 5, banker2: 6, banker3: 6 };
+  for (const k in map) { const f = NPC_LOOKS[k]; if (f) NPC_LOOKS[k] = () => uniformLook(f(), map[k]); } }

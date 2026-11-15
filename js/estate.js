@@ -13,6 +13,7 @@ const WK_LABEL = { saw: 'Serraria: tira madeira sozinha', mine: 'Mina: tira min�
 function estateEvent(m) {
   if (m.t === 'biz') { bizEvent(m); return true; }
   if (m.t === 'counter') { counterShow(m); return true; }
+  if (m.t === 'bank') { bankShow(m); return true; }
   if (m.t === 'op') { if (G.dialog && G.dialog.id === m.id) { let el = document.getElementById('dlg-op'); if (!el) { el = document.createElement('div'); el.id = 'dlg-op'; const nm = document.getElementById('dlg-name'); nm.parentNode.insertBefore(el, nm.nextSibling); } el.className = 'op-' + m.lv; el.textContent = m.ln + ' — ' + m.why; } return true; }
   if (m.t !== 'estate') return false;
   if (m.st) G.est.st = m.st; if (m.L) G.est.L = m.L;
@@ -65,7 +66,7 @@ function estRender() {
   estDrawMap();
   const list = document.getElementById('est-list'), det = document.getElementById('est-detail');
   if (E.tab === 'mine') { list.innerHTML = estMineHtml(); det.innerHTML = estChestHtml(); estWire(); return; }
-  const items = PROPS.filter(P => P.kind === E.tab);
+  const items = PROPS.filter(P => P.kind === E.tab || (E.tab === 'shop' && P.kind === 'bank'));
   list.innerHTML = items.length ? items.map(P => { const s = estStatus(P); return '<div class="est-row' + (E.sel === P.id ? ' sel' : '') + '" data-pid="' + P.id + '"><i style="background:' + EST_COL[s.k] + '"></i><div><b>' + P.name + '</b><small>' + P.district + ' · ' + P.locName + ' · ' + P.w + '×' + P.h + (P.floors > 1 ? ' · ' + P.floors + ' andares' : '') + '</small></div><div class="est-r"><b>' + P.week + '</b><small>ouro/semana</small><em>' + s.t + '</em></div></div>'; }).join('') : '<div class="gp-note">Nenhum imóvel nesta categoria ainda.</div>';
   const P = PROPS_BY[E.sel];
   if (!P || P.kind !== E.tab) det.innerHTML = '<div class="gp-note">' + (E.tab === 'house' ? 'Escolha uma casa na lista ou no mapa. Alugando, o aluguel sai sozinho uma vez por semana do jogo (7 dias = 84 minutos); comprando, paga uma vez e só 7 ouro de imposto por semana. Perto do castelo é área nobre (caro); na periferia e na vila, barato.' : 'Lojas vendem sozinhas o que você abastece; oficinas produzem e os mensageiros levam a produção para as suas lojas. O lucro fica no cofre de cada negócio: vá buscar. Até ' + 3 + ' negócios por personagem.') + '</div>';
@@ -85,7 +86,8 @@ function estDetailHtml(P) {
   }
   if (s.k === 'free' && (P.kind === 'house' || isBizP(P))) {
     const block = P.kind === 'house' ? (hasHouse ? 'Você já tem uma casa' : '') : (nBiz >= 3 ? 'Limite de 3 negócios' : '');
-    h += block ? '<button class="est-btn" disabled>' + block + '</button>' : '<button class="est-btn" data-rent="' + P.id + '"' + (G.me.gold < cost ? ' disabled' : '') + '>Alugar por ' + cost + '</button><button class="est-btn" data-buy="' + P.id + '"' + (G.me.gold < P.buy ? ' disabled' : '') + '>Comprar por ' + P.buy + '</button>';
+    if (P.kind === 'bank') h += '<div class="est-cost">🏛 Só se compra, e o Conselho exige <b>reputação ' + (P.repMin || 70) + '</b> (a sua: ' + (G.me.rep ?? '?') + '). O dono fica com os juros dos empréstimos e com o saldo de quem morre.</div>';
+    h += block ? '<button class="est-btn" disabled>' + block + '</button>' : (P.kind === 'bank' ? '' : '<button class="est-btn" data-rent="' + P.id + '"' + (G.me.gold < cost ? ' disabled' : '') + '>Alugar por ' + cost + '</button>') + '<button class="est-btn" data-buy="' + P.id + '"' + (G.me.gold < P.buy || (P.kind === 'bank' && (G.me.rep || 0) < (P.repMin || 70)) ? ' disabled' : '') + '>Comprar por ' + P.buy + '</button>';
     h += '<button class="est-btn ghost" data-go="' + P.id + '">Mostrar no mapa</button>';
   } else if (s.k === 'mine') { const info = (P.kind === 'house' ? G.est.mine : G.est.biz.find(b => b.pid === P.id)) || {}; if (info.mode !== 'own') h += '<button class="est-btn" data-buy="' + P.id + '"' + (G.me.gold < P.buy - (info.dep || 0) ? ' disabled' : '') + '>Comprar de vez por ' + (P.buy - (info.dep || 0)) + '</button>'; if (P.kind !== 'house') h += '<button class="est-btn" data-manage="' + P.id + '">Abrir a gestão</button>'; }
   else h += '<div class="est-cost">' + s.t + '</div>';
@@ -239,6 +241,8 @@ function bizRender() {
     h += '<div class="est-cost">' + (shop ? 'Hoje: ' + B.today.sold + ' vendas · ' + Math.round(B.today.rev) + ' de ouro entraram' : 'Hoje: ' + Math.round(B.today.rev) + ' de ouro com excedente vendido ao fornecedor') + ' · salário ' + (shop ? 6 : 8) + '/dia · ' + (m.mode === 'own' ? 'imposto 1/dia' : 'aluguel ' + P.rent + '/dia (da sua bolsa)') + '</div>';
     if (m.cour && m.cour.length) h += '<div class="gp-sub">Mensageiros na rua</div>' + m.cour.map(c => '<div class="est-cost">🏃 ' + c.name + ' · ' + c.st + ' · ' + Object.keys(c.g).map(g => c.g[g] + ' ' + GOODS[g].n).join(', ') + ' → ' + c.to + '</div>').join('');
     h += '<div class="gp-note">' + (shop ? 'A loja vende sozinha para os moradores. Abasteça pelo fornecedor (aba Estoque) ou tenha uma oficina que produza o que ela vende: os mensageiros trazem de graça.' : 'A oficina trabalha sozinha. A produção vai para as suas lojas (ou para outra oficina sua que transforme), levada pelos mensageiros; o que sobra pode ser vendido ao fornecedor.') + '</div>';
+  } else if (G.biz.tab === 'estoque' && P.kind === 'bank') {
+    h += '<div class="gp-note">O banco não tem estoque: ele ganha com os juros dos empréstimos (9% do que é pago vai para o cofre) e com as heranças de quem morre com saldo. Os juros de 2% dos depósitos saem deste cofre: mantenha ouro aqui.</div>';
   } else if (G.biz.tab === 'estoque') {
     if (shop) {
       const capS = 40 + 40 * (B.up.shelf || 0), used = Object.values(B.stock).reduce((a, b) => a + b, 0), ord = B.orders.reduce((a, o) => a + o.q, 0);
@@ -309,4 +313,23 @@ function hubRender() {
   document.getElementById('hub-body').innerHTML = h;
   for (const b of d.querySelectorAll('[data-hman]')) b.onclick = () => bizOpen(b.dataset.hman);
   for (const b of d.querySelectorAll('[data-hest]')) b.onclick = () => { hubToggle(false); estToggle(true, 'mine'); };
+}
+
+// ============================================================
+//  BANCO: conta (depositar, sacar), empréstimo e reputação
+// ============================================================
+function bankOpen() { Net.send({ t: 'bank', a: 'open' }); }
+function bankShow(m) {
+  let d = document.getElementById('bankp'); if (!d) { d = document.createElement('div'); d.id = 'bankp'; d.className = 'gpanel'; document.body.appendChild(d); }
+  const dueTxt = m.loan ? (m.due > 0 ? 'vence em ' + Math.max(1, Math.round(m.due / 60000)) + ' min' : '<b style="color:#ff8a7a">VENCIDA</b>') : '';
+  d.innerHTML = '<div class="gp-head"><span>🏛 Banco de Sxan</span><span class="gp-gold"><span class="coin"></span><b>' + G.me.gold + '</b></span><button class="gp-x" id="bk-x">✕</button></div>' +
+    '<div class="hub-top"><div><small>Saldo guardado</small><b>' + m.g + '</b></div><div><small>Dívida</small><b class="' + (m.loan ? 'neg' : '') + '">' + m.loan + '</b></div><div><small>Reputação</small><b>' + m.rep + '</b></div></div>' +
+    '<div class="bk-row"><input id="bk-q" type="number" min="1" placeholder="Quantia"><button class="est-btn" data-bk="dep">Depositar</button><button class="est-btn" data-bk="wd">Sacar</button><button class="est-btn ghost" data-bk="depall">Depositar tudo</button></div>' +
+    '<div class="gp-sub">Empréstimo</div><div class="est-cost">' + (m.loan ? 'Você deve <b>' + m.loan + '</b> · ' + dueTxt : 'Pode pegar até <b>' + m.max + '</b> de ouro (cresce com a reputação). Juros de 10% por semana; prazo de 2 semanas.') + '</div>' +
+    '<div class="bk-row">' + (m.loan ? '<button class="est-btn" data-bk="repay">Pagar com a quantia</button><button class="est-btn ghost" data-bk="repayall">Quitar tudo</button>' : '<button class="est-btn" data-bk="loan">Pedir empréstimo da quantia</button>') + '</div>' +
+    '<div class="gp-note">O ouro no banco rende 2% por semana, não é furtado e não cai no chão. Se você morrer de vez, o saldo fica com o dono do banco (hoje: ' + m.owner + '). Dívida vencida vira caso de polícia.</div>';
+  d.classList.remove('hidden');
+  d.querySelector('#bk-x').onclick = () => d.classList.add('hidden');
+  const q = () => Math.max(0, Math.floor(+d.querySelector('#bk-q').value || 0));
+  for (const b of d.querySelectorAll('[data-bk]')) b.onclick = () => { const a = b.dataset.bk; if (a === 'depall') Net.send({ t: 'bank', a: 'dep', q: G.me.gold }); else if (a === 'repayall') Net.send({ t: 'bank', a: 'repay', q: m.loan }); else Net.send({ t: 'bank', a, q: q() }); };
 }

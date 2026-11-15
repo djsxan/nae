@@ -528,3 +528,5 @@ body.nae[data-tp=chars] .scroll > .nae-toplay { display: block; text-align: cent
 .jb-profs { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px 14px; margin: 6px 0; font-size: 13px; }
 .jb-profs span { display: flex; justify-content: space-between; } .jb-profs b { color: #f0d890; }
 .jb-profs i { display: block; height: 5px; border-radius: 3px; background: #2a2016; margin-top: 2px; } .jb-profs em { display: block; height: 100%; border-radius: 3px; background: #c9a24a; }
+
+#bankp { width: min(520px, 94vw); z-index: 33; } .bk-row { display: flex; gap: 6px; flex-wrap: wrap; margin: 6px 0; } .bk-row input { flex: 1; min-width: 100px; padding: 6px 8px; border-radius: 6px; border: 1px solid #5a4424; background: #120e0a; color: #eee; }

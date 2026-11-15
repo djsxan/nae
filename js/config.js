@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.34.0';
-const VERSION_NAME = 'Nae · Trabalho e Gente';
+const VERSION = 'v1.35.0';
+const VERSION_NAME = 'Nae · Banco e Armas';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -224,6 +224,19 @@ const BLEED_RATE = [0, 0.25, 0.6, 1.0];   // % da vida por segundo, por ferida (
 const LEG_SPEED = [1, 0.85, 0.62, 0.38], ARM_DMG = [1, 0.85, 0.6, 0.35];
 // ===== combate corpo a corpo direcional (estilo Chivalry) =====
 // arma corpo a corpo de cada vocação: alcance, dano e velocidade (multiplicadores)
+// armas do cavaleiro: espada (curta, mais dano, rápida) e alabarda (longa, menos dano, mais lenta, duas mãos)
+const WEAPONS = { sword: { n: 'Espada', reach: 1.0, dmg: 1.0, spd: 1.0, arc: 1.0 }, halberd: { n: 'Alabarda', reach: 1.65, dmg: 0.78, spd: 1.22, arc: 0.85 } };
+// uniformes de trabalho (código 1–7): o personagem veste ao começar um turno/bico e tira ao terminar; os funcionários NPC usam os mesmos
+const UNIFORMS = {
+  1: { n: 'avental de couro', body: '#5a4030', b2: '#8a6a48', trim: '#2a1a10' },          // forja, serraria, carpintaria
+  2: { n: 'avental branco', body: '#e8e4da', b2: '#3a5a3a', trim: '#5a7a5a' },            // boticário, alambique
+  3: { n: 'colete de loja', body: '#6a2a2a', b2: '#e8dcc0', trim: '#c9a24a' },            // lojas, taverna
+  4: { n: 'bata de jardineiro', body: '#5a7a3a', b2: '#c8b890', trim: '#3a2a1a', head: 'hood' },
+  5: { n: 'capa de mensageiro', body: '#3a6a8a', b2: '#d8c8a0', trim: '#c9a24a', head: 'hood' },
+  6: { n: 'casaca de banqueiro', body: '#1e2a3a', b2: '#e8dcc0', trim: '#e2b74e' },
+  7: { n: 'roupa de trabalho', body: '#7a6a4a', b2: '#c8b890', trim: '#3a2a1a' },          // horta, mina, carga
+};
+const HEAVY = 0.7;   // carga a partir da qual o golpe é "forte" (letal em parte vital)
 const MELEE = { knight: { wpn: 'espada', reach: 1.0, dmg: 1.0, spd: 1.0 }, archer: { wpn: 'adaga', reach: 0.8, dmg: 0.7, spd: 0.82 }, mage: { wpn: 'cajado', reach: 1.15, dmg: 0.6, spd: 1.1 } };
 // golpes: W preparação, R impacto, C recuperação (ms); alcance (tiles); arco (meio-ângulo, rad); dano; parte do corpo; fôlego
 const STRIKES = {

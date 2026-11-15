@@ -379,6 +379,7 @@ function buildingSprite(b, night) {
       stairtower: { wall: '#a29c90', roof: '#3e4a66', tex: 'stone', roofTex: 'shingle', trim: '#2a1e14' },
       castle: { wall: '#b4ad9c', roof: '#3e4a66', tex: 'stone', roofTex: 'shingle', trim: '#c9a24a' },
       stable: { wall: '#8a6a44', roof: '#5a5048', tex: 'wood', roofTex: 'slate', trim: '#3a2410' },
+      bank: { wall: '#efe9dc', roof: '#4a5262', tex: 'stone', roofTex: 'slate', trim: '#c9a24a' },
       workshop: { wall: '#9a7850', roof: '#5a4a3a', tex: 'wood', roofTex: 'shingle', trim: '#3a2410' },
     }[b.kind];
     const timber = style.tex === 'plaster';

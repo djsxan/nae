@@ -289,6 +289,9 @@ function heroPoseFor(e, now) {
   if (e.custP && e.custP.sweep && e.walking) P.act = e.custP.act;
   if (e.walking) { P.walk = Math.floor(e.walkDist * (e.cls === 'knight' ? 8.5 : 9.5) / (e.running ? 1.45 : 1)) % 12; if (e.running) P.run = 1; if (e.dragMode === 'arms') P.walk = (12 - P.walk) % 12; }   // puxando pelos braços anda de costas
   if (e.skin === 'weaver') { P.walk = -1; P.run = 0; }
+  P.uni = ((e.stb || 0) >> 7) & 7 || undefined;
+  P.wpn = e.cls === 'knight' && ((e === G.me ? e.wpn === 'halberd' : (e.stb & 64))) ? 'halberd' : undefined;
+  if (e === G.me && G.melee && !e.anim) { const k = G.melee.k, held = now - G.melee.t0; P.act = { k: 'atk_' + k, f: Math.min(4, Math.floor(held / 60)) }; }
   if (e.anim) { const t = actProg(e.anim, now); if (e.anim.a === 'adore' && (e.anim.ms || 0) > 3000) { if (now - e.anim.t0 < e.anim.ms) P.act = { k: 'adore', f: Math.min(9, Math.floor((now - e.anim.t0) / 80)) }; } else if (t >= 0 && ACTS[e.anim.a]) P.act = { k: e.anim.a, f: Math.min(11, Math.floor(t * 12)) }; }
   if (!P.act && typeof bowPose === 'function') { const bp = bowPose(e, now); if (bp) P.act = bp; }
   if (!e.isNpc) { P.lost = e.lost || 0; P.pro = e.pro || 0; }
@@ -472,6 +475,9 @@ function drawMonsterEntity(ctx, e, sx, sy, now) {
   if (R3.ok) {
     let atk = -1, ak = null;
     if (e.skin === 'weaver') { P.walk = -1; P.run = 0; }
+  P.uni = ((e.stb || 0) >> 7) & 7 || undefined;
+  P.wpn = e.cls === 'knight' && ((e === G.me ? e.wpn === 'halberd' : (e.stb & 64))) ? 'halberd' : undefined;
+  if (e === G.me && G.melee && !e.anim) { const k = G.melee.k, held = now - G.melee.t0; P.act = { k: 'atk_' + k, f: Math.min(4, Math.floor(held / 60)) }; }
   if (e.anim) { const t = actProg(e.anim, now); if (t >= 0) { if (/^atk_/.test(e.anim.a)) { ak = e.anim.a; atk = Math.min(11, Math.floor(t * 12)); } else atk = Math.min(7, Math.floor(t * 8)); } }
     if (e.anim && e.anim.W && e.anim.reach && now - e.anim.t0 < e.anim.W + 120) drawTelegraph(ctx, e, sx, sy, now);
     if (!ak && e.blockAt && now - e.blockAt < 350) { ak = 'parry'; atk = 6; }
@@ -1050,7 +1056,6 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   for (const it of upper) drawItem(it);
   for (const it of sky) drawItem(it);   // o dragão voando passa por cima de tudo
   if (typeof drawBowTop === 'function') drawBowTop(ctx, now);
-  if (typeof drawJobsOverlay === 'function') drawJobsOverlay(ctx, now);
   if (typeof drawRadial === 'function') { drawRadial(ctx, now); drawGripBar(ctx, now); }
   if (typeof drawChokeRing === 'function') { drawChokeRing(ctx, now); drawLockpick(ctx); }
   // dentro de uma construção: a cidade escurece e o cômodo aparece cortado, com quem está dentro
@@ -1073,6 +1078,8 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 0.34; try { ctx.filter = 'brightness(0.55)'; } catch (e) { } ctx.drawImage(L, 0, 0); ctx.restore();
     }
   }
+  if (typeof drawMeleeArc === 'function') drawMeleeArc(ctx, now);
+  if (typeof drawJobsOverlay === 'function') drawJobsOverlay(ctx, now);   // barra de coleta/turno e marcador: por cima do interior
   // silhuetas: você (dourado) e amigos (azul) quando algo os esconde
   for (const q of PL) { const e = q.e; if (!e._hid || !e._spr || inside) continue; pblit(ctx, tintOf(e._spr, q.me ? '#ffd060' : '#5aa8ff'), e._sx, e._sy, 0.62); }
 

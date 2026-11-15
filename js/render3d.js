@@ -259,6 +259,15 @@ function buildWeapon(L, S, trimM) {
     const str = new THREE.Line(sg, strM); obj.add(str);
     const arrow = mesh(cylG(0.008 * S, 0.008 * S, 0.7 * S, 5), mat('#d4c8a6', 'wood'), 0, 0, 0); obj.add(arrow); arrow.visible = false;
     W.bow = { arc, str, arrow, half, tipZ: -0.2 * S };
+  } else if (k === 'halberd') {   // alabarda: haste longa, lâmina de machado, ponta e gancho
+    const poleM = mat('#5a3a20', 'wood'), ironM = mat('#c4c8d0', 'metal'), H = 1.95 * S;
+    obj.add(mesh(cylG(0.02 * S, 0.024 * S, H, 8), poleM, 0, -H / 2 + 0.35 * S, 0));
+    const top = -H + 0.35 * S;
+    const bl = new THREE.Shape(); bl.moveTo(0, 0); bl.lineTo(0.2 * S, 0.06 * S); bl.quadraticCurveTo(0.27 * S, -0.1 * S, 0.2 * S, -0.26 * S); bl.lineTo(0, -0.2 * S); bl.closePath();
+    const blade = new THREE.Mesh(geo('halbblade' + S, () => new THREE.ExtrudeGeometry(bl, { depth: 0.012 * S, bevelEnabled: false }).translate(0.01 * S, 0, -0.006 * S)), ironM); blade.position.set(0, top + 0.18 * S, 0); obj.add(blade);
+    const hook = mesh(coneG(0.03 * S, 0.12 * S, 4), ironM, -0.08 * S, top + 0.1 * S, 0); hook.rotation.z = -Math.PI / 2.4; obj.add(hook);
+    const spike = mesh(coneG(0.025 * S, 0.22 * S, 6), ironM, 0, top - 0.1 * S, 0); spike.rotation.x = Math.PI; obj.add(spike);
+    obj.add(mesh(cylG(0.026 * S, 0.026 * S, 0.06 * S, 8), mat('#3a2414', 'leather'), 0, 0, 0));
   } else if (k === 'axe') {
     obj.add(mesh(cylG(0.02 * S, 0.022 * S, 0.8 * S, 8), mat('#4a3020', 'wood'), 0, -0.25 * S, 0));
     const shp = new THREE.Shape(); shp.moveTo(0, 0.12); shp.quadraticCurveTo(0.2, 0.1, 0.24, -0.02); shp.quadraticCurveTo(0.2, -0.16, 0, -0.14); shp.closePath();
@@ -313,7 +322,7 @@ function applyPose(R, Q, P, walkPh) {
   set(R.spine, Q.tl, Q.tw, 0);
   set(R.head, Q.ht * 0.8, Q.hw * 0.6, 0);
   // braços: pitch (θ), abertura (φ), cotovelo (β). A = direito (-x), B = esquerdo (+x)
-  set(R.A.sh, -Q.aA[0], 0, -Q.aA[1]); set(R.A.el, -Math.max(0, Q.aA[2]) + Math.min(0, Q.aA[2]) * -1 * -1, 0, 0);
+  set(R.A.sh, -Q.aA[0], Q.ay || 0, -Q.aA[1]); set(R.A.el, -Math.max(0, Q.aA[2]) + Math.min(0, Q.aA[2]) * -1 * -1, 0, 0);
   set(R.B.sh, -Q.aB[0], 0, Q.aB[1]); set(R.B.el, -Math.max(0, Q.aB[2]) + Math.min(0, Q.aB[2]) * -1 * -1, 0, 0);
   R.A.el.rotation.x = -Q.aA[2]; R.B.el.rotation.x = -Q.aB[2];
   set(R.LA.hp, -Q.lA[0], 0, 0); R.LA.kn.rotation.x = -Q.lA[1];
@@ -322,7 +331,7 @@ function applyPose(R, Q, P, walkPh) {
   // arma: ângulo absoluto no plano do corpo
   if (R.weapon) {
     const rel = Q.wp - (Q.aA[0] + Q.aA[2]);
-    if (!R.weapon.bow) R.weapon.obj.rotation.x = (R.weapon.flip ? Math.PI : 0) - rel;
+    if (!R.weapon.bow) { R.weapon.obj.rotation.x = (R.weapon.flip ? Math.PI : 0) - rel; R.weapon.obj.rotation.y = Q.wr || 0; }
   }
   // quadril balança
   R.hips.rotation.z = Q.sway || 0; R.hips.rotation.y = Q.yaw || 0;
@@ -432,11 +441,11 @@ function applyLost(R, mask = 0, pro = 0) {
   if (R.shield) R.shield.visible = !lost('armB');
   for (const k in R.stumps) { R.stumps[k].visible = lost(k) && !pr(k); if (R.pegs[k]) R.pegs[k].visible = lost(k) && pr(k); }
 }
-function pose3Key(P) { return (P.dir | 0) + '|' + (P.walk >= 0 ? (P.run ? 'r' : 'w') + P.walk : '') + (P.act ? P.act.k + P.act.f : '') + (P.idle ? P.idle.k + P.idle.f : '') + (P.sit ? 's' + P.sit + (P.sv || '') : '') + (P.smk != null ? 'k' + Math.floor(P.smk * 8) : '') + (P.eat != null ? 'e' + Math.floor(P.eat * 8) : '') + (P.carry ? 'c' : '') + (P.down ? 'd' + (P.prone ? 'p' : '') : '') + (P.nowp ? 'nw' : '') + (P.crawl ? 'cw' + P.crawl : '') + (P.drag ? 'D' + P.drag : '') + (P.tied ? 'T' + P.tied : '') + (P.surr ? 'U' : '') + (P.led ? 'L' : '') + (P.held ? 'H' + P.held + (P.held === 2 ? Math.floor(Date.now() / 90) % 4 : '') : '') + (P.cr ? 'K' : '') + (P.sl ? 'L' : '') + (P.hs ? 'h' + P.hs : '') + (P.br != null ? 'b' + P.br : '') + (P.limp ? 'm' + P.limp : '') + (P.armw ? 'W' : '') + (P.lost ? 'X' + P.lost + '_' + (P.pro || 0) : ''); }
+function pose3Key(P) { return (P.dir | 0) + '|' + (P.walk >= 0 ? (P.run ? 'r' : 'w') + P.walk : '') + (P.act ? P.act.k + P.act.f : '') + (P.idle ? P.idle.k + P.idle.f : '') + (P.sit ? 's' + P.sit + (P.sv || '') : '') + (P.smk != null ? 'k' + Math.floor(P.smk * 8) : '') + (P.eat != null ? 'e' + Math.floor(P.eat * 8) : '') + (P.carry ? 'c' : '') + (P.down ? 'd' + (P.prone ? 'p' : '') : '') + (P.nowp ? 'nw' : '') + (P.wpn === 'halberd' ? 'hb' : '') + (P.crawl ? 'cw' + P.crawl : '') + (P.drag ? 'D' + P.drag : '') + (P.tied ? 'T' + P.tied : '') + (P.surr ? 'U' : '') + (P.led ? 'L' : '') + (P.held ? 'H' + P.held + (P.held === 2 ? Math.floor(Date.now() / 90) % 4 : '') : '') + (P.cr ? 'K' : '') + (P.sl ? 'L' : '') + (P.hs ? 'h' + P.hs : '') + (P.br != null ? 'b' + P.br : '') + (P.limp ? 'm' + P.limp : '') + (P.armw ? 'W' : '') + (P.lost ? 'X' + P.lost + '_' + (P.pro || 0) : ''); }
 function heroSprite3D(cls, skin, color, P) {
-  const lk = cls + ':' + skin + ':' + color;
+  const lk = cls + ':' + skin + ':' + color + (P.wpn === 'halberd' && !P.uni ? ':hb' : '') + (P.uni ? ':u' + P.uni : '');
   return cache3('h3|' + lk + '|' + pose3Key(P) , () => {
-    const L = lookFor(lk, () => skin === 'weaver' ? WEAVER_LOOK() : heroLook(cls, skin, color));
+    const L = lookFor(lk, () => { const L0 = skin === 'weaver' ? WEAVER_LOOK() : heroLook(cls, skin, color); if (P.uni) return uniformLook(L0, P.uni); if (P.wpn === 'halberd') { L0.weapon = 'halberd'; L0.shield = null; } return L0; });
     let R = _rigs.get(lk); if (!R) { R = buildHumanoid(L, skin === 'weaver' ? { scale: 1.12 } : undefined); if (skin === 'weaver') weaverExtras(R); else epicHero(R, L, 1, skin); _rigs.set(lk, R); }
     const Q = buildPose(cls, P);
     applyLost(R, P.lost || 0, P.pro || 0);

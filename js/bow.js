@@ -166,3 +166,23 @@ function bowEvent(m, now) {
   }
   return false;
 }
+
+// ---------- mira do corpo a corpo: segurando o clique, o arco do golpe aparece no chão até o alcance da arma ----------
+function meleeReach(k) { const me = G.me, WP = WEAPONS[me.wpn === 'halberd' ? 'halberd' : 'sword'], B = STRIKES[k], M = MELEE[me.cls] || MELEE.knight; return { r: B.reach * M.reach * WP.reach, arc: B.arc * WP.arc, zone: B.zone }; }
+function drawMeleeArc(ctx, now) {
+  const me = G.me, M0 = G.melee; if (!me || !M0 || me.cls !== 'knight') return;
+  const held = now - M0.t0, c = held < 150 ? 0 : Math.min(1, (held - 150) / 650), heavy = c >= HEAVY, R = meleeReach(M0.k), a = me.fa ?? 0, ox = G.view.ox, oy = G.view.oy;
+  const P = (ang, r) => { const p = iso(me.rx + Math.cos(ang) * r, me.ry + Math.sin(ang) * r); return [p.sx + ox, p.sy + oy]; };
+  ctx.save(); const col = heavy ? '232,70,50' : '240,220,150';
+  ctx.beginPath(); const c0 = P(0, 0); ctx.moveTo(c0[0], c0[1]); for (let k = 0; k <= 16; k++) { const q = P(a - R.arc + 2 * R.arc * k / 16, R.r); ctx.lineTo(q[0], q[1]); } ctx.closePath();
+  ctx.fillStyle = 'rgba(' + col + ',' + (0.1 + 0.18 * c) + ')'; ctx.fill(); ctx.strokeStyle = 'rgba(' + col + ',0.85)'; ctx.lineWidth = 1; ctx.stroke();
+  // barra de carga na borda do arco
+  ctx.beginPath(); for (let k = 0; k <= 16; k++) { const q = P(a - R.arc + 2 * R.arc * k / 16 * c, R.r + 0.08); k ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1]); } ctx.strokeStyle = 'rgba(' + col + ',1)'; ctx.lineWidth = 2; ctx.stroke();
+  // quem está dentro do arco fica marcado, com a parte do corpo que vai acertar
+  const ZT = { head: 'cabeça', torso: 'tronco', legs: 'pernas' }, inside = (x, y, rad) => { const d = Math.hypot(x - me.rx, y - me.ry); if (d > R.r + rad) return false; let df = Math.atan2(y - me.ry, x - me.rx) - a; df = Math.atan2(Math.sin(df), Math.cos(df)); return Math.abs(df) <= R.arc + rad / Math.max(0.5, d); };
+  const mark = (x, y) => { const p = iso(x, y), sx = p.sx + ox, sy = p.sy + oy; ctx.strokeStyle = 'rgba(' + col + ',0.95)'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.ellipse(sx, sy, 7, 3.5, 0, 0, 7); ctx.stroke(); ctx.fillStyle = heavy ? '#ffb0a0' : '#fff2c0'; ctx.font = 'bold 6px serif'; ctx.textAlign = 'center'; ctx.fillText(ZT[R.zone] + (heavy && R.zone === 'head' ? ' · FATAL' : heavy ? ' · forte' : ''), sx, sy - 38); };
+  for (const id in G.monsters) { const q = G.monsters[id]; if (!q.dieAt && inside(q.rx, q.ry, (MON[q.type].rad || 0.3))) mark(q.rx, q.ry); }
+  for (const id in G.players) { const q = G.players[id]; if (q !== me && q.visible && !q.downed && inside(q.rx, q.ry, 0.3)) mark(q.rx, q.ry); }
+  for (const id in G.npcs) { const q = G.npcs[id]; if (!q.npDead && inside(q.rx, q.ry, 0.3)) mark(q.rx, q.ry); }
+  ctx.restore();
+}

@@ -1083,6 +1083,7 @@ const HVAR = [
   { wall: '#cfc4ae', roof: '#6a5a4a', roofTex: 'slate', trim: '#4a3020' },
   { wall: '#e2cfa8', roof: '#3e4656', roofTex: 'slate', trim: '#5a3a1e' },
 ];
+BSTYLE.bank = { wall: '#efe9dc', roof: '#4a5262', tex: 'stoneblock', roofTex: 'slate', trim: '#c9a24a' };
 const WSTYLE = {
   saw: { wall: '#8a6a44', roof: '#5a4a3a', tex: 'wood', roofTex: 'shingle', trim: '#3a2410' },
   carp: { wall: '#a07a4e', roof: '#7a3a26', tex: 'wood', roofTex: 'shingle', trim: '#3a2410' },
@@ -1410,6 +1411,15 @@ function mBuilding(b, night) {
     for (const s of [-0.62, 0.62]) { const bk = grp(); bk.add(mk(new THREE.CylinderGeometry(0.17, 0.13, 0.22, 10, 1, true).translate(0, 0.11, 0), smat('wood', '#a8803a', { side: THREE.DoubleSide }))); for (let k = 0; k < 6; k++) bk.add(mk(new THREE.SphereGeometry(0.06, 7, 5).translate(Math.cos(k) * 0.08, 0.22, Math.sin(k) * 0.08), smat(null, k % 3 ? '#c02a1e' : '#e8c03a', { rough: 0.45 }))); bk.position.set(dX + s, 0, h + 0.3); o.add(bk); }
   }
   if (b.kind === 'tavern' || b.kind === 'shop') { const br = mBarrel(); br.scale.setScalar(0.8); br.position.set(w + 0.32, 0, h * 0.25); o.add(br); }
+  if (b.kind === 'bank') {   // pórtico de colunas brancas, frontão com o brasão dourado e escadaria (estilo Gringotts)
+    const marble = smat('stoneblock', '#f2ede2', { bump: 0.8 }), gold = smat(null, '#d4a94a', { metal: 1, rough: 0.3 }), n = 6, z0 = h + 0.75, Hc = H - 0.2;
+    for (let k = 0; k < 3; k++) o.add(wbox(w + 0.6 - k * 0.2, 0.14, 1.3 - k * 0.32, w / 2, 0.07 + k * 0.14, h + 0.65 - k * 0.16, marble, 1));
+    for (let k = 0; k < n; k++) { const x = 0.45 + k * (w - 0.9) / (n - 1); o.add(mk(new THREE.CylinderGeometry(0.17, 0.2, Hc - 0.5, 14).translate(x, 0.42 + (Hc - 0.5) / 2, z0), marble)); o.add(wbox(0.46, 0.14, 0.46, x, 0.49, z0, marble, 1)); o.add(wbox(0.46, 0.16, 0.46, x, Hc - 0.02, z0, marble, 1)); }
+    o.add(wbox(w + 0.3, 0.32, 1.0, w / 2, Hc + 0.22, h + 0.55, marble, 1));
+    const tri = new THREE.Shape(); tri.moveTo(-w / 2 - 0.15, 0); tri.lineTo(w / 2 + 0.15, 0); tri.lineTo(0, 1.0); tri.closePath();
+    o.add(mk(new THREE.ExtrudeGeometry(tri, { depth: 0.9, bevelEnabled: false }).translate(w / 2, Hc + 0.38, h + 0.1), marble));
+    o.add(mk(new THREE.CircleGeometry(0.28, 16).translate(w / 2, Hc + 0.72, h + 1.01), gold)); o.add(mk(new THREE.TorusGeometry(0.28, 0.03, 6, 20).translate(w / 2, Hc + 0.72, h + 1.02), gold));
+  }
   if (b.kind === 'stable') { const hy = mHay(); hy.position.set(w + 0.5, 0, h * 0.5); hy.rotation.y = Math.PI / 2; o.add(hy); }
   if (b.kind === 'smith') { o.add(mk(CYL(0.3, 0.34, 0.5, w + 0.45, 0.25, 0.7, 12), smat('brick', '#6a665e'))); o.add(mk(CYL(0.26, 0.26, 0.03, w + 0.45, 0.51, 0.7, 12), smat(null, '#3a1208', { emissive: '#ff5a10', ei: 0.8 }))); }
   return o;
@@ -1420,7 +1430,7 @@ function mBuilding(b, night) {
 // ============================================================
 function mInterior(b, fl = 0) {
   const [w, h] = bDims(b), { H } = bldDims(b), o = grp(), L = interiorLayout(b, fl), R = rng(b.x * 13 + b.y), nF = floorsOf(b);
-  const stoneK = b.kind === 'temple' || b.kind === 'castle' || b.kind === 'smith' || b.kind === 'barracks' || b.kind === 'jail' || b.kind === 'boutique' || b.kind === 'manor';
+  const stoneK = b.kind === 'bank' || b.kind === 'temple' || b.kind === 'castle' || b.kind === 'smith' || b.kind === 'barracks' || b.kind === 'jail' || b.kind === 'boutique' || b.kind === 'manor';
   const floorM = stoneK ? smat('stoneblock', b.kind === 'castle' ? '#a8a092' : '#8e887c', { bump: 1 }) : smat('wood', b.kind === 'stable' ? '#8a6a3e' : '#7a5232', { bump: 1.2 });
   const wallM = stoneK ? smat('brick', b.kind === 'castle' ? '#b4ad9c' : '#a29c90', { bump: 1.2 }) : smat('plaster', '#e2d6bc', { bump: 0.7 });
   const trimM = smat('wood', '#4a2f17'), hw = Math.min(H / nF, b.kind === 'castle' || b.kind === 'temple' ? 5 : 2.3), t = 0.16;
@@ -1525,6 +1535,12 @@ function mInterior(b, fl = 0) {
       case 'chair': { const sd = f.seat; g.add(wbox(0.42, 0.05, 0.42, 0, 0.45, 0, W_(), 2)); for (const [px, pz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) g.add(wbox(0.04, 0.45, 0.04, px * 0.18, 0.22, pz * 0.18, DW(), 2)); const bx = sd === 1 ? -0.19 : sd === 5 ? 0.19 : 0, bz = sd === 7 ? -0.19 : sd === 3 ? 0.19 : 0; g.add(wbox(bx ? 0.04 : 0.42, 0.5, bz ? 0.04 : 0.42, bx, 0.72, bz, DW(), 2)); break; }
       case 'pew': g.add(wbox(f.w - 0.1, 0.06, 0.42, 0, 0.45, -0.05, W_(), 2)); g.add(wbox(f.w - 0.1, 0.55, 0.05, 0, 0.75, 0.17, W_(), 2)); for (const px of [-(f.w - 0.2) / 2, (f.w - 0.2) / 2]) g.add(wbox(0.06, 0.95, 0.46, px, 0.47, 0, DW(), 2)); break;
       case 'shelf': { const along = backZ; g.add(wbox(along ? 0.9 : 0.35, 1.8, along ? 0.35 : 0.9, along ? 0 : -0.3, 0.9, along ? -0.3 : 0, DW(), 2)); const cols = [['#c8a050', '#8a5a2a', '#d8d0b0', '#6a8a4a'], ['#3ad878', '#d84a6a', '#5aa8f0', '#e8c040'], ['#6a2a2a', '#2a3a6a', '#3a5a2a', '#7a5a2a'], ['#c83a3a', '#3a5ac8', '#e8d8b0', '#8a3ac8'], ['#e8dcb8', '#c8b080', '#d8c8a0', '#a88a5a']][f.v || 0]; for (let sy = 0; sy < 4; sy++) { g.add(wbox(along ? 0.86 : 0.3, 0.03, along ? 0.3 : 0.86, along ? 0 : -0.28, 0.25 + sy * 0.45, along ? -0.28 : 0, W_(), 2)); for (let k = 0; k < 4; k++) { const off = -0.3 + k * 0.2, c = cols[(k + sy) % 4]; const gm = f.v === 1 ? new THREE.CylinderGeometry(0.04, 0.05, 0.16, 8) : f.v === 2 ? new THREE.BoxGeometry(0.06, 0.24, 0.16) : f.v === 3 ? new THREE.CylinderGeometry(0.07, 0.07, 0.22, 8).rotateZ(Math.PI / 2) : new THREE.CylinderGeometry(0.06, 0.07, 0.15, 8); g.add(mk(gm.translate(along ? off : -0.28, 0.35 + sy * 0.45, along ? -0.28 : off), smat(null, c, { rough: f.v === 1 ? 0.1 : 0.6 }))); } } break; }
+      case 'bankdesk': { const dk = smat('wood', '#3a2214', { bump: 1.2 }), gold = smat(null, '#d4a94a', { metal: 1, rough: 0.3 }); g.add(wbox(0.8, 1.35, 0.9, 0, 0.675, 0, dk, 1.5)); g.add(wbox(0.9, 0.06, 1.0, 0, 1.38, 0, dk, 1.5)); g.add(mk(new THREE.BoxGeometry(0.3, 0.04, 0.22).translate(0, 1.43, 0.1), smat(null, '#efe6cf', { rough: 1 }))); g.add(mk(new THREE.CylinderGeometry(0.04, 0.05, 0.25, 8).translate(0.28, 1.53, -0.25), gold)); g.add(mk(new THREE.SphereGeometry(0.07, 8, 6).translate(0.28, 1.7, -0.25), smat(null, '#ffd890', { emissive: '#ffb850', ei: 1.2 }))); for (let k = 0; k < 3; k++) g.add(mk(new THREE.CylinderGeometry(0.05, 0.05, 0.03 + k * 0.02, 10).translate(-0.25, 1.42 + k * 0.025, 0.2), gold)); break; }
+      case 'vault': { const ir = smat(null, '#8a8e96', { metal: 1, rough: 0.35 }), gold = smat(null, '#c9a24a', { metal: 1, rough: 0.3 }), st = smat('stoneblock', '#6a665e', { bump: 1.2 });
+        g.add(mk(new THREE.TorusGeometry(1.15, 0.18, 8, 32).translate(0, 1.3, -0.4), st)); g.add(mk(new THREE.CylinderGeometry(1.05, 1.05, 0.22, 32).rotateX(Math.PI / 2).translate(0, 1.3, -0.38), ir));
+        for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; g.add(mk(new THREE.CylinderGeometry(0.07, 0.07, 0.12, 10).rotateX(Math.PI / 2).translate(Math.cos(a) * 0.82, 1.3 + Math.sin(a) * 0.82, -0.25), gold)); }
+        g.add(mk(new THREE.TorusGeometry(0.35, 0.04, 6, 20).translate(0, 1.3, -0.24), gold)); for (let k = 0; k < 6; k++) { const s = mk(new THREE.BoxGeometry(0.7, 0.04, 0.04).translate(0, 1.3, -0.24), gold); s.rotation.z = k / 6 * Math.PI; s.position.set(0, 0, 0); g.add(s); }
+        g.add(mk(new THREE.CylinderGeometry(0.1, 0.1, 0.12, 12).rotateX(Math.PI / 2).translate(0, 1.3, -0.2), gold)); break; }
       case 'counter': if (f.v === 9) { const gold = smat(null, '#d4a94a', { metal: 1, rough: 0.3 }); g.add(wbox(f.w - 0.05, 0.95, 0.6, 0, 0.475, 0, smat('wood', '#2a1610', { bump: 1.2 }), 1.5)); g.add(mk(new THREE.BoxGeometry(f.w + 0.05, 0.06, 0.7).translate(0, 0.99, 0), smat(null, '#1a1a1e', { rough: 0.15, metal: 0.3 }))); g.add(mk(new THREE.BoxGeometry(f.w - 0.1, 0.05, 0.62).translate(0, 0.12, 0.01), gold)); g.add(mk(new THREE.BoxGeometry(f.w - 0.1, 0.05, 0.62).translate(0, 0.86, 0.01), gold)); break; }
         g.add(wbox(f.w - 0.05, 0.95, 0.6, 0, 0.475, 0, smat('wood', '#5a3a1e', { bump: 1.2 }), 1.5)); g.add(wbox(f.w + 0.05, 0.07, 0.7, 0, 0.98, 0, W_(), 1.5)); for (let k = 0; k < f.w * 2; k++) g.add(mk((k % 2 ? new THREE.CylinderGeometry(0.05, 0.045, 0.14, 8) : new THREE.BoxGeometry(0.16, 0.1, 0.12)).translate(-f.w / 2 + 0.3 + k * 0.5, 1.08, 0), smat(null, ['#c8a050', '#8a5a2a', '#3ad878', '#d84a6a', '#e8dcb8'][(k + (f.v || 0)) % 5], { rough: 0.5 }))); break;
       case 'display': g.add(wbox(0.85, 0.75, 0.6, 0, 0.375, 0, W_(), 2)); for (let k = 0; k < 5; k++) g.add(mk(new THREE.SphereGeometry(0.06, 8, 6).translate(-0.3 + k * 0.15, 0.82, (k % 2) * 0.15 - 0.07), smat(null, ['#e8b030', '#c83a3a', '#3ad878', '#5aa8f0', '#e8e0c8'][(k + (f.v || 0)) % 5], { rough: 0.4 }))); break;
