@@ -83,22 +83,23 @@ const WALL_UNITS = 176 / (32 * Math.SQRT2 * Math.cos(Math.PI / 6));   // altura 
 const BH = (kind, w, h, H, RH, name, extra) => ({ kind, w, h, H, RH, floors: Math.max(1, Math.min(3, Math.round(H / 1.75))), name: name || '', wall: Math.round(H * 19.6), roof: Math.round(RH * 19.6), ...extra });
 const BUILDINGS = TEST3D ? [] : [
   { x: C - 28, y: C - 29, ...BH('temple', 9, 8, 6.5, 5.0, 'Catedral da Aurora', { floors: 1 }) },
-  { x: C + 13, y: C - 7, ...BH('shop', 5, 5, 4.0, 2.8, 'Empório do Borin') },
-  { x: C + 21, y: C + 8, ...BH('smith', 6, 5, 2.6, 2.6, 'Forja de Hrodgar') },
+  { x: C - 30, y: C - 1, ...BH('shop', 5, 5, 4.0, 2.8, 'Empório do Borin') },
+  { x: C - 22, y: C - 1, ...BH('smith', 6, 5, 2.6, 2.6, 'Forja de Hrodgar') },
   { x: C - 15, y: C + 8, ...BH('tavern', 6, 7, 4.2, 3.0, 'Taverna do Javali', { door: 'E' }) },   // de frente para a praça do mercado
   { x: C + 5, y: C + 22, ...BH('barracks', 8, 5, 4.0, 2.6, 'Quartel da Guarda') },
   { x: C - 28, y: C + 24, ...BH('stable', 5, 4, 2.6, 2.4, 'Estábulo', { floors: 1 }) },
-  { x: C + 13, y: C + 0, ...BH('shop', 5, 4, 4.0, 2.8, 'Boticário de Elva', { v: 1 }) },
-  { x: C + 21, y: C - 8, ...BH('shop', 6, 5, 5.4, 3.4, 'Arcanos & Varinhas', { v: 2 }) },
-  { x: C + 13, y: C + 9, ...BH('shop', 5, 5, 4.0, 2.8, 'Alfaiataria Real', { v: 3 }) },
-  { x: C + 21, y: C + 15, ...BH('shop', 6, 4, 2.6, 2.6, 'Pergaminhos & Mapas', { v: 4 }) },
+  { x: C - 29, y: C + 8, ...BH('shop', 5, 5, 2.4, 2.2, 'Boticário de Elva', { v: 1, door: 'N', floors: 1 }) },
+  { x: C - 22, y: C - 8, ...BH('shop', 5, 5, 5.0, 3.2, 'Arcanos & Varinhas', { v: 2, door: 'W' }) },
+  { x: C - 22, y: C + 8, ...BH('shop', 5, 5, 2.4, 2.2, 'Alfaiataria Real', { v: 3, door: 'N', floors: 1 }) },
+  { x: C - 29, y: C - 8, ...BH('shop', 5, 5, 3.6, 2.6, 'Pergaminhos & Mapas', { v: 4, door: 'E' }) },
   { x: C - 5, y: C - 19, ...BH('castle', 12, 10, 10, 6.5, 'Castelo de Sxan', { floors: 2 }) },
   { x: C + 22, y: C + 20, ...BH('jail', 6, 8, 3.2, 2.4, 'Cadeia de Sxan', { floors: 1, door: 'W' }) },
-  { x: C - 19, y: C - 3, ...BH('boutique', 8, 6, 4.6, 3.0, 'Ateliê Real de Sxan', { floors: 1, door: 'S' }) },
+  { x: C - 15, y: C - 1, ...BH('boutique', 6, 5, 4.4, 3.0, 'Ateliê Real de Sxan', { floors: 1, door: 'S' }) },
   { x: C - 13, y: C + 16, ...BH('fruithouse', 5, 4, 2.9, 2.6, '', { floors: 1, door: 'E' }) },
-  { x: C - 30, y: C - 1, ...BH('shop', 5, 5, 3.8, 2.6, '', { v: 1, door: 'S', blank: true }) },
-  { x: C - 29, y: C + 8, ...BH('shop', 5, 5, 3.6, 2.6, '', { v: 3, door: 'N', blank: true }) },
-  { x: C - 22, y: C + 8, ...BH('shop', 5, 5, 4.0, 2.8, '', { v: 2, door: 'N', blank: true }) },
+  // bairro nobre (à direita do castelo): casarões de pedra clara com jardins murados
+  { x: C + 24, y: C - 18, ...BH('manor', 6, 6, 4.8, 3.2, 'Casa Valmont', { door: 'W' }) },
+  { x: C + 24, y: C - 6, ...BH('manor', 6, 6, 4.6, 3.0, 'Casa Aldren', { door: 'W', v: 1 }) },
+  { x: C + 24, y: C + 8, ...BH('manor', 6, 5, 4.4, 3.0, 'Casa Morvane', { door: 'W', v: 2 }) },
 ];
 // portas: lado S (+y, padrão), N (-y), E (+x) ou W (-x). O layout interno usa um "quadro local":
 // i = posição ao longo da parede da porta (largura A), j = profundidade (0 = fundo, D-1 = linha da porta)
@@ -185,9 +186,13 @@ function interiorLayout0(b, fl = 0) {
     return { F, npc: null };
   }
   if (k === 'boutique') {
-    put('mirror', 0, 0); put('clothrack', 1, 0); put('clothrack', 2, 0); put('mannequin', w - 3, 0); put('mannequin', w - 1, 0);
-    npcAt(w - 2, 1); put('counter', w - 3, 2, { w: 3, v: 9 }); put('chair', 0, 2, { seat: 1 }); put('chair', 0, 3, { seat: 1 });
-    put('rug', 1, 1, { w: 4, h: h - 2, v: 9, block: false });
+    put('mirror', 0, 0); put('clothrack', 1, 0); put('mannequin', w - 2, 0); put('mannequin', w - 1, 0);
+    npcAt(w - 2, 1); put('counter', w - 3, 2, { w: 3, v: 9 }); put('chair', 0, 2, { seat: 1 });
+    put('rug', 1, 1, { w: 2, h: 2, v: 9, block: false });
+  } else if (k === 'manor') {
+    put('bed', 0, 0, { w: 2, h: 2, v: 1 }); put('fireplace', w - 2, 0); put('shelf', 2, 0); put('chest', 3, 0);
+    if (put('table', w - 3, 2, { w: 2 })) { put('chair', w - 4, 2, { seat: 1 }); put('chair', w - 1, 2, { seat: 5 }); }
+    put('mirror', 0, 3); put('rug', 1, 2, { w: 2, h: 2, v: 9, block: false });
   } else if (k === 'fruithouse') {
     put('bed', 0, 0, { h: 2 }); put('stove', 2, 0); taken.add(key(2, 1)); put('chest', 1, 0); put('crate', w - 1, 0, { v: 7 });
     if (put('table', 2, h - 2)) put('chair', 1, h - 2, { seat: 1 });
@@ -275,7 +280,10 @@ const NPCS = TEST3D ? [] : [
   { id: 'guard4', name: 'Sentinela Wyn', kind: 'guard', x: C + 2.4, y: C - 29.4 },
   { id: 'fruit', name: 'Marta, a Fruteira', kind: 'fruit', x: C - 3, y: C + 9, stall: [C - 3, C + 10] },
   { id: 'executioner', name: 'Mestre Corvo, o Carrasco', kind: 'executioner', x: C - 4.6, y: C + 3.4 },
-  { id: 'tailor', name: 'Mestre Aurélio, o Alfaiate Real', kind: 'tailor', ...npcIn(BLD_BY('boutique'), { x: C - 15, y: C - 1 }) },
+  { id: 'tailor', name: 'Mestre Aurélio, o Alfaiate Real', kind: 'tailor', ...npcIn(BLD_BY('boutique'), { x: C - 12, y: C + 1 }) },
+  { id: 'noble1', name: 'Lady Ysolde Valmont', kind: 'noble', x: C + 20, y: C - 14, route: [[C + 20, C - 14], [C + 20, C - 3], [C + 16, C - 2], [C + 20, C + 6], [C + 20, C - 14]] },
+  { id: 'noble2', name: 'Lorde Cassian Aldren', kind: 'noble2', x: C + 18, y: C + 2, route: [[C + 18, C + 2], [C + 23, C - 1], [C + 18, C - 9], [C + 16, C - 2], [C + 18, C + 2]] },
+  { id: 'gardener', name: 'Tobias, o Jardineiro', kind: 'gardener', x: C + 14.5, y: C - 10 },
   { id: 'guard5', name: 'Sentinela Corin', kind: 'guard', x: C - 29.4, y: C + 3.6 },
   { id: 'guard6', name: 'Sentinela Lys', kind: 'guard', x: C - 29.4, y: C + 8.4 },
   { id: 'jailer', name: 'Bruno, o Carcereiro', kind: 'jailer', ...npcIn(BLD_BY('jail'), { x: C + 25, y: C + 23 }) },
@@ -716,7 +724,10 @@ function generateWorld() {
   street(KEEP.x0 - 2, KEEP.y0, KEEP.x0 - 1, KEEP.y1); street(KEEP.x1 + 1, KEEP.y0, KEEP.x1 + 2, KEEP.y1);
   street(x0 + 2, C + 5, x1 - 2, C + 6);                    // rua do mercado (leste-oeste)
   street(x0, C + 4, C - 8, C + 7);                         // rua nova (larga) até o portão oeste
-  reserve(C - 18, C + 20, C - 8, C + 21); reserve(C + 7, C + 10, C + 17, C + 22);   // quintal da Marta; lado direito da feira sem casa
+  reserve(C - 18, C + 20, C - 8, C + 21); reserve(C + 7, C + 10, C + 17, C + 22);
+  reserve(C + 12, C - 24, x1 - 2, C + 15);   // bairro nobre
+  street(C + 17, C - 21, C + 20, C + 15);   // avenida arborizada (larga)
+  street(C + 13, C - 5, C + 23, C + 1);    // praça do chafariz   // quintal da Marta; lado direito da feira sem casa
   street(C + 19, C - 20, C + 20, y1 - 3);                  // beco dos mercadores (estreito, como o Beco Diagonal)
   street(C - 7, C + 9, C + 8, C + 17);                     // praça do mercado
   street(x0 + 2, C - 16, KEEP.x0 - 3, C - 15);             // rua do templo
@@ -808,11 +819,11 @@ function generateWorld() {
   decoAny(C - 1, y0 + 1, O.BRAZIER); decoAny(C + 2, y0 + 1, O.BRAZIER);
   for (let y = C - 18; y < y1 - 4; y += 6) { decoAny(C + 18, y, O.LAMP); decoAny(C + 21, y + 3, O.LAMP); }
   for (let x = x0 + 5; x < x1 - 4; x += 7) { if (Math.abs(x - C) > 4 && x > C - 8) { decoAny(x, C + 4, O.LAMP); } }
-  for (const [x, y] of [[C - 25, C + 3], [C - 21, C + 3], [C - 25, C + 8], [C - 17, C + 8], [C - 10, C + 8]]) decoAny(x, y, O.LAMP);
+  for (const [x, y] of [[C - 25, C + 3], [C - 16, C + 3], [C - 25, C + 8], [C - 17, C + 8], [C - 10, C + 8]]) decoAny(x, y, O.LAMP);
   decoAny(x0 + 1, C + 10, O.BARREL); decoAny(x0 + 1, C + 11, O.CRATE); decoAny(x0 + 2, C + 10, O.CRATE); decoAny(x0 + 2, C + 11, O.BARREL); decoAny(x0 + 2, C + 8, O.HAY); decoAny(x0 + 2, C + 9, O.BARREL);   // canto entre a loja e a muralha
   for (let y = C + 3; y <= C + 8; y++) for (let x = x0 + 2; x <= C - 4; x++) { const i = idx(x, y); if (obj[i] === O.RUBBLE || obj[i] === O.TREE || obj[i] === O.RUBBLEBIG) obj[i] = O.NONE; }   // rua nova limpa e organizada
   // Ateliê: vitrines no passeio da frente e no lado do largo
-  for (const [x, y] of [[C - 18, C + 3], [C - 13, C + 3], [C - 11, C - 2], [C - 11, C + 1]]) decoAny(x, y, O.VITRINE);
+  for (const [x, y] of [[C - 15, C + 4], [C - 10, C + 4], [C - 9, C], [C - 9, C + 2]]) decoAny(x, y, O.VITRINE);
   // casa da Marta: quintal cercado com macieira, floreiras e caixotes de fruta na porta
   { const hx = C - 13, hy = C + 16; for (let x = hx - 4; x <= hx - 1; x++) { decoAny(x, hy - 1, O.FENCE); if (x !== hx - 2) decoAny(x, hy + 4, O.FENCE); } for (let y = hy; y <= hy + 3; y++) decoAny(hx - 5, y, O.FENCE);
     decoAny(hx - 3, hy + 1, O.TREE); decoAny(hx - 2, hy + 3, O.FLOWERBED); decoAny(hx + 5, hy - 1, O.FRUITCRATE); decoAny(hx + 5, hy + 4, O.FRUITCRATE); decoAny(hx + 2, hy + 4, O.FLOWERBED); }
@@ -842,6 +853,17 @@ function generateWorld() {
   const tv = BUILDINGS[3]; decoAny(tv.x - 1, tv.y + tv.h + 1, O.TABLE); decoAny(tv.x + tv.w, tv.y + tv.h + 1, O.TABLE); decoAny(tv.x + tv.w, tv.y + 1, O.BARREL); decoAny(tv.x + tv.w, tv.y + 2, O.BARREL);
   // beco: caixas, barris e lampiões junto às lojas
   for (let k = 0; k < 10; k++) { const y = C - 18 + k * 5; decoAny(C + 18, y + 1, k % 2 ? O.BARREL : O.CRATE); }
+  // bairro nobre: chafariz com estátuas, árvores e lampiões na avenida, jardins murados com sebes
+  { const fx = C + 18, fy = C - 2;
+    for (const [x, y, o] of [[fx, fy, O.FOUNTAIN], [fx - 4, fy - 3, O.STATUE], [fx + 4, fy - 3, O.STATUE], [fx - 4, fy + 3, O.STATUE], [fx + 4, fy + 3, O.STATUE], [fx - 2, fy - 3, O.BENCH], [fx + 2, fy + 3, O.BENCH], [fx - 2, fy + 3, O.FLOWERBED], [fx + 2, fy - 3, O.FLOWERBED]]) decoAny(x, y, o);
+    for (let y = C - 20; y <= C + 14; y += 6) { if (Math.abs(y - fy) < 5) continue; decoAny(C + 16, y, O.BIRCH); decoAny(C + 21, y + 3, O.BIRCH); decoAny(C + 16, y + 3, O.LAMP); decoAny(C + 21, y, O.LAMP); }
+    for (const b of BUILDINGS.filter(q => q.kind === 'manor')) {
+      const gx0 = b.x - 2, gx1 = b.x + b.w, gy0 = b.y - 1, gy1 = b.y + b.h, [dtx, dty] = doorTile(b);
+      for (let x = gx0; x <= gx1; x++) for (const y of [gy0, gy1]) decoAny(x, y, O.LOWWALL);
+      for (let y = gy0; y <= gy1; y++) { if (Math.abs(y - dty) <= 0) continue; decoAny(gx0, y, O.LOWWALL); }
+      for (let y = gy0 + 1; y < gy1; y++) if (Math.abs(y - dty) > 1) decoAny(gx0 + 1, y, (y % 2) ? O.BUSH : O.FLOWERBED);
+    }
+    for (let y = C - 20; y <= C + 14; y += 3) if (Math.abs(y - fy) > 5) { decoAny(C + 13, y, O.BUSH); decoAny(C + 14, y + 1, O.FLOWERBED); } }
   // poços e árvores nos bairros
   for (const [dx, dy] of [[-18, -6], [24, -18], [-20, 14], [27, 26]]) decoAny(C + dx, C + dy, O.WELL);
   for (let k = 0; k < 160; k++) {
@@ -851,6 +873,7 @@ function generateWorld() {
     if (ground[i] === T.GRASS) obj[i] = r < 0.25 ? O.TREE : r < 0.4 ? O.BUSH : r < 0.7 ? O.FLOWER : O.TALLGRASS;
     else if (r < 0.06) obj[i] = O.BARREL;
   }
+  for (let y = C + 5; y <= C + 11; y++) for (let x = C - 11; x <= C - 4; x++) { const i = idx(x, y); if (obj[i] === O.TREE || obj[i] === O.OAK) obj[i] = (x + y) % 2 ? O.BUSH : O.FLOWERBED; }   // esquina da rua com a feira: só vegetação baixa
   // tochas na estrada fora dos portões
   for (const [x, y] of [[C - 2, y1 + 6], [C + 3, y1 + 6], [C - 2, y1 + 14], [C + 3, y1 + 14], [C - 1, y0 - 6], [C + 2, y0 - 6]]) if (ground[idx(x, y)] !== T.WATER) set(x, y, null, O.TORCH);
   // arredores: bosques e flores perto do fosso

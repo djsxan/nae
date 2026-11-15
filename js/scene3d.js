@@ -1040,6 +1040,7 @@ const BSTYLE = {
   smith: { wall: '#8e897e', roof: '#4e4844', tex: 'brick', roofTex: 'slate', trim: '#2a1e14' },
   barracks: { wall: '#9c968a', roof: '#5e4034', tex: 'brick', roofTex: 'shingle', trim: '#2a1e14' },
   stable: { wall: '#9a7850', roof: '#5a5048', tex: 'wood', roofTex: 'slate', trim: '#3a2410' },
+  manor: { wall: '#ece4d2', roof: '#3a4252', tex: 'stoneblock', roofTex: 'slate', trim: '#8a7a5a' },
   boutique: { wall: '#f2ece0', roof: '#2c3346', tex: 'stoneblock', roofTex: 'slate', trim: '#c9a24a' },
   fruithouse: { wall: '#ead9b4', roof: '#8e3e28', tex: 'plaster', roofTex: 'shingle', trim: '#4a2c16' },
   jail: { wall: '#7c786e', roof: '#3a3c42', tex: 'brick', roofTex: 'slate', trim: '#1e1a16' },
@@ -1347,7 +1348,7 @@ function mBuilding(b, night) {
 // ============================================================
 function mInterior(b, fl = 0) {
   const [w, h] = bDims(b), { H } = bldDims(b), o = grp(), L = interiorLayout(b, fl), R = rng(b.x * 13 + b.y), nF = floorsOf(b);
-  const stoneK = b.kind === 'temple' || b.kind === 'castle' || b.kind === 'smith' || b.kind === 'barracks' || b.kind === 'jail' || b.kind === 'boutique';
+  const stoneK = b.kind === 'temple' || b.kind === 'castle' || b.kind === 'smith' || b.kind === 'barracks' || b.kind === 'jail' || b.kind === 'boutique' || b.kind === 'manor';
   const floorM = stoneK ? smat('stoneblock', b.kind === 'castle' ? '#a8a092' : '#8e887c', { bump: 1 }) : smat('wood', b.kind === 'stable' ? '#8a6a3e' : '#7a5232', { bump: 1.2 });
   const wallM = stoneK ? smat('brick', b.kind === 'castle' ? '#b4ad9c' : '#a29c90', { bump: 1.2 }) : smat('plaster', '#e2d6bc', { bump: 0.7 });
   const trimM = smat('wood', '#4a2f17'), hw = Math.min(H / nF, b.kind === 'castle' || b.kind === 'temple' ? 5 : 2.3), t = 0.16;
