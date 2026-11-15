@@ -537,6 +537,7 @@ function objSprite(o, x, y) {
   switch (o) {
     case O.STOOL: return stoolSprite();
     case O.FRUITCRATE: return natureSprite('fcrate', 0) || smallSprite('crate');
+    case O.WATERWHEEL: return natureSprite('wheel', Math.floor(performance.now() / 260) % 4) || smallSprite('crate');
     case O.VITRINE: return typeof vitrineSprite === 'function' ? vitrineSprite(i) : smallSprite('crate');
     case O.STAGEFLOOR: return null;
     case O.GUILLOTINE: if (x !== STAGE.x) return natureSprite('guilp', 0); return natureSprite('guil', typeof guilState === 'function' ? guilState() : 0) || smallSprite('cart');
@@ -959,7 +960,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       if (G.loot && G.loot.id === c.id) { const k = Math.min(1, (now - G.loot.t0) / 1300); ctx.strokeStyle = '#ffe890'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(it.sx, it.sy - 34, 9, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke(); }
       return;
     }
-    if (it.rsign) { drawRentSign(ctx, it.sx, it.sy, now); return; }
+    if (it.rsign) { drawRentSign(ctx, it.sx, it.sy, now, it.rsign); return; }
     if (it.chest) {
       const c = it.chest, s = smallSprite('chest', c.open ? 1 : 0); ctx.imageSmoothingEnabled = true; if (s) pblit(ctx, s, it.sx, it.sy);
       if (c.mine && !c.open) { G.lights.push({ x: it.sx, y: it.sy - 10, r: 40, c: '255,220,120', a: 0.7 }); const t = now / 300; for (let k = 0; k < 3; k++) dab(ctx, it.sx + Math.cos(t + k * 2.1) * 12, it.sy - 22 + Math.sin(t * 1.3 + k) * 6, 2, 2, '#ffe890'); }
@@ -1013,7 +1014,11 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     }
     ctx.imageSmoothingEnabled = true;
   };
-  for (const it of items) if (!it.inside) drawItem(it);
+  // dentro de um prédio: o que fica NA FRENTE dele (ruas, casas e árvores mais perto da câmera) é desenhado depois do cômodo,
+  // escurecido e translúcido — antes ia para trás do cômodo e parecia que a rua estava um andar abaixo
+  let IR = null; const front = [];
+  if (inside) { const s0 = interiorSprite(inside.b, 0) || buildingSprite(inside.b, false), b = inside.b; if (s0) IR = { l: inside.sx - s0.ax - 40, r: inside.sx - s0.ax + s0.w + 40, t: inside.sy - s0.ay - 40, b: inside.sy - s0.ay + s0.h + 90, d: b.x + b.y + b.w + b.h - 2 + 0.6 }; }
+  for (const it of items) { if (it.inside) continue; if (IR && it.d > IR.d && it.sx > IR.l && it.sx < IR.r && it.sy > IR.t && it.sy < IR.b) { front.push(it); continue; } drawItem(it); }
   for (const it of upper) drawItem(it);
   for (const it of sky) drawItem(it);   // o dragão voando passa por cima de tudo
   if (typeof drawBowTop === 'function') drawBowTop(ctx, now);
@@ -1032,6 +1037,12 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       if (s) pblit(ctx, s, inside.sx, inside.sy - flRaise(inside.b, f), a);
     }
     for (const it of items) if (it.inside) drawItem(it);
+    if (front.length) {   // camada separada: escurece e deixa ver o cômodo através
+      const L = G._frontL || (G._frontL = document.createElement('canvas')); if (L.width !== ctx.canvas.width || L.height !== ctx.canvas.height) { L.width = ctx.canvas.width; L.height = ctx.canvas.height; }
+      const lc = L.getContext('2d'); lc.setTransform(1, 0, 0, 1, 0, 0); lc.clearRect(0, 0, L.width, L.height); lc.setTransform(ctx.getTransform()); lc.imageSmoothingEnabled = ctx.imageSmoothingEnabled;
+      const main = ctx; ctx = lc; try { for (const it of front) drawItem(it); } finally { ctx = main; }
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 0.34; try { ctx.filter = 'brightness(0.55)'; } catch (e) { } ctx.drawImage(L, 0, 0); ctx.restore();
+    }
   }
   // silhuetas: você (dourado) e amigos (azul) quando algo os esconde
   for (const q of PL) { const e = q.e; if (!e._hid || !e._spr || inside) continue; pblit(ctx, tintOf(e._spr, q.me ? '#ffd060' : '#5aa8ff'), e._sx, e._sy, 0.62); }

@@ -1,6 +1,6 @@
 # Nae — Gestão de negócios (documento de design, v0.1)
 
-> Status: **proposta para revisão**. O que existe hoje no jogo (v1.31): aluguel de **casas** pela Imobiliária Chave de Bronze. Lojas e oficinas já aparecem no painel, mas ainda sem contrato.
+> Status: **v1.32 — primeira versão jogável.** Já funciona: alugar ou comprar casas, lojas (4 pontos vagos da Rua Nova) e oficinas (5 na Vila do Oeste); lojas vendem sozinhas com margem barato/justo/caro; reabastecer pelo fornecedor (carroça em 1 hora do jogo); oficinas de extração (serraria, mina, horta) e de transformação (carpintaria, alambique); mensageiros NPC levam a produção até as suas lojas (e podem ser assaltados); lucro no cofre de cada negócio (vá buscar); salários, roubo noturno e melhorias (prateleiras, vitrine, ferramentas, cofre). Ainda não: contratar/demitir funcionários com traços, influência, inquilinos NPC, jogadores comprando nas lojas.
 > Este documento descreve como os negócios vão funcionar e propõe uma ordem de construção. As perguntas abertas estão no fim.
 
 ---

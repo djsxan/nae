@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.31.0';
-const VERSION_NAME = 'Nae · Imobiliária';
+const VERSION = 'v1.32.0';
+const VERSION_NAME = 'Nae · Negócios';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)

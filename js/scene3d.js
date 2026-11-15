@@ -521,7 +521,17 @@ function mGuilPlank() {
   o.add(wbox(0.38, 0.015, 0.06, 0, 0.46, -0.55, smat(null, '#3a2a1a', { rough: 0.9 }))); o.add(wbox(0.38, 0.015, 0.06, 0, 0.46, -1.0, smat(null, '#3a2a1a', { rough: 0.9 })));   // correias de couro
   o.rotation.y = -Math.PI / 2; return grp(o);
 }
-const NATURE = { guilp: [mGuilPlank, 1.0], guil: [mGuillotineG, 1.0], stool: [mStool, 1.0], fcrate: [mFruitCrate, 1.0], oak: [mOak, 2.15], birch: [mBirch, 2.0], willow: [mWillow, 2.05], fern: [mFern, 1.15], roots: [mRoots, 1.0], shrooms: [mShrooms, 0.95], berry: [mBerry, 1.05], herb: [mHerb, 1.0], boulder: [mBoulder, 1.15] };
+// roda d'água da serraria (4 quadros girando)
+function mWaterWheel(v) {
+  const o = grp(), W = WOOD(), D = DWOOD(), ir = IRON(), R = 0.95, rot = grp(); rot.position.set(0, 1.0, 0); rot.rotation.x = v * Math.PI / 8;
+  for (const zz of [-0.22, 0.22]) rot.add(mk(new THREE.TorusGeometry(R, 0.05, 6, 24).rotateY(Math.PI / 2).translate(zz, 0, 0), W));
+  for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2, sp = mk(new THREE.BoxGeometry(0.06, R * 2, 0.06), D); sp.rotation.x = a; rot.add(sp); const pd = mk(new THREE.BoxGeometry(0.5, 0.32, 0.05), W); pd.position.set(0, Math.cos(a) * R, Math.sin(a) * R); pd.rotation.x = -a; rot.add(pd); }
+  rot.add(mk(new THREE.CylinderGeometry(0.12, 0.12, 0.6, 10).rotateZ(Math.PI / 2), ir)); o.add(rot);
+  for (const zz of [-0.4, 0.4]) o.add(wbox(0.12, 1.1, 0.12, zz, 0.55, 0, D, 1));
+  o.add(mk(new THREE.BoxGeometry(0.9, 0.12, 0.3).translate(0, 0.06, 0), smat('stoneblock', '#7a756a')));
+  o.rotation.y = Math.PI / 2; return grp(o);
+}
+const NATURE = { wheel: [mWaterWheel, 1.0], guilp: [mGuilPlank, 1.0], guil: [mGuillotineG, 1.0], stool: [mStool, 1.0], fcrate: [mFruitCrate, 1.0], oak: [mOak, 2.15], birch: [mBirch, 2.0], willow: [mWillow, 2.05], fern: [mFern, 1.15], roots: [mRoots, 1.0], shrooms: [mShrooms, 0.95], berry: [mBerry, 1.05], herb: [mHerb, 1.0], boulder: [mBoulder, 1.15] };
 function natureSprite(kind, v) { const N = NATURE[kind]; if (!N || !S3.ok) return null; return scen3('nt|' + kind + '|' + v, () => { const g = N[0](v); g.scale.setScalar(N[1]); return g; }); }
 function rockGeo(seed, r, sx, sy, sz) {
   const g = new THREE.IcosahedronGeometry(r, 2), p = g.attributes.position, R = rng(seed), off = [R() * 9, R() * 9, R() * 9];
@@ -1067,7 +1077,15 @@ const HVAR = [
   { wall: '#cfc4ae', roof: '#6a5a4a', roofTex: 'slate', trim: '#4a3020' },
   { wall: '#e2cfa8', roof: '#3e4656', roofTex: 'slate', trim: '#5a3a1e' },
 ];
+const WSTYLE = {
+  saw: { wall: '#8a6a44', roof: '#5a4a3a', tex: 'wood', roofTex: 'shingle', trim: '#3a2410' },
+  carp: { wall: '#a07a4e', roof: '#7a3a26', tex: 'wood', roofTex: 'shingle', trim: '#3a2410' },
+  alch: { wall: '#d8c8a0', roof: '#3e5a46', tex: 'plaster', roofTex: 'shingle', trim: '#3a2410' },
+  farm: { wall: '#9a7850', roof: '#8a6a3a', tex: 'wood', roofTex: 'shingle', trim: '#3a2410' },
+  mine: { wall: '#7a756a', roof: '#4a4440', tex: 'stoneblock', roofTex: 'slate', trim: '#2a1e14' },
+};
 function styleOf(b) {
+  if (b.kind === 'workshop') return WSTYLE[b.wk] || WSTYLE.carp;
   if (b.kind === 'house' || (b.kind === 'shop' && b.v)) { const h = HVAR[(b.v || 0) % HVAR.length]; return { tex: 'plaster', ...h }; }
   return BSTYLE[b.kind];
 }

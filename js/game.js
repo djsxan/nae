@@ -29,6 +29,9 @@ function anySprite(cls, skin, color, P, kind) {
 }
 function later(ms, fn) { if (!ms || ms <= 0) fn(); else G.timers.push({ at: performance.now() + ms, fn }); }
 const IDLE_SETS = {
+  st_saw: ['stretch', 'polish', 'look'], st_mine: ['stretch', 'look', 'polish'], st_farm: ['look', 'stretch', 'yawn'], st_carp: ['polish', 'look', 'polish'], st_alch: ['look', 'polish', 'look'],
+  st_apoth: ['look', 'polish', 'wave'], st_arcane: ['look', 'yawn', 'polish'], st_tailor: ['polish', 'look', 'wave'], st_scroll: ['look', 'polish', 'yawn'],
+  courier1: ['look', 'stretch', 'wave'], courier2: ['look', 'yawn', 'stretch'], courier3: ['stretch', 'look', 'yawn'],
   knight: ['look', 'stretch', 'polish', 'kick', 'sit', 'look'], archer: ['look', 'stretch', 'yawn', 'polish', 'sit', 'kick'], mage: ['look', 'yawn', 'polish', 'stretch', 'sit'],
   noble: ['look', 'wave', 'look'], noble2: ['look', 'salute', 'look'], gardener: ['polish', 'polish', 'look', 'stretch'], tailor: ['look', 'polish', 'look', 'salute'], broker: ['look', 'polish', 'look', 'wave'], jailer: ['look', 'yawn', 'look', 'polish'], fruit: ['look', 'wave', 'look', 'stretch'], executioner: ['look', 'polish', 'look', 'stretch'], priest: ['pray', 'read', 'look', 'pray'], merchant: ['look', 'wave', 'kick', 'look'], innkeeper: ['drink', 'look', 'wave', 'drink'], guard: ['salute', 'look', 'kick', 'look'], captain: ['look', 'salute', 'polish', 'look'],
 };
@@ -389,6 +392,7 @@ function updateLocal(now, dt) {
     if (!keep) { let best = null, bd = rng2; for (const id in G.monsters) { const q = G.monsters[id]; if (q.dieAt || !q.visible || MON[q.type].beh) continue; const d = dist(me.x, me.y, q.rx, q.ry); if (d <= bd) { bd = d; best = q; } } if (best) setTarget(best.id); else if (cur && cur.dieAt) setTarget(null); }
   }
   const stF = (me.crouch ? 1 : 0) | (me.slide ? 2 : 0);
+  if (G.mouseS) G.mouseW = screenToWorld(G.mouseS[0], G.mouseS[1]);   // o cursor parado continua apontando para o mesmo lugar da TELA quando a câmera anda
   if (combatFacing() && G.mouseW) { let a = Math.atan2(G.mouseW.y - me.y, G.mouseW.x - me.x);
     { let best = null, bd = 3.4; for (const id in G.monsters) { const q = G.monsters[id]; if (q.dieAt || !q.visible || Math.abs((q.z || 0) - (me.z || 0)) > 0.5) continue; const d = dist(q.rx, q.ry, me.x, me.y), aq = Math.atan2(q.ry - me.y, q.rx - me.x); let df = Math.abs(aq - a) % (Math.PI * 2); if (df > Math.PI) df = Math.PI * 2 - df; if (d < bd && df < 0.95) { bd = d; best = aq; } }
       for (const id in G.players) { const q = G.players[id]; if (id === G.myId || !q.visible || q.downed || q.isNpc) continue; const d = dist(q.rx, q.ry, me.x, me.y), aq = Math.atan2(q.ry - me.y, q.rx - me.x); let df = Math.abs(aq - a) % (Math.PI * 2); if (df > Math.PI) df = Math.PI * 2 - df; if (d < bd && df < 0.95) { bd = d; best = aq; } }
@@ -651,11 +655,24 @@ function flashDamage() { const v = $('vignette'); v.classList.remove('hit'); voi
 // ---------- diálogos com NPCs ----------
 const GUARD_TEXT = 'Além do fosso: os Campos (★) logo além da paliçada; o Bosque Sombrio (★★) ao norte; o Pântano Pútrido (★★) a leste; as Colinas de Ossos (★★★) ao sul; o Acampamento Orc (★★★) a oeste. Perto do mar, as Terras Selvagens (★★★★). A cachoeira fica na montanha, a noroeste.';
 const NPC_DIALOG = {
+  st_saw: { greet: "A serra não para enquanto o rio corre! Toras de pinho e carvalho, cortadas e empilhadas.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  st_mine: { greet: "Pedra, minério e, se a sorte ajudar, um cristal que brilha no escuro. Cuidado com a cabeça.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  st_farm: { greet: "Ervas para o alambique, linho para o tear. A terra daqui é boa, só falta mão.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  st_carp: { greet: "Madeira boa vira varinha, cabo, caixa ou papel. Me dê toras e eu faço o resto.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  st_alch: { greet: "Cuidado com o caldeirão! Erva certa, fogo baixo, paciência… e sai um tônico que levanta defunto.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  st_apoth: { greet: "Bem-vindo ao Boticário. Poções, ervas secas, unguentos. Tudo fresquinho, quando o patrão abastece.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  st_arcane: { greet: "Cristais, varinhas, coisas que zumbem. Não encoste no que brilha.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  st_tailor: { greet: "Linho, lã e linha. Se o patrão mandar tecido, eu deixo a loja cheia de cor.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  st_scroll: { greet: "Papel, pergaminho, tinta. Um bom mapa vale mais que uma espada, acredite.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  courier1: { greet: "Pip, mensageiro! Levo e trago o que for, da vila até a Rua Nova, num pé só.", opts: [['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
+  courier2: { greet: "Lia Ventura. Conheço cada viela daqui até o rio. Ninguém me alcança.", opts: [['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
+  courier3: { greet: "Tomé, carroceiro. Devagar, mas a carga chega inteira. Quase sempre.", opts: [['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
   broker: { greet: 'Bem-vindo à Imobiliária Chave de Bronze! Casas, lojas, oficinas: se tem porta em Sxan, eu sei de quem é a chave. Quer ver o que está livre?', opts: [
     ['Ver imóveis (mapa e lista)', { open: 'estate' }],
     ['Como funciona o aluguel?', { local: 'Simples: você paga o primeiro dia e uma caução, e a chave é sua. Depois o aluguel sai sozinho da sua bolsa a cada dia (12 minutos). Se faltar ouro por dois dias, a casa volta para mim e o baú vai para a sua mochila. Devolveu a chave? A caução volta.' }],
     ['E o que ganho com uma casa?', { local: 'Porta trancada (só entra quem você autorizar), um baú seguro, você acorda lá quando chega ao reino e dorme muito melhor na sua própria cama. Nada como estar em casa.' }],
-    ['Posso alugar uma loja ou oficina?', { local: 'Ainda não. Os pontos da Rua Nova estão vagos, mas a Coroa só vai abrir esses contratos em breve. Aí sim: estoque, ajudantes, vitrine e lucro. Volte logo!' }]] },
+    ['Posso ter uma loja ou oficina?', { local: 'Pode! Os pontos vagos da Rua Nova e as oficinas da Vila do Oeste estão à venda e para alugar. Cada um vem com um funcionário. As oficinas produzem, os mensageiros levam para as suas lojas e as lojas vendem sozinhas. O lucro fica no cofre: vá buscar!' }],
+    ['Comprar ou alugar?', { local: 'Alugar sai barato para começar, mas cobra todo dia. Comprar custa 60 dias de aluguel de uma vez, e depois só 1 ouro de imposto por dia. Se cansar, a Coroa compra de volta pela metade.' }]] },
   noble: { greet: 'Oh. Um aventureiro, aqui? Que... pitoresco. Cuidado com as botas no calçamento.', opts: [['Que bairro é este?', { local: 'O Bairro Nobre, querido. As melhores famílias de Sxan vivem aqui, longe do cheiro da feira.' }]] },
   noble2: { greet: 'Lorde Cassian Aldren. Se veio pedir favores, marque uma audiência como todo mundo.', opts: [['Só estou de passagem.', { local: 'Então passe. E não pise nos canteiros.' }]] },
   gardener: { greet: 'Bom dia! Essas sebes não se podam sozinhas, sabe? A Lady Valmont quer tudo perfeito.', opts: [['Belo jardim.', { local: 'Trinta anos de tesoura! A roseira do chafariz fui eu que plantei.' }]] },
@@ -727,7 +744,7 @@ function buildDialogOptions(id) {
     add('Como funciona a cadeia?', () => setDialogText('Quem é pego pelas sentinelas fica aqui o tempo da pena: agressão 2 minutos, ataque à traição 3, assassinato 6. Dormir no catre faz o tempo passar mais rápido. Fiança: 30 de ouro por minuto que falta. E nada de mexer nas fechaduras, ouviu?'));
   } else {
     const def = NPC_DIALOG[n.kind];
-    for (const [label, act] of def.opts) add(label, () => { if (act.open === 'estate') { closeDialog(); estToggle(true, 'house'); } else if (act.local) setDialogText(act.local); else Net.send({ t: 'npc', n: id, ...act }); });
+    for (const [label, act] of def.opts) add(label, () => { const P = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null; if (act.open === 'biz') { if (P && estMine(P.id)) { closeDialog(); bizOpen(P.id); } else setDialogText('Só o dono pode mexer nos livros. ' + (P && G.est.st[P.id] ? 'Este ponto é de ' + G.est.st[P.id].replace('★', '') + '.' : 'Este ponto está à venda: fale com Mestre Anselmo, na Imobiliária.')); } else if (act.owner) setDialogText(P && G.est.st[P.id] ? 'Trabalho para ' + G.est.st[P.id].replace('★', '') + '. Paga em dia… quase sempre.' : 'Ninguém, por enquanto. A Coroa vende ou aluga o ponto, e eu venho junto!'); else if (act.open === 'estate') { closeDialog(); estToggle(true, 'house'); } else if (act.local) setDialogText(act.local); else Net.send({ t: 'npc', n: id, ...act }); });
   }
   add('Até logo', closeDialog, 'ghost');
 }
@@ -877,7 +894,7 @@ function strike(k) {
   const me = G.me; if (!me || me.downed || me.carrying || me.lifted || performance.now() < (G.stunUntil || 0)) return;
   const a = me.fa ?? 0; Net.send({ t: 'atk', k, a });
 }
-canvas.addEventListener('mousemove', e => { if (G.started) { G.mouseW = screenToWorld(e.clientX, e.clientY); G.mouseHist = (G.mouseHist || []).filter(q => performance.now() - q.t < 180).concat([{ t: performance.now(), x: e.clientX }]); } });
+canvas.addEventListener('mousemove', e => { if (G.started) { G.mouseS = [e.clientX, e.clientY]; G.mouseW = screenToWorld(e.clientX, e.clientY); G.mouseHist = (G.mouseHist || []).filter(q => performance.now() - q.t < 180).concat([{ t: performance.now(), x: e.clientX }]); } });
 canvas.addEventListener('mouseup', e => { if (e.button === 0 && G.choking) { G.choking = false; Net.send({ t: 'choke', on: 0 }); } if (e.button === 0) { G.shootHeld = false; G.mouse0 = false; if (isArcher()) bowRelease(); } if (e.button === 3 || e.button === 4) e.preventDefault(); if (e.button === 2 && G.parrying) { G.parrying = false; Net.send({ t: 'parry', on: 0 }); } });
 window.addEventListener('auxclick', e => { if (e.button === 3 || e.button === 4) e.preventDefault(); });
 window.addEventListener('mouseup', e => { if (e.button === 2 && G.parrying) { G.parrying = false; Net.send({ t: 'parry', on: 0 }); } });
