@@ -1935,7 +1935,7 @@ function giveOpen(pid) {
 
 // baú da cabine da pousada (4 espaços): F perto do baú da sua cabine
 function hotelChestNear() { const me = G.me, bi = BUILDINGS.findIndex(b => b.kind === 'hotel'); if (!me || bi < 0 || WORLD.bld[tileAt(me.x, me.y)] !== bi) return false; const b = BUILDINGS[bi], L = interiorLayout(b, 0); return L.F.some(f => { if (f.t !== 'chest') return false; const [x, y] = bLocal(b, f.i, f.j); return dist(me.x, me.y, x, y) < 1.6; }); }
-function hotelChestF() { if (!hotelChestNear()) return false; if (!G.hotel || G.hotel.room < 0) { Net.send({ t: 'hotel', a: 'view' }); showToast('Esse baú é de um hóspede. Alugue uma cabine com Dona Ilsa.'); return true; } hotelChestShow(); return true; }
+function hotelChestF() { if (!hotelChestNear()) return false; if (G.me.hroom >= 0 && (!G.hotel || G.hotel.room < 0)) { Net.send({ t: 'hotel', a: 'view' }); setTimeout(hotelChestShow, 300); return true; } if (!G.hotel || G.hotel.room < 0) { Net.send({ t: 'hotel', a: 'view' }); showToast('Esse baú é de um hóspede. Alugue uma cabine com Dona Ilsa.'); return true; } hotelChestShow(); return true; }
 function hotelChestShow() {
   let d = $('hchest'); if (!d) { d = document.createElement('div'); d.id = 'hchest'; d.className = 'gpanel'; document.body.appendChild(d); }
   const H = G.hotel || { items: {} }, inv = Object.entries(G.me.inv || {}).filter(([k, n]) => n > 0 && LOOT[k]), box = Object.entries(H.items || {});

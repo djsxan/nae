@@ -212,6 +212,7 @@ setInterval(() => { if (!estOpen()) return; for (const el of document.querySelec
 // ============================================================
 //  GESTÃO DE UM NEGÓCIO
 // ============================================================
+const stockSum0 = o => Object.values(o || {}).reduce((a, b) => a + b, 0);
 const BIZ_TABS = { geral: 'Visão geral', estoque: 'Estoque', equipe: 'Funcionários', melhorias: 'Melhorias', diario: 'Diário' };
 function bizBuild() {
   if (document.getElementById('biz')) return;
@@ -237,6 +238,12 @@ function bizRender() {
     '<div class="biz-st ' + (B.closed ? 'off' : 'on') + '">' + (B.closed ? '⛔ Parado: falta ouro no banco para o salário' : '✅ Funcionando') + '</div>' +
     '<div class="biz-btns">' + (m.at ? '<button class="est-btn" data-bshift>' + (working ? 'Parar o turno' : 'Trabalhar um turno (1 min 15 s)') + '</button>' : '') + '<button class="est-btn ghost" data-bdep="50">Depositar 50</button><button class="est-btn ghost" data-bdep="200">Depositar 200</button></div></div>';
   if (G.biz.tab === 'geral') {
+    { const tax = m.mode === 'own' ? 1 : P.rent, net = d => Math.round(d.rev - d.cost - tax), today = net(B.today), week = [...B.hist, B.today].reduce((a, d) => a + net(d), 0), st = shop ? B.stock : (B.store || {}), idle = Object.keys(st).filter(g => g !== 'serve').reduce((a, g) => a + Math.floor(st[g] || 0), 0);
+      const why = []; if ((B.hist.length ? B.hist[B.hist.length - 1].rev : B.today.rev) < (shop ? 6 : 8) + tax) why.push('a receita do dia não cobre salário e imposto');
+      if (!shop && idle >= 30 && !B.sell) why.push('a venda ao fornecedor está desligada e o estoque está parado (' + idle + ')');
+      if (shop && !stockSum0(B.stock) && !(B.orders || []).length) why.push('as prateleiras estão vazias — ligue a reposição automática');
+      if ((B.staff || []).length && B.staff.reduce((a, s) => a + s.w, 0) > (B.hist.length ? B.hist[B.hist.length - 1].rev : 0) * 0.5) why.push('os salários dos funcionários estão altos para o movimento');
+      h += '<div class="biz-net ' + (week < 0 ? 'neg' : 'pos') + '"><div><small>Lucro líquido hoje</small><b>' + (today >= 0 ? '+' : '') + today + '</b></div><div><small>Últimos 7 dias</small><b>' + (week >= 0 ? '+' : '') + week + '</b></div><small>receita − gastos − salários − ' + (m.mode === 'own' ? 'imposto' : 'aluguel') + '</small></div>' + (week < 0 && why.length ? '<div class="gp-note" style="color:#ffb09a">No prejuízo: ' + why.join('; ') + '.</div>' : ''); }
     const hist = [...B.hist, { rev: Math.round(B.today.rev), cost: Math.round(B.today.cost), sold: B.today.sold, now: 1 }], mx = Math.max(10, ...hist.map(d => Math.max(d.rev, d.cost)));
     h += '<div class="gp-sub">Últimos dias (receita × gastos)</div><div class="biz-chart">' + hist.map(d => '<div class="biz-day' + (d.now ? ' now' : '') + '"><i class="r" style="height:' + Math.round(d.rev / mx * 60) + 'px" title="receita ' + d.rev + '"></i><i class="c" style="height:' + Math.round(d.cost / mx * 60) + 'px" title="gastos ' + d.cost + '"></i><small>' + (d.now ? 'hoje' : d.sold + ' un') + '</small></div>').join('') + '</div>';
     h += '<div class="est-cost">' + (shop ? 'Hoje: ' + B.today.sold + ' vendas · ' + Math.round(B.today.rev) + ' de ouro entraram' : 'Hoje: ' + Math.round(B.today.rev) + ' de ouro com excedente vendido ao fornecedor') + ' · salário ' + (shop ? 6 : 8) + '/dia' + ((B.staff || []).length ? ' + funcionários ' + B.staff.reduce((a, s) => a + s.w, 0) + '/dia' : '') + ' · ' + (m.mode === 'own' ? 'imposto 1/dia' : 'aluguel ' + P.rent + '/dia') + ' (tudo da conta do banco)</div>';
@@ -257,7 +264,9 @@ function bizRender() {
       h += '<div class="est-cost">' + (W.make ? 'Produz por hora: ' + Object.keys(W.make).map(g => gIc(g) + ' ' + (W.make[g] * (1 + 0.5 * (B.up.tools || 0))).toFixed(1) + ' ' + GOODS[g].n).join(' · ') : 'Receita: <select data-brec>' + Object.keys(W.recipes).map(r => '<option value="' + r + '"' + (r === B.recipe ? ' selected' : '') + '>' + Object.keys(W.recipes[r]).map(g => W.recipes[r][g] + ' ' + GOODS[g].n).join(' + ') + ' → 1 ' + GOODS[r].n + '</option>').join('') + '</select> · ' + (1 + 0.5 * (B.up.tools || 0)).toFixed(1) + ' por hora') + '</div>';
       h += '<div class="est-cost">Depósito: <b>' + Math.floor(used) + '</b> / 120</div><div class="biz-store">' + (Object.keys(B.store).filter(g => B.store[g] >= 1).map(g => '<span>' + gIc(g) + ' <b>' + Math.floor(B.store[g]) + '</b> ' + GOODS[g].n + '</span>').join('') || '<small>Vazio.</small>') + '</div>';
       if (W.recipes) h += '<label class="biz-tg"><input type="checkbox" data-btog="autobuy"' + (B.autobuy ? ' checked' : '') + '> Comprar matéria-prima do fornecedor quando faltar, pago pela conta do banco (só se você não tiver a oficina que a produz)</label>';
-      h += '<label class="biz-tg"><input type="checkbox" data-btog="sell"' + (B.sell ? ' checked' : '') + '> Vender ao fornecedor o que passar de 50 de cada coisa (70% do preço, vai para o banco)</label>';
+      h += '<label class="biz-tg"><input type="checkbox" data-btog="sell"' + (B.sell ? ' checked' : '') + '> Vender ao fornecedor, a cada hora, o que passar da reserva (85% do preço, vai para o banco)</label>' +
+        '<label class="biz-tg">Reserva de cada coisa: <input class="biz-num" type="number" min="0" max="100" placeholder="auto" value="' + (B.keep != null ? B.keep : '') + '" data-bkeep> <small>(vazio = automático: 10, ou 40 se um negócio seu usa aquilo)</small></label>' +
+        (W.recipes && B.recipe ? (() => { const rec = W.recipes[B.recipe]; let c = 0; for (const g in rec) c += GOODS[g].p * 1.2 * rec[g]; const gain = (B.recipe === 'serve' ? 5 : GOODS[B.recipe].p * 0.85) - c; return '<div class="est-cost">Cada ' + GOODS[B.recipe].n + ' feito com matéria-prima comprada: custa ' + c.toFixed(1) + ' e rende ' + (gain + c).toFixed(1) + ' → <b style="color:' + (gain > 0 ? '#9ad870' : '#ff9a8a') + '">' + (gain >= 0 ? '+' : '') + gain.toFixed(1) + '</b> por unidade' + (gain > 0 ? '' : ' (não compensa comprar: receba de uma oficina sua)') + '</div>'; })() : '');
     }
     { const inv = G.me.inv || {}, W = !shop && WORKS[P.wk], ks = Object.keys(inv).filter(k => inv[k] > 0 && ITEM_GOOD[k] && (shop ? ((SHOP_GOODS[P.shopType] || []).includes(ITEM_GOOD[k][0]) || (P.shopType === 'arcane' && ITEM_GOOD[k][0] === 'wood')) : W && ((W.make && ITEM_GOOD[k][0] in W.make) || (W.recipes && Object.values(W.recipes).some(r => ITEM_GOOD[k][0] in r)) || (W.recipes && ITEM_GOOD[k][0] in W.recipes))));
       if (shop && P.shopType === 'arcane') h += '<div class="gp-sub">🪚 Bancada de entalhe</div><div class="est-cost">Madeira na bancada: <b>' + Math.floor((B.raw || {}).wood || 0) + '</b> / 60 · o atendente faz 1 varinha por hora com 2 de madeira (vai direto para as prateleiras).</div>';
@@ -284,6 +293,7 @@ function bizRender() {
   for (const c of body.querySelectorAll('[data-btog]')) c.onchange = () => bsend('toggle', { k: c.dataset.btog });
   for (const b of body.querySelectorAll('[data-bup]')) b.onclick = () => bsend('up', { k: b.dataset.bup });
   for (const c of body.querySelectorAll('[data-brson]')) c.onchange = () => bsend('rson');
+  for (const c of body.querySelectorAll('[data-bkeep]')) c.onchange = () => bsend('keep', { v: c.value === '' ? null : +c.value });
   for (const s of body.querySelectorAll('[data-brs]')) s.onchange = () => { const g = s.dataset.brs, row = body.querySelectorAll('[data-brs="' + g + '"]'); bsend('rs', { g, mn: +row[0].value, mx: +row[1].value }); };
   for (const b of body.querySelectorAll('[data-bcands]')) b.onclick = () => bsend('cands');
   for (const b of body.querySelectorAll('[data-bhire]')) b.onclick = () => bsend('hire', { i: +b.dataset.bhire });

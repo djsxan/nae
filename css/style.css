@@ -599,3 +599,10 @@ body.touch #chat { width: 260px; } body.touch #chat-log { height: 70px; }
 #gask .gask-msg { font-size: 15px; line-height: 1.45; margin-bottom: 14px; }
 #gask .gask-in { width: 100%; box-sizing: border-box; margin-bottom: 12px; padding: 6px 8px; font: inherit; background: rgba(0,0,0,0.35); color: inherit; border: 1px solid rgba(232,196,90,0.4); border-radius: 4px; }
 #gask .gask-btns { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* painel do negócio: lucro líquido */
+.biz-net { display: flex; gap: 18px; align-items: flex-end; flex-wrap: wrap; padding: 8px 10px; margin: 6px 0; border-radius: 6px; background: rgba(0,0,0,0.25); border: 1px solid rgba(232,196,90,0.25); }
+.biz-net div { display: flex; flex-direction: column; }
+.biz-net b { font-size: 20px; }
+.biz-net.pos b { color: #9ad870; } .biz-net.neg b { color: #ff9a8a; }
+.biz-net > small { opacity: 0.7; }

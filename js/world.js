@@ -216,14 +216,16 @@ function interiorLayout0(b, fl = 0) {
     put('bed', 0, 0, { w: 2, h: 2, v: 1 }); put('fireplace', w - 2, 0); put('shelf', 2, 0); put('chest', 3, 0);
     if (put('table', w - 3, 2, { w: 2 })) { put('chair', w - 4, 2, { seat: 1 }); put('chair', w - 1, 2, { seat: 5 }); }
     put('mirror', 0, 3); put('rug', 1, 2, { w: 2, h: 2, v: 9, block: false });
-  } else if (k === 'fruithouse') {
-    put('bed', 0, 0, { h: 2 }); put('stove', 2, 0); taken.add(key(2, 1)); put('chest', 1, 0); put('crate', w - 1, 0, { v: 7 });
-    if (put('table', 2, h - 2)) put('chair', 1, h - 2, { seat: 1 });
-    put('rug', 3, 1, { block: false });
+  } else if (k === 'fruithouse') {   // casa da fruteira: cestos e caixotes de fruta, mesa de separar, geleias, réstias penduradas, fogão com tacho de doce
+    put('bed', 0, 0, { h: 2 }); put('stove', 2, 0); taken.add(key(2, 1)); put('jamshelf', 3, 0); put('fruitcrate', 4, 0, { v: 0 });
+    put('baskets', 1, 0); put('sorttable', 3, 2, { w: 2 }); put('fruitcrate', 4, 3, { v: 1 }); put('baskets', 0, 3, { v: 1 });
+    put('garlic', 1, 1, { block: false }); put('garlic', 4, 1, { block: false, v: 1 }); put('rug', 1, 2, { block: false });
   } else if (k === 'workshop') {   // oficina: o artesão no fundo, bancada, caixas e ferramentas do ofício
     npcAt(dc, 0); const wk = b.wk;
     put('table', 0, 1, { w: 2 }); put('crate', w - 1, 0); put('barrel', w - 1, 1); put('shelf', 0, 0);
     if (wk === 'alch') { put('stove', w - 2, 0); put('shelf', 1, 0); } else if (wk === 'mine') { put('anvil', w - 2, 1); put('rack', 1, 0); } else if (wk === 'saw' || wk === 'carp') { put('rack', 1, 0); put('crate', w - 1, h - 1); } else { put('crate', 1, 0); put('barrel', w - 1, h - 1); }
+  } else if (k === 'house' && b.office && w >= 6) {   // escritório do corretor: escrivaninha com livros-razão, mapa emoldurado, quadro de chaves, arquivos, cadeira do cliente e a maquete da cidade
+    put('keyboard', 0, 0); npcAt(1, 0); put('desk', 0, 1, { w: 2 }); put('chair', 1, 2, { seat: 3 }); put('filing', 5, 0); put('citymodel', 4, 2, { w: 2 }); put('filing', 0, 3, { v: 1 }); put('mapframe', 5, 1, { block: false });
   } else if (k === 'house' && b.office) {   // imobiliária: corretor atrás da mesa, estantes de pastas, mapa da cidade na parede
     npcAt(dc, 0); put('table', dc - 1, 1, { w: 3 }); put('shelf', 0, 0); put('shelf', w - 1, 0); put('banner', dc === 1 ? w - 2 : 1, 0); put('chair', 0, h - 2, { seat: 1 }); put('crate', w - 1, h - 1);
   } else if (k === 'house') {
@@ -857,7 +859,7 @@ function generateWorld() {
   BUILDINGS.push(...houses);
   { // escritório do corretor: a casa mais perto da rua nova e do mercado
     let ob = null, bd = 1e9; for (const hb of houses) { const d = Math.hypot(hb.x + hb.w / 2 - (C - 18), hb.y + hb.h / 2 - (C + 13)); if (d < bd) { bd = d; ob = hb; } }
-    if (ob) { ob.office = 'estate'; ob.name = 'Imobiliária Chave de Bronze'; ob.x = C - 22; ob.y = C + 15; ob.door = 'S'; ob.w = 5; ob.h = 4; } }   // atrás da Alfaiataria, porta para a rua de baixo
+    if (ob) { ob.office = 'estate'; ob.name = 'Imobiliária Chave de Bronze'; ob.x = C - 22; ob.y = C + 15; ob.door = 'S'; ob.w = 6; ob.h = 4; ob.floors = 2; ob.H = 3.8; ob.RH = 2.0; ob.wall = Math.round(3.8 * 19.6); ob.roof = Math.round(2.0 * 19.6); } }   // atrás da Alfaiataria, porta para a rua de baixo
   // ---- vila do oeste (do outro lado do rio, na estrada que sai do portão oeste): casas espaçadas e oficinas ----
   const HAM = { x0: x0 - 58, y0: C - 22, x1: x0 - 27, y1: C + 19, road: C };
   if (!TEST3D) {
@@ -882,7 +884,7 @@ function generateWorld() {
   }
   // pousada do outro lado da rua, atrás das lojas da taverna, porta para a rua (no fim da lista: não muda o número dos prédios salvos)
   if (!TEST3D) BUILDINGS.push({ x: C - 11, y: C + 21, ...BH('hotel', 10, 11, 4.0, 2.2, 'Pousada do Javali Magro', { floors: 1, door: 'E', dcol: 8 }) });
-  if (!TEST3D) BUILDINGS.push({ x: C - 30, y: C - 18, ...BH('house', 5, 7, 3.0, 2.6, '', { door: 'E', v: 2, floors: 1, extra: 1 }) });   // casa nova na rua do banco, alinhada com as lojas   // porta direto na rua principal
+  if (!TEST3D) BUILDINGS.push({ x: C - 30, y: C - 14, ...BH('house', 5, 4, 3.0, 2.6, '', { door: 'E', v: 2, floors: 1, extra: 1 }) });   // casa nova na rua do banco, alinhada com as lojas   // porta direto na rua principal
   BUILDINGS.forEach((b, bi) => {
     for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { bld[idx(x, y)] = bi; obj[idx(x, y)] = O.NONE; ground[idx(x, y)] = T.COBBLE; }
   });
@@ -915,6 +917,13 @@ function generateWorld() {
   const doorFree = new Set(); for (const b of BUILDINGS) { const [dx, dy] = doorTile(b), v = DOOR_V[b.door || 'S']; for (let k = 1; k <= 2; k++) for (const s2 of [-1, 0, 1]) doorFree.add(idx(dx + v[0] * k + (v[1] ? s2 : 0), dy + v[1] * k + (v[0] ? s2 : 0))); }
   const deco = (x, y, o) => { const i = idx(x, y); if (doorFree.has(i)) return; if (bld[i] < 0 && !stair[i] && !fl1[i] && !nearBld(x, y)) obj[i] = o; };
   const decoAny = (x, y, o) => { const i = idx(x, y); if (doorFree.has(i)) return; if (bld[i] < 0 && !stair[i] && !fl1[i]) obj[i] = o; };
+  // quintal da Marta na frente da casa: cerca com portãozinho, duas árvores frutíferas, canteiros e a barraquinha com toldo
+  { const X0 = C - 31, X1 = C - 25, Y0 = C + 19, Y1 = C + 22, gx = C - 27;
+    for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) { const i = idx(x, y); if (bld[i] >= 0 || rdir[i]) continue; obj[i] = O.NONE; ground[i] = x === gx ? T.COBBLE : T.GRASS;
+      if ((x === X0 || x === X1 || y === Y1) && x !== gx) obj[i] = O.FENCE; }
+    for (const [x, y] of [[C - 30, C + 20], [C - 26, C + 21]]) obj[idx(x, y)] = O.BERRY;   // frutíferas
+    for (const [x, y] of [[C - 29, C + 20], [C - 29, C + 21], [C - 28, C + 21]]) { ground[idx(x, y)] = T.DIRT; obj[idx(x, y)] = O.FLOWER; }   // canteiros
+    obj[idx(C - 26, C + 19)] = O.STALL; }   // barraquinha com toldo ao lado da porta
   // praça do banco (do outro lado da rua, onde ficava a catedral antiga): chafariz no meio, bancos, flores e postes
   { const X0 = C - 21, X1 = C - 12, Y0 = C - 30, Y1 = C - 20, fx = C - 17, fy = C - 25;
     for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) { const i = idx(x, y); if (bld[i] >= 0 || rdir[i]) continue; obj[i] = O.NONE; const edge = x === X0 || x === X1 || y === Y0 || y === Y1; ground[i] = edge ? T.GRASS : T.FLOORSTONE; if (edge && (x + y) % 2 === 0) obj[i] = O.FLOWER; }
@@ -1135,8 +1144,8 @@ if (!TEST3D) {
 }
 // ---------- economia dos negócios: mercadorias, o que cada loja vende e o que cada oficina faz ----------
 const GOODS = {
-  wood: { n: 'Madeira', p: 2, ic: '🪵' }, ore: { n: 'Minério', p: 3, ic: '🪨' }, crystal: { n: 'Cristais', p: 14, ic: '💎' }, herb: { n: 'Ervas', p: 2, ic: '🌿' }, flax: { n: 'Linho e tecidos', p: 3, ic: '🧵' },
-  woodgoods: { n: 'Varinhas e artigos de madeira', p: 7, ic: '🪄' }, tools: { n: 'Ferramentas', p: 16, ic: '⚒' }, serve: { n: 'Mesas servidas', p: 4, ic: '🍺' }, paper: { n: 'Papel e pergaminho', p: 5, ic: '📜' }, potion: { n: 'Poções e tônicos', p: 9, ic: '🧪' },
+  wood: { n: 'Madeira', p: 2, ic: '🪵' }, ore: { n: 'Minério', p: 3, ic: '🪨' }, crystal: { n: 'Cristais', p: 14, ic: '💎' }, herb: { n: 'Ervas', p: 3, ic: '🌿' }, flax: { n: 'Linho e tecidos', p: 4, ic: '🧵' },
+  woodgoods: { n: 'Varinhas e artigos de madeira', p: 8, ic: '🪄' }, tools: { n: 'Ferramentas', p: 16, ic: '⚒' }, serve: { n: 'Mesas servidas', p: 4, ic: '🍺' }, paper: { n: 'Papel e pergaminho', p: 7, ic: '📜' }, potion: { n: 'Poções e tônicos', p: 11, ic: '🧪' },
 };
 // o que a mercadoria vira quando um jogador compra no balcão
 const GOOD_ITEM = { potion: { pot: 'hp' }, flax: { pot: 'band' }, herb: { loot: 'herb' }, crystal: { loot: 'gem' }, woodgoods: { loot: 'wand' }, paper: { loot: 'map' }, wood: { loot: 'firewood' }, ore: { loot: 'gem' } };
@@ -1148,7 +1157,7 @@ const WORKS = {
   forge: { n: 'Forja', recipes: { tools: { wood: 1, ore: 2 } } }, tavern: { n: 'Taverna', recipes: { serve: { flax: 1 } } },
   carp: { n: 'Carpintaria', recipes: { woodgoods: { wood: 2 }, paper: { wood: 2 } } }, alch: { n: 'Alambique', recipes: { potion: { herb: 2 } } },
 };
-const MARGIN = [{ n: 'Barato', k: 1.15, p: 0.9 }, { n: 'Justo', k: 1.4, p: 0.7 }, { n: 'Caro', k: 1.8, p: 0.42 }];
+const MARGIN = [{ n: 'Barato', k: 1.25, p: 0.9 }, { n: 'Justo', k: 1.6, p: 0.7 }, { n: 'Caro', k: 2.1, p: 0.42 }];
 const BIZ_UP = {   // melhorias: custo por nível (até 3)
   shelf: { n: 'Prateleiras e depósito', d: '+40 de estoque por nível', cost: [250, 600, 1200], for: 'shop' },
   vitrine: { n: 'Vitrine e letreiro', d: '+50% de clientes por nível', cost: [300, 700, 1500], for: 'shop' },

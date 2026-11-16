@@ -16,6 +16,8 @@ function jobsPrompt() {
   if (G.job && G.job.step) { const s = G.job.step; if (dist(me.x, me.y, s.x, s.y) < 1.8) return 'F: ' + s.t; }
   if (NOTICE.x >= 0 && dist(me.x, me.y, NOTICE.x, NOTICE.y) < 2) return 'F: quadro de avisos (bicos e entregas)';
   if (G.shiftUntil > performance.now()) return 'Trabalhando… saia do prédio para parar';
+  if (typeof hotelChestNear === 'function' && hotelChestNear()) return me.hroom >= 0 ? 'F: abrir o baú da sua cabine' : 'Baú de hóspede — alugue uma cabine com Dona Ilsa';
+  if (typeof estChestHere === 'function' && estChestHere()) return 'F: abrir o baú';
   { const t = typeof talkTarget === 'function' ? talkTarget() : null; if (t) return t.k === 'n' ? 'F: falar com ' + t.name : 'F: dar ouro ou itens para ' + t.name; }
   if (typeof estInBiz === 'function' && estInBiz()) return 'F: gerenciar o negócio';
   if (shiftHere()) return 'F: trabalhar um turno aqui';

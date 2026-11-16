@@ -2304,7 +2304,7 @@ function startHostLoop() {
 //  fica no cofre do negócio (vá buscar). Tudo guardado neste reino (no navegador de quem hospeda).
 // ============================================================
 const ESTATE_KEY = 'nae-estate-v1', ESTATE_AUTH_MAX = 6, ESTATE_CHEST_SLOTS = 16, ESTATE_ABANDON_DAYS = 30, BIZ_MAX = 9999, BIZ_OFFLINE_MS = 2 * ESTATE_DAY_MS;
-const SALARY = { shop: 6, workshop: 8, bank: 30 }, SAFE_CAP = 500, WS_CAP = 120, SHOP_CAP = 40, THEFT = [0.06, 0.04, 0.02, 0.01];
+const SALARY = { shop: 6, workshop: 8, bank: 30, hotel: 6 }, SAFE_CAP = 500, WS_CAP = 120, SHOP_CAP = 40, THEFT = [0.06, 0.04, 0.02, 0.01];
 const estOwner = p => String(p.name || '').trim().toLowerCase() + '|' + p.cls;
 const estDay = () => Math.floor(Date.now() / ESTATE_DAY_MS);
 const isBizProp = P => P && (P.kind === 'shop' || P.kind === 'workshop' || P.kind === 'bank' || P.kind === 'hotel') && !P.npc;
@@ -2419,11 +2419,11 @@ function collFind(n, P, tool) {
   return best;
 }
 function collHit(n, P) {   // um golpe no recurso: devolve o que rendeu
-  const i = n.ci, o = WORLD.obj[i], x = i % MAP_W, y = (i - x) / MAP_W, now = now_(); let g = null, q = 1;
+  const i = n.ci, o = WORLD.obj[i], x = i % MAP_W, y = (i - x) / MAP_W, now = now_(); let g = null, q = 2;
   if (P.wk === 'farm') { setObj(i, O.NONE); (S.objBack = S.objBack || []).push({ i, o, at: now + 120000 }); g = Math.random() < 0.66 ? 'herb' : 'flax'; }
   else { S.nodeHits = S.nodeHits || {}; const hits = (S.nodeHits[i] || 0) + 1, max = o === O.OAK || o === O.BOULDER ? 4 : 3, tree = P.wk === 'saw';
     if (hits >= max) { delete S.nodeHits[i]; near(x, y, { t: tree ? 'tfall' : 'crumble', i, o, a: Math.atan2(y - n.y, x - n.x) }); setObj(i, tree ? O.STUMP : O.NONE); (S.objBack = S.objBack || []).push({ i, o, at: now + (tree ? 300000 : 240000) }); } else S.nodeHits[i] = hits;
-    if (tree) { g = 'wood'; if (o === O.OAK) q = 2; } else g = Math.random() < 0.1 ? 'crystal' : 'ore'; }
+    if (tree) { g = 'wood'; if (o === O.OAK) q = 3; } else g = Math.random() < 0.1 ? 'crystal' : 'ore'; }
   n.load[g] = (n.load[g] || 0) + q; n.carry += q; return q;
 }
 function collectorTick(n, now, dt) {
@@ -2439,7 +2439,7 @@ function collectorTick(n, now, dt) {
     const G0 = gatherOf(WORLD.obj[n.ci]); if (!G0 || G0.tool !== tool) { release(); n.cst = n.carry > 0 ? 'back' : null; if (n.cst) n.job = { st: 'levando' }; return; }
     n.dir = dirFromVecS((n.ci % MAP_W) - n.x, Math.floor(n.ci / MAP_W) - n.y);
     if (now > (n.animT || 0)) { n.animT = now + 760; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: COLL_ANIM[tool], ms: 750, tool, i: n.ci }); }
-    if (now >= n.hitAt) { collHit(n, P); n.hitAt = now + 4200 / (1 + 0.5 * ((B && B.up.tools) || 0)); if (n.carry >= 4 || !gatherOf(WORLD.obj[n.ci])) { release(); n.cst = n.carry >= 4 ? 'back' : null; if (n.cst) n.job = { st: 'levando' }; } }
+    if (now >= n.hitAt) { collHit(n, P); n.hitAt = now + 4200 / (1 + 0.5 * ((B && B.up.tools) || 0)); if (n.carry >= 8 || !gatherOf(WORLD.obj[n.ci])) { release(); n.cst = n.carry >= 8 ? 'back' : null; if (n.cst) n.job = { st: 'levando' }; } }
     return; }
   if (n.cst === 'walk') { const G0 = gatherOf(WORLD.obj[n.ci]); if (!G0) { release(); n.cst = null; return; }
     if (npcWalk(n, n.sp[0], n.sp[1], 0.95, dt) || dist(n.x, n.y, n.sp[0], n.sp[1]) < 0.5) { n.cst = 'work'; n.hitAt = now + 4200; } return; }
@@ -2449,6 +2449,8 @@ function collectorTick(n, now, dt) {
 }
 // negócio de jogador onde um NPC trabalha (forja do Hrodgar, taverna da Greta…): o dinheiro do balcão vai para o dono
 function npcBiz(n) { if (!n || !S.estate) return null; const bi = n.bi != null ? n.bi : WORLD.bld[tileAt(n.postX ?? n.x, n.postY ?? n.y)]; if (bi == null || bi < 0) return null; const P = PROPS.find(q => q.bi === bi), r = P && S.estate.r[P.id]; return r && r.biz ? r : null; }
+const SELL_K = 0.85;
+function recipeGain(rk) { const W = Object.values(WORKS).find(w => w.recipes && w.recipes[rk]); if (!W) return 0; const rec = W.recipes[rk]; let c = 0; for (const g in rec) c += GOODS[g].p * 1.2 * rec[g]; return (rk === 'serve' ? 5 : GOODS[rk].p * SELL_K) - c; }
 function bizLog(B, t) { B.log.unshift({ t, at: Date.now() }); if (B.log.length > 12) B.log.length = 12; }
 function canAcquire(p, P, how) {
   if (P.kind === 'house' && tenantsOf(P).length) { if (how !== 'buy') return 'Essa casa tem inquilino: dá para comprar (e receber o aluguel), não para alugar.'; if (bizOf(p).length >= BIZ_MAX) return 'No máximo ' + BIZ_MAX + ' negócios/investimentos por personagem.'; return null; }
@@ -2546,6 +2548,7 @@ function bizMsg(p, m) {
     case 'fire': { B.staff = B.staff || []; const s = B.staff[m.i | 0]; if (!s) return; B.staff.splice(m.i | 0, 1); bizLog(B, s.n + ' foi dispensad' + (s.g === 'f' ? 'a' : 'o') + '.'); staffSync(pid, r); break; }
     case 'margin': { const g = String(m.g); if (P.kind !== 'shop' || !(g in B.margin)) return; B.margin[g] = clamp(m.v | 0, 0, 2); break; }
     case 'recipe': { const W = WORKS[P.wk]; if (!W || !W.recipes || !W.recipes[m.v]) return; B.recipe = m.v; break; }
+    case 'keep': { if (P.kind !== 'workshop') return; B.keep = m.v == null || m.v === '' ? null : clamp(m.v | 0, 0, 100); break; }
     case 'toggle': { if (P.kind !== 'workshop' || !['autobuy', 'sell'].includes(m.k)) return; B[m.k] = !B[m.k]; break; }
     case 'up': {
       const k = String(m.k), U = BIZ_UP[k]; if (!U || (U.for !== 'both' && U.for !== P.kind)) return; const lv = B.up[k] || 0; if (lv >= 3) return;
@@ -2652,6 +2655,9 @@ function bizHour(now) {
     const r = E.r[pid], P = PROPS_BY[pid], B = r.biz; if (!B) continue;
     const on = ownerOnline(r); if (on) r.seen = Date.now(); if (Date.now() - (r.seen || 0) > BIZ_OFFLINE_MS) continue;   // dono sumido há 2 dias: portas fechadas, nada acontece
     if (P.kind === 'bank') { /* o banco ganha com os juros dos empréstimos e as heranças; os juros dos depósitos saem daqui */ }
+    else if (P.kind === 'hotel') {   // pousada: cada hóspede da noite rende um pouco por hora (café, lenha, roupa lavada)
+      if (!B.closed) { const H = hotelData(), d0 = estDay(), occ = Object.values(H.rooms || {}).filter(x => x && ((x.who && x.until > d0) || (x.npc && S.npcs && S.npcs[x.npc]))).length; if (occ) { B.cofre += occ; B.today.rev += occ; } }
+    }
     else if (P.kind === 'shop') {
       if (B.rsOn) { const ord = g => B.orders.filter(o => o.g === g).reduce((a, o) => a + o.q, 0); for (const g of SHOP_GOODS[P.shopType] || []) { const [mn, mx] = (B.rs || {})[g] || [10, 30], have = (B.stock[g] || 0) + ord(g); if (have >= mn) continue;
           const room = shopCap(B) - stockSum(B.stock) - B.orders.reduce((a, o) => a + o.q, 0), q = Math.min(mx - have, room); if (q <= 0) continue; const cost = Math.ceil(GOODS[g].p * q);
@@ -2670,12 +2676,12 @@ function bizHour(now) {
       if (!B.closed) {
         if (W.make && !COLL_TOOL[P.wk]) for (const g in W.make) { B.frac[g] = (B.frac[g] || 0) + W.make[g] * k; const q = Math.floor(B.frac[g]); B.frac[g] -= q; if (stockSum(B.store) + q <= WS_CAP) B.store[g] = (B.store[g] || 0) + q; }
         if (W.recipes && B.recipe) { const rec = W.recipes[B.recipe]; B.frac._b = (B.frac._b || 0) + k; let nb = Math.floor(B.frac._b); B.frac._b -= nb;
-          while (nb-- > 0) { let ok = true; for (const g in rec) if ((B.store[g] || 0) < rec[g]) { const miss = rec[g] - (B.store[g] || 0), cost = Math.ceil(GOODS[g].p * 1.2 * miss); if (B.autobuy && B.cofre >= cost && !ownMaker(r.owner, g)) { B.cofre -= cost; B.today.cost += cost; B.store[g] = (B.store[g] || 0) + miss; } else ok = false; }
+          while (nb-- > 0) { let ok = true; for (const g in rec) if ((B.store[g] || 0) < rec[g]) { const miss = rec[g] - (B.store[g] || 0), cost = Math.ceil(GOODS[g].p * 1.2 * miss), worth = recipeGain(B.recipe) > 0; if (B.autobuy && !worth && B.noWorthDay !== estDay()) { B.noWorthDay = estDay(); bizLog(B, 'Comprar matéria-prima para ' + GOODS[B.recipe].n + ' não compensa: a oficina espera receber dos seus negócios.'); } if (B.autobuy && worth && B.cofre >= cost && !ownMaker(r.owner, g)) { B.cofre -= cost; B.today.cost += cost; B.store[g] = (B.store[g] || 0) + miss; } else ok = false; }
             if (!ok || stockSum(B.store) >= WS_CAP) break; for (const g in rec) B.store[g] -= rec[g]; B.store[B.recipe] = (B.store[B.recipe] || 0) + 1; } }
-        if (B.sell) for (const g in B.store) { const keep = 50; if (B.store[g] > keep) { const ex = Math.floor(B.store[g] - keep), v = GOODS[g].p * 0.7 * ex; B.store[g] -= ex; B.cofre += v; B.today.rev += v; B.today.sold += ex; } }
+        if (B.sell) { const need = new Set(bizNeeds(r.owner).filter(x => x.pid !== pid).map(x => x.g)); for (const g in B.store) { if (g === 'serve') continue; const keep = B.keep != null ? B.keep : need.has(g) ? 40 : 10; if (B.store[g] > keep) { const ex = Math.floor(B.store[g] - keep), v = GOODS[g].p * SELL_K * ex; B.store[g] -= ex; B.cofre += v; B.today.rev += v; B.today.sold += ex; } } }
         if (P.wk === 'tavern') {   // taverna: cada freguês lá dentro gasta; mesas servidas (com linho) rendem mais
           const pat = 1 + Object.values(S.npcs).filter(q => !q.dead && q.kind !== 'guard' && WORLD.bld[tileAt(q.x, q.y)] === P.bi && q.role !== 'clerk').length, served = Math.min(pat, Math.floor(B.store.serve || 0));
-          const v = Math.round((pat * 3 + served * 2) * staffMul(B)); B.store.serve = (B.store.serve || 0) - served; B.cofre += v; B.today.rev += v; B.today.sold += pat; }
+          const v = Math.round((pat * 3 + served * 5) * staffMul(B)); B.store.serve = (B.store.serve || 0) - served; B.cofre += v; B.today.rev += v; B.today.sold += pat; }
       }
     }
     if (newDay) {
@@ -2963,7 +2969,7 @@ function shiftEnd(p, done) {
 function jobsTick(now) {
   for (const p of Object.values(S.players)) {
     if (p.autoShea && p.sheathed && !p.sheT && now - (p.taskT || 0) > 3500 && !p.carrying && !p.drag && !p.shift && !p.downed && !p.bound) { p.autoShea = false; sheatheToggle(p, false); }
-    if (p.shift) { const out = WORLD.bld[tileAt(p.x, p.y)] !== p.shift.bi; if (out || p.downed) shiftEnd(p, false); else if (now >= p.shift.until) shiftEnd(p, true); }
+    if (p.shift) { const out = WORLD.bld[tileAt(p.x, p.y)] !== p.shift.bi; if (out || p.downed) shiftEnd(p, false); else if (now >= p.shift.until) { shiftEnd(p, true); shiftMsg(p, { a: 'start' }); } }   // turno seguido: só para quando sair do prédio
     if (p.job && p.downed && p.pkg) { tell(p, 'Você caiu e o pacote se perdeu. Trabalho perdido.'); p.job = null; p.pkg = false; p.uni = 0; Net.toOne(p.id, { t: 'job', job: null }); }
   }
 }
