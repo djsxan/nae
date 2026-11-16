@@ -12,7 +12,7 @@ const O = {
   REEDS: 10, LILY: 11, STUMP: 12, DEADTREE: 13, GRAVE: 14, BONES: 15, TENT: 16, CAMPFIRE: 17, FENCE: 18,
   TORCH: 19, BARREL: 20, CRATE: 21, HAY: 22, WELL: 23, STALL: 24, BENCH: 25, BANNER: 26, LOG: 27,
   FLOWERBED: 28, SPIKES: 29, WALL: 30, TOWER: 31, PART: 32, GATE: 33, STAIRS: 34, RUBBLE: 35, RUBBLEBIG: 36,
-  STATUE: 37, BRAZIER: 38, DUMMY: 39, WATERFALL: 40, LOWWALL: 41, IVY: 42, ANVIL: 43, WEAPONRACK: 44, CART: 45, TABLE: 46, CAVE: 47, HOARD: 48, ARMORPILE: 49, RUINTOWER: 50, OAK: 51, BIRCH: 52, WILLOW: 53, FERN: 54, ROOTS: 55, SHROOMS: 56, BERRY: 57, HERB: 58, BOULDER: 59, GUILLOTINE: 60, STOOL: 61, STAGEFLOOR: 62, VITRINE: 63, FRUITCRATE: 64, WATERWHEEL: 65, NOTICEBOARD: 66,
+  STATUE: 37, BRAZIER: 38, DUMMY: 39, WATERFALL: 40, LOWWALL: 41, IVY: 42, ANVIL: 43, WEAPONRACK: 44, CART: 45, TABLE: 46, CAVE: 47, HOARD: 48, ARMORPILE: 49, RUINTOWER: 50, OAK: 51, BIRCH: 52, WILLOW: 53, FERN: 54, ROOTS: 55, SHROOMS: 56, BERRY: 57, HERB: 58, WHEAT: 67, WHEATSPROUT: 68, BOULDER: 59, GUILLOTINE: 60, STOOL: 61, STAGEFLOOR: 62, VITRINE: 63, FRUITCRATE: 64, WATERWHEEL: 65, NOTICEBOARD: 66,
 };
 const BLOCKING = new Set([O.TREE, O.PINE, O.ROCK, O.FOUNTAIN, O.STUMP, O.DEADTREE, O.GRAVE, O.TENT,
   O.CAMPFIRE, O.FENCE, O.BARREL, O.CRATE, O.HAY, O.WELL, O.STALL, O.LOG, O.SPIKES,
@@ -39,6 +39,7 @@ GATHER.OAK = { tool: 'axe', prof: 'lenhador', item: 'hardwood', min: 3, rare: 'h
 GATHER.ROCK = { tool: 'pickaxe', prof: 'minerador', item: 'ore', min: 1, rare: 'gem', rp: 0.04, verb: 'quebrar pedra' };
 GATHER.BOULDER = { tool: 'pickaxe', prof: 'minerador', item: 'ore', min: 3, rare: 'gem', rp: 0.14, verb: 'quebrar rocha' };
 GATHER.TALLGRASS = { tool: 'sickle', prof: 'herbalista', item: 'flaxraw', min: 1, rare: 'silverleaf', rp: 0.04, verb: 'colher linho' };
+GATHER.WHEAT = { tool: 'sickle', prof: 'herbalista', item: 'wheat', min: 1, rare: 'wheat', rp: 0.25, verb: 'ceifar o trigo' };
 GATHER.FERN = { tool: 'sickle', prof: 'herbalista', item: 'flaxraw', min: 2, rare: 'silverleaf', rp: 0.1, verb: 'colher plantas' };
 const gatherOf = o => { for (const k in GATHER) if (O[k] === o) return GATHER[k]; return null; };
 const STAGE = { x: -1, y: -1 };   // cadafalso da guilhotina (centro do tablado 3x3)   // camas do térreo (onde dá para deitar e dormir): { x, y, dx, dy (travesseiro -> pés), bi }
@@ -116,7 +117,7 @@ const BUILDINGS = TEST3D ? [] : [
   // bairro nobre (à direita do castelo): casarões de pedra clara com jardins murados
   { x: C + 26, y: C - 21, ...BH('manor', 6, 6, 4.8, 3.2, 'Casa Valmont', { door: 'W', gen: { x: C + 24, y: C - 18, w: 6, h: 6, door: 'W' } }) },
   { x: C + 26, y: C - 13, ...BH('manor', 6, 6, 4.6, 3.0, 'Casa Aldren', { door: 'W', v: 1, gen: { x: C + 24, y: C - 6, w: 6, h: 6, door: 'W' } }) },
-  { x: C + 26, y: C + 8, ...BH('house', 6, 5, 3.8, 2.0, 'Imobiliária Chave de Bronze', { door: 'W', floors: 2, office: 'estate', gen: { x: C + 24, y: C + 8, w: 6, h: 5, door: 'W' } }) },   // escritório do Mestre Anselmo, no fim da avenida nobre (antiga Casa Morvane)
+  { x: C + 26, y: C + 8, ...BH('manor', 6, 5, 4.4, 3.0, 'Casa Morvane', { door: 'W', v: 2, gen: { x: C + 24, y: C + 8, w: 6, h: 5, door: 'W' } }) },
 ];
 // portas: lado S (+y, padrão), N (-y), E (+x) ou W (-x). O layout interno usa um "quadro local":
 // i = posição ao longo da parede da porta (largura A), j = profundidade (0 = fundo, D-1 = linha da porta)
@@ -223,7 +224,9 @@ function interiorLayout0(b, fl = 0) {
   } else if (k === 'workshop') {   // oficina: o artesão no fundo, bancada, caixas e ferramentas do ofício
     npcAt(dc, 0); const wk = b.wk;
     put('table', 0, 1, { w: 2 }); put('crate', w - 1, 0); put('barrel', w - 1, 1); put('shelf', 0, 0);
-    if (wk === 'alch') { put('stove', w - 2, 0); put('shelf', 1, 0); } else if (wk === 'mine') { put('anvil', w - 2, 1); put('rack', 1, 0); } else if (wk === 'saw' || wk === 'carp') { put('rack', 1, 0); put('crate', w - 1, h - 1); } else { put('crate', 1, 0); put('barrel', w - 1, h - 1); }
+    if (wk === 'bakery') { put('stove', w - 2, 0); put('stove', w - 3, 0); put('display', 1, 0, { v: 0 }); }
+    else if (wk === 'mill' || wk === 'wheat') { put('crate', w - 2, 0); put('hay', 1, 0); }
+    else if (wk === 'alch') { put('stove', w - 2, 0); put('shelf', 1, 0); } else if (wk === 'mine') { put('anvil', w - 2, 1); put('rack', 1, 0); } else if (wk === 'saw' || wk === 'carp') { put('rack', 1, 0); put('crate', w - 1, h - 1); } else { put('crate', 1, 0); put('barrel', w - 1, h - 1); }
   } else if (k === 'house' && b.office && w >= 5 && h >= 4) {   // escritório do corretor: escrivaninha com livros-razão, mapa emoldurado, quadro de chaves, arquivos, cadeira do cliente e a maquete da cidade
     put('keyboard', 0, 0); npcAt(1, 0); put('desk', 0, 1, { w: 2 }); put('chair', 1, 2, { seat: 3 }); put('filing', w - 1, 0); put('citymodel', w - 2, 2, { w: 2 }); put('filing', 0, h - 1, { v: 1 }); put('mapframe', w - 1, 1, { block: false });
   } else if (k === 'house' && b.office) {   // imobiliária: corretor atrás da mesa, estantes de pastas, mapa da cidade na parede
@@ -236,9 +239,9 @@ function interiorLayout0(b, fl = 0) {
     put('shelf', 0, h - 2); if (h >= 5) put('crate', 0, h - 1);
     put('rug', dc, 1, { block: false });
   } else if (k === 'shop' && b.v === 6) {   // Elixires da Lua Prateada
-    npcAt(dc, 0); for (let i = 0; i < w; i++) if (i !== dc) put('shelf', i, 0, { v: 1 });
+    npcAt(dc, 0); for (let i = 0; i < w; i++) if (i !== dc) put('shelf', i, 0, { v: 7 });   // estantes de frascos brilhando
     put('counter', 1, 1, { w: dc - 1, v: 6 }); if (w - 2 - dc >= 1) put('counter', dc + 1, 1, { w: w - 2 - dc, v: 6 });
-    put('still', 0, h - 2); put('orb', w - 1, h - 2); put('display', 0, 2, { v: 1 }); put('rug', dc - 1, 2, { w: 3, block: false, v: 9 });
+    put('still', 0, h - 2); put('orb', w - 1, h - 2); put('cauldron', w - 1, 2); put('spellbooks', 0, 2); put('garlic', 1, 2, { block: false, v: 2 }); put('starrug', dc - 1, 2, { w: 3, h: 2, block: false });
   } else if (k === 'shop' && b.blank) {   // loja vazia (à espera de um dono): prateleiras no fundo e um balcão
     for (let i = 0; i < w; i++) if (i !== dc) put('shelf', i, 0, { v: b.v });
   } else if (k === 'shop') {
@@ -254,6 +257,12 @@ function interiorLayout0(b, fl = 0) {
   } else if (k === 'tavern') {
     npcAt(1, 0); put('barrel', 0, 0); put('counter', 0, 1, { w: 2 }); put('barrel', 0, 2);   // passagem atrás do balcão pelo lado put('fireplace', w - 2, 0); put('shelf', 3, 0); for (const [i, j, fi, fj] of [[4, 0, 4, 1], [w - 1, 1, w - 2, 1], [w - 1, 2, w - 2, 2]]) if (can(i, j) && can(fi, fj)) { put('stove', i, j); taken.add(key(fi, fj)); break; }
     for (const [ti, tj] of [[5, 2], [1, 3], [5, 4]]) if (put('table', ti, tj)) { put('chair', ti - 1, tj, { seat: 1 }); put('chair', ti + 1, tj, { seat: 5 }); }
+  } else if (k === 'hotel' && w === 9 && h === 8 && b.dcol === 7) {   // 4 cabines compactas (2x2), corredor de 2 tiles, balcão na ponta norte
+    let ck = 0;
+    for (const a of [0, 3]) { const q = ck++, inn = [[a, 0], [a + 1, 0], [a, 1], [a + 1, 1]]; put('cot', a, 0, { h: 2, cab: q }); put('chest', a + 1, 0, { cab: q }); put('hpart', a, 2, { v: 0, wp: 'nz' }); put('cabindoor', a + 1, 2, { v: 0, block: false, cab: q, adj: [a + 1, 1], inner: inn }); }
+    for (const a of [0, 3]) { const q = ck++, inn = [[a, 6], [a + 1, 6], [a, 7], [a + 1, 7]]; put('hpart', a, 5, { v: 0, wp: 'pz' }); put('cabindoor', a + 1, 5, { v: 0, block: false, cab: q, adj: [a + 1, 6], inner: inn }); put('cot', a, 6, { h: 2, cab: q }); put('chest', a + 1, 7, { cab: q }); }
+    for (const c of [2, 5]) { const wp = c === 2 ? 'px nx' : 'nx'; put('hpart', c, 0, { v: 1, wp }); put('hpart', c, 1, { v: 1, wp }); put('hpart', c, 2, { v: 2 }); put('hpart', c, 5, { v: 2 }); put('hpart', c, 6, { v: 1, wp }); put('hpart', c, 7, { v: 1, wp }); }
+    put('shelf', 8, 0); put('fireplace', 6, 0); npcAt(7, 0); put('counter', 7, 1); put('rug', 3, 3, { w: 4, h: 2, block: false, v: 9 });
   } else if (k === 'hotel' && w === 9 && h >= 10 && b.dcol === 7) {   // 4 cabines (2x3), corredor de 2 tiles, balcão e entrada na ponta norte
     let ck = 0;
     for (const a of [0, 3]) { const q = ck++, inn = []; for (let i = a; i < a + 2; i++) for (let j = 0; j < 3; j++) inn.push([i, j]);
@@ -878,7 +887,8 @@ function generateWorld() {
   BUILDINGS.push(...houses);
   { // escritório do corretor: a casa mais perto da rua nova e do mercado
     let ob = null, bd = 1e9; for (const hb of houses) { const d = Math.hypot(hb.x + hb.w / 2 - (C - 18), hb.y + hb.h / 2 - (C + 13)); if (d < bd) { bd = d; ob = hb; } }
-    if (ob) { ob.kind = 'shop'; ob.name = 'Elixires da Lua Prateada'; ob.v = 6; ob.x = C - 22; ob.y = C + 15; ob.door = 'S'; ob.w = 6; ob.h = 4; ob.floors = 1; ob.H = 3.2; ob.RH = 2.4; ob.wall = Math.round(3.2 * 19.6); ob.roof = Math.round(2.4 * 19.6); } }   // loja da alquimista (antiga imobiliária)   // atrás da Alfaiataria, porta para a rua de baixo
+    if (ob) { delete ob.arch; ob.kind = 'shop'; ob.name = 'Elixires da Lua Prateada'; ob.v = 6; ob.x = C - 22; ob.y = C + 15; ob.door = 'S'; ob.w = 6; ob.h = 4; ob.floors = 1; ob.H = 4.2; ob.RH = 2.2; ob.wall = Math.round(4.2 * 19.6); ob.roof = Math.round(2.2 * 19.6); } }   // loja da alquimista (antiga imobiliária)   // atrás da Alfaiataria, porta para a rua de baixo
+  { const off = houses.find(q => q.x === C + 18 && q.y === C - 29); if (off) { delete off.arch; Object.assign(off, { office: 'estate', name: 'Imobiliária Chave de Bronze', door: 'S', floors: 2, H: 3.8, RH: 2.0, wall: Math.round(3.8 * 19.6), roof: Math.round(2.0 * 19.6) }); } }   // escritório do Mestre Anselmo (no lugar da Casa 6, porta para o sul)
   { const h18 = houses.find(q => q.x === C + 15 && q.y === C + 23); if (h18) { h18.x = C + 14; h18.y = C - 13; h18.door = 'E'; h18.w = 4; h18.h = 6; h18.noble = 1; } }   // casa nobre, ao lado do castelo
   for (let i = 0; i < bld.length; i++) if (bld[i] === -2) bld[i] = -1;   // marcas temporárias que sobraram (a imobiliária muda de lugar depois de sorteada)
   // ---- vila do oeste (do outro lado do rio, na estrada que sai do portão oeste): casas espaçadas e oficinas ----
@@ -904,12 +914,16 @@ function generateWorld() {
     lane(X(49), C + 8, X(48), C + 10);   // trilha da horta
   }
   // pousada do outro lado da rua, atrás das lojas da taverna, porta para a rua (no fim da lista: não muda o número dos prédios salvos)
-  if (!TEST3D) BUILDINGS.push({ x: C - 22, y: C + 21, ...BH('hotel', 10, 9, 4.0, 2.2, 'Pousada do Javali Magro', { floors: 1, door: 'E', dcol: 7 }) });
+  if (!TEST3D) BUILDINGS.push({ x: C - 20, y: C + 21, ...BH('hotel', 8, 9, 3.0, 1.6, 'Pousada do Javali Magro', { floors: 1, door: 'E', dcol: 7 }) });   // mais curta e mais baixa, longe do estábulo
   if (!TEST3D) BUILDINGS.push({ x: C - 30, y: C - 14, ...BH('house', 5, 4, 3.0, 2.6, '', { door: 'E', v: 2, floors: 1, extra: 1 }) });
   if (!TEST3D) BUILDINGS.push(   // bairro nobre: casarões do lado do castelo (porta para a avenida) e mais um do lado leste
     { x: C + 13, y: C - 21, ...BH('manor', 6, 6, 4.6, 3.0, 'Casa Lorvan', { door: 'E', v: 1 }) },
     { x: C + 13, y: C - 5, ...BH('manor', 6, 6, 4.8, 3.2, 'Casa Brisane', { door: 'E', v: 2 }) },
-    { x: C + 26, y: C - 5, ...BH('manor', 6, 6, 4.6, 3.0, 'Casa Eldren', { door: 'W' }) });   // casa nova na rua do banco, alinhada com as lojas   // porta direto na rua principal
+    { x: C + 26, y: C - 5, ...BH('manor', 6, 6, 4.6, 3.0, 'Casa Eldren', { door: 'W' }) });
+  if (!TEST3D) BUILDINGS.push(   // fazenda e moinho na Vila do Oeste; padaria junto à praça do mercado
+    { x: C - 72, y: C - 21, ...BH('workshop', 5, 4, 2.6, 2.4, 'Fazenda do Trigo Dourado', { wk: 'wheat', door: 'S', floors: 1 }) },
+    { x: C - 65, y: C - 21, ...BH('workshop', 4, 4, 3.6, 2.6, 'Moinho do Vento Leste', { wk: 'mill', door: 'S', floors: 1 }) },
+    { x: C + 4, y: C + 21, ...BH('workshop', 5, 4, 2.8, 2.4, 'Padaria da Praça', { wk: 'bakery', door: 'W', floors: 1 }) });   // casa nova na rua do banco, alinhada com as lojas   // porta direto na rua principal
   BUILDINGS.forEach((b, bi) => {
     for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { bld[idx(x, y)] = bi; obj[idx(x, y)] = O.NONE; ground[idx(x, y)] = T.COBBLE; }
   });
@@ -942,6 +956,8 @@ function generateWorld() {
   const doorFree = new Set(); for (const b of BUILDINGS) { const [dx, dy] = doorTile(b), v = DOOR_V[b.door || 'S']; for (let k = 1; k <= 2; k++) for (const s2 of [-1, 0, 1]) doorFree.add(idx(dx + v[0] * k + (v[1] ? s2 : 0), dy + v[1] * k + (v[0] ? s2 : 0))); }
   const deco = (x, y, o) => { const i = idx(x, y); if (doorFree.has(i)) return; if (bld[i] < 0 && !stair[i] && !fl1[i] && !nearBld(x, y)) obj[i] = o; };
   const decoAny = (x, y, o) => { const i = idx(x, y); if (doorFree.has(i)) return; if (bld[i] < 0 && !stair[i] && !fl1[i]) obj[i] = o; };
+  // campo de trigo da fazenda (Vila do Oeste)
+  for (let y = C - 16; y <= C - 11; y++) for (let x = C - 76; x <= C - 64; x++) { const i = idx(x, y); if (bld[i] >= 0 || rdir[i]) continue; ground[i] = T.DIRT; obj[i] = (x + y) % 7 === 0 ? O.WHEATSPROUT : O.WHEAT; }
   // avenida da Catedral: da porta (escadaria) até a praça do portão sul
   { const AX0 = C + 10, AX1 = C + 14, AY0 = C + 17, AY1 = C + 27, PX0 = C - 1, PX1 = C + 14, PY0 = C + 28, PY1 = C + 31, mid = C + 12;
     const pave = (x, y) => { const i = idx(x, y); if (bld[i] >= 0) return; obj[i] = O.NONE; if (rdir[i]) return; const d = Math.abs(x - mid); ground[i] = d === 0 ? T.FLOORSTONE : (d + y) % 2 ? T.STONE : T.FLOORSTONE; };
@@ -1180,7 +1196,7 @@ if (!TEST3D) { const hb = BUILDINGS.find(b => b.kind === 'hotel'); if (hb) NPCS.
 if (!TEST3D) { const bb = BUILDINGS.find(b => b.kind === 'bank'); if (bb) { NPCS.push({ id: 'banker', name: 'Mestre Varkas, o Banqueiro', kind: 'banker', ...npcIn(bb, { x: bb.x + 1, y: bb.y + 1 }) }); const [w, h] = bDims(bb); (w >= 8 && h >= 10 ? [['banker2', 'Edda, a Caixa', 6, 3], ['banker3', 'Osric, o Contador', 1, 6], ['banker4', 'Gorim, o Escriturário', 6, 6], ['banker5', 'Hilde, a Tesoureira', 1, 9], ['banker6', 'Brann, o Avaliador', 6, 9], ['bankporter', 'Tobb, o Porteiro', 2, 11]] : w >= 6 && h >= 10 ? [['banker2', 'Edda, a Caixa', w - 1, 3], ['banker3', 'Osric, o Contador', 0, 6], ['banker4', 'Gorim, o Escriturário', w - 1, 6], ['banker5', 'Hilde, a Tesoureira', 0, 9], ['banker6', 'Brann, o Avaliador', w - 1, 9], ['bankporter', 'Tobb, o Porteiro', w - 2, h - 2]] : [['banker2', 'Edda, a Caixa', 2, 1], ['banker3', 'Osric, o Contador', w - 3, 1]]).forEach(([id, name, i, j]) => { const [x, y] = bLocal(bb, i, j); NPCS.push({ id, name, kind: id, x, y }); }); } }
 const STAFF_NAMES = {
   saw: 'Bruno Serra, o Serrador', mine: 'Gunnar Pedrafunda, o Mineiro', farm: 'Rosa Quintal, a Hortelã', carp: 'Elias Plaina, o Carpinteiro', alch: 'Odila Varga, a Destiladora',
-  witch: 'Morgana Vespertina, a Alquimista', apoth: 'Clara Malva, a Boticária', arcane: 'Silas Runa, o Balconista', tailor: 'Berta Agulha, a Costureira', scroll: 'Teodoro Tinta, o Copista',
+  wheat: 'Tonico Espiga, o Fazendeiro', mill: 'Dona Firmina, a Moleira', bakery: 'Mestre Bartolo, o Padeiro', witch: 'Morgana Vespertina, a Alquimista', apoth: 'Clara Malva, a Boticária', arcane: 'Silas Runa, o Balconista', tailor: 'Berta Agulha, a Costureira', scroll: 'Teodoro Tinta, o Copista',
 };
 const SHOP_TYPE_BY_NAME = { 'Elixires da Lua Prateada': 'witch', 'Boticário de Elva': 'apoth', 'Arcanos & Varinhas': 'arcane', 'Alfaiataria Real': 'tailor', 'Pergaminhos & Mapas': 'scroll' };
 if (!TEST3D) {
@@ -1195,15 +1211,16 @@ if (!TEST3D) {
 // ---------- economia dos negócios: mercadorias, o que cada loja vende e o que cada oficina faz ----------
 const GOODS = {
   wood: { n: 'Madeira', p: 2, ic: '🪵' }, ore: { n: 'Minério', p: 3, ic: '🪨' }, crystal: { n: 'Cristais', p: 14, ic: '💎' }, herb: { n: 'Ervas', p: 3, ic: '🌿' }, flax: { n: 'Linho e tecidos', p: 4, ic: '🧵' },
-  woodgoods: { n: 'Varinhas e artigos de madeira', p: 8, ic: '🪄' }, tools: { n: 'Ferramentas', p: 16, ic: '⚒' }, serve: { n: 'Mesas servidas', p: 4, ic: '🍺' }, paper: { n: 'Papel e pergaminho', p: 7, ic: '📜' }, potion: { n: 'Poções e tônicos', p: 11, ic: '🧪' },
+  woodgoods: { n: 'Varinhas e artigos de madeira', p: 8, ic: '🪄' }, wheat: { n: 'Trigo', p: 2, ic: '🌾' }, fruit: { n: 'Frutas', p: 3, ic: '🍎' }, flour: { n: 'Farinha', p: 5, ic: '🥣' }, loaves: { n: 'Pães', p: 7, ic: '🍞' }, pies: { n: 'Tortas', p: 13, ic: '🥧' }, cakes: { n: 'Bolos', p: 18, ic: '🎂' }, tools: { n: 'Ferramentas', p: 16, ic: '⚒' }, serve: { n: 'Mesas servidas', p: 4, ic: '🍺' }, paper: { n: 'Papel e pergaminho', p: 7, ic: '📜' }, potion: { n: 'Poções e tônicos', p: 11, ic: '🧪' },
 };
 // o que a mercadoria vira quando um jogador compra no balcão
 const GOOD_ITEM = { potion: { pot: 'hp' }, flax: { pot: 'band' }, herb: { loot: 'herb' }, crystal: { loot: 'gem' }, woodgoods: { loot: 'wand' }, paper: { loot: 'map' }, wood: { loot: 'firewood' }, ore: { loot: 'gem' } };
 // item do inventário → mercadoria (para colocar no estoque da loja ou no depósito da oficina)
-const ITEM_GOOD = { log: ['wood', 1], hardwood: ['wood', 2], wand: ['woodgoods', 1], wand_fine: ['woodgoods', 2], wand_arcane: ['woodgoods', 4], gem: ['crystal', 1], herb: ['herb', 1], map: ['paper', 1], flaxraw: ['flax', 1], ore: ['ore', 1] };
+const ITEM_GOOD = { wheat: ['wheat', 1], apple: ['fruit', 1], berries: ['fruit', 1], log: ['wood', 1], hardwood: ['wood', 2], wand: ['woodgoods', 1], wand_fine: ['woodgoods', 2], wand_arcane: ['woodgoods', 4], gem: ['crystal', 1], herb: ['herb', 1], map: ['paper', 1], flaxraw: ['flax', 1], ore: ['ore', 1] };
 const SHOP_GOODS = { witch: ['potion', 'crystal'], apoth: ['potion', 'herb'], arcane: ['crystal', 'woodgoods'], tailor: ['flax'], scroll: ['paper'] };
 const WORKS = {
   saw: { n: 'Serraria', make: { wood: 2 } }, mine: { n: 'Mina', make: { ore: 2, crystal: 0.2 } }, farm: { n: 'Horta', make: { herb: 2, flax: 1 } },
+  wheat: { n: 'Fazenda', make: { wheat: 2 } }, mill: { n: 'Moinho', recipes: { flour: { wheat: 2 } } }, bakery: { n: 'Padaria', recipes: { loaves: { flour: 1 }, pies: { flour: 1, fruit: 1 }, cakes: { flour: 2, fruit: 1 } } },
   forge: { n: 'Forja', recipes: { tools: { wood: 1, ore: 2 } } }, tavern: { n: 'Taverna', recipes: { serve: { flax: 1 } } },
   carp: { n: 'Carpintaria', recipes: { woodgoods: { wood: 2 }, paper: { wood: 2 } } }, alch: { n: 'Alambique', recipes: { potion: { herb: 2 } } },
 };
@@ -1230,7 +1247,8 @@ const PROPS = [], PROPS_BY = {};
   BUILDINGS.forEach((b, bi) => {
     const fl = b.floors || 1, area = b.w * b.h, base = { bi, area, w: b.w, h: b.h, floors: fl, district: district(b) };
     let P = null;
-    if (b.kind === 'house' && !b.office) { n++; P = { ...base, id: 'h' + bi, kind: 'house', name: 'Casa ' + n, rent: (4 + Math.round(area * 0.3) + (fl - 1) * 4) * 2 }; }   // casas 2x mais caras: a pousada é o começo
+    if (b.kind === 'house') n++;   // conta o escritório também: os números das outras casas não mudam
+    if (b.kind === 'house' && !b.office) { P = { ...base, id: 'h' + bi, kind: 'house', name: 'Casa ' + n, rent: (4 + Math.round(area * 0.3) + (fl - 1) * 4) * 2 }; }   // casas 2x mais caras: a pousada é o começo
     else if (b.kind === 'tavern') P = { ...base, id: 's' + bi, kind: 'workshop', wk: 'tavern', name: b.name, npcOwner: 'Greta', rent: 20 + Math.round(area * 0.8) };
     else if (b.kind === 'smith') P = { ...base, id: 'w' + bi, kind: 'workshop', wk: 'forge', name: b.name, npcOwner: 'Hrodgar', rent: 16 + Math.round(area * 0.7) };
     else if (b.kind === 'shop' || b.kind === 'boutique') P = { ...base, id: 's' + bi, kind: 'shop', shopType: b.shopType, name: b.name || 'Loja', npc: b.shopType ? null : ownerOf(b), rent: 20 + Math.round(area * 0.8) + (fl - 1) * 6 };
@@ -1280,7 +1298,7 @@ function npcGroup(id, kind) {
   if (/^(st_|merchant|innkeeper|smith|fruit|broker|hotelkeeper|supplier|courier)/.test(k) || /^st_/.test(id)) return 'comerc';
   return 'cidade';
 }
-const NPC_AT = new Set(NPCS.map(n => Math.round(n.y) * MAP_W + Math.round(n.x)));
+const NPC_AT = new Set(NPCS.filter(n => WORLD.bld[Math.round(n.y) * MAP_W + Math.round(n.x)] >= 0 && !n.route && !n.patrol && !n.pairOf && n.kind !== 'guard').map(n => Math.round(n.y) * MAP_W + Math.round(n.x)));   // só quem fica parado dentro de um prédio (balconistas) bloqueia o tile; sentinelas e quem anda na rua não
 
 function inBounds(x, y) { return x >= 0 && y >= 0 && x < MAP_W && y < MAP_H; }
 // tile (inteiro) andável no andar z

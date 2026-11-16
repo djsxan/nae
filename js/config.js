@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.49.0';
-const VERSION_NAME = 'Nae · Fama e Fortuna';
+const VERSION = 'v1.50.0';
+const VERSION_NAME = 'Nae · Pão Nosso';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -163,6 +163,7 @@ const LOOT = {
   ore:      { name: 'Minério',           price: 4,  icon: '🪨', color: '#8a8a90', desc: 'Pedra com metal. Vende no Empório ou vai para a forja.' },
   flaxraw:  { name: 'Linho cru',         price: 3,  icon: '🌾', color: '#d8c890', desc: 'Fibra para tecido e bandagens.' },
   silverleaf: { name: 'Folha-de-prata',  price: 15, icon: '🍃', color: '#c8e0e8', desc: 'Erva rara que brilha ao luar. Boticários pagam bem.' },
+  wheat: { name: 'Trigo', price: 2, icon: '🌾', color: '#e2c060', desc: 'Espigas da fazenda da Vila. Duas viram um pão no fogão; o moinho faz farinha.' },
   elixir_breath: { name: 'Elixir do Fôlego', price: 45, icon: '🧪', color: '#7ad8e8', desc: 'Por 3 minutos o fôlego não acaba. Da alquimista Morgana.' },
   elixir_warm: { name: 'Elixir da Brasa', price: 35, icon: '🧪', color: '#e8883a', desc: 'Por 10 minutos o frio não te pega. Da alquimista Morgana.' },
   elixir_swift: { name: 'Elixir dos Passos Ligeiros', price: 40, icon: '🧪', color: '#a8e86a', desc: 'Por 45 segundos você anda e ataca muito mais rápido.' },
@@ -277,6 +278,7 @@ const RECIPES = {
   roast: { name: 'Carne Assada', need: { meat: 1 }, out: 'cookedmeat', desc: 'Assa a carne crua. Sem risco de enjoo.' },
   stew:  { name: 'Ensopado', need: { meat: 1, herb: 1 }, out: 'stew', desc: 'Carne com ervas: sacia muito, mata a sede e cura um pouco.' },
   pie:   { name: 'Torta de Frutas', need: { berries: 3, apple: 1 }, out: 'pie', desc: 'Doce e farta.' },
+  bread: { name: 'Pão caseiro', need: { wheat: 2 }, out: 'bread', desc: 'Duas espigas de trigo viram um pão quentinho.' },
   tea:   { name: 'Chá de Ervas', need: { herb: 1 }, out: 'tea', desc: 'Mata a sede e baixa a febre.' },
 };
 const KNOCK_MS = 1700, PROSTH_PRICE = 30, RITUAL_PRICE = 120;

@@ -8,7 +8,7 @@ G.biz = { pid: null, d: null, tab: 'geral' };
 const EST_KIND = { house: 'Casas', shop: 'Lojas', workshop: 'Oficinas', mine: 'Meus imóveis' };
 const EST_PERKS = ['🔒 Porta trancada: só você e quem você autorizar entram', '🧰 Baú seguro dentro de casa (F)', '🛏 Acorda em casa quando entra no reino', '✨ Dormir na sua cama recupera mais rápido e dá "Bem descansado"'];
 const SHOP_LABEL = { witch: 'Alquimia: elixires raros e cristais',  apoth: 'Boticário: poções e ervas', arcane: 'Arcanos: cristais e varinhas', tailor: 'Alfaiataria: linho e tecidos', scroll: 'Pergaminhos: papel e pergaminho' };
-const WK_LABEL = { forge: 'Forja: madeira + minério → ferramentas (vendidas no balcão do Hrodgar) e consertos', tavern: 'Taverna: serve comida e bebida aos fregueses; linho deixa o serviço melhor',  saw: 'Serraria: tira madeira sozinha', mine: 'Mina: tira minério (e às vezes cristais)', farm: 'Horta: dá ervas e linho', carp: 'Carpintaria: madeira → varinhas ou papel', alch: 'Alambique: ervas → poções' };
+const WK_LABEL = { wheat: 'Fazenda: trigo (os ceifeiros colhem no campo) e algumas frutas', mill: 'Moinho: trigo → farinha', bakery: 'Padaria: farinha → pães, tortas e bolos; o que sobra vai ao Borin e à taverna',  forge: 'Forja: madeira + minério → ferramentas (vendidas no balcão do Hrodgar) e consertos', tavern: 'Taverna: serve comida e bebida aos fregueses; linho deixa o serviço melhor',  saw: 'Serraria: tira madeira sozinha', mine: 'Mina: tira minério (e às vezes cristais)', farm: 'Horta: dá ervas e linho', carp: 'Carpintaria: madeira → varinhas ou papel', alch: 'Alambique: ervas → poções' };
 
 function estateEvent(m) {
   if (m.t === 'biz') { bizEvent(m); return true; }

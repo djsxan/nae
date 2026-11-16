@@ -2428,8 +2428,8 @@ function workerTick(n, now, dt) {
   if (now > n.wt) { const T = bldFreeTiles(n.bi); if (T.length) { const t = T[Math.floor(Math.random() * T.length)]; n.walkTo = [t[0], t[1]]; n.act = null; } else n.wt = now + 8000; }
 }
 // ---------- coletores das oficinas que extraem: saem, coletam de verdade (a árvore cai, a pedra quebra) e enchem o depósito ----------
-const COLL_TOOL = { saw: 'axe', mine: 'pickaxe', farm: 'sickle' }, COLL_ANIM = { axe: 'chop', pickaxe: 'pickswing', sickle: 'reap' };
-const COLL_BASE = { saw: ['Elias, o lenhador', 'v_peasm'], mine: ['Rufo, o mineiro', 'v_peasm'], farm: ['Dora, a colhedora', 'v_peasf'] };
+const COLL_TOOL = { saw: 'axe', mine: 'pickaxe', farm: 'sickle', wheat: 'sickle' }, COLL_ANIM = { axe: 'chop', pickaxe: 'pickswing', sickle: 'reap' };
+const COLL_BASE = { wheat: ['Lino, o ceifeiro', 'v_peasm'], saw: ['Elias, o lenhador', 'v_peasm'], mine: ['Rufo, o mineiro', 'v_peasm'], farm: ['Dora, a colhedora', 'v_peasf'] };
 function collectorSync(now) {
   if (now - (S.collT || 0) < 2000) return; S.collT = now; const hr = resHour(), day = hr >= 7 && hr < 19;
   for (const P of PROPS) { if (P.kind !== 'workshop' || !COLL_TOOL[P.wk]) continue; const r = S.estate && S.estate.r[P.id];
@@ -2442,14 +2442,15 @@ function collectorSync(now) {
 function collFind(n, P, tool) {
   const [dx, dy] = bizDoorOut(P), R = 24; let best = null, bd = 1e9; S.collRes = S.collRes || {};
   for (let y = Math.round(dy) - R; y <= Math.round(dy) + R; y++) for (let x = Math.round(dx) - R; x <= Math.round(dx) + R; x++) {
-    if (!inBounds(x, y)) continue; const i = y * MAP_W + x, G0 = gatherOf(WORLD.obj[i]); if (!G0 || G0.tool !== tool || WORLD.bld[i] >= 0 || (S.collRes[i] && S.collRes[i] !== n.id)) continue;
+    if (!inBounds(x, y)) continue; const i = y * MAP_W + x, G0 = gatherOf(WORLD.obj[i]); if (!G0 || G0.tool !== tool || WORLD.bld[i] >= 0 || (S.collRes[i] && S.collRes[i] !== n.id) || (P.wk === 'wheat') !== (WORLD.obj[i] === O.WHEAT)) continue;
     const d = dist(x, y, dx, dy); if (d >= bd) continue;
     for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (walkableTile(x + ax, y + ay, 0)) { bd = d; best = { i, sp: [x + ax * 0.95, y + ay * 0.95] }; break; } }
   return best;
 }
 function collHit(n, P) {   // um golpe no recurso: devolve o que rendeu
   const i = n.ci, o = WORLD.obj[i], x = i % MAP_W, y = (i - x) / MAP_W, now = now_(); let g = null, q = 2;
-  if (P.wk === 'farm') { setObj(i, O.NONE); (S.objBack = S.objBack || []).push({ i, o, at: now + 120000 }); g = Math.random() < 0.66 ? 'herb' : 'flax'; }
+  if (P.wk === 'wheat') { setObj(i, O.WHEATSPROUT); (S.objBack = S.objBack || []).push({ i, o, at: now + 150000 }); g = Math.random() < 0.15 ? 'fruit' : 'wheat'; }
+  else if (P.wk === 'farm') { setObj(i, O.NONE); (S.objBack = S.objBack || []).push({ i, o, at: now + 120000 }); g = Math.random() < 0.66 ? 'herb' : 'flax'; }
   else { S.nodeHits = S.nodeHits || {}; const hits = (S.nodeHits[i] || 0) + 1, max = o === O.OAK || o === O.BOULDER ? 4 : 3, tree = P.wk === 'saw';
     if (hits >= max) { delete S.nodeHits[i]; near(x, y, { t: tree ? 'tfall' : 'crumble', i, o, a: Math.atan2(y - n.y, x - n.x) }); setObj(i, tree ? O.STUMP : O.NONE); (S.objBack = S.objBack || []).push({ i, o, at: now + (tree ? 300000 : 240000) }); } else S.nodeHits[i] = hits;
     if (tree) { g = 'wood'; if (o === O.OAK) q = 3; } else g = Math.random() < 0.1 ? 'crystal' : 'ore'; }
@@ -2729,6 +2730,7 @@ function bizHour(now) {
         if (W.recipes && B.recipe) { const rec = W.recipes[B.recipe]; B.frac._b = (B.frac._b || 0) + k; let nb = Math.floor(B.frac._b); B.frac._b -= nb;
           while (nb-- > 0) { let ok = true; for (const g in rec) if ((B.store[g] || 0) < rec[g]) { const miss = rec[g] - (B.store[g] || 0), cost = Math.ceil(GOODS[g].p * 1.2 * miss), worth = recipeGain(B.recipe) > 0; if (B.autobuy && !worth && B.noWorthDay !== estDay()) { B.noWorthDay = estDay(); bizLog(B, 'Comprar matéria-prima para ' + GOODS[B.recipe].n + ' não compensa: a oficina espera receber dos seus negócios.'); } if (B.autobuy && worth && B.cofre >= cost && !ownMaker(r.owner, g)) { B.cofre -= cost; B.today.cost += cost; B.store[g] = (B.store[g] || 0) + miss; } else ok = false; }
             if (!ok || stockSum(B.store) >= WS_CAP) break; for (const g in rec) B.store[g] -= rec[g]; B.store[B.recipe] = (B.store[B.recipe] || 0) + 1; } }
+        if (P.wk === 'bakery') { S.trade = S.trade || {}; const give = (npc, k, g) => { const n0 = S.npcs && S.npcs[npc]; if (!n0) return; const T = tradeStock(n0), have = Math.floor(B.store[g] || 0), room = Math.max(0, 40 - (T.stock[k] || 0)), q = Math.min(have - 5, room); if (q > 0) { B.store[g] -= q; T.stock[k] = (T.stock[k] || 0) + q; const v = Math.round(q * GOODS[g].p * 0.9); B.cofre += v; B.today.rev += v; B.today.sold += q; bizLog(B, q + ' ' + GOODS[g].n + ' entregues a ' + n0.name.split(',')[0] + ' (' + v + ' ouro).'); } }; give('merchant', 'bread', 'loaves'); give('innkeeper', 'pie', 'pies'); give('innkeeper', 'bread', 'loaves'); }
         if (B.sell) { const need = new Set(bizNeeds(r.owner).filter(x => x.pid !== pid).map(x => x.g)); for (const g in B.store) { if (g === 'serve') continue; const keep = B.keep != null ? B.keep : need.has(g) ? 40 : 10; if (B.store[g] > keep) { const ex = Math.floor(B.store[g] - keep), v = GOODS[g].p * SELL_K * ex; B.store[g] -= ex; B.cofre += v; B.today.rev += v; B.today.sold += ex; } } }
         if (P.wk === 'tavern') {   // taverna: cada freguês lá dentro gasta; mesas servidas (com linho) rendem mais
           const pat = 1 + Object.values(S.npcs).filter(q => !q.dead && q.kind !== 'guard' && WORLD.bld[tileAt(q.x, q.y)] === P.bi && q.role !== 'clerk').length, served = Math.min(pat, Math.floor(B.store.serve || 0));
@@ -2946,6 +2948,7 @@ function gather(p, m) {
   if (!p.inv[item] && Object.keys(p.inv).length >= INV_SLOTS) return stop('Sua mochila está cheia.');
   p.gatherT = now + 1200; p.inv[item] = (p.inv[item] || 0) + n;
   if (o === O.TALLGRASS || o === O.FERN) { setObj(i, O.NONE); (S.objBack = S.objBack || []).push({ i, o, at: now + 120000 }); }
+  else if (o === O.WHEAT) { setObj(i, O.WHEATSPROUT); (S.objBack = S.objBack || []).push({ i, o, at: now + 150000 }); }   // o trigo volta a crescer
   else {   // árvore e pedra aguentam alguns golpes; no último a árvore cai (vira toco) e a pedra se desfaz
     S.nodeHits = S.nodeHits || {}; const hits = (S.nodeHits[i] || 0) + 1, max = o === O.OAK || o === O.BOULDER ? 4 : 3;
     if (hits >= max) {
@@ -3546,6 +3549,7 @@ const TRADE = {
   fruit: { sell: { apple: 20, berries: 20 }, buys: ['apple', 'berries', 'herb'] },
   smith: { sell: { axe: 4, pickaxe: 4, sickle: 4, lockpick: 3 }, buys: ['ore', 'gem', 'hardwood', 'log'] },
   st_apoth: { sell: { pot_hp: 8, pot_band: 12, herb: 12, ointment: 5, tea: 6 }, buys: ['herb', 'silverleaf', 'flaxraw'] },
+  st_bakery: { sell: { bread: 12, pie: 4 }, buys: ['wheat', 'apple', 'berries'] },
   st_witch: { sell: { elixir_breath: 3, elixir_warm: 4, elixir_swift: 3, amulet_luck: 1, pot_mp: 6, pot_hp: 6, silverleaf: 4 }, buys: ['herb', 'silverleaf', 'gem', 'goo', 'toadskin', 'wispdust', 'slimecore', 'trollheart', 'dragonscale', 'rattail', 'bone'] },
   st_arcane: { sell: { wand: 4, wand_fine: 2, gem: 3, pot_mp: 8 }, buys: ['gem', 'hardwood', 'silverleaf', 'log', 'wand', 'wand_fine', 'wand_arcane'] },
   st_tailor: { sell: { pot_band: 15, rope: 5 }, buys: ['flaxraw', 'pelt'] },
@@ -3565,7 +3569,7 @@ function tradeStock(n) {
   const steps = Math.floor((now - T.t) / (BIZ_HOUR_MS * 2)); if (steps > 0 && !n.trader) { T.t += steps * BIZ_HOUR_MS * 2; for (const k in C.sell) T.stock[k] = Math.min(C.sell[k], (T.stock[k] || 0) + steps); }   // repõe 1 de cada a cada 2 horas do jogo
   return T;
 }
-const tSellPrice = (n, p, k) => { const C = tradeCat(n), own = C.sell && k in C.sell; return Math.max(1, Math.round(tBase(k) * (C.mark || 1) * (own ? 1 : 1.3) * (opPriceMul(n, p) || 1))); };
+const tSellPrice = (n, p, k) => { const C = tradeCat(n), own = C.sell && k in C.sell, glut = (k === 'bread' || k === 'pie') && ((S.trade || {})[n.id] || { stock: {} }).stock[k] > 25 ? 0.75 : 1; return Math.max(1, Math.round(tBase(k) * (C.mark || 1) * (own ? 1 : 1.3) * glut * (opPriceMul(n, p) || 1))); };
 const tBuyPrice = (n, p, k) => { const C = tradeCat(n), own = C.sell && k in C.sell; return Math.max(1, Math.floor(tBase(k) * (C.pay || 1) * (own || FOODS.includes(k) ? 0.5 : C.buys === 'all' ? 1 : 0.8))); };
 function tradeView(n, p) {
   const C = tradeCat(n), T = tradeStock(n), bankG = Math.floor((bankLoad().acc[estOwner(p)] || { g: 0 }).g);

@@ -91,6 +91,14 @@ function grassSprite(v, w, dry) {
     }
   });
 }
+function wheatSprite(v, ripe) {   // trigo: espigas douradas (maduro) ou brotos verdes
+  return paint('wheat|' + v + '|' + ripe, 54, 44, 27, 38, (c, R) => {
+    const n = ripe ? 30 : 18;
+    for (let i = 0; i < n; i++) { const x = 5 + R() * 44, ht = ripe ? 20 + R() * 14 : 6 + R() * 7, b = (R() - 0.5) * 6, col = ripe ? ['#b8923a', '#c8a448', '#d8b858'][Math.floor(R() * 3)] : ['#5a8a32', '#6a9a3a', '#7aaa44'][Math.floor(R() * 3)];
+      curve(c, x, 38, x + b * 0.3, 38 - ht * 0.6, x + b, 38 - ht, col, 0.9);
+      if (ripe) { c.fillStyle = ['#e2c060', '#d8b050', '#eccb70'][Math.floor(R() * 3)]; c.beginPath(); c.ellipse(x + b, 38 - ht - 3, 1.6, 4, b * 0.05, 0, 7); c.fill(); } }
+  });
+}
 function smallSprite(kind, v = 0, w) {
   switch (kind) {
     case 'mushroom': return paint(`mush|${v}`, 44, 30, 22, 26, (c, R) => {

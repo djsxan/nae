@@ -566,7 +566,7 @@ function drawAuras1(ctx, e, sx, sy, now) {
 // ---------- objetos ----------
 // ---------- objetos ----------
 const TREE_TINT = { [Z.FOREST]: 3, [Z.SWAMP]: 3, [Z.WILD]: 1 };
-const SWAY = { [O.TREE]: 0.035, [O.PINE]: 0.025, [O.BUSH]: 0.03, [O.TALLGRASS]: 0.09, [O.REEDS]: 0.08, [O.OAK]: 0.025, [O.BIRCH]: 0.045, [O.WILLOW]: 0.05, [O.FERN]: 0.07, [O.HERB]: 0.06, [O.BERRY]: 0.03 };
+const SWAY = { [O.WHEAT]: 0.08, [O.WHEATSPROUT]: 0.05, [O.TREE]: 0.035, [O.PINE]: 0.025, [O.BUSH]: 0.03, [O.TALLGRASS]: 0.09, [O.REEDS]: 0.08, [O.OAK]: 0.025, [O.BIRCH]: 0.045, [O.WILLOW]: 0.05, [O.FERN]: 0.07, [O.HERB]: 0.06, [O.BERRY]: 0.03 };
 const CASTS = new Set([O.OAK, O.BIRCH, O.WILLOW, O.BOULDER, O.BERRY, O.TREE, O.PINE, O.DEADTREE, O.BUSH, O.ROCK, O.WALL, O.LOWWALL, O.STATUE, O.LAMP, O.BANNER, O.TENT, O.WELL, O.STALL, O.HAY, O.BARREL, O.CRATE, O.CART, O.GRAVE, O.DUMMY, O.WEAPONRACK, O.STUMP, O.TORCH, O.BRAZIER, O.FENCE, O.GATE]);
 function objSprite(o, x, y) {
   const h = hash2(x, y, 17), v = Math.floor(h * 3), i = y * MAP_W + x, z = WORLD.zone[i];
@@ -591,6 +591,8 @@ function objSprite(o, x, y) {
     case O.PINE: return pineSprite(v);
     case O.ROCK: return rockSprite(v, z === Z.FOREST || z === Z.SWAMP ? 1 : 0);
     case O.BUSH: return bushSprite(v);
+    case O.WHEAT: return wheatSprite(v % 3, 1);
+    case O.WHEATSPROUT: return wheatSprite(v % 3, 0);
     case O.TALLGRASS: return grassSprite(v, 1, z === Z.BONES || z === Z.ORCS || WORLD.ground[i] === T.DEAD ? 1 : 0);
     case O.MUSHROOM: return smallSprite('mushroom', z === Z.SWAMP || (z === Z.FOREST && h < 0.3) ? 2 + (v & 1) : v & 1);
     case O.REEDS: return smallSprite('reeds', v);
@@ -1035,7 +1037,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       const s = it.sp, kp = s.c.width / s.w, sx0 = (s.ax + it.col * 32) * kp, x0 = Math.max(0, sx0), x1 = Math.min(s.c.width, sx0 + 32.6 * kp);
       if (x1 > x0) { if (it.al) ctx.globalAlpha = it.al; ctx.drawImage(s.c, x0, 0, x1 - x0, s.c.height, it.sx - s.ax + x0 / kp, it.sy - s.ay, (x1 - x0) / kp, s.h); ctx.globalAlpha = 1; }
       if (!it.first) return;
-      if ((it.b.kind === 'tavern' || it.b.kind === 'house' || it.b.kind === 'smith') && Math.random() < (it.b.kind !== 'house' ? 0.14 : 0.05)) { const p = iso(it.b.x - 0.5 + it.b.w * 0.3, it.b.y - 0.5 + it.b.h * 0.35); spawnPart('smoke', p.sx, p.sy - (bldTopArt(it.b) * 0.9 + 30)); }
+      if ((it.b.kind === 'tavern' || it.b.kind === 'house' || it.b.kind === 'smith' || it.b.wk === 'bakery') && Math.random() < (it.b.kind !== 'house' ? 0.14 : 0.05)) { const p = iso(it.b.x - 0.5 + it.b.w * 0.3, it.b.y - 0.5 + it.b.h * 0.35); spawnPart('smoke', p.sx, p.sy - (bldTopArt(it.b) * 0.9 + 30)); }
       if (it.b.kind === 'smith') { const p = iso(it.b.x - 0.5 + it.b.w * 0.5, it.b.y - 0.5 + it.b.h); G.lights.push({ x: p.sx + ox, y: p.sy + oy - 16, r: 62, c: '255,130,50', a: 1, flick: 1 }); if (Math.random() < 0.1) spawnPart('ember', p.sx, p.sy - 20); }
       return;
     }
@@ -1248,8 +1250,14 @@ function drawLabels(ctx, labels, now) {
       ctx.restore();
     }
     if ((e.stb & 1024) && e !== G.me && !(e.say && e.sayUntil > now)) pxText(ctx, '📜 no menu', x, yy - 20, '#e8dcc0', 11, '"Alegreya", serif', '600');
-    if (e.say && e.sayUntil > now) {
-      ctx.font = 'italic 500 15px "Alegreya", serif';
+    if (e.say && e.sayUntil > now) {   // balão de fala logo acima da cabeça, maior e com até 2 linhas
+      ctx.font = '600 17px "Alegreya", serif'; const words = String(e.say).split(' '), lines = ['']; for (const wd of words) { const t = (lines[lines.length - 1] + ' ' + wd).trim(); if (ctx.measureText(t).width > 240 && lines[lines.length - 1] && lines.length < 2) lines.push(wd); else lines[lines.length - 1] = t; }
+      const bw = Math.min(260, Math.max(...lines.map(l => ctx.measureText(l).width))) + 20, bh = lines.length * 20 + 8, bby = yy + 18 - (e.shout && e.shoutUntil > now ? 24 : 0), fade = Math.min(1, (e.sayUntil - now) / 400);
+      ctx.save(); ctx.globalAlpha = fade; ctx.fillStyle = 'rgba(250,242,222,0.97)'; ctx.strokeStyle = '#3a2814'; ctx.lineWidth = 1.5; ctx.beginPath(); if (ctx.roundRect) ctx.roundRect(x - bw / 2, bby - bh, bw, bh, 8); else ctx.rect(x - bw / 2, bby - bh, bw, bh); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(x - 6, bby - 0.5); ctx.lineTo(x, bby + 8); ctx.lineTo(x + 6, bby - 0.5); ctx.closePath(); ctx.fill(); ctx.beginPath(); ctx.moveTo(x - 6, bby); ctx.lineTo(x, bby + 8); ctx.lineTo(x + 6, bby); ctx.stroke();
+      ctx.fillStyle = '#2a1c0e'; ctx.textAlign = 'center'; lines.forEach((l, k) => ctx.fillText(l, x, bby - bh + 20 + k * 20, 250)); ctx.restore();
+    }
+    if (false) {
       const text = e.say, w = Math.min(260, ctx.measureText(text).width) + 16, by = yy - (e.shout && e.shoutUntil > now ? 46 : 22);
       ctx.fillStyle = '#efe4c8'; ctx.fillRect(x - w / 2, by - 21, w, 21);
       ctx.fillStyle = '#3a2814'; ctx.fillRect(x - w / 2, by - 22, w, 1); ctx.fillRect(x - w / 2, by, w, 1); ctx.fillRect(x - w / 2 - 1, by - 21, 1, 21); ctx.fillRect(x + w / 2, by - 21, 1, 21);

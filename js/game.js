@@ -177,7 +177,7 @@ function clientOnServer(m) {
     case 'chat': {
       addChat(m.name, m.text);
       const e = m.id && G.players[m.id];
-      if (e) { e.say = m.text; e.sayUntil = now + 4500; }
+      if (e) { e.say = m.text; e.sayUntil = now + 6000 + Math.min(4000, m.text.length * 60); }
       break;
     }
     case 'err': showToast(m.text); break;
@@ -747,6 +747,9 @@ const NPC_DIALOG = {
   v_thug2: { greet: "Tá olhando o quê?", opts: [['Tudo bem?', { local: "Circulando, circulando." }]] },
   supplier: { greet: 'Sou o Jonas, entregador do fornecedor. Faça a encomenda no menu do seu negócio (tecla N) e eu levo até a sua loja!', opts: [['Quanto tempo demora?', { local: 'Saio do portão principal uma hora depois do pedido e vou andando. Se ninguém me atacar no caminho, chego rapidinho.' }]] },
 
+  st_wheat: { greet: "Trigo dourado até onde a vista alcança! Pegue a foice, se quiser ajudar na colheita.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  st_mill: { greet: "O vento gira, a pedra mói, e o trigo vira farinha fininha. Cuidado com a poeira!", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  st_bakery: { greet: "Pão saindo do forno! Sinta o cheiro. Tortas e bolos sob encomenda.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_saw: { greet: "A serra não para enquanto o rio corre! Toras de pinho e carvalho, cortadas e empilhadas.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_mine: { greet: "Pedra, minério e, se a sorte ajudar, um cristal que brilha no escuro. Cuidado com a cabeça.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_farm: { greet: "Ervas para o alambique, linho para o tear. A terra daqui é boa, só falta mão.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
@@ -1053,7 +1056,7 @@ window.addEventListener('keydown', e => {
   G.keys.add(k);
 });
 window.addEventListener('keyup', e => {
-  const k = e.key.toLowerCase();
+  if (!e.key) return; const k = e.key.toLowerCase();
   G.keys.delete(k);
   if (k === 't' && G.wheel) closeEmoteWheel(true);
   if (k === 'h' && typeof grabKeyUp === 'function' && grabKeyUp()) return;
@@ -1957,7 +1960,7 @@ function hotelChestShow() {
 }
 
 // ---------- janela de troca com os NPCs: abas Comprar / Vender ----------
-const TRADE_KINDS = new Set(['st_witch', 'merchant', 'innkeeper', 'fruit', 'smith', 'st_apoth', 'st_arcane', 'st_tailor', 'st_scroll']);
+const TRADE_KINDS = new Set(['st_bakery', 'st_witch', 'merchant', 'innkeeper', 'fruit', 'smith', 'st_apoth', 'st_arcane', 'st_tailor', 'st_scroll']);
 G.tradeTab = 'buy';
 function tradeShow(m) {
   if (!G.trade || G.trade.npc !== m.npc) G.tradeAt = { x: G.me.x, y: G.me.y }; G.trade = m; let d = $('tradep'); if (!d) { d = document.createElement('div'); d.id = 'tradep'; d.className = 'gpanel'; document.body.appendChild(d); }
