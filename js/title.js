@@ -77,7 +77,7 @@ function titleMenu() {
   const lob = document.getElementById('lobby'); if (!lob) return;
   document.body.classList.add('nae');
   const m = document.createElement('div'); m.id = 'title-menu';
-  m.innerHTML = '<div class="nae-logo">NAE</div><nav class="nae-nav">' + [['play', 'Jogar'], ['chars', 'Personagens'], ['realms', 'Reinos online'], ['opts', 'Configurações']].map(([k, n]) => '<button data-p="' + k + '">' + n + '</button>').join('') + '<a class="nae-guide" href="guia.html" target="_blank" rel="noopener">Guia do jogo</a></nav><div class="nae-ver" id="nae-ver"></div>';
+  m.innerHTML = '<div class="nae-logo">NAE</div><nav class="nae-nav">' + [['play', 'Jogar'], ['chars', 'Personagens'], ['realms', 'Reinos online'], ['opts', 'Configurações']].map(([k, n]) => '<button data-p="' + k + '">' + n + '</button>').join('') + '<a class="nae-guide" href="guia.html" target="_blank" rel="noopener">Guia do jogo</a><a class="nae-guide" href="roadmap.html" target="_blank" rel="noopener">Roadmap</a></nav><div class="nae-ver" id="nae-ver"></div>';
   lob.appendChild(m);
   const v = document.getElementById('version'); if (v) document.getElementById('nae-ver').textContent = v.textContent || (typeof VERSION !== 'undefined' ? VERSION : '');
   const opts = document.createElement('section'); opts.id = 'nae-opts'; opts.className = 'nae-opts';

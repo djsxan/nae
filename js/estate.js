@@ -18,7 +18,7 @@ function estateEvent(m) {
   if (m.t !== 'estate') return false;
   if (m.st) G.est.st = m.st; if (m.L) G.est.L = m.L;
   if ('mine' in m) { G.est.mine = m.mine; G.est.mineT = performance.now(); }
-  if (m.biz) G.est.biz = m.biz; if (m.ten) G.est.ten = m.ten; if (m.cour) G.est.cour = m.cour;
+  if (m.biz) G.est.biz = m.biz; if (m.ten) G.est.ten = m.ten; if (m.cour) G.est.cour = m.cour; if (m.bank != null) G.bankG = m.bank;
   if (typeof hubRender === 'function') hubRender();
   if (estOpen()) estRender();
   return true;
@@ -28,6 +28,7 @@ const estMine = pid => (G.est.mine && G.est.mine.pid === pid) || G.est.biz.some(
 const isBizP = P => P && P.kind !== 'house' && !P.npc;
 const tenOf = P => (P && P.tenants && P.tenants.length && !(G.est.ten && G.est.ten.gone && G.est.ten.gone[P.id])) ? P.tenants : [];
 const tenNames = P => tenOf(P).map(id => (NPCS.find(n => n.id === id) || { name: id }).name.split(',')[0]).join(' e ');
+const myMoney = () => (G.me ? G.me.gold : 0) + (G.bankG || 0);   // bolsa + conta do banco (compras e melhorias usam os dois)
 function estStatus(P) {
   const who = G.est.st[P.id];
   if (estMine(P.id)) return { k: 'mine', t: tenOf(P).length ? 'Seu · inquilinos: ' + tenNames(P) : (who || '')[0] === '★' ? 'Seu (comprado)' : 'Seu (alugado)' };
@@ -81,15 +82,15 @@ function estDetailHtml(P) {
   h += '<div class="est-cost">Localização: <b>' + P.locName + '</b> · Alugar: <b>' + P.week + '</b> ouro/semana (entrada ' + cost + ': 1ª semana + caução) · Comprar: <b>' + P.buy + '</b> ouro (imposto 7/semana; vende de volta pela metade)</div>';
   if (P.kind === 'house' && tenOf(P).length && !G.est.st[P.id]) {   // casa com inquilino: só dá para comprar (e receber o aluguel)
     h += '<div class="est-cost">🏠 Mora aqui: <b>' + tenNames(P) + '</b>. Quem comprar recebe <b>' + P.week + '</b> ouro/semana de aluguel (menos 7 de imposto). Dá para despejar com 1 dia de aviso.</div>';
-    h += G.est.biz.length >= 3 ? '<button class="est-btn" disabled>Limite de 3 negócios/investimentos</button>' : '<button class="est-btn" data-buy="' + P.id + '"' + (G.me.gold < P.buy ? ' disabled' : '') + '>Comprar com inquilino por ' + P.buy + '</button>';
+    h += G.est.biz.length >= 3 ? '<button class="est-btn" disabled>Limite de 3 negócios/investimentos</button>' : '<button class="est-btn" data-buy="' + P.id + '"' + (myMoney() < P.buy ? ' disabled' : '') + '>Comprar com inquilino por ' + P.buy + '</button>';
     return h + '</div>';
   }
   if (s.k === 'free' && (P.kind === 'house' || isBizP(P))) {
     const block = P.kind === 'house' ? (hasHouse ? 'Você já tem uma casa' : '') : (nBiz >= 3 ? 'Limite de 3 negócios' : '');
     if (P.kind === 'bank') h += '<div class="est-cost">🏛 Só se compra, e o Conselho exige <b>reputação ' + (P.repMin || 70) + '</b> (a sua: ' + (G.me.rep ?? '?') + '). O dono fica com os juros dos empréstimos e com o saldo de quem morre.</div>';
-    h += block ? '<button class="est-btn" disabled>' + block + '</button>' : (P.kind !== 'house' ? '' : '<button class="est-btn" data-rent="' + P.id + '"' + (G.me.gold < cost ? ' disabled' : '') + '>Alugar por ' + cost + '</button>') + '<button class="est-btn" data-buy="' + P.id + '"' + (G.me.gold < P.buy || (P.kind === 'bank' && (G.me.rep || 0) < (P.repMin || 70)) ? ' disabled' : '') + '>Comprar por ' + P.buy + '</button>';
+    h += block ? '<button class="est-btn" disabled>' + block + '</button>' : (P.kind !== 'house' ? '' : '<button class="est-btn" data-rent="' + P.id + '"' + (myMoney() < cost ? ' disabled' : '') + '>Alugar por ' + cost + '</button>') + '<button class="est-btn" data-buy="' + P.id + '"' + (myMoney() < P.buy || (P.kind === 'bank' && (G.me.rep || 0) < (P.repMin || 70)) ? ' disabled' : '') + '>Comprar por ' + P.buy + '</button>';
     h += '<button class="est-btn ghost" data-go="' + P.id + '">Mostrar no mapa</button>';
-  } else if (s.k === 'mine') { const info = (P.kind === 'house' ? G.est.mine : G.est.biz.find(b => b.pid === P.id)) || {}; if (info.mode !== 'own') h += '<button class="est-btn" data-buy="' + P.id + '"' + (G.me.gold < P.buy - (info.dep || 0) ? ' disabled' : '') + '>Comprar de vez por ' + (P.buy - (info.dep || 0)) + '</button>'; if (P.kind !== 'house') h += '<button class="est-btn" data-manage="' + P.id + '">Abrir a gestão</button>'; }
+  } else if (s.k === 'mine') { const info = (P.kind === 'house' ? G.est.mine : G.est.biz.find(b => b.pid === P.id)) || {}; if (info.mode !== 'own') h += '<button class="est-btn" data-buy="' + P.id + '"' + (myMoney() < P.buy - (info.dep || 0) ? ' disabled' : '') + '>Comprar de vez por ' + (P.buy - (info.dep || 0)) + '</button>'; if (P.kind !== 'house') h += '<button class="est-btn" data-manage="' + P.id + '">Abrir a gestão</button>'; }
   else h += '<div class="est-cost">' + s.t + '</div>';
   return h + '</div>';
 }
@@ -178,7 +179,7 @@ function estNearSign() { const me = G.me; if (!me) return null; let best = null,
 function estatePrompt() {
   if (estInHome()) return 'F: abrir o baú · L: seus imóveis';
   const b = estInBiz(); if (b) return 'F: gestão de ' + PROPS_BY[b.pid].name;
-  const P = estNearSign(); if (P) return 'F: ' + (P.kind === 'house' ? 'Aluga-se' : 'À venda') + ' — ' + P.name + ' (' + P.week + ' ouro/semana · compra ' + P.buy + ')';
+  const P = estNearSign(); if (P) return 'F: ' + (P.kind === 'house' ? 'Aluga-se' : 'À venda') + ' — ' + P.name + ' (' + (P.kind === 'house' ? P.week + ' ouro/semana · compra ' + P.buy : P.buy + ' de ouro' + (P.npcOwner ? ', de ' + P.npcOwner : '')) + ')';
   return '';
 }
 function estateF() {
@@ -197,6 +198,13 @@ function drawRentSign(ctx, sx, sy, now, txt) {
   ctx.fillStyle = '#3a1e0e'; ctx.font = 'bold 4.2px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt || 'ALUGA-SE', 0, -15.1);
   ctx.restore();
 }
+function drawWallSign(ctx, sx, sy, txt, along, price) {   // plaquinha de madeira pregada na parede
+  const H = typeof HV !== 'undefined' ? HV : 25; ctx.save(); ctx.translate(sx, sy - H * 1.25); ctx.transform(1, along === 'y' ? -0.5 : 0.5, 0, 1, 0, 0);
+  ctx.fillStyle = 'rgba(0,0,0,0.25)'; ctx.fillRect(-8.2, -4.2, 17, 9.6); ctx.fillStyle = '#c8a46a'; ctx.strokeStyle = '#5a3a1a'; ctx.lineWidth = 0.7; ctx.fillRect(-8.5, -4.6, 17, 9.2); ctx.strokeRect(-8.5, -4.6, 17, 9.2);
+  ctx.fillStyle = '#3a2412'; for (const [nx, ny] of [[-7.4, -3.6], [7.4, -3.6], [-7.4, 3.6], [7.4, 3.6]]) { ctx.beginPath(); ctx.arc(nx, ny, 0.45, 0, 7); ctx.fill(); }
+  ctx.fillStyle = '#3a1e0e'; ctx.font = 'bold 3.6px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(txt, 0, -1.3); if (price) { ctx.font = '2.8px serif'; ctx.fillStyle = '#6a3a12'; ctx.fillText(price + ' ouro', 0, 2.2); }
+  ctx.restore();
+}
 function estSignSpot(P) {   // lado da porta que está livre (sem parede nem prédio vizinho na frente)
   if (P._sign) return P._sign; const o = estDoorOut(P), v = DOOR_V[BUILDINGS[P.bi].door || 'S'];
   let best = null, bs = -1;
@@ -205,7 +213,12 @@ function estSignSpot(P) {   // lado da porta que está livre (sem parede nem pr�
 }
 function estSignItems(items, ox, oy) {
   if (!G.started || !PROPS.length) return;
-  for (const P of estFreeSigns()) { const { x, y } = estSignSpot(P), p = iso(x, y), b = BUILDINGS[P.bi], front = b.door === 'E' || b.door === 'S'; items.push({ d: front ? Math.max(x + y + 0.3, b.x + b.w + b.y + b.h - 1.4) : x + y + 0.3, k: 0, rsign: P.kind === 'house' ? 'ALUGA-SE' : 'À VENDA', sx: p.sx + ox, sy: p.sy + oy }); }
+  for (const P of estFreeSigns()) { const b = BUILDINGS[P.bi];
+    if (b.door === 'S' || b.door === 'E' || !b.door) {   // placa pregada na fachada, ao lado da porta (faces que a câmera vê)
+      const [dx, dy] = doorTile(b), v = DOOR_V[b.door || 'S'], sd = [v[1], -v[0]]; let s = 1; if (WORLD.bld[tileAt(dx + sd[0], dy + sd[1])] !== P.bi) s = -1;
+      const wx = dx + v[0] * 0.52 + sd[0] * 0.95 * s, wy = dy + v[1] * 0.52 + sd[1] * 0.95 * s, p = iso(wx, wy);
+      items.push({ d: Math.max(wx + wy + 0.4, b.x + b.w + b.y + b.h - 1.2), k: 0, wsign: P.kind === 'house' ? 'ALUGA-SE' : 'À VENDA', along: b.door === 'E' ? 'y' : 'x', price: P.kind === 'house' ? P.week + '/sem' : P.buy + '', sx: p.sx + ox, sy: p.sy + oy }); continue; }
+    const { x, y } = estSignSpot(P), p = iso(x, y), front = b.door === 'E' || b.door === 'S'; items.push({ d: front ? Math.max(x + y + 0.3, b.x + b.w + b.y + b.h - 1.4) : x + y + 0.3, k: 0, rsign: P.kind === 'house' ? 'ALUGA-SE' : 'À VENDA', sx: p.sx + ox, sy: p.sy + oy }); }
 }
 setInterval(() => { if (!estOpen()) return; for (const el of document.querySelectorAll('#estate .est-next')) if (G.est.mine) el.textContent = estClock(G.est.mine); }, 1000);
 
@@ -224,7 +237,7 @@ function bizBuild() {
 }
 function bizOpen(pid) { if (typeof GM !== 'undefined' && GM.on && typeof gmClose === 'function') gmClose(); bizBuild(); G.biz.pid = pid; G.biz.d = null; document.getElementById('biz').classList.remove('hidden'); document.getElementById('biz-body').innerHTML = '<div class="gp-note">Abrindo o livro-caixa…</div>'; Net.send({ t: 'biz', a: 'open', pid }); }
 function bizClose() { const el = document.getElementById('biz'); if (el) el.classList.add('hidden'); Net.send({ t: 'biz', a: 'close' }); G.biz.pid = null; }
-function bizEvent(m) { if (m.pid !== G.biz.pid) return; if (m.none) { bizClose(); return; } G.biz.d = m; bizRender(); }
+function bizEvent(m) { if (m.pid !== G.biz.pid) return; if (m.none) { bizClose(); return; } G.biz.d = m; if (m.b && m.b.cofre != null) G.bankG = m.b.cofre; bizRender(); }
 const bsend = (a, x) => Net.send({ t: 'biz', a, pid: G.biz.pid, ...x });
 const gIc = g => '<span class="biz-gi">' + GOODS[g].ic + '</span>';
 function bizRender() {
@@ -236,7 +249,7 @@ function bizRender() {
   const working = G.shiftUntil > performance.now();
   let h = '<div class="biz-top"><div class="biz-cofre"><small>Conta no banco</small><b>' + Math.floor(B.cofre) + '</b><small>lucro entra aqui</small></div>' +
     '<div class="biz-st ' + (B.closed ? 'off' : 'on') + '">' + (B.closed ? '⛔ Parado: falta ouro no banco para o salário' : '✅ Funcionando') + '</div>' +
-    '<div class="biz-btns">' + (m.at ? '<button class="est-btn" data-bshift>' + (working ? 'Parar o turno' : 'Trabalhar um turno (1 min 15 s)') + '</button>' : '') + '<button class="est-btn ghost" data-bdep="50">Depositar 50</button><button class="est-btn ghost" data-bdep="200">Depositar 200</button></div></div>';
+    '<div class="biz-btns">' + (m.at ? '<button class="est-btn" data-bshift>' + (working ? 'Parar o turno' : 'Trabalhar um turno (1 min 15 s)') + '</button>' : '') + '</div></div>';
   if (G.biz.tab === 'geral') {
     { const tax = m.mode === 'own' ? 1 : P.rent, net = d => Math.round(d.rev - d.cost - tax), today = net(B.today), week = [...B.hist, B.today].reduce((a, d) => a + net(d), 0), st = shop ? B.stock : (B.store || {}), idle = Object.keys(st).filter(g => g !== 'serve').reduce((a, g) => a + Math.floor(st[g] || 0), 0);
       const why = []; if ((B.hist.length ? B.hist[B.hist.length - 1].rev : B.today.rev) < (shop ? 6 : 8) + tax) why.push('a receita do dia não cobre salário e imposto');
@@ -277,7 +290,7 @@ function bizRender() {
     h += '<div class="gp-sub">Candidatos</div>' + ((B.cands || []).length ? B.cands.map((c, i) => '<div class="biz-putr"><b>' + c.n + '</b> <small>' + ((TR[c.tr] || {}).n || c.tr) + ' (' + ((TR[c.tr] || {}).d || '') + ') · ' + c.w + ' ouro/dia</small><button class="est-btn" data-bhire="' + i + '"' + (st.length >= mx ? ' disabled' : '') + '>Contratar</button></div>').join('') : '') + '<button class="est-btn ghost" data-bcands>' + ((B.cands || []).length ? 'Ver outros candidatos' : 'Procurar candidatos') + '</button>';
     h += coll ? '<div class="gp-note">Os coletores saem de dia (7h às 19h) com a ferramenta, ' + ({ saw: 'cortam árvores', mine: 'quebram pedras', farm: 'colhem o mato' })[P.wk] + ' perto da oficina e voltam com a carga para o depósito — é daí que vem a produção. Ferramentas melhores deixam o trabalho mais rápido. O salário dos contratados sai do banco todo dia. O mensageiro continua levando a produção.</div>' : '<div class="gp-note">Cada funcionário deixa o negócio 40% mais produtivo (vende ou produz mais). O salário sai da conta do banco todo dia; sem ouro, ele vai embora. Eles trabalham de dia (7h às 20h) e aparecem no prédio.</div>';
   } else if (G.biz.tab === 'melhorias') {
-    h += '<div class="biz-ups">' + Object.keys(BIZ_UP).filter(k => BIZ_UP[k].for === 'both' || BIZ_UP[k].for === P.kind).map(k => { const U = BIZ_UP[k], lv = B.up[k] || 0, c = U.cost[lv]; return '<div class="biz-up"><b>' + U.n + '</b><small>' + U.d + '</small><div class="biz-lv">' + [0, 1, 2].map(i => '<i class="' + (i < lv ? 'on' : '') + '"></i>').join('') + '</div>' + (lv >= 3 ? '<em>Máximo</em>' : '<button class="est-btn" data-bup="' + k + '"' + (G.me.gold < c ? ' disabled' : '') + '>Nível ' + (lv + 1) + ' · ' + c + '</button>') + '</div>'; }).join('') + '</div><div class="gp-note">As melhorias são pagas da sua bolsa e ficam no ponto enquanto ele for seu.</div>';
+    h += '<div class="biz-ups">' + Object.keys(BIZ_UP).filter(k => BIZ_UP[k].for === 'both' || BIZ_UP[k].for === P.kind).map(k => { const U = BIZ_UP[k], lv = B.up[k] || 0, c = U.cost[lv]; return '<div class="biz-up"><b>' + U.n + '</b><small>' + U.d + '</small><div class="biz-lv">' + [0, 1, 2].map(i => '<i class="' + (i < lv ? 'on' : '') + '"></i>').join('') + '</div>' + (lv >= 3 ? '<em>Máximo</em>' : '<button class="est-btn" data-bup="' + k + '"' + (myMoney() < c ? ' disabled' : '') + '>Nível ' + (lv + 1) + ' · ' + c + '</button>') + '</div>'; }).join('') + '</div><div class="gp-note">As melhorias são pagas com a conta do banco (e, se faltar, com a bolsa) e ficam no ponto enquanto ele for seu.</div>';
   } else {
     h += '<div class="biz-log">' + (B.log.map(l => '<div><small>' + new Date(l.at).toLocaleTimeString().slice(0, 5) + '</small> ' + l.t + '</div>').join('') || '<small>Nada ainda.</small>') + '</div>';
   }

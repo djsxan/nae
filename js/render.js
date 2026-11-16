@@ -1011,6 +1011,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       return;
     }
     if (it.rsign) { drawRentSign(ctx, it.sx, it.sy, now, it.rsign); return; }
+    if (it.wsign) { drawWallSign(ctx, it.sx, it.sy, it.wsign, it.along, it.price); return; }
     if (it.chest) {
       const c = it.chest, s = smallSprite('chest', c.open ? 1 : 0); ctx.imageSmoothingEnabled = true; if (s) pblit(ctx, s, it.sx, it.sy);
       if (c.mine && !c.open) { G.lights.push({ x: it.sx, y: it.sy - 10, r: 40, c: '255,220,120', a: 0.7 }); const t = now / 300; for (let k = 0; k < 3; k++) dab(ctx, it.sx + Math.cos(t + k * 2.1) * 12, it.sy - 22 + Math.sin(t * 1.3 + k) * 6, 2, 2, '#ffe890'); }
@@ -1073,7 +1074,18 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   // escurecido e translúcido — antes ia para trás do cômodo e parecia que a rua estava um andar abaixo
   let IR = null; const front = [];
   if (inside) { const s0 = interiorSprite(inside.b, 0) || buildingSprite(inside.b, false), b = inside.b; if (s0) IR = { l: inside.sx - s0.ax - 40, r: inside.sx - s0.ax + s0.w + 40, t: inside.sy - s0.ay - 40, b: inside.sy - s0.ay + s0.h + 90, d: b.x + b.y + b.w + b.h - 2 + 0.6 }; }
-  for (const it of items) { if (it.inside) continue; if (IR && it.d > IR.d && it.sx > IR.l && it.sx < IR.r && it.sy > IR.t && it.sy < IR.b) { front.push(it); continue; } drawItem(it); }
+  // o que fica na frente do prédio onde você está (ao sul ou a leste, até 12 tiles): prédios, árvores e objetos
+  const ib = inside ? inside.b : null, IMODE = G.intMode || 'fade', cutL = [];
+  const inFront = it => { if (!ib || it.e) return false; const nr = (x0, y0, x1, y1) => x1 > ib.x - 12 && y1 > ib.y - 12 && x0 < ib.x + ib.w + 12 && y0 < ib.y + ib.h + 12;
+    if (it.k === 4 && it.b) { const b = it.b; if (b === ib || !nr(b.x, b.y, b.x + b.w, b.y + b.h)) return false;
+      const sxr = (x0, y0, w, h) => [iso(x0 - 0.5, y0 + h - 0.5).sx, iso(x0 + w - 0.5, y0 - 0.5).sx], [a0, a1] = sxr(b.x, b.y, b.w, b.h), [c0, c1] = sxr(ib.x, ib.y, ib.w, ib.h);
+      if (a1 < c0 - 8 || a0 > c1 + 8) return false;   // não se sobrepõe ao cômodo na tela
+      return (b.y >= ib.y + ib.h && b.x + b.w > ib.x - 8) || (b.x >= ib.x + ib.w && b.y + b.h > ib.y + 1); }
+    if (it.x != null && it.y != null && it.k !== 6 && it.k !== 7) return nr(it.x, it.y, it.x + 1, it.y + 1) && (it.y >= ib.y + ib.h || it.x >= ib.x + ib.w);
+    return false; };
+  for (const it of items) { if (it.inside) continue;
+    if (ib && inFront(it)) { if (IMODE === 'cut' && it.k === 4) cutL.push(it); else if (IMODE !== 'hide' || it.k === 5) front.push(it); continue; }
+    if (IR && it.d > IR.d && it.sx > IR.l && it.sx < IR.r && it.sy > IR.t && it.sy < IR.b) { front.push(it); continue; } drawItem(it); }
   for (const it of upper) drawItem(it);
   for (const it of sky) drawItem(it);   // o dragão voando passa por cima de tudo
   if (typeof drawBowTop === 'function') drawBowTop(ctx, now);
@@ -1092,11 +1104,21 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       if (s) pblit(ctx, s, inside.sx, inside.sy - flRaise(inside.b, f), a);
     }
     for (const it of items) if (it.inside) drawItem(it);
+    if (cutL.length) {   // corte estilo Tibia: os prédios da frente aparecem só até a altura do joelho (paredes baixas), sem esconder o cômodo
+      const kh = (typeof HV !== 'undefined' ? HV : 25) * 0.55, done = new Set();
+      for (const it of cutL) { const b = it.b, x0 = b.x - 0.5, y0 = b.y - 0.5, x1 = b.x + b.w - 0.5, y1 = b.y + b.h - 0.5;
+        const g = [[x0, y0], [x1, y0], [x1, y1], [x0, y1]].map(([x, y]) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy]; });
+        // faixa das paredes da frente (cantos esquerdo, de baixo e direito do chão) até a altura do joelho
+        const [, Bc, Cc, Dc] = g, hull = [Dc, Cc, Bc, [Bc[0], Bc[1] - kh], [Cc[0], Cc[1] - kh], [Dc[0], Dc[1] - kh]];
+        ctx.save(); ctx.beginPath(); hull.forEach(([x, y], k) => k ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath(); ctx.clip(); drawItem(it); ctx.restore();
+        if (!done.has(b)) { done.add(b); ctx.save(); ctx.beginPath(); g.forEach(([x, y], k) => k ? ctx.lineTo(x, y - kh) : ctx.moveTo(x, y - kh)); ctx.closePath(); ctx.fillStyle = 'rgba(36,28,20,0.92)'; ctx.fill(); ctx.strokeStyle = 'rgba(200,180,140,0.35)'; ctx.lineWidth = 1; ctx.stroke(); ctx.restore(); }   // topo do corte
+      }
+    }
     if (front.length) {   // camada separada: escurece e deixa ver o cômodo através
       const L = G._frontL || (G._frontL = document.createElement('canvas')); if (L.width !== ctx.canvas.width || L.height !== ctx.canvas.height) { L.width = ctx.canvas.width; L.height = ctx.canvas.height; }
       const lc = L.getContext('2d'); lc.setTransform(1, 0, 0, 1, 0, 0); lc.clearRect(0, 0, L.width, L.height); lc.setTransform(ctx.getTransform()); lc.imageSmoothingEnabled = ctx.imageSmoothingEnabled;
       const main = ctx; ctx = lc; try { for (const it of front) drawItem(it); } finally { ctx = main; }
-      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = 0.34; try { ctx.filter = 'brightness(0.55)'; } catch (e) { } ctx.drawImage(L, 0, 0); ctx.restore();
+      ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = IMODE === 'fade' ? 0.22 : 0.34; try { ctx.filter = 'brightness(0.55)'; } catch (e) { } ctx.drawImage(L, 0, 0); ctx.restore();
     }
   }
   if (typeof drawMeleeArc === 'function') drawMeleeArc(ctx, now);

@@ -213,6 +213,15 @@ function canvasTex(kind) {
     // colcha de retalhos
     const cols = ['#a8402e', '#d8a848', '#4a6a8a', '#6a8a4a', '#e8dcc0', '#8a4a6a', '#c87a3a'];
     for (let r = 0; r < 6; r++) for (let k = 0; k < 6; k++) { const px_ = k * S / 6, py = r * S / 6, s6 = S / 6; x.fillStyle = cols[Math.floor(R() * cols.length)]; x.fillRect(px_, py, s6, s6); if (R() < 0.5) { x.fillStyle = 'rgba(255,255,255,0.18)'; for (let d = 4; d < s6; d += 8) x.fillRect(px_, py + d, s6, 2); } x.strokeStyle = 'rgba(40,24,12,0.55)'; x.setLineDash([3, 2]); x.lineWidth = 1; x.strokeRect(px_ + 1.5, py + 1.5, s6 - 3, s6 - 3); x.setLineDash([]); y.fillStyle = gray(0.55 + R() * 0.2); y.fillRect(px_ + 2, py + 2, s6 - 4, s6 - 4); }
+  } else if (kind === 'marblechk') {
+    for (let r = 0; r < 4; r++) for (let k = 0; k < 4; k++) { const dark = (r + k) % 2; x.fillStyle = dark ? '#3a3632' : '#ece6da'; x.fillRect(k * 64, r * 64, 64, 64);
+      for (let v = 0; v < 6; v++) { x.strokeStyle = dark ? 'rgba(200,190,170,0.18)' : 'rgba(120,110,95,0.22)'; x.lineWidth = 0.6 + R(); x.beginPath(); let px_ = k * 64 + R() * 64, py = r * 64 + R() * 64; x.moveTo(px_, py); for (let q = 0; q < 4; q++) { px_ += (R() - 0.5) * 30; py += (R() - 0.5) * 30; x.lineTo(px_, py); } x.stroke(); }
+      x.strokeStyle = 'rgba(0,0,0,0.35)'; x.lineWidth = 1.2; x.strokeRect(k * 64, r * 64, 64, 64); y.fillStyle = gray(0.7); y.fillRect(k * 64 + 1, r * 64 + 1, 62, 62); }
+  } else if (kind === 'rates') {
+    x.fillStyle = '#1e2a22'; x.fillRect(0, 0, S, S); x.strokeStyle = '#c9a24a'; x.lineWidth = 10; x.strokeRect(5, 5, S - 10, S - 10);
+    x.fillStyle = '#e8dcb8'; x.font = 'bold 26px serif'; x.textAlign = 'center'; x.fillText('BANCO DE NAE', 128, 48);
+    x.font = '20px serif'; x.textAlign = 'left'; [['Rendimento', '2% / semana'], ['Empréstimo', '10% / semana'], ['Prazo', '2 semanas'], ['Limite', '100 + 4 × rep.']].forEach(([a, b], k) => { x.fillStyle = '#e8dcb8'; x.fillText(a, 22, 96 + k * 38); x.fillStyle = '#e8c048'; x.textAlign = 'right'; x.fillText(b, 234, 96 + k * 38); x.textAlign = 'left'; });
+    y.fillStyle = gray(0.5); y.fillRect(0, 0, S, S);
   } else if (kind === 'keysign') {
     x.fillStyle = '#2a3a4a'; x.fillRect(0, 0, S, S); x.strokeStyle = '#c9a24a'; x.lineWidth = 12; x.strokeRect(8, 8, S - 16, S - 16);
     x.strokeStyle = '#e2b74e'; x.fillStyle = '#e2b74e'; x.lineWidth = 14; x.beginPath(); x.arc(84, 110, 32, 0, 7); x.stroke(); x.fillRect(112, 102, 92, 16); x.fillRect(176, 116, 12, 26); x.fillRect(154, 116, 12, 18);   // chave
@@ -1511,7 +1520,7 @@ function mInterior(b, fl = 0) {
   const [w, h] = bDims(b), { H } = bldDims(b), o = grp(), L = interiorLayout(b, fl), R = rng(b.x * 13 + b.y), nF = floorsOf(b);
   const stoneK = b.kind === 'bank' || b.kind === 'temple' || b.kind === 'castle' || b.kind === 'smith' || b.kind === 'barracks' || b.kind === 'jail' || b.kind === 'boutique' || b.kind === 'manor';
   const hotelI = b.kind === 'hotel';
-  const floorM = hotelI ? smat('oldplank', '#8a6440', { bump: 1.3 }) : stoneK ? smat('stoneblock', b.kind === 'castle' ? '#a8a092' : '#8e887c', { bump: 1 }) : smat('wood', b.kind === 'stable' ? '#8a6a3e' : '#7a5232', { bump: 1.2 });
+  const floorM = hotelI ? smat('oldplank', '#8a6440', { bump: 1.3 }) : b.kind === 'bank' ? smat('marblechk', '#ffffff', { bump: 0.4, rough: 0.35 }) : stoneK ? smat('stoneblock', b.kind === 'castle' ? '#a8a092' : '#8e887c', { bump: 1 }) : smat('wood', b.kind === 'stable' ? '#8a6a3e' : '#7a5232', { bump: 1.2 });
   const wallM = hotelI ? smat('wallpaper', '#ffffff', { bump: 0.5 }) : stoneK ? smat('brick', b.kind === 'castle' ? '#b4ad9c' : '#a29c90', { bump: 1.2 }) : smat('plaster', '#e2d6bc', { bump: 0.7 });
   const trimM = smat('wood', '#4a2f17'), hw = Math.min(H / nF, b.kind === 'castle' || b.kind === 'temple' ? 5 : 2.3), t = 0.16;
   o.add(mk(wuv(new THREE.BoxGeometry(w, 0.06, h).translate(w / 2, 0.03, h / 2), 1), floorM));
@@ -1530,7 +1539,7 @@ function mInterior(b, fl = 0) {
   // janelas de verdade (moldura, 4 vidros, travessas e parapeito) nas paredes inteiras
   const frameM = smat('wood', '#4a2f17'), glassW = smat(null, '#9fb4c0', { emissive: '#6a7a84', ei: 0.35, rough: 0.15, metal: 0.2 });
   const win = (x, z, ry) => { const g = grp(), y = Math.min(hw * 0.58, 1.5); g.add(mk(new THREE.BoxGeometry(0.5, 0.66, 0.02).translate(0, y, 0.012), glassW, false)); for (const [ww, hh, xx, yy] of [[0.58, 0.05, 0, y + 0.33], [0.58, 0.05, 0, y - 0.33], [0.05, 0.7, -0.27, y], [0.05, 0.7, 0.27, y], [0.03, 0.66, 0, y], [0.5, 0.03, 0, y]]) g.add(mk(new THREE.BoxGeometry(ww, hh, 0.05).translate(xx, yy, 0.02), frameM)); g.add(mk(new THREE.BoxGeometry(0.66, 0.05, 0.12).translate(0, y - 0.37, 0.05), frameM)); g.rotation.y = ry; g.position.set(x, 0, z); o.add(g); };
-  if (!knee.includes('back')) for (let k = 0; k < Math.floor(w / 2); k++) win(1 + k * 2, t + 0.005, 0);
+  if (!knee.includes('back') && b.kind !== 'bank') for (let k = 0; k < Math.floor(w / 2); k++) win(1 + k * 2, t + 0.005, 0);
   if (!knee.includes('left')) for (let k = 0; k < Math.floor(h / 2); k++) win(t + 0.005, 1 + k * 2, Math.PI / 2);
   if (!knee.includes('right')) for (let k = 0; k < Math.floor(h / 2); k++) win(w - t - 0.005, 1 + k * 2, -Math.PI / 2);
   if (!knee.includes('front')) for (let k = 0; k < Math.floor(w / 2); k++) if (Math.abs(1 + k * 2 - dx) > 0.9) win(1 + k * 2, h - t - 0.005, Math.PI);
@@ -1684,6 +1693,19 @@ function mInterior(b, fl = 0) {
       case 'goldsacks': { const sk = smat(null, '#a8916a', { rough: 1 }), gold = smat(null, '#e8c048', { metal: 1, rough: 0.25 });
         for (const [x, z, s] of [[-0.2, -0.1, 1], [0.2, 0.05, 0.85], [0, 0.3, 0.75], [-0.05, -0.05, 0.6]]) { const b = mk(new THREE.SphereGeometry(0.28 * s, 10, 8).translate(x, 0.24 * s + (s < 0.7 ? 0.38 : 0), z), sk); b.scale.set(1, 1.15, 1); g.add(b); g.add(mk(new THREE.CylinderGeometry(0.05 * s, 0.09 * s, 0.1, 8).translate(x, 0.55 * s + (s < 0.7 ? 0.38 : 0), z), smat(null, '#7a5a30', { rough: 1 }))); }
         for (let k = 0; k < 9; k++) g.add(mk(new THREE.CylinderGeometry(0.06, 0.06, 0.015, 10).translate(-0.35 + (k % 3) * 0.12, 0.01 + Math.floor(k / 3) * 0.016, 0.42), gold)); break; }
+      case 'goldbars': {   // pilha de barras de ouro e moedas (no tesouro, atrás das grades)
+        const gold = smat(null, '#e8c048', { metal: 1, rough: 0.22 }); g.add(wbox(0.8, 0.12, 0.6, 0, 0.06, -0.1, smat('wood', '#4a2e1a'), 1));
+        for (let l = 0; l < 3; l++) for (let k = 0; k < 4 - l; k++) g.add(mk(new THREE.BoxGeometry(0.16, 0.07, 0.3).translate(-0.27 + k * 0.18 + l * 0.09, 0.16 + l * 0.075, -0.1), gold));
+        for (let k = 0; k < 4; k++) for (let q = 0; q < 3 + k; q++) g.add(mk(new THREE.CylinderGeometry(0.05, 0.05, 0.012, 10).translate(0.28, 0.13 + q * 0.014, 0.18 - k * 0.04), gold)); break; }
+      case 'clock': {   // relógio de pêndulo na parede
+        const wd2 = smat('wood', '#3a2214'), brass = smat(null, '#c9a24a', { metal: 0.9, rough: 0.3 }), side = backX ? -0.42 : 0.42;
+        const cg = grp(); cg.add(wbox(0.44, 1.7, 0.26, 0, 0.85, 0, wd2, 1.5)); cg.add(mk(new THREE.CylinderGeometry(0.16, 0.16, 0.02, 20).rotateX(Math.PI / 2).translate(0, 1.42, 0.14), smat(null, '#efe6cc'))); cg.add(mk(new THREE.TorusGeometry(0.17, 0.02, 5, 20).translate(0, 1.42, 0.14), brass));
+        cg.add(mk(new THREE.BoxGeometry(0.01, 0.12, 0.01).translate(0, 1.47, 0.155), smat(null, '#1a1a1a'))); cg.add(mk(new THREE.BoxGeometry(0.08, 0.01, 0.01).translate(0.03, 1.42, 0.155), smat(null, '#1a1a1a')));
+        cg.add(mk(new THREE.CylinderGeometry(0.008, 0.008, 0.5, 4).translate(0, 0.85, 0.12), brass)); cg.add(mk(new THREE.CylinderGeometry(0.07, 0.07, 0.02, 14).rotateX(Math.PI / 2).translate(0, 0.6, 0.12), brass));
+        cg.rotation.y = backX ? Math.PI / 2 : -Math.PI / 2; cg.position.set(backX ? -0.36 : 0.36, 0, 0); g.add(cg); break; }
+      case 'ratesboard': {   // quadro com as taxas do banco
+        const gb = grp(); gb.add(wbox(0.9, 0.7, 0.04, 0, 1.55, 0, smat('wood', '#3a2214'), 1)); gb.add(mk(new THREE.PlaneGeometry(0.82, 0.62).translate(0, 1.55, 0.025), smat('rates', '#ffffff', { rough: 0.6 })));
+        gb.rotation.y = backX ? Math.PI / 2 : -Math.PI / 2; gb.position.set(backX ? -0.46 : 0.46, 0, 0); g.add(gb); break; }
       case 'pillar': { const mb = smat('stoneblock', '#efe9dc', { bump: 0.6 }), gold = smat(null, '#c9a24a', { metal: 1, rough: 0.3 }); g.add(mk(new THREE.BoxGeometry(0.62, 0.18, 0.62).translate(0, 0.09, 0), mb)); g.add(mk(new THREE.CylinderGeometry(0.22, 0.25, 3.0, 16).translate(0, 1.68, 0), mb)); g.add(mk(new THREE.BoxGeometry(0.6, 0.2, 0.6).translate(0, 3.28, 0), mb)); g.add(mk(new THREE.TorusGeometry(0.25, 0.03, 6, 16).rotateX(Math.PI / 2).translate(0, 0.3, 0), gold)); break; }
       case 'chandelier': { const gold = smat(null, '#d4a94a', { metal: 1, rough: 0.3 }), fl = smat(null, '#ffd890', { emissive: '#ffb850', ei: 1.6 });   // lustre pendurado (corrente até o teto)
         g.add(mk(new THREE.CylinderGeometry(0.012, 0.012, 1.2, 4).translate(0, 3.3, 0), gold)); g.add(mk(new THREE.TorusGeometry(0.42, 0.035, 6, 20).rotateX(Math.PI / 2).translate(0, 2.65, 0), gold)); g.add(mk(new THREE.SphereGeometry(0.08, 8, 6).translate(0, 2.6, 0), gold));

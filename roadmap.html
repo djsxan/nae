@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Roadmap de Nae</title>
+<meta name="description" content="Roadmap de Nae: tudo o que foi feito desde a primeira versão, por eras, com os nomes de cada versão e os destaques.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Cinzel+Decorative:wght@700&family=Alegreya:ital,wght@0,400;0,500;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+  :root { --bg: #14100c; --panel: #1e1813; --ink: #e8dcc0; --ink2: #c8b896; --gold: #d8b870; --gold2: #f0d890; --line: rgba(201,162,74,.28); --red: #c8402a; --key: #2a2016; --ok: #8ac46a; }
+  :root[data-theme="light"] { --bg: #efe4cc; --panel: #f7efdc; --ink: #2a1c0e; --ink2: #5a4428; --gold: #8a5a14; --gold2: #6a3a08; --line: rgba(120,80,20,.3); --red: #a02a18; --key: #e4d4b0; --ok: #3a7a2a; }
+  @media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #efe4cc; --panel: #f7efdc; --ink: #2a1c0e; --ink2: #5a4428; --gold: #8a5a14; --gold2: #6a3a08; --line: rgba(120,80,20,.3); --red: #a02a18; --key: #e4d4b0; --ok: #3a7a2a; } }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 17px/1.6 'Alegreya', Georgia, serif; }
+  a { color: var(--gold2); }
+  .wrap { display: grid; grid-template-columns: 260px minmax(0, 1fr); max-width: 1180px; margin: 0 auto; gap: 34px; padding: 0 16px; }
+  nav.toc { position: sticky; top: 0; height: 100vh; overflow: auto; padding: 24px 0 40px; border-right: 1px solid var(--line); }
+  nav.toc .brand { font: 900 34px 'Cinzel Decorative', serif; color: var(--gold2); letter-spacing: 4px; text-decoration: none; display: block; margin-bottom: 2px; }
+  nav.toc small { color: var(--ink2); display: block; margin-bottom: 16px; }
+  nav.toc input { width: calc(100% - 16px); padding: 8px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--panel); color: var(--ink); font: inherit; font-size: 15px; margin-bottom: 14px; }
+  nav.toc a { display: block; padding: 4px 8px; margin-right: 16px; border-radius: 5px; color: var(--ink2); text-decoration: none; font: 600 14px 'Cinzel', serif; }
+  nav.toc a:hover, nav.toc a.on { background: rgba(201,162,74,.14); color: var(--gold2); }
+  nav.toc .sub { font: 400 12px 'Alegreya', serif; color: var(--ink2); opacity: .8; display: block; }
+  main { padding: 28px 0 80px; min-width: 0; }
+  h1 { font: 900 40px 'Cinzel', serif; color: var(--gold2); margin: 0 0 6px; }
+  .lead { font-size: 19px; color: var(--ink2); margin: 0 0 22px; }
+  section { padding: 18px 0 8px; border-top: 1px solid var(--line); }
+  section.hide { display: none; }
+  h2 { font: 700 26px 'Cinzel', serif; color: var(--gold); margin: 10px 0 2px; }
+  .era-meta { color: var(--ink2); font-size: 15px; margin: 0 0 10px; }
+  p { margin: 8px 0; }
+  .theme { float: right; background: none; border: 1px solid var(--line); color: var(--ink2); border-radius: 6px; padding: 4px 10px; cursor: pointer; font: 600 13px 'Cinzel', serif; }
+  .play { display: inline-block; margin: 6px 8px 20px 0; padding: 10px 22px; border-radius: 8px; background: linear-gradient(#7a1e16, #4a0e0a); color: #f4e4b8; font: 700 16px 'Cinzel', serif; text-decoration: none; border: 1px solid #a8402a; }
+  .play.alt { background: none; color: var(--gold2); border-color: var(--line); }
+  .muted { color: var(--ink2); font-size: 14px; }
+  figure { margin: 12px 0 16px; } figure img { width: 100%; border-radius: 10px; border: 1px solid var(--line); display: block; } figcaption { font-size: 14px; color: var(--ink2); margin-top: 6px; font-style: italic; }
+  /* números */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin: 6px 0 24px; }
+  .stat { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; text-align: center; }
+  .stat b { display: block; font: 900 30px 'Cinzel', serif; color: var(--gold2); line-height: 1.1; }
+  .stat span { font-size: 14px; color: var(--ink2); }
+  /* linha do tempo */
+  .tl { position: relative; margin: 10px 0 6px; padding-left: 26px; }
+  .tl::before { content: ''; position: absolute; left: 8px; top: 6px; bottom: 6px; width: 2px; background: linear-gradient(var(--gold), var(--line)); }
+  .v { position: relative; margin: 0 0 10px; }
+  .v::before { content: ''; position: absolute; left: -23px; top: 9px; width: 10px; height: 10px; border-radius: 50%; background: var(--bg); border: 2px solid var(--gold); }
+  .v .hd { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+  .v .num { font: 700 14px 'Cinzel', serif; color: var(--gold); min-width: 54px; }
+  .v .nm { font: 700 16px 'Cinzel', serif; color: var(--gold2); }
+  .v .dt { font-size: 13px; color: var(--ink2); }
+  .v .tx { margin: 2px 0 0; font-size: 15.5px; }
+  .v.big { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--gold); border-radius: 0 10px 10px 0; padding: 10px 14px 12px; margin: 14px 0; }
+  .v.big::before { left: -26px; top: 14px; width: 14px; height: 14px; background: var(--gold); box-shadow: 0 0 10px rgba(240,216,144,.6); }
+  .v.big .nm { font-size: 20px; }
+  .v.big .badge { font: 700 11px 'Cinzel', serif; color: var(--bg); background: var(--gold); border-radius: 4px; padding: 1px 6px; letter-spacing: 1px; }
+  .v.big .ic { font-size: 22px; margin-right: 2px; }
+  .v.fix .nm { color: var(--ink2); font-weight: 600; }
+  .filters { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 18px; }
+  .filters button { background: var(--panel); border: 1px solid var(--line); color: var(--ink2); border-radius: 20px; padding: 4px 12px; cursor: pointer; font: 600 13px 'Cinzel', serif; }
+  .filters button.on { background: var(--gold); color: var(--bg); border-color: var(--gold); }
+  body.only-big .v:not(.big) { display: none; }
+  .soon { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; margin: 12px 0; }
+  .soon div { background: var(--panel); border: 1px dashed var(--line); border-radius: 10px; padding: 12px 14px; }
+  .soon h4 { margin: 0 0 4px; font: 700 16px 'Cinzel', serif; color: var(--gold2); }
+  .soon p { margin: 0; font-size: 15px; }
+  .empty { display: none; color: var(--ink2); font-style: italic; padding: 20px 0; }
+  @media (max-width: 820px) { body { overflow-x: hidden; } .wrap { grid-template-columns: 1fr; gap: 0; } nav.toc { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding-bottom: 12px; } nav.toc .links { display: flex; flex-wrap: wrap; gap: 2px; } nav.toc .sub { display: none; } h1 { font-size: 30px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc">
+  <a class="brand" href="./">NAE</a><small>Roadmap · <span id="curv"></span></small>
+  <input id="q" type="search" placeholder="Buscar (ex.: banco, arco, guilhotina)" autocomplete="off">
+  <div class="links" id="links"></div>
+</nav>
+<main>
+  <button class="theme" id="theme">Claro / escuro</button>
+  <h1>Roadmap de Nae</h1>
+  <p class="lead">A história do jogo, versão por versão: de um protótipo chamado <i>Eldmar Online</i> até a cidade viva de Nae. As versões que mudaram o jogo de verdade aparecem em destaque. Esta página é atualizada a cada versão nova.</p>
+  <a class="play" href="./">Jogar agora ▸</a><a class="play alt" href="guia.html">Guia do jogo</a>
+  <div class="stats" id="stats"></div>
+  <div class="filters"><button data-f="all" class="on">Todas as versões</button><button data-f="big">Só os destaques</button></div>
+  <div id="eras"></div>
+  <section id="embreve">
+    <h2>Em breve</h2>
+    <p class="era-meta">Ideias e pedidos em andamento — podem mudar.</p>
+    <div class="soon">
+      <div><h4>Mais insumos para os negócios</h4><p>Taverna e forja recebendo mais coisas das oficinas (hoje: linho, madeira e minério) e novas receitas.</p></div>
+      <div><h4>Interiores sem atrapalhar a vista</h4><p>Escolha definitiva de como os prédios da frente aparecem quando você está dentro de uma casa.</p></div>
+      <div><h4>Bairro nobre vivo</h4><p>Moradores nobres nos casarões novos, com rotina, jardineiros e festas no chafariz.</p></div>
+      <div><h4>Mais da cidade</h4><p>Revisão dos interiores mais antigos (como foi feito com o banco, a pousada e o escritório) e novas decorações nas ruas.</p></div>
+    </div>
+  </section>
+  <div class="empty" id="empty">Nada encontrado para essa busca.</div>
+  <p class="muted" style="margin-top:40px">Roadmap atualizado a cada versão do jogo.</p>
+</main>
+</div>
+<script>
+// ===== Para atualizar: adicione a versão nova no fim da era certa (big: true para destaque). =====
+const ERAS = [
+  { id: 'eldmar', name: 'Eldmar: o começo', when: '13 de novembro', img: 'img/guia/mapa.jpg', cap: 'O mundo de hoje nasceu do mapa de Eldmar, crescido muitas vezes.',
+    intro: 'Um protótipo de RPG no navegador que, num só dia, passou de quadradinhos para um mundo pintado em 3D, com cidadela, castelo e muralhas.',
+    v: [
+      ['0.1', 'Eldmar Online', '13/11', 'O primeiro passo: um RPG multijogador isométrico rodando no navegador, com host e amigos pela internet.', 1, '🌱'],
+      ['0.2', 'Era das Vocações', '13/11', 'Cavaleiro, Atirador e Mago com habilidades próprias, um vilarejo e o primeiro visual medieval.'],
+      ['0.3', 'Ruínas de Eldmar', '13/11', 'Pixel art, movimento livre, cair ferido em vez de morrer na hora, andares e otimização.'],
+      ['0.4', 'A Cidadela', '13/11', 'Pixel art realista, esqueleto animado nos personagens e a primeira cidadela.'],
+      ['0.5', 'Mundo Pintado', '13/11', 'Cenário e clima redesenhados à mão.'],
+      ['0.6', 'Heróis Forjados', '13/11', 'Personagens pré-renderizados com armaduras épicas, monstros sombrios, golpes com peso, escudo no braço e arco com corda puxada.'],
+      ['0.7', 'Mundo Esculpido', '13/11', 'Tudo passa a ser modelado em 3D e pré-renderizado: árvores, construções, castelo, objetos e chão com relevo.', 1, '🏰'],
+      ['0.8', 'A Grande Eldmar', '13/11', 'Mapa 4× maior, cidade com o dobro do tamanho (castelo, mercado, catedral, portões) e corrida com Shift.'],
+      ['0.9', 'Portas Abertas', '13/11', 'Castelo reconstruído, muralhas com ameias andáveis, portões que abrem sozinhos, interiores mobiliados em todos os prédios e o mapa (M).'],
+      ['1.0', 'Grandeza de Eldmar', '13/11', 'Escala realista: personagens menores e prédios monumentais, água realista e o menu de pausa.', 1, '👑'],
+      ['1.1', 'Alicerces', '13/11', 'Base reforçada: prédios sem sobreposição, portas viradas para a rua, cidade preparada no carregamento e interiores com paredes cortadas.'],
+    ] },
+  { id: 'sxan', name: 'Sxan: o mundo cresce', when: '13 e 14 de novembro', img: 'img/guia/combate.jpg', cap: 'Fora das muralhas, bastiões, bandidos e o dragão.',
+    intro: 'O mundo vira Sxan, ganha andares, bastiões com chefes e o primeiro grande inimigo: o dragão Drakhar.',
+    v: [
+      ['1.2', 'Lares de Sxan', '13/11', 'Eldmar vira Sxan; prédios com até 3 andares e escadas, HUD minimalista, aparências por nível e roda de emoções (T).'],
+      ['1.3', 'Passos Furtivos', '13/11', 'Praça livre em volta do castelo, escadas animadas e colisão no tamanho real dos objetos.'],
+      ['1.4', 'Caça e Fôlego', '13/11', 'Ferido de joelhos abaixo de 15% de vida, aliado ajuda a levantar, cansaço que arrasta.'],
+      ['1.5', 'Bastiões', '13/11', 'Acampamento Orc, Cripta das Colinas, Fortim dos Desertores, Poças do Pântano e Caverna do Troll, com chefes e baús.', 1, '⚔'],
+      ['1.6', 'O Flagelo Rubro', '13/11', 'O dragão Drakhar no covil: rugido, mordida, sopro de fogo com chão em chamas e cauda que arremessa. Pegar e jogar barris e pedras.', 1, '🐉'],
+    ] },
+  { id: 'corpo', name: 'Carne e aço', when: '14 de novembro', img: 'img/guia/combate.jpg', cap: 'Combate direcional: o arco no chão mostra o golpe e a parte do corpo.',
+    intro: 'O corpo passa a importar: partes que se ferem, sangram e se perdem, combate direcional no estilo Chivalry, sobrevivência e uma natureza de verdade.',
+    v: [
+      ['1.7', 'Corpos e Cinzas', '14/11', 'Corpos com física (ragdoll) que ficam no chão, saque segurando F e o modo criador: o Tecelão.'],
+      ['1.8', 'Carne e Osso', '14/11', 'Seis partes do corpo com vida própria, feridas, sangramento, bandagens, cauterização, mancar e braço fraco.', 1, '🩸'],
+      ['1.9', 'Lâmina e Guarda', '14/11', 'Combate corpo a corpo direcional estilo Chivalry: golpes de cima, de baixo, laterais e estocada, aparar no tempo certo, contra-ataque, finta, esquiva e chute.', 1, '🗡'],
+      ['1.10', 'Aço e Sangue', '14/11', 'Desmembramento pela direção do golpe: pedaços voam com física; sem perna rasteja, sem braço não segura arma.'],
+      ['1.11', 'Fome e Frio', '14/11', 'Sobrevivência: fome, sede, frio à noite, fogueiras, comida crua com risco e infecção.', 1, '🔥'],
+      ['1.12', 'Natureza', '14/11', 'Florestas fechadas com clareiras e trilhas, árvores maiores, espécies novas, riachos, frutas e ervas.'],
+      ['1.13', 'O Dragão', '14/11', 'Drakhar refeito como serpe: voa, faz rasantes de fogo, agarra e solta do alto, pousa derrubando todos.'],
+      ['1.14', 'Cantil e Ajustes', '14/11', 'Restauração de membros mais barata, saque automático e cantil que bebe sozinho.'],
+    ] },
+  { id: 'lei', name: 'Lei, vida e castigo', when: '14 de novembro', img: 'img/roadmap/guilhotina.jpg', cap: 'O cadafalso em frente ao castelo e Mestre Corvo, o carrasco.',
+    intro: 'A cidade ganha regras: reinos online, PvP em todo lugar com sentinelas de verdade, cadeia, algemas, guilhotina, arco de caçada e o arrastar de corpos.',
+    v: [
+      ['1.15', 'Vida na Cidade', '14/11', 'Lista de reinos online na tela inicial, dormir em camas e Marta, a Fruteira, com rotina própria.', 1, '🌐'],
+      ['1.16', 'O Cadafalso', '14/11', 'Guilhotina em frente ao castelo com Mestre Corvo: quem leva um caído até lá entrega o condenado.'],
+      ['1.17', 'Talentos', '14/11', 'Árvore de talentos por vocação, com 3 ramos e uma habilidade nova em cada.'],
+      ['1.18', 'Terra Sem Lei', '14/11', 'PvP liberado em todo lugar; crime visto por sentinela deixa o agressor procurado.', 1, '⚖'],
+      ['1.19', 'Arco e Flecha', '14/11', 'Arco de caçada: segurar puxa a corda, soltar dispara, mira em arco com a trajetória.'],
+      ['1.20', 'Puxar e Carregar', '14/11', 'Menu para puxar pelos braços, arrastar pelo pé ou levar nas costas qualquer corpo.'],
+      ['1.21', 'Lei e Captura', '14/11', 'NPCs vulneráveis e sentinelas que perseguem, atacam e levam procurados.'],
+      ['1.22', 'Lar e Emoções', '14/11', 'Mais emoções na roda, NPCs que reagem ao Tecelão e cozinha nos fogões.'],
+      ['1.23', 'Peso Morto', '14/11', 'Arrastar com física real: o corpo balança e arrasta preso à mão de quem puxa.'],
+      ['1.24', 'Constelações', '14/11', 'A árvore de talentos vira um céu de constelações; mata-leão e render-se.'],
+      ['1.25', 'Cadeia e Guilhotina', '14/11', 'Cadeia com 3 celas e o carcereiro Bruno: penas, fiança, gazua e fuga.', 1, '⛓'],
+      ['1.26', 'Algemas', '14/11', 'Sentinelas algemam e conduzem pelo braço; jogadores amarram com corda.'],
+      ['1.27', 'Rua do Ateliê', '14/11', 'Rua nova até um portão a oeste, com lojas e o Ateliê Real.'],
+      ['1.28', 'Mãos Atadas', '14/11', 'Execução encenada de 30 segundos com sino e anúncio do carrasco.'],
+      ['1.29', 'Bairro Nobre', '14/11', 'Todas as lojas na rua nova e o Ateliê Real de frente para a taverna.'],
+    ] },
+  { id: 'nae', name: 'Nae: casas, negócios e gente', when: '14 e 15 de novembro', img: 'img/guia/cidade.jpg', cap: 'A praça do mercado de manhã: moradores trabalhando, conversando e comprando.',
+    intro: 'O jogo ganha o nome Nae e uma economia de verdade: imóveis, negócios, moradores com rotina e memória, banco, menu do reino e gente que anda como gente.',
+    v: [
+      ['1.30', 'Nae', '14/11', 'O jogo passa a se chamar Nae, com uma tela inicial em 3D viva.', 1, '✦'],
+      ['1.31', 'Imobiliária', '14/11', 'Mestre Anselmo aluga casas: placas "Aluga-se", aluguel debitado sozinho e Minha casa (L).'],
+      ['1.32', 'Negócios', '15/11', 'Compre ou alugue lojas e oficinas: elas vendem e produzem sozinhas, com mensageiros levando a produção.', 1, '🏛'],
+      ['1.33', 'Moradores', '15/11', 'Doze moradores com casa e rotina: dormem, trabalham, almoçam e conversam na taverna.'],
+      ['1.34', 'Trabalho e Gente', '15/11', 'Os moradores lembram do que você fez e espalham fofoca; trabalhos, turnos e ofícios.', 1, '🗣'],
+      ['1.35', 'Banco e Armas', '15/11', 'Banco com conta que rende e empréstimos.'],
+      ['1.36', 'Entrada Rápida', '15/11', 'Tudo vira Nae; botão "Entrar no reino" e senha opcional do reino.'],
+      ['1.37', 'Menu do Reino', '15/11', 'Esc abre um menu com abas (personagem, habilidades, jornada, mapa, negócios...) e o painel do Tecelão.'],
+      ['1.38', 'Gente Viva', '15/11', 'NPCs entram e saem pela porta, fazem fila, têm jeitos de andar e 11 ações paradas.', 1, '🚶'],
+      ['1.39', 'Mãos Livres', '15/11', 'Guardar e sacar a arma (G), sentinelas que ameaçam, banco no estilo Gringotes e a chuva de ouro do Tecelão.'],
+    ] },
+  { id: 'cidade', name: 'Nae: ofícios e a cidade nova', when: '16 de novembro', img: 'img/roadmap/avenida.jpg', cap: 'A avenida da Catedral, com estátuas, estandartes da Aurora e canteiros.',
+    intro: 'O dia em que a cidade foi redesenhada: pousada, troca, escudo, varinhas, coletores, funcionários, lucro direto no banco e ruas novas.',
+    v: [
+      ['1.39.1', 'Análise e Desempenho', '15/11', 'O guia do jogo e um servidor quase 5× mais rápido.', 0, '', 1],
+      ['1.40', 'Conversa e Ofício', '16/11', 'Falar com NPC no F, dar ouro e itens, chat de volta, coleta com animações e a Restauração do Mago.'],
+      ['1.41', 'Pousada e Plateia', '16/11', 'A Pousada do Javali Magro e a plateia que se reúne nas execuções.', 1, '🛏'],
+      ['1.42', 'Escudo e Troca', '16/11', 'Menu de troca com os vendedores, bloqueio direcional com escudo, empurrão e aba Progresso.', 1, '🛡'],
+      ['1.43', 'Madeira e Cabines', '16/11', 'Árvore que cai e pedra que quebra, varinhas como arma do mago, donos NPC dos negócios e cabines na pousada.'],
+      ['1.44', 'Cidade Nova', '16/11', 'Banco, catedral e pousada em lugares novos, forja e taverna compráveis, funcionários, taverna viva com bardo e patrulhas.', 1, '🗺'],
+      ['1.45', 'Coletores e Cortinas', '16/11', 'Coletores que saem e cortam árvores, quebram pedras e colhem de verdade; cortinas nas cabines.'],
+      ['1.46', 'Lucro de Verdade', '16/11', 'Economia rebalanceada (todos os negócios lucram), painel com lucro líquido e turnos seguidos.', 1, '💰'],
+      ['1.47', 'Avenida da Catedral', '16/11', 'Avenida da catedral até o portão sul, quartel no portão, guilhotina de volta ao castelo.'],
+      ['1.48', 'Avenida dos Nobres', '16/11', 'Bairro nobre com casarões dos dois lados, chafariz e jardins; banco de mármore maior; interiores sem prédios por cima; o Roadmap.', 1, '⛲'],
+    ] },
+];
+// ===== fim dos dados =====
+const all = ERAS.flatMap(e => e.v);
+document.getElementById('curv').textContent = 'v' + all[all.length - 1][0];
+const days = 4;
+document.getElementById('stats').innerHTML = [[all.length, 'versões'], [all.filter(v => v[4]).length, 'grandes marcos'], [days, 'dias de desenvolvimento'], ['46', 'moradores e NPCs'], ['40', 'prédios na cidade'], ['19', 'tipos de monstro']].map(([n, t]) => '<div class="stat"><b>' + n + '</b><span>' + t + '</span></div>').join('');
+const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
+document.getElementById('eras').innerHTML = ERAS.map(e => '<section id="' + e.id + '"><h2>' + esc(e.name) + '</h2><p class="era-meta">' + esc(e.when) + ' · ' + e.v.length + ' versões (v' + e.v[0][0] + ' a v' + e.v[e.v.length - 1][0] + ')</p><p>' + esc(e.intro) + '</p>' +
+  (e.img ? '<figure><img src="' + e.img + '" alt="' + esc(e.cap) + '" loading="lazy"><figcaption>' + esc(e.cap) + '</figcaption></figure>' : '') +
+  '<div class="tl">' + e.v.map(([n, nm, dt, tx, big, ic, fix]) => '<div class="v' + (big ? ' big' : '') + (fix ? ' fix' : '') + '"><div class="hd">' + (big ? '<span class="ic">' + ic + '</span>' : '') + '<span class="num">v' + n + '</span><span class="nm">' + esc(nm) + '</span>' + (big ? '<span class="badge">DESTAQUE</span>' : '') + '<span class="dt">' + dt + '</span></div><p class="tx">' + esc(tx) + '</p></div>').join('') + '</div></section>').join('');
+const S = [...document.querySelectorAll('main section')], links = document.getElementById('links');
+for (const s of S) { const a = document.createElement('a'); a.href = '#' + s.id; const E = ERAS.find(e => e.id === s.id); a.innerHTML = esc(s.querySelector('h2').textContent) + (E ? '<span class="sub">v' + E.v[0][0] + ' – v' + E.v[E.v.length - 1][0] + '</span>' : ''); links.appendChild(a); }
+const A = [...links.querySelectorAll('a')];
+const io = new IntersectionObserver(es => { for (const e of es) if (e.isIntersecting) A.forEach(a => a.classList.toggle('on', a.hash === '#' + e.target.id)); }, { rootMargin: '-20% 0px -70% 0px' });
+S.forEach(s => io.observe(s));
+const q = document.getElementById('q'), norm = t => t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+q.addEventListener('input', () => { const v = norm(q.value.trim()); let any = false;
+  document.querySelectorAll('.v').forEach(d => d.style.display = !v || norm(d.textContent).includes(v) ? '' : 'none');
+  S.forEach((s, i) => { const hit = !v || norm(s.textContent).includes(v); s.classList.toggle('hide', !hit); A[i].style.display = hit ? '' : 'none'; if (hit) any = true; });
+  document.getElementById('empty').style.display = any ? 'none' : 'block'; });
+document.querySelectorAll('.filters button').forEach(b => b.onclick = () => { document.querySelectorAll('.filters button').forEach(x => x.classList.toggle('on', x === b)); document.body.classList.toggle('only-big', b.dataset.f === 'big'); });
+const root = document.documentElement; try { const t = localStorage.getItem('nae-guide-theme'); if (t) root.dataset.theme = t; } catch (e) { }
+document.getElementById('theme').onclick = () => { const dark = getComputedStyle(root).getPropertyValue('--bg').trim() === '#14100c'; root.dataset.theme = dark ? 'light' : 'dark'; try { localStorage.setItem('nae-guide-theme', root.dataset.theme); } catch (e) { } };
+</script>
+</body>
+</html>

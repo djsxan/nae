@@ -1472,6 +1472,7 @@ function updateGates(dt) {
 function applySettings() {
   canvas.style.filter = SET.bright !== 1 ? 'brightness(' + SET.bright + ')' : '';
   { const c = $('chat'), m = SET.chat || 'fade'; if (c) { c.classList.toggle('fade', m === 'fade'); c.classList.toggle('off', m === 'off'); } for (const b of document.querySelectorAll('#pz-chat button')) b.classList.toggle('on', b.dataset.c === m); }
+  { G.intMode = SET.intMode || 'fade'; for (const b of document.querySelectorAll('#pz-int button')) b.classList.toggle('on', b.dataset.i === G.intMode); }
   if (typeof S3 !== 'undefined' && S3.ok) S3.renderer.shadowMap.enabled = SET.quality !== 'low';
   for (const b of document.querySelectorAll('#pz-quality button')) b.classList.toggle('on', b.dataset.q === SET.quality);
   $('pz-bright').value = SET.bright; $('pz-bright-v').textContent = Math.round(SET.bright * 100) + '%';
@@ -1486,6 +1487,7 @@ for (const b of document.querySelectorAll('#pz-tele button')) b.addEventListener
 for (const b of document.querySelectorAll('#pz-duel button')) b.addEventListener('click', () => { SET.duel = b.dataset.d === '1'; saveSettings(); applySettings(); Net.send({ t: 'duel', on: SET.duel ? 1 : 0 }); showToast(SET.duel ? 'Modo duelo LIGADO: outros jogadores em duelo podem te atingir fora da cidade.' : 'Modo duelo desligado.'); });
 for (const b of document.querySelectorAll('#pz-phys button')) b.addEventListener('click', () => { SET.phys = b.dataset.p; saveSettings(); applySettings(); });
 for (const b of document.querySelectorAll('#pz-chat button')) b.addEventListener('click', () => { SET.chat = b.dataset.c; saveSettings(); applySettings(); });
+for (const b of document.querySelectorAll('#pz-int button')) b.addEventListener('click', () => { SET.intMode = b.dataset.i; saveSettings(); applySettings(); });
 $('pz-pad').addEventListener('input', e => { SET.pad = +e.target.value; saveSettings(); applySettings(); });
 function togglePause(force) {
   if (typeof gmToggle === 'function') { if (force === false) gmClose(); else if (force === true) gmOpen(); else gmToggle(); return; }

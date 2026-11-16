@@ -59,7 +59,7 @@
 <body>
 <div class="wrap">
 <nav class="toc">
-  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.47</small>
+  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.48</small>
   <input id="q" type="search" placeholder="Buscar no guia (ex.: banco, fome, G)" autocomplete="off">
   <div class="links" id="links"></div>
 </nav>
@@ -67,7 +67,7 @@
   <button class="theme" id="theme">Claro / escuro</button>
   <h1>Guia de Nae</h1>
   <p class="lead">Nae é um RPG multijogador no navegador: uma cidade medieval viva, com moradores que lembram de você, leis que valem, negócios de verdade e uma morte que é para sempre. Este guia explica tudo o que existe hoje, com os números exatos.</p>
-  <a class="play" href="./">Jogar agora ▸</a>
+  <a class="play" href="./">Jogar agora ▸</a> <a class="play" href="roadmap.html" style="background:none;color:var(--gold2);border-color:var(--line)">Roadmap</a>
 
   <section id="comecar"><h2>Começando</h2>
     <p>Na tela inicial, abra <b>Personagens</b> para criar seu herói: escolha nome, vocação (Cavaleiro, Atirador ou Mago) e cor. Depois, em <b>Jogar</b>, aperte <b>Entrar no reino</b>: se já existe um reino aberto (de um amigo, sem senha), você entra nele; se não, abre um com você de anfitrião.</p>
@@ -115,6 +115,7 @@
       <tr><td><kbd>Y</kbd></td><td>Render-se às sentinelas quando procurado.</td></tr>
       <tr><td><kbd>R</kbd> (caído no chão)</td><td>Desistir (morte permanente).</td></tr>
       <tr><td><kbd>Esc</kbd> · <kbd>I</kbd> <kbd>K</kbd> <kbd>J</kbd> <kbd>M</kbd> <kbd>N</kbd> <kbd>L</kbd></td><td>Menu do jogo e atalhos das abas: inventário, habilidades, jornada, mapa, negócios, imóveis.</td></tr>
+      <tr><td>Configurações → Prédios na frente</td><td>Quando você está dentro de uma casa, os prédios entre você e a câmera podem ficar <b>translúcidos</b> (padrão), <b>cortados</b> na altura do joelho (estilo Tibia) ou <b>escondidos</b>.</td></tr>
       <tr><td><kbd>N</kbd> (dentro do seu negócio)</td><td>Abre direto a gestão daquele negócio — sem conflito com conversar (o <kbd>F</kbd> continua falando com as pessoas).</td></tr>
       <tr><td>Roda do mouse · <kbd>+</kbd> <kbd>−</kbd></td><td>Zoom da câmera (no mapa, zoom do mapa).</td></tr>
     </table>
@@ -218,7 +219,7 @@
 
   <section id="cidade"><h2>A cidade e os moradores</h2>
     <figure><img src="img/guia/cidade.jpg" alt="A praça do mercado de manhã: moradores trabalhando, conversando e fazendo compras." loading="lazy"><figcaption>A praça do mercado de manhã: moradores trabalhando, conversando e fazendo compras.</figcaption></figure>
-    <p>Nae tem a cidadela e a Vila do Oeste do outro lado do rio. Na cidadela: a <b>praça do mercado</b> no centro, com a <b>Catedral da Aurora</b> logo ao lado — da porta dela desce a <b>avenida da Catedral</b> (calçamento em mosaico, estátuas, estandartes da Aurora, canteiros e lampiões) até a praça do portão sul; a <b>guilhotina</b> fica em frente ao castelo, à esquerda da avenida; o <b>castelo</b> ao norte da praça; o <b>Banco de Nae</b> no fim da rua oeste, com a <b>praça do chafariz</b> (bancos, flores e postes) do outro lado da rua; a <b>taverna</b> e as lojas a oeste da praça do mercado, com a casa amarela da Marta (quintal cercado com frutíferas, canteiros e a barraquinha) e o <b>escritório do Mestre Anselmo</b> (pedra clara e bronze, placa da chave, vitrine de anúncios; lá dentro a maquete da cidade) logo atrás delas, de porta para a rua de baixo; a <b>pousada</b> no bairro sudoeste, ao lado do estábulo; o <b>quartel</b> junto ao portão sul, de porta para a rua principal; a cadeia no sudeste. Os moradores têm casa, rotina e necessidades: dormem das 22h às 6h, trabalham, almoçam, conversam na taverna e na praça.</p>
+    <p>Nae tem a cidadela e a Vila do Oeste do outro lado do rio. Na cidadela: a <b>praça do mercado</b> no centro, com a <b>Catedral da Aurora</b> logo ao lado — da porta dela desce a <b>avenida da Catedral</b> (calçamento em mosaico, estátuas, estandartes da Aurora, canteiros e lampiões) até a praça do portão sul; a <b>guilhotina</b> fica em frente ao castelo, à esquerda da avenida; o <b>castelo</b> ao norte da praça, com o <b>bairro nobre</b> à direita (casarões de pedra dos dois lados de uma avenida com chafariz, jardins formais, estátuas e lampiões); o <b>Banco de Nae</b> no fim da rua oeste, com a <b>praça do chafariz</b> (bancos, flores e postes) do outro lado da rua; a <b>taverna</b> e as lojas a oeste da praça do mercado, com a casa amarela da Marta (quintal cercado com frutíferas, canteiros e a barraquinha) e o <b>escritório do Mestre Anselmo</b> (pedra clara e bronze, placa da chave, vitrine de anúncios; lá dentro a maquete da cidade) logo atrás delas, de porta para a rua de baixo; a <b>pousada</b> no bairro sudoeste, ao lado do estábulo; o <b>quartel</b> junto ao portão sul, de porta para a rua principal; a cadeia no sudeste. Os moradores têm casa, rotina e necessidades: dormem das 22h às 6h, trabalham, almoçam, conversam na taverna e na praça.</p>
     <ul>
       <li><b>Memória</b>: cada morador lembra do que viu você fazer e do que ouviu falar (a fofoca corre na taverna à noite). A opinião vai de <b>Amigo</b> a <b>Inimigo</b> e aparece no diálogo com o motivo.</li>
       <li>Amigos cumprimentam pelo nome, dão presentes e fazem desconto; inimigos cobram mais e chamam a guarda.</li>
@@ -242,7 +243,7 @@
     <figure><img src="img/guia/cadeia.jpg" alt="A cadeia: três celas com catre, o carcereiro Bruno e a mesa da guarda." loading="lazy"><figcaption>A cadeia: três celas com catre, o carcereiro Bruno e a mesa da guarda.</figcaption></figure>
     <ul><li><b>Plateia</b>: quando alguém vai para a guilhotina, os moradores por perto param o que fazem e fazem uma roda em volta do cadafalso. Quem gostava do condenado pede clemência e chora; quem não gostava comemora; os outros rezam ou cobrem os olhos. Por um dia, a cidade comenta a execução na taverna e na praça.</li></ul>
     <h3>Patrulhas</h3>
-    <p>Duas duplas de sentinelas patrulham as ruas principais — a que corta a cidade de leste a oeste e a que vai do castelo ao portão sul —, indo e voltando lado a lado. Duas sentinelas guardam a porta do castelo, e há duplas nos portões.</p>
+    <p>Duas duplas de sentinelas patrulham as ruas principais — a que corta a cidade de leste a oeste (e desce até o portão sul no meio da ronda) e a que vai do castelo ao portão sul —, indo e voltando lado a lado. Duas sentinelas guardam a porta do castelo, e há duplas nos portões.</p>
     <h3>Sentinelas que ameaçam</h3>
     <p>Elas andam com a arma guardada e sacam para brigar ou ameaçar quando veem: arma sacada na cidade, invasão (castelo, perto do cofre do banco), alguém de reputação muito baixa (ficam de olho) ou quem carrega um corpo. São <b>três avisos</b>; obedecer acalma, desobedecer deixa você procurado por 1 minuto e elas atacam.</p>
     <p>Com um corpo, a sentinela <b>interroga</b> e as <b>testemunhas decidem</b>: se algum morador viu você atacar ou matar, você é preso; se ninguém viu, ela manda levar o corpo ao templo e libera.</p>
@@ -263,7 +264,7 @@
 
   <section id="negocios"><h2>Imóveis e negócios</h2>
     <ul>
-      <li>Fale com <b>Mestre Anselmo</b> na Imobiliária Chave de Bronze ou procure as placas “Aluga-se” e “À venda”. O preço depende do lugar (perto do castelo é caro, a vila é barata).</li>
+      <li>Fale com <b>Mestre Anselmo</b> na Imobiliária Chave de Bronze ou procure as placas “Aluga-se” e “À venda” pregadas ao lado da porta dos imóveis livres. O preço depende do lugar (perto do castelo é caro, a vila é barata).</li>
       <li><b>Casa</b>: aluguel cobrado por semana (7 dias do jogo) — sem pagar por 2 dias, perde a casa. Casa sua: porta trancada (só você e autorizados), baú seguro (chegue perto dele e aperte <kbd>F</kbd>), você acorda nela, e dormir na própria cama dá <i>Bem descansado</i>. Casas com morador podem ser compradas, e ele paga aluguel a você.</li>
       <li>Casas ficaram mais caras: morar numa casa é a meta de quem já tem renda. Para começar, use a pousada (abaixo).</li>
       <li><b>Comprar</b> custa 60 dias de aluguel, com imposto pequeno; vende de volta pela metade.</li>
@@ -275,6 +276,7 @@
       <li><b>Preços e margens</b>: na loja, o preço de venda é o preço de atacado × a margem — <i>Barato</i> 1,25 (90% dos clientes compram), <i>Justo</i> 1,6 (70%) ou <i>Caro</i> 2,1 (42%). Atacado: Madeira 2, Minério 3, Ervas 3, Linho 4, Papel 7, Varinhas 8, Poções 11, Cristais 14, Ferramentas 16.</li>
       <li><b>Oficinas vendem a produção</b>: a cada hora, o que passar da <b>reserva</b> vai para o fornecedor a 85% do preço (reserva automática: 10 de cada coisa, ou 40 se um negócio seu usa aquilo; dá para mudar na aba Estoque). Oficinas que transformam só compram matéria-prima <b>se compensar</b> — o painel mostra quanto cada unidade dá de lucro.</li>
       <li><b>Lucro de verdade</b>: a Visão geral mostra o <b>lucro líquido</b> de hoje e dos últimos 7 dias (receita − gastos − salários − imposto) e, se o negócio estiver no prejuízo, diz por quê (receita baixa, prateleira vazia, estoque parado, salários altos).</li>
+      <li><b>Comprar e melhorar com o banco</b>: comprar imóveis na imobiliária e as melhorias do negócio pagam primeiro com a conta do banco e completam com a bolsa.</li>
       <li><b>O lucro cai direto na sua conta do banco</b> — não existe mais cofre para ir buscar. Salários, encomendas e reposição saem dela (se faltar, da bolsa). À noite, ladrões podem levar um pouco de <b>mercadoria</b> (nunca o ouro do banco); as <b>trancas reforçadas</b> diminuem isso. Melhorias: prateleiras, vitrine, ferramentas e trancas.</li>
       <li><b>Reposição automática</b> (lojas, aba Estoque): ligue e defina, para cada mercadoria, o <b>mínimo</b> e <b>até quanto</b> encher. Quando o estoque cai abaixo do mínimo, a loja encomenda do fornecedor e paga com a conta do banco. Oficinas que transformam já compram sozinhas a matéria-prima que falta (também pelo banco).</li>
       <li><b>Funcionários</b> (aba Funcionários): procure candidatos e contrate até <b>3</b> por negócio (nas oficinas que extraem, até 2 coletores além do da casa). Cada um deixa o negócio <b>40% mais produtivo</b>, e o traço ajuda mais: <i>rápido</i> (+15%), <i>simpático</i> (clientes compram mais) ou <i>honesto</i> (metade do roubo à noite). O salário sai do banco todo dia — sem ouro, ele vai embora. Eles saem de casa de manhã, andam até o negócio, trabalham das 7h às 20h e voltam para casa no fim do dia. Dispense quando quiser.</li>
@@ -301,7 +303,7 @@
 
   <section id="banco"><h2>Banco de Nae</h2>
     <figure><img src="img/guia/banco.jpg" alt="O salão do Banco de Nae: balcões altos dos dois lados, banqueiros, lustres e o tapete até o cofre." loading="lazy"><figcaption>O salão do Banco de Nae: balcões altos dos dois lados, banqueiros, lustres e o tapete até o cofre.</figcaption></figure>
-    <p>No fim da rua oeste, com a porta para o sul e uma pracinha com chafariz em frente: um corredor de mármore com balcões altos dos dois lados, seis banqueiros e a porta redonda do cofre no fundo. Fale com qualquer banqueiro.</p>
+    <p>No fim da rua oeste, com a porta para o sul e a praça do chafariz do outro lado da rua: um salão de mármore xadrez, com balcões altos dos dois lados, seis banqueiros, lustres, o relógio de pêndulo e o quadro com as taxas; no fundo, a porta redonda do cofre e o tesouro (barras e sacos de ouro) atrás das grades; na entrada, os bancos de espera e o porteiro. Fale com qualquer banqueiro.</p>
     <table>
       <tr><th>Serviço</th><th>Como funciona</th></tr>
       <tr><td>Conta</td><td>Depositar e sacar. Rende <b>2% por semana</b>, não é furtado e não cai no chão quando você cai. Paga suas contas automáticas primeiro (aluguel, imposto, salários, diária) e recebe direto o lucro dos seus negócios.</td></tr>
@@ -390,15 +392,15 @@
       <dt>Reputação</dt><dd>De 0 a 100: o que a cidade pensa de você. Libera empréstimos, negócios e a compra do banco.</dd>
       <dt>Opinião</dt><dd>O que cada morador acha de você (Amigo, Simpático, Neutro, Desconfiado, Inimigo), pelo que viu e ouviu.</dd>
       <dt>Ofício</dt><dd>Habilidade de trabalho (Lenhador, Minerador, Herbalista, Artesão, Comerciante, Mensageiro, Biscateiro), do nível 1 ao 10.</dd>
-      <dt>Turno</dt><dd>2 minutos e meio trabalhando num negócio: salário, experiência de ofício e produção maior.</dd>
-      <dt>Cofre</dt><dd>Onde fica o lucro de cada negócio. O dono precisa ir buscar.</dd>
+      <dt>Turno</dt><dd>1 minuto e 15 segundos trabalhando num negócio: salário (nos negócios dos outros), experiência de ofício e produção maior. Os turnos seguem sozinhos enquanto você fica no prédio.</dd>
+      <dt>Conta do negócio</dt><dd>O lucro de cada negócio entra direto na conta do dono no banco.</dd>
       <dt>Bem descansado</dt><dd>Bônus de 10 minutos por dormir na sua cama (casa ou cabine da pousada): recupera vida e mana mais rápido.</dd>
       <dt>Tecelão</dt><dd>A figura de manto cinza com fios de ouro. Adorá-lo dá uma hora sem fome, sede e frio.</dd>
     </dl>
   </section>
 
   <div class="empty" id="empty">Nada encontrado para essa busca.</div>
-  <p class="muted" style="margin-top:40px">Guia da versão 1.41 · atualizado a cada versão do jogo.</p>
+  <p class="muted" style="margin-top:40px">Guia da versão 1.48 · atualizado a cada versão do jogo. Veja também o <a href="roadmap.html">Roadmap</a>, com a história de todas as versões.</p>
 </main>
 </div>
 <script>

@@ -18,7 +18,7 @@ function gmBuild() {
     if (sec) { const mv = [sec]; let n = sec.nextElementSibling; while (n) { mv.push(n); n = n.nextElementSibling; } for (const el of mv) right.insertBefore(el, quit); }
   }
   box.classList.add('gm'); box.innerHTML = '';
-  box.insertAdjacentHTML('beforeend', '<div class="gm-head"><span class="gm-title">Nae</span><span class="gm-hint">Esc fecha · o mundo continua</span><a class="gm-guide" href="guia.html" target="_blank" rel="noopener">📖 Guia do jogo</a><span class="gp-gold"><span class="coin"></span><b id="gm-gold">0</b></span><button class="gm-x" title="Fechar (Esc)">✕</button></div>' +
+  box.insertAdjacentHTML('beforeend', '<div class="gm-head"><span class="gm-title">Nae</span><span class="gm-hint">Esc fecha · o mundo continua</span><a class="gm-guide" href="guia.html" target="_blank" rel="noopener">📖 Guia do jogo</a> <a class="gm-guide" href="roadmap.html" target="_blank" rel="noopener">🗺 Roadmap</a><span class="gp-gold"><span class="coin"></span><b id="gm-gold">0</b></span><button class="gm-x" title="Fechar (Esc)">✕</button></div>' +
     '<nav class="gm-tabs">' + GM_TABS.map(([k, n, ic]) => '<button data-gt="' + k + '"' + (k === 'weaver' ? ' class="gm-dev"' : '') + '><i>' + ic + '</i><span>' + n + '</span></button>').join('') + '</nav><div class="gm-body" id="gm-body"></div>');
   const body = box.querySelector('#gm-body');
   for (const [k] of GM_TABS) { const p = document.createElement('div'); p.className = 'gm-pane'; p.dataset.pane = k; body.appendChild(p); }
