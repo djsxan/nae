@@ -31,7 +31,7 @@ function later(ms, fn) { if (!ms || ms <= 0) fn(); else G.timers.push({ at: perf
 const IDLE_SETS = {
   v_house3: ['look', 'wave', 'look'], v_house4: ['look', 'wave', 'look'], v_trav3: ['look', 'wave', 'look'], v_monk: ['look', 'wave', 'look'], v_noblef: ['look', 'wave', 'look'], v_noblem: ['look', 'wave', 'look'], v_peasm: ['look', 'wave', 'look'], v_peasf: ['look', 'wave', 'look'], v_elderm: ['look', 'wave', 'look'], v_elderf: ['look', 'wave', 'look'],
   v_house1: ['look', 'wave', 'look'], v_house2: ['look', 'look', 'wave'], v_trav1: ['stretch', 'look', 'yawn'], v_trav2: ['look', 'stretch'], v_vis1: ['look', 'wave'], v_vis2: ['look', 'wave', 'look'], v_thug1: ['look', 'look'], v_thug2: ['look', 'stretch'], supplier: ['look', 'stretch', 'yawn'],
-  banker: ['look', 'polish', 'look'], banker2: ['polish', 'look'], banker3: ['look', 'polish'], banker4: ['read', 'polish', 'look'], banker5: ['polish', 'look', 'read'], banker6: ['look', 'polish', 'crossarms'], bankporter: ['handsback', 'look', 'salute'],
+  hotelkeeper: ['polish', 'look', 'yawn', 'look'], banker: ['look', 'polish', 'look'], banker2: ['polish', 'look'], banker3: ['look', 'polish'], banker4: ['read', 'polish', 'look'], banker5: ['polish', 'look', 'read'], banker6: ['look', 'polish', 'crossarms'], bankporter: ['handsback', 'look', 'salute'],
   st_saw: ['stretch', 'polish', 'look'], st_mine: ['stretch', 'look', 'polish'], st_farm: ['look', 'stretch', 'yawn'], st_carp: ['polish', 'look', 'polish'], st_alch: ['look', 'polish', 'look'],
   st_apoth: ['look', 'polish', 'wave'], st_arcane: ['look', 'yawn', 'polish'], st_tailor: ['polish', 'look', 'wave'], st_scroll: ['look', 'polish', 'yawn'],
   courier1: ['look', 'stretch', 'wave'], courier2: ['look', 'yawn', 'stretch'], courier3: ['stretch', 'look', 'yawn'],
@@ -184,6 +184,7 @@ function clientOnServer(m) {
     case 'wv': gmWvEvent(m); break;
     case 'coins': coinEvent(m, now); break;
     case 'pmap': G.pmap = m.l; break;
+    case 'hotel': G.hotel = m; if (G.dialog && G.dialog.id === 'hotelkeeper') setDialogText(m.room >= 0 ? 'Seu cubículo é o ' + (m.room + 1) + ', por mais ' + m.until + ' dia(s). O baú fica ao lado do catre.' : 'Você não tem cubículo. Vagas agora: ' + m.free + ' de 6.'); if ($('hchest') && !$('hchest').classList.contains('hidden')) hotelChestShow(); break;
     case 'wt': WT.ph = m.ph ?? null; WT.rain = m.rain ?? null; break;
     case 'denied': askRoomPw(m.why === 'pwbad'); break;
     case 'roompw': G.roomLocked = m.on; pzRoomRefresh(); break;
@@ -722,6 +723,7 @@ const NPC_DIALOG = {
   banker: { greet: 'Bem-vindo ao Banco de Nae. Aqui o seu ouro dorme tranquilo atrás de uma porta que nem um dragão abre.', opts: [['Minha conta', { open: 'bank' }], ['Como funciona o banco?', { local: 'Você deposita e o ouro rende 2% por semana. Ninguém rouba, nem quando você cai. Emprestamos também, a 10% por semana, por duas semanas... e quem não paga conhece as sentinelas.' }], ['E se eu morrer?', { local: 'Então, com todo o respeito, o seu saldo fica com o banco. Ouro não tem herdeiro por aqui.' }], ['Posso comprar o banco?', { local: 'Só quem o Conselho respeita: reputação 70 ou mais, e uma fortuna. Fale com Mestre Anselmo, na Imobiliária.' }]] },
   banker2: { greet: 'Caixa aberto! Depósito ou saque?', opts: [['Minha conta', { open: 'bank' }]] },
   banker3: { greet: 'Os números nunca mentem. As pessoas, sim.', opts: [['Minha conta', { open: 'bank' }]] },
+  hotelkeeper: { greet: 'Pousada do Javali Magro! Cama de palha, baú com tranca e silêncio depois das dez. Três de ouro por dia, pago na hora.', opts: [['Alugar um cubículo: 1 dia (3 ouro)', { hotel: 1 }], ['Alugar por 3 dias (9 ouro)', { hotel: 3 }], ['Alugar por 7 dias (21 ouro)', { hotel: 7 }], ['Meu cubículo', { hotel: 'view' }], ['Como funciona?', { local: 'Cada cubículo tem um catre e um baú pequeno, de quatro espaços, que só você abre. Dormindo no seu catre você descansa de verdade, e se não tiver casa acorda aqui. De noite chegam viajantes, então nem sempre tem vaga.' }]] },
   banker4: { greet: 'Assine aqui. E aqui. E aqui também.', opts: [['Minha conta', { open: 'bank' }]] },
   banker5: { greet: 'O tesouro de Nae está em boas mãos. As minhas.', opts: [['Minha conta', { open: 'bank' }]] },
   banker6: { greet: 'Ouro verdadeiro tem um som. O falso, outro. Eu escuto os dois.', opts: [['Minha conta', { open: 'bank' }]] },
@@ -829,7 +831,7 @@ function buildDialogOptions(id) {
   } else {
     const def = NPC_DIALOG[n.kind];
     if (typeof shiftHere === 'function' && shiftHere() && !(G.shiftUntil > performance.now())) add('Trabalhar um turno aqui (2 min e meio)', () => { closeDialog(); Net.send({ t: 'shift', a: 'start' }); });
-    for (const [label, act] of def.opts) add(label, () => { const P = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null; if (act.open === 'biz') { if (P && estMine(P.id)) { closeDialog(); bizOpen(P.id); } else setDialogText('Só o dono pode mexer nos livros. ' + (P && G.est.st[P.id] ? 'Este ponto é de ' + G.est.st[P.id].replace('★', '') + '.' : 'Este ponto está à venda: fale com Mestre Anselmo, na Imobiliária.')); } else if (act.open === 'bank') { closeDialog(); bankOpen(); } else if (act.job) { closeDialog(); Net.send({ t: 'job', a: 'take', type: act.job }); } else if (act.counter) { if (P) counterOpen(P.id); } else if (act.owner) setDialogText(P && G.est.st[P.id] ? 'Trabalho para ' + G.est.st[P.id].replace('★', '') + '. Paga em dia… quase sempre.' : 'Ninguém, por enquanto. A Coroa vende ou aluga o ponto, e eu venho junto!'); else if (act.open === 'estate') { closeDialog(); estToggle(true, 'house'); } else if (act.local) setDialogText(act.local); else Net.send({ t: 'npc', n: id, ...act }); });
+    for (const [label, act] of def.opts) add(label, () => { const P = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null; if (act.open === 'biz') { if (P && estMine(P.id)) { closeDialog(); bizOpen(P.id); } else setDialogText('Só o dono pode mexer nos livros. ' + (P && G.est.st[P.id] ? 'Este ponto é de ' + G.est.st[P.id].replace('★', '') + '.' : 'Este ponto está à venda: fale com Mestre Anselmo, na Imobiliária.')); } else if (act.open === 'bank') { closeDialog(); bankOpen(); } else if (act.hotel) { if (act.hotel === 'view') Net.send({ t: 'hotel', a: 'view' }); else Net.send({ t: 'hotel', a: 'rent', d: act.hotel }); } else if (act.job) { closeDialog(); Net.send({ t: 'job', a: 'take', type: act.job }); } else if (act.counter) { if (P) counterOpen(P.id); } else if (act.owner) setDialogText(P && G.est.st[P.id] ? 'Trabalho para ' + G.est.st[P.id].replace('★', '') + '. Paga em dia… quase sempre.' : 'Ninguém, por enquanto. A Coroa vende ou aluga o ponto, e eu venho junto!'); else if (act.open === 'estate') { closeDialog(); estToggle(true, 'house'); } else if (act.local) setDialogText(act.local); else Net.send({ t: 'npc', n: id, ...act }); });
   }
   if (n.kind !== 'guard' && n.kind !== 'captain' && !String(n.id).startsWith('v_')) { const gk = Object.keys(G.me.inv || {}).find(k => G.me.inv[k] > 0 && (FOOD[k] || ['herb', 'gem', 'wand', 'map'].includes(k))); if (gk) add('Dar ' + (LOOT[gk] ? LOOT[gk].name : gk) + ' de presente', () => Net.send({ t: 'gift', id, k: gk })); }
   add('Até logo', closeDialog, 'ghost');
@@ -1000,6 +1002,7 @@ window.addEventListener('keydown', e => {
   if (k === 'f' && !e.repeat && typeof jailKeyF === 'function' && jailKeyF()) return;
   if (k === 'f' && !e.repeat && typeof nearStove === 'function' && nearStove() && !nearestDowned()) { openCook(); return; }
   if (k === 'f' && !e.repeat && !nearestDowned() && !nearCorpse() && typeof jobsF === 'function' && jobsF(e)) return;
+  if (k === 'f' && !e.repeat && !nearestDowned() && hotelChestF()) return;
   if (k === 'f' && !e.repeat && !nearestDowned() && talkF()) return;
   if (k === 'f' && !e.repeat && !nearestDowned() && !nearCorpse() && typeof estateF === 'function' && estateF()) return;
   if (k === 'f' && !e.repeat && !nearestDowned() && !nearCorpse() && survivalAction()) return;
@@ -1766,7 +1769,7 @@ function mapIconOf(b, bi) {
   if (b.office) return 'key';
   const mine = G.est && G.est.mine && typeof PROPS_BY !== 'undefined' && PROPS_BY[G.est.mine.pid] && PROPS_BY[G.est.mine.pid].bi === bi;
   if (mine) return 'home';
-  const t = { tavern: 'mug', smith: 'anvil', temple: 'sun', bank: 'coin', boutique: 'needle', jail: 'bars', barracks: 'shield', castle: 'crown', fruithouse: 'apple', workshop: 'saw' }[b.kind];
+  const t = { hotel: 'bed', tavern: 'mug', smith: 'anvil', temple: 'sun', bank: 'coin', boutique: 'needle', jail: 'bars', barracks: 'shield', castle: 'crown', fruithouse: 'apple', workshop: 'saw' }[b.kind];
   if (t) return t;
   if (b.kind === 'shop') return ({ apoth: 'potion', arcane: 'wand', tailor: 'needle', scroll: 'scroll' })[SHOP_TYPE_BY_NAME[b.name]] || 'bag';
   return null;
@@ -1792,6 +1795,7 @@ function mapIcon(x, ic, px, py, R) {
     case 'wand': L(-3.5, 3.5, 2, -2); for (const [a, b] of [[3, -3], [2, -4.2], [4.2, -2]]) L(2.5, -2.5, a, b); break;
     case 'scroll': L(-3, -3, 3, -3, 3, 3, -3, 3, -3, -3); L(-1.5, -1, 1.5, -1); L(-1.5, 1, 1.5, 1); break;
     case 'key': x.beginPath(); x.arc(-2, 0, 1.6, 0, 7); x.stroke(); L(-0.4, 0, 4, 0); L(2.5, 0, 2.5, 1.5); L(3.8, 0, 3.8, 1.5); break;
+    case 'bed': L(-4, 2, -4, -2); L(-4, 0, 4, 0, 4, 2); x.fillRect(-3.4, -1.6, 2, 1.4); break;
     case 'home': L(-3.5, 0, 0, -3.5, 3.5, 0); L(-2.5, -0.5, -2.5, 3.5, 2.5, 3.5, 2.5, -0.5); x.fillStyle = '#c8281e'; x.fillRect(-0.8, 1, 1.6, 2.5); break;
   }
   x.restore();
@@ -1858,4 +1862,16 @@ function giveOpen(pid) {
   d.querySelector('#gv-x').onclick = () => d.classList.add('hidden');
   d.querySelector('#gv-gold').onclick = () => { const v = Math.floor(+d.querySelector('#gv-q').value || 0); if (v > 0) Net.send({ t: 'pgive', to: pid, gold: v }); setTimeout(() => giveOpen(pid), 350); };
   d.querySelectorAll('.gv-it').forEach(b => b.onclick = ev => { const k = b.dataset.k; Net.send({ t: 'pgive', to: pid, k, n: ev.shiftKey ? (me.inv[k] || 1) : 1 }); setTimeout(() => giveOpen(pid), 350); });
+}
+
+// baú do cubículo da pousada (4 espaços): F perto do baú do seu cubículo
+function hotelChestNear() { const me = G.me, bi = BUILDINGS.findIndex(b => b.kind === 'hotel'); if (!me || bi < 0 || WORLD.bld[tileAt(me.x, me.y)] !== bi) return false; const b = BUILDINGS[bi], L = interiorLayout(b, 0); return L.F.some(f => { if (f.t !== 'chest') return false; const [x, y] = bLocal(b, f.i, f.j); return dist(me.x, me.y, x, y) < 1.6; }); }
+function hotelChestF() { if (!hotelChestNear()) return false; if (!G.hotel || G.hotel.room < 0) { Net.send({ t: 'hotel', a: 'view' }); showToast('Esse baú é de um hóspede. Alugue um cubículo com Dona Ilsa.'); return true; } hotelChestShow(); return true; }
+function hotelChestShow() {
+  let d = $('hchest'); if (!d) { d = document.createElement('div'); d.id = 'hchest'; d.className = 'gpanel'; document.body.appendChild(d); }
+  const H = G.hotel || { items: {} }, inv = Object.entries(G.me.inv || {}).filter(([k, n]) => n > 0 && LOOT[k]), box = Object.entries(H.items || {});
+  const cell = (k, n, a) => '<button class="gv-it" data-a="' + a + '" data-k="' + k + '" title="' + LOOT[k].name + '"><span style="color:' + LOOT[k].color + '">' + LOOT[k].icon + '</span><small>' + n + '</small></button>';
+  d.innerHTML = '<div class="gp-head"><span>Baú do cubículo ' + ((H.room ?? -1) + 1) + '</span><button class="gp-x" id="hc-x">✕</button></div><div class="gp-sub">No baú (' + box.length + '/4)</div><div class="gv-items">' + (box.length ? box.map(([k, n]) => cell(k, n, 'take')).join('') : '<div class="gp-note">Vazio.</div>') + '</div><div class="gp-sub">Sua mochila</div><div class="gv-items">' + inv.map(([k, n]) => cell(k, n, 'put')).join('') + '</div><div class="gp-note">Clique para guardar ou tirar 1 (Shift+clique: todos).</div>';
+  d.classList.remove('hidden'); d.querySelector('#hc-x').onclick = () => d.classList.add('hidden');
+  d.querySelectorAll('[data-a]').forEach(b => b.onclick = ev => { const k = b.dataset.k, a = b.dataset.a, all = a === 'put' ? G.me.inv[k] : (H.items || {})[k]; Net.send({ t: 'hotel', a, k, n: ev.shiftKey ? all : 1 }); });
 }

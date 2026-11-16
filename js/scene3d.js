@@ -1083,6 +1083,7 @@ const HVAR = [
   { wall: '#cfc4ae', roof: '#6a5a4a', roofTex: 'slate', trim: '#4a3020' },
   { wall: '#e2cfa8', roof: '#3e4656', roofTex: 'slate', trim: '#5a3a1e' },
 ];
+BSTYLE.hotel = { wall: '#c8b48a', roof: '#6a5a46', tex: 'plaster', roofTex: 'shingle', trim: '#4a3018' };   // pousada simples: reboco gasto e telhado escuro
 BSTYLE.bank = { wall: '#efe9dc', roof: '#4a5262', tex: 'stoneblock', roofTex: 'slate', trim: '#c9a24a' };
 const WSTYLE = {
   saw: { wall: '#8a6a44', roof: '#5a4a3a', tex: 'wood', roofTex: 'shingle', trim: '#3a2410' },

@@ -381,7 +381,7 @@ function buildingSprite(b, night) {
       stable: { wall: '#8a6a44', roof: '#5a5048', tex: 'wood', roofTex: 'slate', trim: '#3a2410' },
       bank: { wall: '#efe9dc', roof: '#4a5262', tex: 'stone', roofTex: 'slate', trim: '#c9a24a' },
       workshop: { wall: '#9a7850', roof: '#5a4a3a', tex: 'wood', roofTex: 'shingle', trim: '#3a2410' },
-    }[b.kind];
+    }[b.kind] || { wall: '#c8b48a', roof: '#6a5a46', tex: 'plaster', roofTex: 'shingle', trim: '#4a3018' };   // pousada e prédios novos
     const timber = style.tex === 'plaster';
     // sombra de contato
     shape(c, [...P(-0.2, h + 0.2, 0), ...P(w + 0.3, h + 0.3, 0), ...P(w + 0.3, -0.2, 0)], 'rgba(0,0,0,0.25)');

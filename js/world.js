@@ -107,7 +107,7 @@ const BUILDINGS = TEST3D ? [] : [
   { x: C - 22, y: C + 10, ...BH('shop', 5, 5, 2.4, 2.2, 'Alfaiataria Real', { v: 3, door: 'N', floors: 1 }) },
   { x: C - 30, y: C - 8, ...BH('shop', 5, 5, 3.6, 2.6, 'Pergaminhos & Mapas', { v: 4, door: 'E' }) },
   { x: C - 5, y: C - 19, ...BH('castle', 12, 10, 10, 6.5, 'Castelo de Nae', { floors: 2 }) },
-  { x: C - 31, y: C - 23, ...BH('bank', 6, 12, 5.6, 2.4, 'Banco de Nae', { floors: 1, door: 'S' }) },   // corredor comprido de balcões até a porta redonda do cofre (porta ao sul, cofre ao norte)   // fachada para a rua (lado que a câmera vê)   // colunas, salão comprido de mesas altas e a porta redonda do cofre
+  { x: C - 31, y: C - 23, ...BH('bank', 6, 12, 5.6, 2.4, 'Banco de Nae', { floors: 1, door: 'S' }) },
   { x: C + 22, y: C + 20, ...BH('jail', 6, 8, 3.2, 2.4, 'Cadeia de Nae', { floors: 1, door: 'W' }) },
   { x: C - 16, y: C, ...BH('boutique', 5, 4, 4.2, 3.0, 'Ateliê Real de Nae', { floors: 1, door: 'S' }) },
   { x: C - 13, y: C + 18, ...BH('fruithouse', 5, 4, 2.9, 2.6, '', { floors: 1, door: 'E' }) },
@@ -246,6 +246,9 @@ function interiorLayout0(b, fl = 0) {
   } else if (k === 'tavern') {
     npcAt(1, 0); put('barrel', 0, 0); put('counter', 0, 1, { w: 2 }); put('barrel', 0, 2);   // passagem atrás do balcão pelo lado put('fireplace', w - 2, 0); put('shelf', 3, 0); for (const [i, j, fi, fj] of [[4, 0, 4, 1], [w - 1, 1, w - 2, 1], [w - 1, 2, w - 2, 2]]) if (can(i, j) && can(fi, fj)) { put('stove', i, j); taken.add(key(fi, fj)); break; }
     for (const [ti, tj] of [[5, 2], [1, 3], [5, 4]]) if (put('table', ti, tj)) { put('chair', ti - 1, tj, { seat: 1 }); put('chair', ti + 1, tj, { seat: 5 }); }
+  } else if (k === 'hotel') {   // pousada baixo padrão: 6 cubículos (catre + baú pequeno) no fundo, corredor e balcão da estalajadeira na frente
+    for (let r = 0; r < 6; r++) { put('cot', r * 2, 0, { h: 2 }); put('chest', r * 2 + 1, 0); }
+    put('counter', w - 4, h - 1, { w: 2 }); npcAt(w - 2, h - 1); put('pew', 1, h - 1, { w: 2, seat: 1 });
   } else if (k === 'bank' && w >= 6 && h >= 10) {   // estilo Gringotes: corredor de mármore com balcões altos dos dois lados, banqueiros atrás, lustres, cofre redondo no fundo
     put('vault', 1, 0, { w: 4 }); put('rails', 0, 0); put('goldsacks', w - 1, 0);
     for (const j of [2, 3, 5, 6, 8, 9]) { put('bankdesk', 1, j, { v: 1 }); put('bankdesk', w - 2, j, { v: 2 }); }   // vãos em 4 e 7 para passar por trás
@@ -842,6 +845,8 @@ function generateWorld() {
     lane(X(40), C + 3, X(34), C + 7);    // pracinha
     lane(X(49), C + 8, X(48), C + 10);   // trilha da horta
   }
+  // pousada atrás das lojas ao lado da taverna (no fim da lista: não muda o número dos prédios salvos)
+  if (!TEST3D) BUILDINGS.push({ x: C - 29, y: C + 15, ...BH('hotel', 12, 4, 4.4, 2.2, 'Pousada do Javali Magro', { floors: 1, door: 'S' }) });
   BUILDINGS.forEach((b, bi) => {
     for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { bld[idx(x, y)] = bi; obj[idx(x, y)] = O.NONE; ground[idx(x, y)] = T.COBBLE; }
   });
@@ -1062,6 +1067,7 @@ if (STAGE.x >= 0) { const ex = NPCS.find(n => n.id === 'executioner'); if (ex) {
 // corretor de imóveis (a casa do escritório só existe depois de gerar o mundo)
 if (!TEST3D) { const ob = BUILDINGS.find(b => b.office === 'estate'); if (ob) NPCS.push({ id: 'broker', name: 'Mestre Anselmo, o Corretor', kind: 'broker', ...npcIn(ob, { x: ob.x + 1, y: ob.y + 1 }) }); }
 // ---------- gente dos negócios: artesãos das oficinas, balconistas das lojas vagas e mensageiros (os 12 primeiros moradores) ----------
+if (!TEST3D) { const hb = BUILDINGS.find(b => b.kind === 'hotel'); if (hb) NPCS.push({ id: 'hotelkeeper', name: 'Dona Ilsa, a Estalajadeira', kind: 'hotelkeeper', ...npcIn(hb, { x: hb.x + hb.w - 2, y: hb.y + hb.h - 1 }) }); }
 if (!TEST3D) { const bb = BUILDINGS.find(b => b.kind === 'bank'); if (bb) { NPCS.push({ id: 'banker', name: 'Mestre Varkas, o Banqueiro', kind: 'banker', ...npcIn(bb, { x: bb.x + 1, y: bb.y + 1 }) }); const [w, h] = bDims(bb); (w >= 6 && h >= 10 ? [['banker2', 'Edda, a Caixa', w - 1, 3], ['banker3', 'Osric, o Contador', 0, 6], ['banker4', 'Gorim, o Escriturário', w - 1, 6], ['banker5', 'Hilde, a Tesoureira', 0, 9], ['banker6', 'Brann, o Avaliador', w - 1, 9], ['bankporter', 'Tobb, o Porteiro', w - 2, h - 2]] : [['banker2', 'Edda, a Caixa', 2, 1], ['banker3', 'Osric, o Contador', w - 3, 1]]).forEach(([id, name, i, j]) => { const [x, y] = bLocal(bb, i, j); NPCS.push({ id, name, kind: id, x, y }); }); } }
 const STAFF_NAMES = {
   saw: 'Bruno Serra, o Serrador', mine: 'Gunnar Pedrafunda, o Mineiro', farm: 'Rosa Quintal, a Hortelã', carp: 'Elias Plaina, o Carpinteiro', alch: 'Odila Varga, a Destiladora',
@@ -1112,9 +1118,10 @@ const PROPS = [], PROPS_BY = {};
   BUILDINGS.forEach((b, bi) => {
     const fl = b.floors || 1, area = b.w * b.h, base = { bi, area, w: b.w, h: b.h, floors: fl, district: district(b) };
     let P = null;
-    if (b.kind === 'house' && !b.office) { n++; P = { ...base, id: 'h' + bi, kind: 'house', name: 'Casa ' + n, rent: 4 + Math.round(area * 0.3) + (fl - 1) * 4 }; }
+    if (b.kind === 'house' && !b.office) { n++; P = { ...base, id: 'h' + bi, kind: 'house', name: 'Casa ' + n, rent: (4 + Math.round(area * 0.3) + (fl - 1) * 4) * 2 }; }   // casas 2x mais caras: a pousada é o começo
     else if (b.kind === 'shop' || b.kind === 'boutique' || b.kind === 'tavern') P = { ...base, id: 's' + bi, kind: 'shop', shopType: b.shopType, name: b.name || 'Loja', npc: b.shopType ? null : ownerOf(b), rent: 20 + Math.round(area * 0.8) + (fl - 1) * 6 };
     else if (b.kind === 'bank') P = { ...base, id: 'b' + bi, kind: 'bank', name: b.name, rent: 450, repMin: 70 };
+    else if (b.kind === 'hotel') P = { ...base, id: 'b' + bi, kind: 'hotel', name: b.name, rent: 35 };
     else if (b.kind === 'workshop') P = { ...base, id: 'w' + bi, kind: 'workshop', wk: b.wk, name: b.name, rent: 16 + Math.round(area * 0.7) };
     else if (b.kind === 'smith' || b.kind === 'stable') P = { ...base, id: 'w' + bi, kind: 'workshop', name: b.name || (b.kind === 'stable' ? 'Estábulo' : 'Oficina'), npc: b.kind === 'stable' ? 'a Guarda' : ownerOf(b), rent: 16 + Math.round(area * 0.7) };
     if (P) { // localização: perto do castelo é área nobre (mais caro), na periferia e na vila é barato

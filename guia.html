@@ -46,6 +46,12 @@
   .theme { float: right; background: none; border: 1px solid var(--line); color: var(--ink2); border-radius: 6px; padding: 4px 10px; cursor: pointer; font: 600 13px 'Cinzel', serif; }
   .play { display: inline-block; margin: 6px 0 20px; padding: 10px 22px; border-radius: 8px; background: linear-gradient(#7a1e16, #4a0e0a); color: #f4e4b8; font: 700 16px 'Cinzel', serif; text-decoration: none; border: 1px solid #a8843a; }
   .muted { color: var(--ink2); font-size: 14px; }
+  figure { margin: 14px 0 18px; } figure img { width: 100%; border-radius: 10px; border: 1px solid var(--line); display: block; } figcaption { font-size: 14px; color: var(--ink2); margin-top: 6px; font-style: italic; }
+  ol.steps { counter-reset: s; list-style: none; padding-left: 0; } ol.steps > li { counter-increment: s; position: relative; padding: 10px 14px 10px 54px; margin: 8px 0; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; }
+  ol.steps > li::before { content: counter(s); position: absolute; left: 12px; top: 10px; width: 30px; height: 30px; border-radius: 50%; background: var(--gold); color: var(--bg); font: 900 16px 'Cinzel', serif; display: flex; align-items: center; justify-content: center; }
+  ol.steps b.t { display: block; font: 700 16px 'Cinzel', serif; color: var(--gold2); }
+  dl.gl dt { font: 700 15px 'Cinzel', serif; color: var(--gold2); margin-top: 10px; } dl.gl dd { margin: 2px 0 0 0; }
+  details.faq { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 6px 0; } details.faq summary { cursor: pointer; font-weight: 700; color: var(--gold2); } details.faq p { margin: 8px 0 2px; }
   .empty { display: none; color: var(--ink2); font-style: italic; padding: 20px 0; }
   @media (max-width: 820px) { body { overflow-x: hidden; } table { display: block; overflow-x: auto; } .wrap { grid-template-columns: 1fr; gap: 0; } nav.toc { position: static; height: auto; border-right: 0; border-bottom: 1px solid var(--line); padding-bottom: 14px; } nav.toc .links { display: flex; flex-wrap: wrap; gap: 2px; } nav.toc a { margin: 0; } h1 { font-size: 32px; } }
 </style>
@@ -53,7 +59,7 @@
 <body>
 <div class="wrap">
 <nav class="toc">
-  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.40</small>
+  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.41</small>
   <input id="q" type="search" placeholder="Buscar no guia (ex.: banco, fome, G)" autocomplete="off">
   <div class="links" id="links"></div>
 </nav>
@@ -73,6 +79,20 @@
     <div class="tip warn"><b>A morte é permanente.</b> Caído, você tem 30 segundos para ser reanimado ou carregado até a sacerdotisa. Se sangrar até o fim, desistir ou for decapitado, o personagem é apagado. Cair da conexão nunca mata.</div>
   </section>
 
+  <section id="primeiros"><h2>Primeiros passos</h2>
+    <p>Um roteiro para o seu primeiro dia em Nae. Siga na ordem e em meia hora você já tem ouro, ofício e um lugar para dormir.</p>
+    <ol class="steps">
+      <li><b class="t">Crie o herói e entre</b>Em <i>Personagens</i>, escolha nome, vocação e cor. Depois <i>Jogar → Entrar no reino</i>. Você aparece na Cidadela de Nae, perto da praça.</li>
+      <li><b class="t">Olhe em volta</b>Os dois medalhões na borda esquerda são fome/sede e frio. O chat fica no canto de baixo (Enter para falar). <kbd>Esc</kbd> abre o menu com tudo o que você precisa saber do seu personagem.</li>
+      <li><b class="t">Guarde a arma na cidade</b>Andar de espada na mão perto das sentinelas dá bronca (três avisos e você fica procurado). Aperte <kbd>G</kbd> para guardar; aperte de novo antes de sair para caçar.</li>
+      <li><b class="t">Converse</b>Chegue perto de um morador e aperte <kbd>F</kbd>. Borin, no Empório, compra o que você caça e vende as ferramentas. A Capitã Varn, no quartel, dá contratos de caça.</li>
+      <li><b class="t">Ganhe o primeiro ouro</b>No quadro de avisos da praça há bicos rápidos (levar água, carregar caixas, varrer). Ou compre um machado no Empório e corte lenha: aperte <kbd>F</kbd> uma vez perto de uma árvore.</li>
+      <li><b class="t">Arrume onde dormir</b>A Pousada do Javali Magro (atrás das lojas ao lado da taverna) aluga cubículos por 3 de ouro por dia: catre, baú de 4 espaços e você acorda lá. Casa própria é bem mais cara — é a meta seguinte.</li>
+      <li><b class="t">Saia para caçar</b>Saque a arma (<kbd>G</kbd>) e saia pelo portão sul. Clique para golpear (segure para carregar), botão direito apara, <kbd>Espaço</kbd> esquiva. Leve pão e bandagens.</li>
+      <li><b class="t">Não morra de vez</b>Caído, você tem 30 segundos. Peça para um amigo te reanimar (<kbd>F</kbd> segurado) ou te carregar (<kbd>H</kbd>) até a Irmã Lúmina, na capela. Sozinho e longe? Evite brigas que você não pode vencer.</li>
+    </ol>
+  </section>
+
   <section id="controles"><h2>Controles</h2>
     <table>
       <tr><th>Tecla</th><th>O que faz</th></tr>
@@ -89,7 +109,7 @@
       <tr><td><kbd>F</kbd></td><td>Interagir: <b>falar com quem está perto</b> (o clique só ataca), dar ouro e itens a outro jogador, beber água, coletar (um toque), reanimar (segurar), revistar corpos (segurar), chutar em combate.</td></tr>
       <tr><td><kbd>Enter</kbd></td><td>Abrir o chat para escrever (Enter envia, Esc fecha). Parado, o chat fica quase transparente.</td></tr>
       <tr><td><kbd>O</kbd></td><td>Cavaleiro: alternar espada e escudo ↔ alabarda.</td></tr>
-      <tr><td><kbd>C</kbd> · <kbd>C</kbd>+<kbd>Shift</kbd> · <kbd>V</kbd></td><td>Agachar · deslizar correndo · sentar (perto de uma cama: deitar e dormir).</td></tr>
+      <tr><td><kbd>C</kbd> · <kbd>C</kbd>+<kbd>Shift</kbd> · <kbd>V</kbd></td><td>Agachar · deslizar correndo · sentar no chão. Para sentar numa cadeira ou deitar numa cama, clique nela de perto.</td></tr>
       <tr><td><kbd>T</kbd> (segurar)</td><td>Roda de emoções: saudar, dançar, apontar, comemorar, surpresa, adorar, raiva, medo, tristeza.</td></tr>
       <tr><td><kbd>Y</kbd></td><td>Render-se às sentinelas quando procurado.</td></tr>
       <tr><td><kbd>R</kbd> (caído)</td><td>Desistir (morte permanente).</td></tr>
@@ -99,6 +119,7 @@
   </section>
 
   <section id="menu"><h2>O menu do jogo (Esc)</h2>
+    <figure><img src="img/guia/menu.jpg" alt="O menu do jogo: personagem, corpo e inventário na primeira aba." loading="lazy"><figcaption>O menu do jogo: personagem, corpo e inventário na primeira aba.</figcaption></figure>
     <p>Tudo fica num menu com abas. O mundo <b>não para</b> enquanto ele está aberto: seu personagem fica parado e os outros veem “📜 no menu” sobre ele.</p>
     <div class="grid">
       <div class="card"><h4>Personagem</h4><p>Vida, mana, estamina, corpo e ferimentos, fome/sede/frio, habilidades por uso e o inventário (24 espaços).</p></div>
@@ -108,8 +129,9 @@
       <div class="card"><h4>Negócios</h4><p>Seus negócios e a imobiliária com o mapa da cidade.</p></div>
       <div class="card"><h4>Receitas e ofícios</h4><p>Cozinha, oficinas, coleta e o que cada nível libera.</p></div>
       <div class="card"><h4>Avisos</h4><p>Histórico de tudo o que aconteceu: avisos do reino, falas e mensagens para você.</p></div>
-      <div class="card"><h4>Configurações</h4><p>Gráficos, brilho, zoom, aviso dos golpes, física das quedas, sala e senha do reino.</p></div>
+      <div class="card"><h4>Configurações</h4><p>Gráficos, brilho, zoom, aviso dos golpes, chat, física das quedas, sala e senha do reino.</p></div>
     </div>
+    <figure><img src="img/guia/mapa.jpg" alt="O mapa com zoom na cidade: cada lugar tem um ícone; passe o mouse para ver o nome." loading="lazy"><figcaption>O mapa com zoom na cidade: cada lugar tem um ícone; passe o mouse para ver o nome.</figcaption></figure>
   </section>
 
   <section id="vocacoes"><h2>Vocações</h2>
@@ -129,6 +151,7 @@
   </section>
 
   <section id="combate"><h2>Combate</h2>
+    <figure><img src="img/guia/combate.jpg" alt="Segurando o clique: o arco do golpe aparece no chão até o alcance da arma e marca quem vai ser atingido (e onde)." loading="lazy"><figcaption>Segurando o clique: o arco do golpe aparece no chão até o alcance da arma e marca quem vai ser atingido (e onde).</figcaption></figure>
     <p>O corpo a corpo é direcional: você escolhe o golpe, o lado e a altura. Cada golpe tem preparação, impacto e recuperação, e gasta <b>fôlego</b> (a barra amarela, 200 no máximo).</p>
     <table>
       <tr><th>Golpe</th><th>Como</th><th>Acerta</th><th>Particularidade</th></tr>
@@ -179,6 +202,7 @@
   </section>
 
   <section id="cidade"><h2>A cidade e os moradores</h2>
+    <figure><img src="img/guia/cidade.jpg" alt="A praça do mercado de manhã: moradores trabalhando, conversando e fazendo compras." loading="lazy"><figcaption>A praça do mercado de manhã: moradores trabalhando, conversando e fazendo compras.</figcaption></figure>
     <p>Nae tem a cidadela (praça do mercado, castelo, catedral, banco, forja, taverna, cadeia) e a Vila do Oeste do outro lado do rio. Os moradores têm casa, rotina e necessidades: dormem das 22h às 6h, trabalham, almoçam, conversam na taverna e na praça.</p>
     <ul>
       <li><b>Memória</b>: cada morador lembra do que viu você fazer e do que ouviu falar (a fofoca corre na taverna à noite). A opinião vai de <b>Amigo</b> a <b>Inimigo</b> e aparece no diálogo com o motivo.</li>
@@ -198,12 +222,15 @@
       <li><b>Pena</b>: agressão 2 min, ataque à traição 3 min, assassinato 6 min. Dormir no catre faz o tempo passar 2× mais rápido. Fiança: 30 de ouro por minuto restante (você ou um amigo pagam ao carcereiro). Gazua: tente arrombar a cela (falhar dá +1 min); amigos abrem a cela de noite com o carcereiro dormindo.</li>
       <li><b>Guilhotina</b>: o condenado pode deixar últimas palavras; alguém pode pagar 1000 de ouro de fiança.</li>
     </ul>
+    <figure><img src="img/guia/cadeia.jpg" alt="A cadeia: três celas com catre, o carcereiro Bruno e a mesa da guarda." loading="lazy"><figcaption>A cadeia: três celas com catre, o carcereiro Bruno e a mesa da guarda.</figcaption></figure>
+    <ul><li><b>Plateia</b>: quando alguém vai para a guilhotina, os moradores por perto param o que fazem e fazem uma roda em volta do cadafalso. Quem gostava do condenado pede clemência e chora; quem não gostava comemora; os outros rezam ou cobrem os olhos. Por um dia, a cidade comenta a execução na taverna e na praça.</li></ul>
     <h3>Sentinelas que ameaçam</h3>
     <p>Elas andam com a arma guardada e sacam para brigar ou ameaçar quando veem: arma sacada na cidade, invasão (castelo, perto do cofre do banco), alguém de reputação muito baixa (ficam de olho) ou quem carrega um corpo. São <b>três avisos</b>; obedecer acalma, desobedecer deixa você procurado por 1 minuto e elas atacam.</p>
     <p>Com um corpo, a sentinela <b>interroga</b> e as <b>testemunhas decidem</b>: se algum morador viu você atacar ou matar, você é preso; se ninguém viu, ela manda levar o corpo ao templo e libera.</p>
   </section>
 
   <section id="trabalho"><h2>Trabalho e ofícios</h2>
+    <figure><img src="img/guia/coleta.jpg" alt="Cortando lenha: um toque no F e o personagem trabalha sozinho; lascas voam e a árvore balança." loading="lazy"><figcaption>Cortando lenha: um toque no F e o personagem trabalha sozinho; lascas voam e a árvore balança.</figcaption></figure>
     <ul>
       <li><b>Coleta</b> (aperte <kbd>F</kbd> uma vez perto do recurso, com a ferramenta do Empório; o personagem trabalha até terminar ou até você andar): machado em árvores (toras, às vezes madeira nobre), picareta em pedras (minério, às vezes gema), foice no mato alto (linho, às vezes folha-de-prata). Carvalho e rochas grandes pedem nível 3.</li>
       <li><b>Quadro de avisos</b> na praça: bicos (água para a Greta, caixas para o Borin, varrer a praça) e entregas.</li>
@@ -216,6 +243,7 @@
     <ul>
       <li>Fale com <b>Mestre Anselmo</b> na Imobiliária Chave de Bronze ou procure as placas “Aluga-se” e “À venda”. O preço depende do lugar (perto do castelo é caro, a vila é barata).</li>
       <li><b>Casa</b>: aluguel cobrado por semana (7 dias do jogo) — sem pagar por 2 dias, perde a casa. Casa sua: porta trancada (só você e autorizados), baú seguro, você acorda nela, e dormir na própria cama dá <i>Bem descansado</i>. Casas com morador podem ser compradas, e ele paga aluguel a você.</li>
+      <li>Casas ficaram mais caras: morar numa casa é a meta de quem já tem renda. Para começar, use a pousada (abaixo).</li>
       <li><b>Comprar</b> custa 60 dias de aluguel, com imposto pequeno; vende de volta pela metade.</li>
       <li><b>Lojas</b> vendem sozinhas (margem barato, justo ou caro), reabastecem pelo fornecedor ou pelas suas oficinas. <b>Oficinas</b> extraem (serraria, mina, horta) ou transformam (carpintaria, alambique). Mensageiros levam a produção andando — e podem ser assaltados.</li>
       <li>O lucro fica no <b>cofre</b> de cada negócio (vá buscar). Há salários, risco de roubo à noite e melhorias (prateleiras, vitrine, ferramentas, cofre reforçado).</li>
@@ -224,7 +252,21 @@
     </ul>
   </section>
 
+  <section id="pousada"><h2>Pousada do Javali Magro</h2>
+    <figure><img src="img/guia/pousada.jpg" alt="Os cubículos da pousada: catre, baú pequeno e nada de luxo." loading="lazy"><figcaption>Os cubículos da pousada: catre, baú pequeno e nada de luxo.</figcaption></figure>
+    <p>Atrás das lojas ao lado da taverna, com Dona Ilsa no balcão. É o jeito barato de ter onde dormir antes de comprar ou alugar uma casa.</p>
+    <table>
+      <tr><th>O quê</th><th>Como funciona</th></tr>
+      <tr><td>Diária</td><td><b>3 de ouro por dia</b>, pago na hora, sem caução (1, 3 ou 7 dias). Fale com Dona Ilsa (<kbd>F</kbd>).</td></tr>
+      <tr><td>Cubículo</td><td>6 cubículos. O seu tem um catre (clique nele, de perto, para deitar; dormir dá <i>Bem descansado</i>) e um baú de <b>4 espaços</b> que só você abre (<kbd>F</kbd> perto dele).</td></tr>
+      <tr><td>Acordar</td><td>Sem casa, você acorda no seu cubículo quando entra no reino.</td></tr>
+      <tr><td>Lotação</td><td>De noite chegam viajantes e visitantes que também dormem lá — nem sempre tem vaga.</td></tr>
+      <tr><td>Negócio</td><td>A pousada pode ser comprada: as diárias (de jogadores e de viajantes) vão para o cofre do dono.</td></tr>
+    </table>
+  </section>
+
   <section id="banco"><h2>Banco de Nae</h2>
+    <figure><img src="img/guia/banco.jpg" alt="O salão do Banco de Nae: balcões altos dos dois lados, banqueiros, lustres e o tapete até o cofre." loading="lazy"><figcaption>O salão do Banco de Nae: balcões altos dos dois lados, banqueiros, lustres e o tapete até o cofre.</figcaption></figure>
     <p>Na rua norte, entre a catedral e o cemitério: um corredor de mármore com balcões altos dos dois lados, seis banqueiros e a porta redonda do cofre no fundo. Fale com qualquer banqueiro.</p>
     <table>
       <tr><th>Serviço</th><th>Como funciona</th></tr>
@@ -269,8 +311,40 @@
     </ul>
   </section>
 
+  <section id="dicas"><h2>Dicas e erros comuns</h2>
+    <details class="faq"><summary>A sentinela mandou eu guardar a arma. Por quê?</summary><p>Na cidade, andar de arma sacada perto delas é ameaça. Aperte <kbd>G</kbd>. São três avisos; no terceiro você fica procurado por 1 minuto e elas atacam.</p></details>
+    <details class="faq"><summary>Cliquei no morador e ele não falou — e agora estão me perseguindo!</summary><p>O clique é golpe. Para conversar, chegue perto e aperte <kbd>F</kbd>. Se você bateu em alguém na frente de uma sentinela, renda-se (<kbd>Y</kbd>) para ir só à cadeia.</p></details>
+    <details class="faq"><summary>Meu arco (ou minha espada) sumiu!</summary><p>Ela está guardada nas costas ou na cintura. Coletar, carregar alguém e trabalhar guardam a arma sozinhos; ela volta uns segundos depois. Se você guardou com <kbd>G</kbd>, saque com <kbd>G</kbd>.</p></details>
+    <details class="faq"><summary>Como não morrer de vez?</summary><p>Ande acompanhado fora da cidade, leve bandagens (<kbd>B</kbd>) e poções, não lute com fome, sede ou frio no máximo, e desista de brigas perdidas correndo (<kbd>Shift</kbd>). Caído, peça ajuda no chat: um amigo tem 30 segundos.</p></details>
+    <details class="faq"><summary>Estou sangrando.</summary><p>Bandagem (<kbd>B</kbd>) estanca. Sem bandagem: cauterize perto do fogo ou vá à Irmã Lúmina. Ferida sem tratar pode infeccionar.</p></details>
+    <details class="faq"><summary>Fui preso. E agora?</summary><p>Espere a pena (dormir no catre faz passar 2× mais rápido), pague a fiança ao carcereiro (você ou um amigo) ou tente a gazua na porta da cela. Fugir deixa você procurado de novo.</p></details>
+    <details class="faq"><summary>Arrastei um corpo e a guarda veio atrás.</summary><p>Moradores se assustam e chamam a sentinela, que interroga. Se alguém viu você atacar, é prisão; se ninguém viu, ela manda levar o corpo ao templo. Desmaiado levado à capela não dá problema.</p></details>
+    <details class="faq"><summary>Não consigo coletar.</summary><p>Precisa da ferramenta certa no inventário (machado para árvores, picareta para pedras, foice para mato alto) e do nível do ofício (carvalho e rochas grandes pedem nível 3). Aperte <kbd>F</kbd> uma vez, bem perto; andar interrompe.</p></details>
+    <details class="faq"><summary>Onde fica tal loja?</summary><p>Abra o mapa (<kbd>M</kbd>), clique em <i>Cidade</i> e passe o mouse nos ícones.</p></details>
+  </section>
+
+  <section id="glossario"><h2>Glossário</h2>
+    <dl class="gl">
+      <dt>Anfitrião</dt><dd>Quem abre o reino. O mundo roda no navegador dele; imóveis, negócios e banco ficam salvos lá.</dd>
+      <dt>Caído</dt><dd>Sem vida, no chão, por 30 segundos. Pode ser reanimado ou carregado. Se o tempo acabar, morte permanente.</dd>
+      <dt>Estamina</dt><dd>A energia para correr. Volta andando ou parado.</dd>
+      <dt>Fôlego</dt><dd>A barra amarela do combate: cada golpe, aparada e esquiva gasta. Sem fôlego, você não golpeia.</dd>
+      <dt>Golpe carregado</dt><dd>Segurar o clique antes de soltar: mais dano e, na cabeça, pode matar na hora.</dd>
+      <dt>Aparar / contra-ataque</dt><dd>Botão direito no tempo certo bloqueia e abre um golpe mais forte.</dd>
+      <dt>Sangramento</dt><dd>Perda de vida contínua por ferida. Para com bandagem, fogo ou a sacerdotisa.</dd>
+      <dt>Procurado</dt><dd>Visto cometendo crime na cidade: as sentinelas perseguem por 5 minutos (1 minuto se for só desobediência).</dd>
+      <dt>Reputação</dt><dd>De 0 a 100: o que a cidade pensa de você. Libera empréstimos, negócios e a compra do banco.</dd>
+      <dt>Opinião</dt><dd>O que cada morador acha de você (Amigo, Simpático, Neutro, Desconfiado, Inimigo), pelo que viu e ouviu.</dd>
+      <dt>Ofício</dt><dd>Habilidade de trabalho (Lenhador, Minerador, Herbalista, Artesão, Comerciante, Mensageiro, Biscateiro), do nível 1 ao 10.</dd>
+      <dt>Turno</dt><dd>2 minutos e meio trabalhando num negócio: salário, experiência de ofício e produção maior.</dd>
+      <dt>Cofre</dt><dd>Onde fica o lucro de cada negócio. O dono precisa ir buscar.</dd>
+      <dt>Bem descansado</dt><dd>Bônus de 10 minutos por dormir na sua cama (casa ou cubículo da pousada): recupera vida e mana mais rápido.</dd>
+      <dt>Tecelão</dt><dd>A figura de manto cinza com fios de ouro. Adorá-lo dá uma hora sem fome, sede e frio.</dd>
+    </dl>
+  </section>
+
   <div class="empty" id="empty">Nada encontrado para essa busca.</div>
-  <p class="muted" style="margin-top:40px">Guia da versão 1.40 · atualizado a cada versão do jogo.</p>
+  <p class="muted" style="margin-top:40px">Guia da versão 1.41 · atualizado a cada versão do jogo.</p>
 </main>
 </div>
 <script>

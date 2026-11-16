@@ -66,7 +66,7 @@ function estRender() {
   estDrawMap();
   const list = document.getElementById('est-list'), det = document.getElementById('est-detail');
   if (E.tab === 'mine') { list.innerHTML = estMineHtml(); det.innerHTML = estChestHtml(); estWire(); return; }
-  const items = PROPS.filter(P => P.kind === E.tab || (E.tab === 'shop' && P.kind === 'bank'));
+  const items = PROPS.filter(P => P.kind === E.tab || (E.tab === 'shop' && (P.kind === 'bank' || P.kind === 'hotel')));
   list.innerHTML = items.length ? items.map(P => { const s = estStatus(P); return '<div class="est-row' + (E.sel === P.id ? ' sel' : '') + '" data-pid="' + P.id + '"><i style="background:' + EST_COL[s.k] + '"></i><div><b>' + P.name + '</b><small>' + P.district + ' · ' + P.locName + ' · ' + P.w + '×' + P.h + (P.floors > 1 ? ' · ' + P.floors + ' andares' : '') + '</small></div><div class="est-r"><b>' + P.week + '</b><small>ouro/semana</small><em>' + s.t + '</em></div></div>'; }).join('') : '<div class="gp-note">Nenhum imóvel nesta categoria ainda.</div>';
   const P = PROPS_BY[E.sel];
   if (!P || P.kind !== E.tab) det.innerHTML = '<div class="gp-note">' + (E.tab === 'house' ? 'Escolha uma casa na lista ou no mapa. Alugando, o aluguel sai sozinho uma vez por semana do jogo (7 dias = 84 minutos); comprando, paga uma vez e só 7 ouro de imposto por semana. Perto do castelo é área nobre (caro); na periferia e na vila, barato.' : 'Lojas vendem sozinhas o que você abastece; oficinas produzem e os mensageiros levam a produção para as suas lojas. O lucro fica no cofre de cada negócio: vá buscar. Até ' + 3 + ' negócios por personagem.') + '</div>';
