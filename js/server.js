@@ -39,6 +39,7 @@ function near(x, y, msg, r = VIEW_RADIUS + 4) {
 function sfx(x, y, text, color, d = 0, big = false) { near(x, y, { t: 'fx', x, y, text: String(text), color, d, big }); }
 function sys(text) { if (typeof S !== 'undefined') { (S.events = S.events || []).push([Date.now(), text]); if (S.events.length > 80) S.events.shift(); } Net.toAll({ t: 'chat', name: '', text }); }
 function tell(p, text) { Net.toOne(p.id, { t: 'err', text }); }
+function info(p, text) { Net.toOne(p.id, { t: 'info', text }); }   // aviso rápido + fica no chat
 function anim(w, e, a, tx, ty, extra) { near(e.x, e.y, { t: 'anim', w, id: e.id, a, tx, ty, ...extra }); }
 function aoe(a, x, y, extra) { near(x, y, { t: 'aoe', a, x, y, ...extra }); }
 
@@ -2389,12 +2390,17 @@ function bldFreeTiles(bi) { if (BLD_FREE[bi]) return BLD_FREE[bi]; const b = BUI
 function staffSync(pid, r) {   // de dia os funcionários estão no negócio; à noite vão embora
   if (COLL_TOOL[(PROPS_BY[pid] || {}).wk]) return;   // nas oficinas que extraem, os contratados são coletores (collectorSync)
   const P = PROPS_BY[pid], B = r.biz, hr = resHour(), day = hr >= 7 && hr < 20, want = day ? (B.staff || []) : [];
-  for (const id of Object.keys(S.npcs || {})) { const n = S.npcs[id]; if (n.bizWorker === pid && !want.some(s => s.id === id)) visGone(n); }
-  for (const s of want) { if (S.npcs[s.id]) continue; const T = bldFreeTiles(P.bi); if (!T.length) continue; const [x, y] = T[Math.floor(Math.random() * T.length)];
-    const n = { id: s.id, kind: s.kind, name: s.n + ', ' + (P.kind === 'shop' ? 'balconista' : 'ajudante'), transient: true, bizWorker: pid, bi: P.bi, x: x + 0.5 - 0.5, y, z: 0, postX: x, postY: y, hp: 60, maxHp: 60, downed: null, dead: false, wt: 0 };
+  for (const id of Object.keys(S.npcs || {})) { const n = S.npcs[id]; if (n.bizWorker === pid && !want.some(s => s.id === id)) { n.goingHome = true; n.walkTo = null; } }
+  for (const s of want) { if (S.npcs[s.id]) { S.npcs[s.id].goingHome = false; continue; } const T = bldFreeTiles(P.bi); if (!T.length) continue; const [x, y] = T[Math.floor(Math.random() * T.length)], home = staffHome(s.id);
+    const n = { id: s.id, kind: s.kind, name: s.n + ', ' + (P.kind === 'shop' ? 'balconista' : 'ajudante'), transient: true, bizWorker: pid, bi: P.bi, x: home[0], y: home[1], z: 0, postX: x, postY: y, home: null, homeAt: home, hp: 60, maxHp: 60, downed: null, dead: false, wt: 0, walkTo: [x, y] };
     S.npcs[s.id] = n; Net.toAll({ t: 'vspawn', v: visPublic(n) }); }
 }
+function staffHome(id) {   // cada funcionário mora numa casa da cidade (sempre a mesma)
+  const H = PROPS.filter(P => P.kind === 'house' && P.district !== 'Vila do Oeste' && !BUILDINGS[P.bi].extra); if (!H.length) return [CENTER, CENTER + 12];
+  const h = [...String(id)].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0, P = H[h % H.length], b = BUILDINGS[P.bi], [dx, dy] = doorTile(b), v = DOOR_V[b.door || 'S']; return [dx + v[0] * 1.2, dy + v[1] * 1.2];
+}
 function workerTick(n, now, dt) {
+  if (n.goingHome) { if (npcWalk(n, n.homeAt[0], n.homeAt[1], 1.0, dt) || dist(n.x, n.y, n.homeAt[0], n.homeAt[1]) < 0.8) visGone(n); return; }   // volta para casa e some porta adentro
   if (n.walkTo) { if (npcWalk(n, n.walkTo[0], n.walkTo[1], 0.7, dt)) { n.walkTo = null; n.wt = now + 5000 + Math.random() * 9000; n.act = 'work'; } return; }
   if (now > n.wt) { const T = bldFreeTiles(n.bi); if (T.length) { const t = T[Math.floor(Math.random() * T.length)]; n.walkTo = [t[0], t[1]]; n.act = null; } else n.wt = now + 8000; }
 }
@@ -2666,13 +2672,13 @@ function bizHour(now) {
         while (nb-- > 0 && B.raw.wood >= 2 && stockSum(B.stock) < shopCap(B)) { B.raw.wood -= 2; B.stock.woodgoods = (B.stock.woodgoods || 0) + 1; made++; } if (made) bizLog(B, 'O atendente entalhou ' + made + ' varinha' + (made > 1 ? 's' : '') + ' na bancada.'); }
       for (const o of B.orders) if (Date.now() >= o.at && !o.queued) { o.queued = 1; (S.supplyQ = S.supplyQ || []).push({ pid, o }); }
       if (!B.closed) {
-        B.frac += 0.4 * (1 + 0.5 * (B.up.vitrine || 0)) * (0.7 + Math.random() * 0.6) * (workerAt(P.bi) ? 1.5 : 1) * staffMul(B); let n = Math.floor(B.frac); B.frac -= n;
+        B.frac += 0.4 * (1 + 0.5 * (B.up.vitrine || 0)) * (0.7 + Math.random() * 0.6) * (workerAt(P.bi) ? 1.5 : 1) * ownerWorkMul(r, P) / (ownerWorkMul(r, P) > 1 ? 1.5 : 1) * staffMul(B); let n = Math.floor(B.frac); B.frac -= n;
         while (n-- > 0) { const gs = Object.keys(B.stock).filter(g => B.stock[g] >= 1); if (!gs.length) break;
           const g = gs[Math.floor(Math.random() * gs.length)], M = MARGIN[B.margin[g] ?? 1]; if (Math.random() > M.p) continue;
           const price = GOODS[g].p * M.k; B.stock[g]--; if (!B.stock[g]) delete B.stock[g]; B.cofre += price; B.today.rev += price; B.today.sold++; B.fullWarn = 0; saleFx(clerkOf(P.bi), null); }
       }
     } else {
-      const sk = seasonNow().k, W = WORKS[P.wk], k = (workerAt(P.bi) ? 1.5 : 1) * staffMul(B) * (1 + 0.5 * (B.up.tools || 0)) * (P.wk === 'farm' ? (sk === 'winter' ? 0.4 : sk === 'summer' ? 1.25 : 1) : 1);
+      const sk = seasonNow().k, W = WORKS[P.wk], k = (workerAt(P.bi) ? 1.5 : 1) * ownerWorkMul(r, P) / (ownerWorkMul(r, P) > 1 ? 1.5 : 1) * staffMul(B) * (1 + 0.5 * (B.up.tools || 0)) * (P.wk === 'farm' ? (sk === 'winter' ? 0.4 : sk === 'summer' ? 1.25 : 1) : 1);
       if (!B.closed) {
         if (W.make && !COLL_TOOL[P.wk]) for (const g in W.make) { B.frac[g] = (B.frac[g] || 0) + W.make[g] * k; const q = Math.floor(B.frac[g]); B.frac[g] -= q; if (stockSum(B.store) + q <= WS_CAP) B.store[g] = (B.store[g] || 0) + q; }
         if (W.recipes && B.recipe) { const rec = W.recipes[B.recipe]; B.frac._b = (B.frac._b || 0) + k; let nb = Math.floor(B.frac._b); B.frac._b -= nb;
@@ -2953,7 +2959,7 @@ function shiftMsg(p, m) {
     if (!st && !(P && S.estate && S.estate.r[P.id])) { tell(p, 'Aqui não tem trabalho.'); return; }
     const shop = ['shop', 'tavern', 'boutique', 'fruithouse'].includes(b.kind), prof = shop ? 'comerciante' : 'artesao';
     p.uni = b.kind === 'bank' ? 6 : b.kind === 'smith' ? 1 : b.kind === 'workshop' ? ({ saw: 1, carp: 1, mine: 7, farm: 7, alch: 2 })[b.wk] || 1 : b.shopType === 'apoth' ? 2 : 3;
-    p.shift = { bi, t0: now, until: now + SHIFT_MS, prof, pid: P && S.estate && S.estate.r[P.id] ? P.id : null, x: p.x, y: p.y };
+    p.shift = { bi, t0: now, until: now + SHIFT_MS, prof, pid: P && S.estate && S.estate.r[P.id] ? P.id : null, x: p.x, y: p.y, rev0: P && S.estate && S.estate.r[P.id] && S.estate.r[P.id].biz ? S.estate.r[P.id].biz.today.rev : 0 };
     tell(p, 'Você começou um turno em ' + (b.name || 'um negócio') + '. Fique por aqui até o fim (1 min e 15 s).'); Net.toOne(p.id, { t: 'shift', on: 1, ms: SHIFT_MS }); return;
   }
   if (m.a === 'stop') shiftEnd(p, false);
@@ -2964,7 +2970,9 @@ function shiftEnd(p, done) {
   if (r && r.biz && r.owner !== estOwner(p)) { pay = Math.min(pay, Math.floor(r.biz.cofre)); r.biz.cofre -= pay; bizLog(r.biz, p.name + ' trabalhou um turno (' + pay + ' ouro do cofre).'); }
   else if (r && r.owner === estOwner(p)) pay = 0;   // trabalhar no próprio negócio: sem salário, mas produz mais
   if (done) featAdd(p, 'shifts'); p.gold += pay; if (frac > 0.2) { profGain(p, S0.prof, Math.round(10 * frac)); gainXp(p, Math.round((8 + lv) * frac)); }
-  tell(p, done ? 'Turno completo: +' + pay + ' de ouro.' : 'Você saiu no meio do turno: +' + pay + ' de ouro.'); sendStat(p); Net.toOne(p.id, { t: 'shift', on: 0 });
+  if (r && r.owner === estOwner(p)) { const got = Math.max(0, Math.round((r.biz.today.rev || 0) - (S0.rev0 || 0))); info(p, (done ? 'Turno completo' : 'Você saiu do turno') + ' no seu negócio: sem salário (o dinheiro já é seu), mas ele rendeu +' + got + ' de ouro para o banco enquanto você trabalhava (+80% de vendas e produção).'); }
+  else info(p, done ? 'Turno completo: +' + pay + ' de ouro.' : 'Você saiu no meio do turno: +' + pay + ' de ouro.');
+  sendStat(p); Net.toOne(p.id, { t: 'shift', on: 0 });
 }
 function jobsTick(now) {
   for (const p of Object.values(S.players)) {
@@ -2975,6 +2983,7 @@ function jobsTick(now) {
 }
 // quem trabalha num negócio de jogador faz a loja vender e a oficina produzir 50% a mais naquela hora
 const workerAt = bi => Object.values(S.players).some(p => p.shift && p.shift.bi === bi);
+const ownerWorkMul = (r, P) => Object.values(S.players).some(p => p.shift && p.shift.bi === P.bi && r.owner === estOwner(p)) ? 1.8 : 1;   // o dono trabalhando no próprio negócio: +80%
 
 // ============================================================
 //  POPULAÇÃO FLUTUANTE — donas de casa, viajantes e visitantes entram pelos portões, circulam, compram de verdade

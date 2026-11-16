@@ -89,7 +89,7 @@ function gmToggle(tab) { if (GM.on && (!tab || tab === GM.tab)) gmClose(); else 
 // tecla com o menu aberto: as letras trocam de aba (I, K, J, M, N, L), Esc fecha
 function gmKey(k, e) {
   if (k === 'escape') { gmClose(); return true; }
-  const t = GM_KEYS[k]; if (t && !e.repeat) { if (k === 'l') GM.biz = 'est'; else if (k === 'n') GM.biz = 'hub'; gmToggle(t); return true; }
+  const t = GM_KEYS[k]; if (t && !e.repeat) { if (k === 'n' && typeof estInBiz === 'function' && estInBiz()) { gmClose(); bizOpen(estInBiz().pid); return true; } if (k === 'l') GM.biz = 'est'; else if (k === 'n') GM.biz = 'hub'; gmToggle(t); return true; }
   return false;
 }
 // ---------- Receitas e ofícios ----------

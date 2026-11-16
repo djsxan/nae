@@ -59,7 +59,7 @@
 <body>
 <div class="wrap">
 <nav class="toc">
-  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.46</small>
+  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.47</small>
   <input id="q" type="search" placeholder="Buscar no guia (ex.: banco, fome, G)" autocomplete="off">
   <div class="links" id="links"></div>
 </nav>
@@ -87,7 +87,7 @@
       <li><b class="t">Guarde a arma na cidade</b>Andar de espada na mão perto das sentinelas dá bronca (três avisos e você fica procurado). Aperte <kbd>G</kbd> para guardar; aperte de novo antes de sair para caçar.</li>
       <li><b class="t">Converse</b>Chegue perto de um morador e aperte <kbd>F</kbd>. Borin, no Empório, compra o que você caça e vende as ferramentas. A Capitã Varn, no quartel, dá contratos de caça.</li>
       <li><b class="t">Ganhe o primeiro ouro</b>No quadro de avisos da praça há bicos rápidos (levar água, carregar caixas, varrer). Ou compre um machado no Empório e corte lenha: aperte <kbd>F</kbd> uma vez perto de uma árvore.</li>
-      <li><b class="t">Arrume onde dormir</b>A Pousada do Javali Magro (na rua principal, junto ao portão sul) aluga cabines com porta por 3 de ouro por dia: catre, baú de 4 espaços e você acorda lá. Casa própria é bem mais cara — é a meta seguinte.</li>
+      <li><b class="t">Arrume onde dormir</b>A Pousada do Javali Magro (no bairro sudoeste, ao lado do estábulo) aluga cabines com porta por 3 de ouro por dia: catre, baú de 4 espaços e você acorda lá. Casa própria é bem mais cara — é a meta seguinte.</li>
       <li><b class="t">Saia para caçar</b>Saque a arma (<kbd>G</kbd>) e saia pelo portão sul. Clique para golpear (segure para carregar), botão direito apara, <kbd>Espaço</kbd> esquiva. Leve pão e bandagens.</li>
       <li><b class="t">Não morra de vez</b>Caído, você tem 30 segundos. Peça para um amigo te reanimar (<kbd>F</kbd> segurado) ou te carregar (<kbd>H</kbd>) até a Irmã Lúmina, na capela. Sozinho e longe? Evite brigas que você não pode vencer.</li>
     </ol>
@@ -115,6 +115,7 @@
       <tr><td><kbd>Y</kbd></td><td>Render-se às sentinelas quando procurado.</td></tr>
       <tr><td><kbd>R</kbd> (caído no chão)</td><td>Desistir (morte permanente).</td></tr>
       <tr><td><kbd>Esc</kbd> · <kbd>I</kbd> <kbd>K</kbd> <kbd>J</kbd> <kbd>M</kbd> <kbd>N</kbd> <kbd>L</kbd></td><td>Menu do jogo e atalhos das abas: inventário, habilidades, jornada, mapa, negócios, imóveis.</td></tr>
+      <tr><td><kbd>N</kbd> (dentro do seu negócio)</td><td>Abre direto a gestão daquele negócio — sem conflito com conversar (o <kbd>F</kbd> continua falando com as pessoas).</td></tr>
       <tr><td>Roda do mouse · <kbd>+</kbd> <kbd>−</kbd></td><td>Zoom da câmera (no mapa, zoom do mapa).</td></tr>
     </table>
   </section>
@@ -217,7 +218,7 @@
 
   <section id="cidade"><h2>A cidade e os moradores</h2>
     <figure><img src="img/guia/cidade.jpg" alt="A praça do mercado de manhã: moradores trabalhando, conversando e fazendo compras." loading="lazy"><figcaption>A praça do mercado de manhã: moradores trabalhando, conversando e fazendo compras.</figcaption></figure>
-    <p>Nae tem a cidadela e a Vila do Oeste do outro lado do rio. Na cidadela: a <b>praça do mercado</b> no centro, com a <b>Catedral da Aurora</b> logo ao lado (porta para o sul); o <b>castelo</b> ao norte da praça; o <b>Banco de Nae</b> no fim da rua oeste, com a <b>praça do chafariz</b> (bancos, flores e postes) do outro lado da rua; a <b>taverna</b> e as lojas a oeste da praça do mercado, com a casa amarela da Marta (quintal cercado com frutíferas, canteiros e a barraquinha) e o <b>escritório do Mestre Anselmo</b> (pedra clara e bronze, placa da chave, vitrine de anúncios; lá dentro a maquete da cidade) logo atrás delas, de porta para a rua de baixo; a <b>pousada</b> no sul, junto ao portão; o quartel e a cadeia no sudeste. Os moradores têm casa, rotina e necessidades: dormem das 22h às 6h, trabalham, almoçam, conversam na taverna e na praça.</p>
+    <p>Nae tem a cidadela e a Vila do Oeste do outro lado do rio. Na cidadela: a <b>praça do mercado</b> no centro, com a <b>Catedral da Aurora</b> logo ao lado — da porta dela desce a <b>avenida da Catedral</b> (calçamento em mosaico, estátuas, estandartes da Aurora, canteiros e lampiões) até a praça do portão sul; a <b>guilhotina</b> fica em frente ao castelo, à esquerda da avenida; o <b>castelo</b> ao norte da praça; o <b>Banco de Nae</b> no fim da rua oeste, com a <b>praça do chafariz</b> (bancos, flores e postes) do outro lado da rua; a <b>taverna</b> e as lojas a oeste da praça do mercado, com a casa amarela da Marta (quintal cercado com frutíferas, canteiros e a barraquinha) e o <b>escritório do Mestre Anselmo</b> (pedra clara e bronze, placa da chave, vitrine de anúncios; lá dentro a maquete da cidade) logo atrás delas, de porta para a rua de baixo; a <b>pousada</b> no bairro sudoeste, ao lado do estábulo; o <b>quartel</b> junto ao portão sul, de porta para a rua principal; a cadeia no sudeste. Os moradores têm casa, rotina e necessidades: dormem das 22h às 6h, trabalham, almoçam, conversam na taverna e na praça.</p>
     <ul>
       <li><b>Memória</b>: cada morador lembra do que viu você fazer e do que ouviu falar (a fofoca corre na taverna à noite). A opinião vai de <b>Amigo</b> a <b>Inimigo</b> e aparece no diálogo com o motivo.</li>
       <li>Amigos cumprimentam pelo nome, dão presentes e fazem desconto; inimigos cobram mais e chamam a guarda.</li>
@@ -255,7 +256,7 @@
       <li><b>Entalhe à mão</b> (Esc → Receitas e ofícios, precisa de um machado): 2 toras = <b>Varinha entalhada</b>; 1 madeira nobre + 1 tora = <b>Varinha de carvalho</b> (Artesão 3); 1 madeira nobre + 1 gema = <b>Varinha arcana</b> (Artesão 5). Sobe o ofício de Artesão.</li>
       <li><b>Varinha é a arma do mago</b>: ele usa sozinho a melhor que estiver na mochila. Entalhada +10% de dano mágico e +10 de mana; de carvalho +20% e +20; arcana +30% e +35. Para outras vocações, é mercadoria (a Arcanos compra).</li>
       <li><b>Quadro de avisos</b> na praça: bicos (água para a Greta, caixas para o Borin, varrer a praça) e entregas.</li>
-      <li><b>Turnos</b>: fale com quem trabalha no negócio (<kbd>F</kbd>) e escolha “Trabalhar um turno aqui”, ou aperte <kbd>F</kbd> numa bancada vazia; dura 1 min e 15 s e, ao terminar, <b>outro começa sozinho</b> — os turnos seguem enquanto você estiver no prédio. No seu próprio negócio, o <kbd>F</kbd> abre a gestão, e o turno é o botão “Trabalhar um turno” no painel. Saia do prédio para parar. Uniforme automático.</li>
+      <li><b>Turnos</b>: fale com quem trabalha no negócio (<kbd>F</kbd>) e escolha “Trabalhar um turno aqui”, ou aperte <kbd>F</kbd> numa bancada vazia; dura 1 min e 15 s e, ao terminar, <b>outro começa sozinho</b> — os turnos seguem enquanto você estiver no prédio. No seu próprio negócio não há salário (o dinheiro já é seu), mas ele vende e produz <b>80% a mais</b> enquanto você trabalha, e no fim de cada turno o chat diz quanto rendeu. O turno é o botão “Trabalhar um turno” no painel de gestão. Todo fim de turno aparece no chat. Saia do prédio para parar. Uniforme automático.</li>
       <li><b>Ofícios</b> (nível 1 a 10): Lenhador, Minerador, Herbalista, Artesão, Comerciante, Mensageiro, Biscateiro. Cada nível de coleta deixa o trabalho 6% mais rápido.</li>
     </ul>
   </section>
@@ -276,7 +277,7 @@
       <li><b>Lucro de verdade</b>: a Visão geral mostra o <b>lucro líquido</b> de hoje e dos últimos 7 dias (receita − gastos − salários − imposto) e, se o negócio estiver no prejuízo, diz por quê (receita baixa, prateleira vazia, estoque parado, salários altos).</li>
       <li><b>O lucro cai direto na sua conta do banco</b> — não existe mais cofre para ir buscar. Salários, encomendas e reposição saem dela (se faltar, da bolsa). À noite, ladrões podem levar um pouco de <b>mercadoria</b> (nunca o ouro do banco); as <b>trancas reforçadas</b> diminuem isso. Melhorias: prateleiras, vitrine, ferramentas e trancas.</li>
       <li><b>Reposição automática</b> (lojas, aba Estoque): ligue e defina, para cada mercadoria, o <b>mínimo</b> e <b>até quanto</b> encher. Quando o estoque cai abaixo do mínimo, a loja encomenda do fornecedor e paga com a conta do banco. Oficinas que transformam já compram sozinhas a matéria-prima que falta (também pelo banco).</li>
-      <li><b>Funcionários</b> (aba Funcionários): procure candidatos e contrate até <b>3</b> por negócio (nas oficinas que extraem, até 2 coletores além do da casa). Cada um deixa o negócio <b>40% mais produtivo</b>, e o traço ajuda mais: <i>rápido</i> (+15%), <i>simpático</i> (clientes compram mais) ou <i>honesto</i> (metade do roubo à noite). O salário sai do banco todo dia — sem ouro, ele vai embora. Eles trabalham das 7h às 20h e aparecem andando pelo prédio. Dispense quando quiser.</li>
+      <li><b>Funcionários</b> (aba Funcionários): procure candidatos e contrate até <b>3</b> por negócio (nas oficinas que extraem, até 2 coletores além do da casa). Cada um deixa o negócio <b>40% mais produtivo</b>, e o traço ajuda mais: <i>rápido</i> (+15%), <i>simpático</i> (clientes compram mais) ou <i>honesto</i> (metade do roubo à noite). O salário sai do banco todo dia — sem ouro, ele vai embora. Eles saem de casa de manhã, andam até o negócio, trabalham das 7h às 20h e voltam para casa no fim do dia. Dispense quando quiser.</li>
       <li><b>Quantos negócios</b>: sem limite. Painel na tecla <kbd>N</kbd>.</li>
       <li><b>Colocar do inventário</b>: no painel do negócio, aba Estoque, você guarda o que coletou ou fez. Toras vão para o depósito da oficina (carpintaria transforma em varinhas ou papel); varinhas, gemas, ervas, mapas e linho vão para as prateleiras da loja que vende aquilo.</li>
       <li><b>Bancada da Arcanos & Varinhas</b>: deixe toras na bancada (até 60 de madeira) e o atendente entalha 1 varinha por hora com 2 de madeira, direto para as prateleiras.</li>
@@ -287,7 +288,7 @@
 
   <section id="pousada"><h2>Pousada do Javali Magro</h2>
     <figure><img src="img/guia/pousada.jpg" alt="As cabines da pousada: cortina numerada, catre com colcha de retalhos e baú." loading="lazy"><figcaption>As cabines da pousada: cortina numerada, catre com colcha de retalhos e baú.</figcaption></figure>
-    <p>Na rua principal, junto ao portão sul: um prédio de enxaimel com a placa do javali e a porta na ponta norte da fachada, perto da rua de baixo. Logo na entrada fica o balcão da <b>Dona Ilsa</b>, com a lareira; um corredor largo passa entre as cabines. É o jeito barato de ter onde dormir antes de comprar ou alugar uma casa.</p>
+    <p>No bairro sudoeste, ao lado do estábulo: um prédio de enxaimel com a placa do javali e a porta na ponta norte da fachada leste. Logo na entrada fica o balcão da <b>Dona Ilsa</b>, com a lareira; um corredor largo passa entre as cabines. É o jeito barato de ter onde dormir antes de comprar ou alugar uma casa.</p>
     <table>
       <tr><th>O quê</th><th>Como funciona</th></tr>
       <tr><td>Diária</td><td><b>3 de ouro por dia</b>, pago na hora (primeiro da sua conta no banco, depois da bolsa), sem caução (1, 3 ou 7 dias). Fale com Dona Ilsa (<kbd>F</kbd>).</td></tr>

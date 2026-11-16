@@ -222,7 +222,7 @@ function bizBuild() {
   d.querySelector('#biz-x').onclick = () => bizClose();
   for (const b of d.querySelectorAll('[data-btab]')) b.onclick = () => { G.biz.tab = b.dataset.btab; bizRender(); };
 }
-function bizOpen(pid) { bizBuild(); G.biz.pid = pid; G.biz.d = null; document.getElementById('biz').classList.remove('hidden'); document.getElementById('biz-body').innerHTML = '<div class="gp-note">Abrindo o livro-caixa…</div>'; Net.send({ t: 'biz', a: 'open', pid }); }
+function bizOpen(pid) { if (typeof GM !== 'undefined' && GM.on && typeof gmClose === 'function') gmClose(); bizBuild(); G.biz.pid = pid; G.biz.d = null; document.getElementById('biz').classList.remove('hidden'); document.getElementById('biz-body').innerHTML = '<div class="gp-note">Abrindo o livro-caixa…</div>'; Net.send({ t: 'biz', a: 'open', pid }); }
 function bizClose() { const el = document.getElementById('biz'); if (el) el.classList.add('hidden'); Net.send({ t: 'biz', a: 'close' }); G.biz.pid = null; }
 function bizEvent(m) { if (m.pid !== G.biz.pid) return; if (m.none) { bizClose(); return; } G.biz.d = m; bizRender(); }
 const bsend = (a, x) => Net.send({ t: 'biz', a, pid: G.biz.pid, ...x });

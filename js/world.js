@@ -102,7 +102,7 @@ const BUILDINGS = TEST3D ? [] : [
   { x: C - 30, y: C - 1, ...BH('shop', 5, 5, 4.0, 2.8, 'Empório do Borin') },
   { x: C - 22, y: C - 1, ...BH('smith', 5, 5, 2.6, 2.6, 'Forja de Hrodgar') },
   { x: C - 15, y: C + 10, ...BH('tavern', 6, 7, 3.0, 2.8, 'Taverna do Javali', { door: 'E', floors: 1 }) },   // de frente para a praça do mercado (só térreo)
-  { x: C + 5, y: C + 22, ...BH('barracks', 8, 5, 4.0, 2.6, 'Quartel da Guarda') },
+  { x: C - 10, y: C + 22, ...BH('barracks', 8, 5, 4.0, 2.6, 'Quartel da Guarda', { door: 'E', gen: { x: C + 5, y: C + 22, w: 8, h: 5, door: 'S' } }) },   // junto ao portão sul, porta para a rua principal
   { x: C - 28, y: C + 24, ...BH('stable', 5, 4, 2.6, 2.4, 'Estábulo', { floors: 1 }) },
   { x: C - 29, y: C + 10, ...BH('shop', 5, 5, 2.4, 2.2, 'Boticário de Elva', { v: 1, door: 'N', floors: 1 }) },
   { x: C - 22, y: C - 8, ...BH('shop', 5, 5, 2.4, 1.6, 'Arcanos & Varinhas', { v: 2, door: 'W' }) },
@@ -860,6 +860,7 @@ function generateWorld() {
   { // escritório do corretor: a casa mais perto da rua nova e do mercado
     let ob = null, bd = 1e9; for (const hb of houses) { const d = Math.hypot(hb.x + hb.w / 2 - (C - 18), hb.y + hb.h / 2 - (C + 13)); if (d < bd) { bd = d; ob = hb; } }
     if (ob) { ob.office = 'estate'; ob.name = 'Imobiliária Chave de Bronze'; ob.x = C - 22; ob.y = C + 15; ob.door = 'S'; ob.w = 6; ob.h = 4; ob.floors = 2; ob.H = 3.8; ob.RH = 2.0; ob.wall = Math.round(3.8 * 19.6); ob.roof = Math.round(2.0 * 19.6); } }   // atrás da Alfaiataria, porta para a rua de baixo
+  for (let i = 0; i < bld.length; i++) if (bld[i] === -2) bld[i] = -1;   // marcas temporárias que sobraram (a imobiliária muda de lugar depois de sorteada)
   // ---- vila do oeste (do outro lado do rio, na estrada que sai do portão oeste): casas espaçadas e oficinas ----
   const HAM = { x0: x0 - 58, y0: C - 22, x1: x0 - 27, y1: C + 19, road: C };
   if (!TEST3D) {
@@ -883,7 +884,7 @@ function generateWorld() {
     lane(X(49), C + 8, X(48), C + 10);   // trilha da horta
   }
   // pousada do outro lado da rua, atrás das lojas da taverna, porta para a rua (no fim da lista: não muda o número dos prédios salvos)
-  if (!TEST3D) BUILDINGS.push({ x: C - 11, y: C + 21, ...BH('hotel', 10, 11, 4.0, 2.2, 'Pousada do Javali Magro', { floors: 1, door: 'E', dcol: 8 }) });
+  if (!TEST3D) BUILDINGS.push({ x: C - 22, y: C + 21, ...BH('hotel', 10, 11, 4.0, 2.2, 'Pousada do Javali Magro', { floors: 1, door: 'E', dcol: 8 }) });
   if (!TEST3D) BUILDINGS.push({ x: C - 30, y: C - 14, ...BH('house', 5, 4, 3.0, 2.6, '', { door: 'E', v: 2, floors: 1, extra: 1 }) });   // casa nova na rua do banco, alinhada com as lojas   // porta direto na rua principal
   BUILDINGS.forEach((b, bi) => {
     for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { bld[idx(x, y)] = bi; obj[idx(x, y)] = O.NONE; ground[idx(x, y)] = T.COBBLE; }
@@ -917,6 +918,15 @@ function generateWorld() {
   const doorFree = new Set(); for (const b of BUILDINGS) { const [dx, dy] = doorTile(b), v = DOOR_V[b.door || 'S']; for (let k = 1; k <= 2; k++) for (const s2 of [-1, 0, 1]) doorFree.add(idx(dx + v[0] * k + (v[1] ? s2 : 0), dy + v[1] * k + (v[0] ? s2 : 0))); }
   const deco = (x, y, o) => { const i = idx(x, y); if (doorFree.has(i)) return; if (bld[i] < 0 && !stair[i] && !fl1[i] && !nearBld(x, y)) obj[i] = o; };
   const decoAny = (x, y, o) => { const i = idx(x, y); if (doorFree.has(i)) return; if (bld[i] < 0 && !stair[i] && !fl1[i]) obj[i] = o; };
+  // avenida da Catedral: da porta (escadaria) até a praça do portão sul
+  { const AX0 = C + 10, AX1 = C + 14, AY0 = C + 17, AY1 = C + 27, PX0 = C - 1, PX1 = C + 14, PY0 = C + 28, PY1 = C + 31, mid = C + 12;
+    const pave = (x, y) => { const i = idx(x, y); if (bld[i] >= 0) return; obj[i] = O.NONE; if (rdir[i]) return; const d = Math.abs(x - mid); ground[i] = d === 0 ? T.FLOORSTONE : (d + y) % 2 ? T.STONE : T.FLOORSTONE; };
+    { const BIG = new Set([O.TREE, O.PINE, O.OAK, O.BIRCH, O.WILLOW, O.DEADTREE, O.BUSH]); for (let y = C + 17; y <= C + 31; y++) for (let x = C + 2; x <= C + 15; x++) if (BIG.has(obj[idx(x, y)])) obj[idx(x, y)] = O.NONE; }   // sem árvores grandes na frente da catedral e à direita do portão
+    for (let y = AY0; y <= AY1; y++) for (let x = AX0; x <= AX1; x++) pave(x, y);
+    for (let y = PY0; y <= PY1; y++) for (let x = PX0; x <= PX1; x++) { const i = idx(x, y); if (bld[i] >= 0 || rdir[i]) continue; obj[i] = O.NONE; ground[i] = (x + y) % 3 === 0 ? T.STONE : T.FLOORSTONE; }
+    const side = (y, o) => { for (const x of [AX0, AX1]) { const i = idx(x, y); if (bld[i] < 0 && !rdir[i]) obj[i] = o; } };
+    side(AY0 + 1, O.STATUE); side(AY0 + 4, O.BANNER); side(AY0 + 5, O.FLOWERBED); side(AY0 + 6, O.LAMP); side(AY0 + 7, O.FLOWERBED); side(AY0 + 8, O.STATUE); side(AY0 + 9, O.BANNER); side(AY0 + 10, O.FLOWERBED);
+    for (const [x, y, o] of [[C + 6, C + 29, O.STATUE], [C + 9, C + 28, O.LAMP], [C + 9, C + 31, O.LAMP], [C + 4, C + 28, O.FLOWERBED], [C + 4, C + 31, O.FLOWERBED], [C + 13, C + 30, O.FLOWERBED], [C + 7, C + 31, O.BENCH], [C + 5, C + 31, O.BENCH]]) { const i = idx(x, y); if (bld[i] < 0 && !rdir[i]) obj[i] = o; } }
   // quintal da Marta na frente da casa: cerca com portãozinho, duas árvores frutíferas, canteiros e a barraquinha com toldo
   { const X0 = C - 31, X1 = C - 25, Y0 = C + 19, Y1 = C + 22, gx = C - 27;
     for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) { const i = idx(x, y); if (bld[i] >= 0 || rdir[i]) continue; obj[i] = O.NONE; ground[i] = x === gx ? T.COBBLE : T.GRASS;
@@ -951,8 +961,7 @@ function generateWorld() {
   // Ateliê: vitrines no passeio da frente e no lado do largo
   for (const [x, y] of [[C - 16, C + 4], [C - 12, C + 4], [C - 11, C + 1], [C - 11, C + 3]]) decoAny(x, y, O.VITRINE);
   // casa da Marta: quintal cercado com macieira, floreiras e caixotes de fruta na porta
-  { const hx = C - 13, hy = C + 18; for (let x = hx - 4; x <= hx - 1; x++) { decoAny(x, hy - 1, O.FENCE); if (x !== hx - 2) decoAny(x, hy + 4, O.FENCE); } for (let y = hy; y <= hy + 3; y++) decoAny(hx - 5, y, O.FENCE);
-    decoAny(hx - 3, hy + 1, O.TREE); decoAny(hx - 2, hy + 3, O.FLOWERBED); decoAny(hx + 5, hy - 1, O.FRUITCRATE); decoAny(hx + 5, hy + 4, O.FRUITCRATE); decoAny(hx + 2, hy + 4, O.FLOWERBED); }
+  // (o quintal da Marta agora fica na frente da casa nova, atrás do Boticário)
   // bandeiras do castelo e pátio interno
   for (const x of [KEEP.x0 + 4, KEEP.x1 - 4]) decoAny(x, KEEP.y1 + 2, O.BANNER);
   // pracinha do sul-oeste
@@ -961,7 +970,7 @@ function generateWorld() {
   // cadafalso com guilhotina: em frente ao castelo, à esquerda da porta, diante da estátua e do estandarte (tablado 3x3 + 1 tile livre para a escada)
   { let best = null;
     for (let r = 0; r < 7 && !best; r++) for (let dy = -r; dy <= r && !best; dy++) for (let dx = -r; dx <= r && !best; dx++) {
-      const cx = C + 6 + dx, cy = KEEP.y1 + 6 + dy; let ok = true;
+      const cx = C - 4 + dx, cy = KEEP.y1 + 6 + dy; let ok = true;
       for (let yy = cy - 1; yy <= cy + 1 && ok; yy++) for (let xx = cx - 2; xx <= cx + 1 && ok; xx++) { const i = idx(xx, yy); if (bld[i] !== -1 || BLOCKING.has(obj[i]) || ground[i] === T.WATER || rdir[i] && yy > cy) ok = false; }
       if (ok) best = [cx, cy];
     }
@@ -976,7 +985,7 @@ function generateWorld() {
   const sm = BUILDINGS[2]; decoAny(sm.x - 1, sm.y + sm.h + 1, O.ANVIL); decoAny(sm.x + sm.w, sm.y + sm.h + 1, O.WEAPONRACK); decoAny(sm.x + sm.w, sm.y + 1, O.BARREL);
   const bk = BUILDINGS[4]; for (let k = 0; k < 4; k++) decoAny(bk.x + 1 + k * 2, bk.y + bk.h + 3, O.DUMMY); decoAny(bk.x + bk.w, bk.y + bk.h + 1, O.WEAPONRACK);
   const st = BUILDINGS[5]; decoAny(st.x + st.w + 1, st.y, O.HAY); decoAny(st.x + st.w + 1, st.y + 2, O.HAY); decoAny(st.x, st.y + st.h + 2, O.CART);
-  for (let k = 0; k < 4; k++) decoAny(st.x - 1 + k * 2, st.y - 2, O.FENCE);
+  // (sem a cerca na frente do estábulo: ela fechava o portãozinho do quintal da Marta)
   const tv = BUILDINGS[3]; decoAny(tv.x - 1, tv.y + tv.h + 1, O.TABLE); decoAny(tv.x + tv.w, tv.y + tv.h + 1, O.TABLE); decoAny(tv.x + tv.w, tv.y + 1, O.BARREL); decoAny(tv.x + tv.w, tv.y + 2, O.BARREL);
   // beco: caixas, barris e lampiões junto às lojas
   for (let k = 0; k < 10; k++) { const y = C - 18 + k * 5; decoAny(C + 18, y + 1, k % 2 ? O.BARREL : O.CRATE); }

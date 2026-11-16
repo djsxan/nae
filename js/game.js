@@ -181,6 +181,7 @@ function clientOnServer(m) {
       break;
     }
     case 'err': showToast(m.text); break;
+    case 'info': showToast(m.text); addChat('', m.text); break;
     case 'wv': gmWvEvent(m); break;
     case 'coins': coinEvent(m, now); break;
     case 'pmap': G.pmap = m.l; break;
@@ -1021,7 +1022,7 @@ window.addEventListener('keydown', e => {
   if (k === 'j' && !e.repeat) { togglePanel('journal'); return; }
   if (k === 'k' && !e.repeat) { togglePanel('tree'); return; }
   if (k === 'l' && !e.repeat) { GM.biz = 'est'; gmToggle('biz'); return; }
-  if (k === 'n' && !e.repeat) { GM.biz = 'hub'; gmToggle('biz'); return; }
+  if (k === 'n' && !e.repeat) { const ib = typeof estInBiz === 'function' && estInBiz(); if (ib) { if (GM.on) gmClose(); bizOpen(ib.pid); return; } GM.biz = 'hub'; gmToggle('biz'); return; }
   if ((k === '5' || k === '6' || k === '7') && !e.repeat) { Net.send({ t: 'tskill', b: +k - 5, a: G.me.fa ?? 0, id: G.target || 0 }); return; }
   if (k === '8' && !e.repeat) { Net.send({ t: 'tskill', b: 2, n: 5, a: G.me.fa ?? 0 }); return; }
   if (k === 'm' && !e.repeat) { toggleWorldMap(); return; }
