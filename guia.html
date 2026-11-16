@@ -53,7 +53,7 @@
 <body>
 <div class="wrap">
 <nav class="toc">
-  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.39</small>
+  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.40</small>
   <input id="q" type="search" placeholder="Buscar no guia (ex.: banco, fome, G)" autocomplete="off">
   <div class="links" id="links"></div>
 </nav>
@@ -82,11 +82,12 @@
       <tr><td>Botão direito (segurar)</td><td>Aparar. No tempo certo vira contra-ataque.</td></tr>
       <tr><td><kbd>Espaço</kbd></td><td>Esquiva. Amarrado ou agarrado: martele para se soltar. Na gazua: acerte o tempo.</td></tr>
       <tr><td><kbd>X</kbd> / <kbd>Tab</kbd></td><td>Atacar / escolher o alvo mais próximo (arqueiro e mago atiram sozinhos no alvo).</td></tr>
-      <tr><td><kbd>1</kbd>–<kbd>4</kbd> (e <kbd>5</kbd>–<kbd>7</kbd>)</td><td>Habilidades da vocação (e as da árvore de constelações).</td></tr>
+      <tr><td><kbd>1</kbd>–<kbd>4</kbd> (e <kbd>5</kbd>–<kbd>8</kbd>)</td><td>Habilidades da vocação (e as da árvore de constelações; a 8 é a Restauração do Mago).</td></tr>
       <tr><td><kbd>Q</kbd> · <kbd>E</kbd> · <kbd>0</kbd> · <kbd>B</kbd></td><td>Poção de vida · poção de mana · beber do cantil · bandagem.</td></tr>
       <tr><td><kbd>G</kbd></td><td>Guardar / sacar a arma.</td></tr>
       <tr><td><kbd>H</kbd></td><td>Toque: pegar, carregar ou largar (objetos e caídos). Segurar: menu de agarrar (puxar pelos braços/pés, carregar nas costas, mata-leão, amarrar).</td></tr>
-      <tr><td><kbd>F</kbd></td><td>Interagir: falar, comprar, beber água, trabalhar, coletar (segurar), reanimar (segurar), revistar corpos (segurar), chutar em combate.</td></tr>
+      <tr><td><kbd>F</kbd></td><td>Interagir: <b>falar com quem está perto</b> (o clique só ataca), dar ouro e itens a outro jogador, beber água, coletar (um toque), reanimar (segurar), revistar corpos (segurar), chutar em combate.</td></tr>
+      <tr><td><kbd>Enter</kbd></td><td>Abrir o chat para escrever (Enter envia, Esc fecha). Parado, o chat fica quase transparente.</td></tr>
       <tr><td><kbd>O</kbd></td><td>Cavaleiro: alternar espada e escudo ↔ alabarda.</td></tr>
       <tr><td><kbd>C</kbd> · <kbd>C</kbd>+<kbd>Shift</kbd> · <kbd>V</kbd></td><td>Agachar · deslizar correndo · sentar (perto de uma cama: deitar e dormir).</td></tr>
       <tr><td><kbd>T</kbd> (segurar)</td><td>Roda de emoções: saudar, dançar, apontar, comemorar, surpresa, adorar, raiva, medo, tristeza.</td></tr>
@@ -122,7 +123,7 @@
     <ul>
       <li><b>Cavaleiro</b>: Golpe Brutal (220% e atordoa 1,4 s) · Grito de Guerra (atrai inimigos em 5 tiles, −20% de dano por 6 s) · Redemoinho (160% em volta) · Muralha de Ferro (−60% de dano por 6 s).</li>
       <li><b>Atirador</b>: Tiro Duplo · Flecha Perfurante (atravessa a fila, 180%) · Chuva de Flechas (130% na área) · Passo Ágil (60% mais rápido, ataca 2× por 6 s).</li>
-      <li><b>Mago</b>: Bola de Fogo (260%) · Nova de Gelo (140% em volta + lentidão) · Luz Curativa (cura e reanima aliados) · Chuva de Meteoros (320% na área).</li>
+      <li><b>Mago</b>: Bola de Fogo (260%) · Nova de Gelo (140% em volta + lentidão) · Luz Curativa (cura e reanima aliados) · Chuva de Meteoros (320% na área). Na árvore, ramo da Luz, a <b>Restauração</b> (tecla 8, 10 pontos no ramo) devolve um membro perdido a um aliado ao lado ou a você — gasta toda a mana e deixa o mago exausto por 1 minuto.</li>
     </ul>
     <p class="muted">Aparências: comum no nível 1, rara no 10, lendária no 20.</p>
   </section>
@@ -149,7 +150,7 @@
     <ul>
       <li>Cavaleiro e Atirador dão <b>soco</b>: dano baixo, derruba e atordoa, mas <b>nunca mata</b>.</li>
       <li>O Mago continua lançando magias com as mãos.</li>
-      <li>Coletar, carregar alguém e trabalhar num turno guardam a arma sozinhos.</li>
+      <li>Coletar, carregar alguém e trabalhar num turno guardam a arma sozinhos; ela volta para a mão uns segundos depois.</li>
       <li>Na cidade, andar de arma sacada perto de sentinelas faz elas mandarem guardar (veja Lei).</li>
     </ul>
   </section>
@@ -204,9 +205,9 @@
 
   <section id="trabalho"><h2>Trabalho e ofícios</h2>
     <ul>
-      <li><b>Coleta</b> (segurar <kbd>F</kbd> com a ferramenta do Empório): machado em árvores (toras, às vezes madeira nobre), picareta em pedras (minério, às vezes gema), foice no mato alto (linho, às vezes folha-de-prata). Carvalho e rochas grandes pedem nível 3.</li>
+      <li><b>Coleta</b> (aperte <kbd>F</kbd> uma vez perto do recurso, com a ferramenta do Empório; o personagem trabalha até terminar ou até você andar): machado em árvores (toras, às vezes madeira nobre), picareta em pedras (minério, às vezes gema), foice no mato alto (linho, às vezes folha-de-prata). Carvalho e rochas grandes pedem nível 3.</li>
       <li><b>Quadro de avisos</b> na praça: bicos (água para a Greta, caixas para o Borin, varrer a praça) e entregas.</li>
-      <li><b>Turnos</b>: <kbd>F</kbd> perto do balcão ou da bancada de qualquer negócio; dura 2 min e meio. Saia do prédio para parar. Uniforme automático.</li>
+      <li><b>Turnos</b>: fale com quem trabalha no negócio (<kbd>F</kbd>) e escolha “Trabalhar um turno aqui”, ou aperte <kbd>F</kbd> numa bancada vazia; dura 2 min e meio. Saia do prédio para parar. Uniforme automático.</li>
       <li><b>Ofícios</b> (nível 1 a 10): Lenhador, Minerador, Herbalista, Artesão, Comerciante, Mensageiro, Biscateiro. Cada nível de coleta deixa o trabalho 6% mais rápido.</li>
     </ul>
   </section>
@@ -254,6 +255,8 @@
     <ul>
       <li>O reino é de quem abriu (o anfitrião). Mande o convite (Esc → Configurações → Copiar convite) ou deixe os amigos usarem “Entrar no reino”.</li>
       <li>Combate entre jogadores vale em todo lugar — mas a lei da cidade também.</li>
+      <li><b>Doar</b>: chegue perto de outro jogador e aperte <kbd>F</kbd> — dê ouro (digite a quantia) ou itens (clique: 1; Shift+clique: todos). Chega na hora.</li>
+      <li>Todos os jogadores do reino aparecem no mapa, com o nome.</li>
       <li>Ajude aliados caídos: reanime (<kbd>F</kbd>), carregue (<kbd>H</kbd>), pague a fiança deles na cadeia, passe itens pelas grades (Shift + clique no item).</li>
     </ul>
   </section>
@@ -267,7 +270,7 @@
   </section>
 
   <div class="empty" id="empty">Nada encontrado para essa busca.</div>
-  <p class="muted" style="margin-top:40px">Guia da versão 1.39 · atualizado a cada versão do jogo.</p>
+  <p class="muted" style="margin-top:40px">Guia da versão 1.40 · atualizado a cada versão do jogo.</p>
 </main>
 </div>
 <script>

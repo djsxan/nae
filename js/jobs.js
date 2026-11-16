@@ -16,8 +16,9 @@ function jobsPrompt() {
   if (G.job && G.job.step) { const s = G.job.step; if (dist(me.x, me.y, s.x, s.y) < 1.8) return 'F: ' + s.t; }
   if (NOTICE.x >= 0 && dist(me.x, me.y, NOTICE.x, NOTICE.y) < 2) return 'F: quadro de avisos (bicos e entregas)';
   if (G.shiftUntil > performance.now()) return 'Trabalhando… saia do prédio para parar';
+  { const t = typeof talkTarget === 'function' ? talkTarget() : null; if (t) return t.k === 'n' ? 'F: falar com ' + t.name : 'F: dar ouro ou itens para ' + t.name; }
   if (shiftHere()) return 'F: trabalhar um turno aqui';
-  const g = nearGather(); if (g) { const lv = profLv((me.prof || {})[g.G0.prof]); if (!hasTool(g.G0.tool)) return 'Precisa de ' + LOOT[g.G0.tool].name.toLowerCase() + ' para ' + g.G0.verb + ' (Empório)'; if (lv < g.G0.min) return PROFS[g.G0.prof] + ' nível ' + g.G0.min + ' para ' + g.G0.verb; return 'Segure F: ' + g.G0.verb + ' · ' + PROFS[g.G0.prof] + ' ' + lv; }
+  const g = nearGather(); if (g) { const lv = profLv((me.prof || {})[g.G0.prof]); if (!hasTool(g.G0.tool)) return 'Precisa de ' + LOOT[g.G0.tool].name.toLowerCase() + ' para ' + g.G0.verb + ' (Empório)'; if (lv < g.G0.min) return PROFS[g.G0.prof] + ' nível ' + g.G0.min + ' para ' + g.G0.verb; return (G.gath ? 'Trabalhando... (ande para parar)' : 'F: ' + g.G0.verb) + ' · ' + PROFS[g.G0.prof] + ' ' + lv; }
   return '';
 }
 // dentro de um negócio, perto do balcão/bancada (onde fica o funcionário)
@@ -31,16 +32,16 @@ function jobsF(ev) {
   const me = G.me; if (!me || ev.repeat) return false;
   if (G.job && G.job.step && dist(me.x, me.y, G.job.step.x, G.job.step.y) < 1.8) { if (G.job.step.k === 'sweep') { me.anim = { a: 'sweep', t0: performance.now(), ms: 1500 }; } Net.send({ t: 'job', a: 'step' }); return true; }
   if (NOTICE.x >= 0 && dist(me.x, me.y, NOTICE.x, NOTICE.y) < 2) { Net.send({ t: 'job', a: 'board' }); return true; }
-  if (G.shiftUntil <= performance.now() && shiftHere()) { Net.send({ t: 'shift', a: 'start' }); return true; }
-  const g = nearGather(); if (g && hasTool(g.G0.tool) && profLv((me.prof || {})[g.G0.prof]) >= g.G0.min) { G.gath = { i: g.i, t0: performance.now(), ms: gatherMs(g.G0), G0: g.G0, animT: 0 }; return true; }
+  if (G.shiftUntil <= performance.now() && shiftHere() && !(typeof talkTarget === 'function' && talkTarget())) { Net.send({ t: 'shift', a: 'start' }); return true; }   // bancada sem ninguém por perto; com balconista, é pelo diálogo
+  const g = nearGather(); if (g && hasTool(g.G0.tool) && profLv((me.prof || {})[g.G0.prof]) >= g.G0.min) { if (G.gath) { G.gath = null; return true; } const tx = g.i % MAP_W, ty = Math.floor(g.i / MAP_W); me.dir = dirFromVec(tx - me.x, ty - me.y, me.dir); G.gath = { i: g.i, t0: performance.now(), ms: gatherMs(g.G0), G0: g.G0, animT: 0, x: me.x, y: me.y }; return true; }
   return false;
 }
-function jobsKeyUp(k) { if (k === 'f' && G.gath) G.gath = null; }
+function jobsKeyUp(k) { }
 function jobsTickC(now) {
   if (typeof drinkTick === 'function') drinkTick();
   const g = G.gath, me = G.me; if (!g || !me) return;
-  if (me.walking || !G.keys.has('f')) { G.gath = null; return; }
-  if (now > g.animT) { g.animT = now + 750; const crouch = g.G0.tool === 'sickle'; me.anim = { a: crouch ? 'gather' : 'atk_slashR', t0: now, ms: 700 }; Net.send({ t: 'gathering', a: crouch ? 'crouch' : 'swing' }); }
+  if (me.walking || me.downed || dist(me.x, me.y, g.x, g.y) > 0.3) { G.gath = null; return; }   // andou: para de trabalhar
+  if (now > g.animT) { g.animT = now + 760; Net.send({ t: 'gathering', tool: g.G0.tool, i: g.i }); }
   if (now - g.t0 >= g.ms) { Net.send({ t: 'gather', i: g.i }); G.gath = null; }
 }
 // ---------- desenho: barra de coleta/turno e marcador do trabalho ----------

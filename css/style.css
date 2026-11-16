@@ -577,3 +577,15 @@ body.nae[data-tp=play] .start .start-row, body.nae[data-tp=play] .start h2, body
 .wm-zoom { display: flex; gap: 6px; align-items: center; justify-content: center; margin: 4px 0 6px; flex-wrap: wrap; } .wm-zoom button { padding: 4px 10px; font: 700 12px 'Cinzel', serif; color: #e8dcc0; background: #241a12; border: 1px solid #6a5028; border-radius: 5px; cursor: pointer; } .wm-zoom span { font-size: 11px; opacity: .65; color: #e8dcc0; }
 .nae-nav .nae-guide { display: block; margin-top: 10px; font: 600 15px 'Cinzel', serif; color: rgba(232,220,192,.7); text-decoration: none; letter-spacing: 2px; } .nae-nav .nae-guide:hover { color: #f0d890; }
 #pause .gm-guide { font: 600 13px 'Cinzel', serif; color: #d8b870; text-decoration: none; border: 1px solid rgba(201,162,74,.4); border-radius: 5px; padding: 4px 10px; } #pause .gm-guide:hover { background: rgba(201,162,74,.14); }
+
+/* chat de volta: some quando parado */
+#chat { position: fixed; left: 12px; bottom: 12px; z-index: 12; width: min(400px, calc(100vw - 24px)); transition: opacity .6s; }
+#chat-log { height: 120px; overflow-y: auto; font: 13px/1.35 'Alegreya', serif; color: #f2e8d2; text-shadow: 0 1px 2px #000, 0 0 4px #000; mask-image: linear-gradient(transparent, #000 25%); -webkit-mask-image: linear-gradient(transparent, #000 25%); scrollbar-width: none; margin-bottom: 4px; }
+#chat-log .sys { color: #d8c8a8; font-style: italic; } #chat-log b { color: #f0c870; font-family: 'Cinzel', serif; font-size: 12px; }
+#chat-input { width: 100%; box-sizing: border-box; background: rgba(0,0,0,0.45); border: 1px solid rgba(201,162,74,0.35); color: #f2e8d2; font-size: 13px; padding: 5px 8px; border-radius: 5px; display: none; }
+#chat.typing #chat-input { display: block; }
+#chat.fade { opacity: 0.18; pointer-events: none; } #chat.fade.awake, #chat.fade.typing { opacity: 1; pointer-events: auto; }
+#chat.off { display: none; }
+#chat.typing #chat-log { overflow-y: auto; scrollbar-width: thin; }
+body.touch #chat { width: 260px; } body.touch #chat-log { height: 70px; }
+#givep { width: min(420px, 94vw); z-index: 34; } .gv-items { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; } .gv-it { position: relative; width: 46px; height: 46px; font-size: 22px; background: rgba(0,0,0,.3); border: 1px solid #6a5028; border-radius: 6px; cursor: pointer; } .gv-it small { position: absolute; right: 3px; bottom: 1px; font-size: 11px; color: #f0d890; } .gv-it:hover { border-color: #e8c870; }

@@ -217,9 +217,13 @@ const ACTS = {
   drawwpH: [[0, {}], [0.3, { aA: [0.12, -0.35, 1.0], tw: 0.3, ht: 0.3, hw: 0.25 }], [0.6, { aA: [0.9, 0.3, 0.6], tw: -0.1 }], [1, {}]],
   sheatheB: [[0, {}], [0.4, { aA: [2.75, 0.15, 2.55], tl: 0.06, ht: 0.1, tw: -0.15 }], [0.7, { aA: [2.9, 0.1, 2.8], tl: 0.06, tw: -0.2 }], [1, {}]],
   drawwpB: [[0, {}], [0.35, { aA: [2.9, 0.1, 2.8], tl: 0.06, tw: -0.2 }], [0.65, { aA: [2.2, 0.25, 1.4], tw: -0.05 }], [1, {}]],
+  // ---- coleta: machado (lateral baixo no tronco), picareta (de cima para baixo), foice (agachado ceifando) ----
+  chop: [[0, {}], [0.3, { aA: [1.25, 0.95, 0.7], aB: [1.05, 0.7, 1.0], tw: 0.65, tl: 0.1, kn: -0.1, yaw: 0.2 }], [0.5, { aA: [1.35, -0.25, 0.15], aB: [1.15, -0.15, 0.45], tw: -0.55, tl: 0.2, yaw: -0.2 }], [0.75, { aA: [1.15, -0.45, 0.35], aB: [1.0, -0.3, 0.6], tw: -0.4, tl: 0.15 }], [1, {}]],
+  pickswing: [[0, {}], [0.35, { aA: [2.95, 0.15, 0.55], aB: [2.85, 0.1, 0.7], tl: -0.14, ht: -0.1 }], [0.55, { aA: [0.95, 0.1, 0.1], aB: [0.95, 0.05, 0.2], tl: 0.42, kn: -0.22, ht: 0.25 }], [0.8, { aA: [1.05, 0.1, 0.2], aB: [1.0, 0.05, 0.3], tl: 0.36, kn: -0.15, ht: 0.2 }], [1, {}]],
+  reap: [[0, { tl: 0.5, lA: [0.95, -1.4], lB: [0.4, -0.55], drop: 6, aA: [0.95, 0.75, 0.45], aB: [0.6, 0.2, 0.8], ht: 0.3 }], [0.5, { tl: 0.6, lA: [0.95, -1.4], lB: [0.4, -0.55], drop: 6, aA: [0.95, -0.55, 0.3], aB: [0.6, 0.2, 0.8], tw: -0.3, ht: 0.35 }], [1, { tl: 0.5, lA: [0.95, -1.4], lB: [0.4, -0.55], drop: 6, aA: [0.95, 0.75, 0.45], aB: [0.6, 0.2, 0.8], ht: 0.3 }]],
   punch: [[0, {}], [0.3, { aA: [1.15, 0.1, 2.3], aB: [1.25, 0.1, 2.2], tw: 0.35, tl: -0.04, lA: [0.25, -0.15] }], [0.5, { aA: [1.55, 0.05, 0.12], aB: [1.2, 0.1, 2.25], tw: -0.4, tl: 0.14, lA: [0.35, -0.1], lB: [-0.2, -0.05] }], [0.72, { aA: [1.35, 0.1, 1.0], aB: [1.2, 0.1, 2.2], tw: -0.15, tl: 0.06 }], [1, {}]],
 };
-const ACT_MS = { sheatheH: 500, drawwpH: 500, sheatheB: 750, drawwpB: 750, punch: 520, gather: 700, cuff: 1900, key: 1100, shove: 700, lever: 1100, cheer: 1400, surprise: 1000, adore: 2600, anger: 1400, fear: 1600, sad: 2200, cook: 3000, sweep: 1400, loose: 350, nock: 800, drinkb: 1600, scoop: 1500, hurt_head: 420, hurt_leg: 420, getup: 650, kick: 520, execute: 720, quiver: 760, turnshot: 950, dualcast: 560, turncast: 950, salute: 1200, point: 1300, dance: 900, hurt: 300, swing: 440, bash: 560, spin: 560, block: 650, warcry: 700, shoot: 440, double: 620, pierce: 640, rain: 560, dash: 560, bolt: 400, fireball: 520, nova: 620, heal: 680, meteor: 720, cast: 600, bite: 320 };
+const ACT_MS = { chop: 750, pickswing: 750, reap: 750, sheatheH: 500, drawwpH: 500, sheatheB: 750, drawwpB: 750, punch: 520, gather: 700, cuff: 1900, key: 1100, shove: 700, lever: 1100, cheer: 1400, surprise: 1000, adore: 2600, anger: 1400, fear: 1600, sad: 2200, cook: 3000, sweep: 1400, loose: 350, nock: 800, drinkb: 1600, scoop: 1500, hurt_head: 420, hurt_leg: 420, getup: 650, kick: 520, execute: 720, quiver: 760, turnshot: 950, dualcast: 560, turncast: 950, salute: 1200, point: 1300, dance: 900, hurt: 300, swing: 440, bash: 560, spin: 560, block: 650, warcry: 700, shoot: 440, double: 620, pierce: 640, rain: 560, dash: 560, bolt: 400, fireball: 520, nova: 620, heal: 680, meteor: 720, cast: 600, bite: 320 };
 const IDLES = {
   look: [[0, {}], [0.25, { hw: 0.6 }], [0.6, { hw: -0.6 }], [1, {}]],
   stretch: [[0, {}], [0.4, { aA: [3.0, 0.3, 0.2], aB: [3.0, 0.3, 0.2], tl: -0.12, mouth: 1, wp: 3.1 }], [0.7, { aA: [3.0, 0.3, 0.2], aB: [3.0, 0.3, 0.2], tl: -0.12, wp: 3.1 }], [1, {}]],
@@ -313,6 +317,7 @@ function buildPose(cls, P) {
   if (P.act && ACTS[P.act.k]) apply(ACTS[P.act.k], (P.act.f + 0.5) / 12);
   else if (P.idle && IDLES[P.idle.k]) apply(IDLES[P.idle.k], (P.idle.f + 0.5) / 12);
   if (P.hold && !P.act) holdPose(Q, P.hold, P);
+  if (P.tool) Q['t_' + P.tool] = 1;
   if (P.sl) { Q.lA = [1.4, -0.12]; Q.lB = [0.35, -2.15]; Q.tl = -0.6; Q.tw = 0; Q.aA = [0.5, 1.0, 0.25]; Q.aB = [0.3, 1.1, 0.35]; Q.drop = 10; }
   else if (P.cr) {
     const ph = P.walk >= 0 ? P.walk / 12 * Math.PI * 2 : 0, s = P.walk >= 0 ? 0.3 : 0;

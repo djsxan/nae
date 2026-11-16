@@ -3,14 +3,14 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.39.1';
-const VERSION_NAME = 'Nae · Mãos Livres';
+const VERSION = 'v1.40.0';
+const VERSION_NAME = 'Nae · Conversa e Ofício';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
 // migração do nome antigo (World of Sxan) para Nae: copia os saves para as chaves novas
 try { for (const [a, b] of [['wos-settings', 'nae-settings'], ['wos-chars-v4', 'nae-chars-v4'], ['sxan_apple', 'nae_apple']]) { const v = localStorage.getItem(a); if (v != null && localStorage.getItem(b) == null) localStorage.setItem(b, v); } for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('wos-fog-')) { const n = 'nae-fog-' + k.slice(8); if (localStorage.getItem(n) == null) localStorage.setItem(n, localStorage.getItem(k)); } } } catch (e) { }
-const SET = (() => { const d = { quality: (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) ? 'low' : 'high', bright: 1, zoom: 1, phys: 'ragdoll', tele: 'soft', duel: false, pad: (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) ? 0.75 : 0.5 }; try { return Object.assign(d, JSON.parse(localStorage.getItem('nae-settings') || '{}')); } catch (e) { return d; } })();
+const SET = (() => { const d = { quality: (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) ? 'low' : 'high', bright: 1, zoom: 1, chat: 'fade', phys: 'ragdoll', tele: 'soft', duel: false, pad: (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) ? 0.75 : 0.5 }; try { return Object.assign(d, JSON.parse(localStorage.getItem('nae-settings') || '{}')); } catch (e) { return d; } })();
 function saveSettings() { try { localStorage.setItem('nae-settings', JSON.stringify(SET)); } catch (e) { } }
 const STAIR_N = 5;                 // escadas: 5 tiles de rampa até o alto da muralha
 const SKIN_LVL = [1, 10, 20];      // nível para liberar cada skin (comum, rara, lendária)
@@ -291,7 +291,7 @@ const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
 //  Cada ramo: 4 talentos passivos (até 3 pontos) + 1 habilidade (teclas 5, 6, 7).
 //  Um nó só libera com pontos suficientes já gastos no ramo (TREE_REQ).
 // ============================================================
-const TREE_REQ = [0, 2, 4, 6, 8];
+const TREE_REQ = [0, 2, 4, 6, 8, 10];
 const TREE = {
   knight: [
     { name: 'Lâmina', icon: '⚔', nodes: [
@@ -351,7 +351,8 @@ const TREE = {
       { id: 'm_mreg', name: 'Meditação', max: 3, eff: { mregen: 0.15 }, desc: '+15% de recuperação de mana por ponto.' },
       { id: 'm_hp', name: 'Fé Inabalável', max: 3, eff: { hp: 0.05 }, desc: '+5% de vida máxima por ponto.' },
       { id: 'm_regen', name: 'Bênção Serena', max: 3, eff: { regen: 0.12 }, desc: '+12% de recuperação de vida por ponto.' },
-      { id: 'sanct', name: 'Santuário', skill: true, max: 1, mp: 30, cd: 30000, desc: 'Círculo sagrado por 8s: aliados dentro recuperam vida e recebem 25% menos dano.' }] },
+      { id: 'sanct', name: 'Santuário', skill: true, max: 1, mp: 30, cd: 30000, desc: 'Círculo sagrado por 8s: aliados dentro recuperam vida e recebem 25% menos dano.' },
+      { id: 'restore', name: 'Restauração', skill: true, key: 8, max: 1, mp: 0, cd: 60000, desc: 'Devolve um membro perdido a um aliado ao seu lado (ou a você). Gasta TODA a mana e deixa você exausto por 1 minuto: anda devagar, sem fôlego e a mana não volta.' }] },
   ],
 };
 const treePts = p => { let n = 0; for (const k in p.tree || {}) n += p.tree[k] | 0; return n; };

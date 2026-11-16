@@ -260,7 +260,7 @@ function interiorLayout0(b, fl = 0) {
     put('altar', dc - 1, 0, { w: 3 }); npcAt(dc, 1); put('candles', 1, 0); put('candles', w - 2, 0);
     for (const j of [3, 5]) { put('pew', 1, j, { w: dc - 1, seat: 3 }); put('pew', dc + 1, j, { w: w - dc - 2, seat: 3 }); }
   } else if (k === 'jail') {
-    for (const c of [0, 3, 6]) { put('cot', c, 0, { h: 2 }); put('bucket', c + 1, 0); put('bars', c, 2, { v: 0 }); put('celldoor', c + 1, 2, { v: 0, block: false }); }
+    for (const c of [0, 3, 6]) { put('cot', c, 0, { h: 2 }); put('bucket', c + 1, 0, { block: false }); put('bars', c, 2, { v: 0 }); put('celldoor', c + 1, 2, { v: 0, block: false }); }
     for (const i of [2, 5]) { put('bars', i, 0, { v: 1 }); put('bars', i, 1, { v: 1 }); put('bars', i, 2, { v: 2 }); }
     if (put('table', 0, 4)) put('chair', 1, 4, { seat: 3 });
     npcAt(1, 3); put('pew', w - 2, 4, { w: 2, seat: 1 });

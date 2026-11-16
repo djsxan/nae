@@ -14,9 +14,18 @@ function wind(x, y, now) { return Math.sin(now / 1400 + x * 0.37 + y * 0.21) + M
 // ---------- dia e noite (igual para todos: usa o relógio) ----------
 const DAY_CYCLE_MS = 12 * 60 * 1000;
 const ARMED_NPC = new Set(['guard', 'captain', 'executioner']);   // andam com a arma guardada e sacam na briga
-const WT = { ph: null, rain: null };   // hora (fase do dia) e chuva fixadas pelo Tecelão; null = natural
+const WT = { ph: null, rain: null, cPh: null, cRain: null, t: 0 };   // hora (fase do dia) e chuva fixadas pelo Tecelão; null = natural
+// transição suave: a hora e a chuva mostradas andam até o alvo aos poucos (dia→noite ~25 s, chuva ~12 s)
+function wtSmooth(natPh, natRain) {
+  const now = typeof performance !== 'undefined' ? performance.now() : Date.now(), dt = Math.min(1, (now - (WT.t || now)) / 1000); WT.t = now;
+  const tPh = WT.ph != null ? WT.ph : natPh, tR = WT.rain != null ? WT.rain : natRain;
+  if (WT.cPh == null) WT.cPh = tPh; if (WT.cRain == null) WT.cRain = tR;
+  let d = ((tPh - WT.cPh) % 1 + 1.5) % 1 - 0.5; const sp = 0.02 * dt; WT.cPh = Math.abs(d) <= sp ? tPh : ((WT.cPh + Math.sign(d) * sp) % 1 + 1) % 1;
+  const dr = tR - WT.cRain, rs = 0.085 * dt; WT.cRain = Math.abs(dr) <= rs ? tR : WT.cRain + Math.sign(dr) * rs;
+}
 function dayInfo() {
-  const ph = typeof G !== 'undefined' && G.devTime ? (G.devTime === 'day' ? 0.06 : 0.5) : WT.ph != null ? WT.ph : (Date.now() % DAY_CYCLE_MS) / DAY_CYCLE_MS;
+  if (WT.t !== -1) wtSmooth((Date.now() % DAY_CYCLE_MS) / DAY_CYCLE_MS, WT.cRain ?? 0);
+  const ph = typeof G !== 'undefined' && G.devTime ? (G.devTime === 'day' ? 0.06 : 0.5) : WT.cPh;
   const sk = typeof seasonNow === 'function' ? seasonNow().k : 'spring', sun = Math.cos(ph * Math.PI * 2) + ({ summer: 0.16, winter: -0.14, autumn: -0.04, spring: 0.04 })[sk];
   const k = clamp((0.15 - sun) / 0.65, 0, 1);
   const dark = smooth(k) * 0.62;
@@ -32,7 +41,7 @@ function sunShadow(day) {
 // clima global (chuva em alguns períodos — igual para todos)
 function weatherNow() {
   const t = Date.now() / 1000;
-  const rain = WT.rain != null ? WT.rain : clamp((Math.sin(t / 260) + Math.sin(t / 97) * 0.4 - 0.75) * 2.2, 0, 1);
+  const nat = clamp((Math.sin(t / 260) + Math.sin(t / 97) * 0.4 - 0.75) * 2.2, 0, 1); wtSmooth((Date.now() % DAY_CYCLE_MS) / DAY_CYCLE_MS, nat); const rain = WT.cRain;
   return { rain, wind: 0.6 + Math.sin(t / 40) * 0.4 };
 }
 function spawnPart(kind, x, y, extra) {
@@ -44,6 +53,7 @@ function spawnPart(kind, x, y, extra) {
     case 'leaf': p.life = 4200; p.vy = 0.006; p.vx = 0.004; p.color = p.color || (Math.random() < 0.5 ? '#6a9a42' : '#b8902a'); break;
     case 'butterfly': p.life = 7000; p.color = pick(['#e889b0', '#e8d04a', '#a8c8f0', '#f0a860', '#f2ede0']); break;
     case 'firefly': p.life = 5000; break;
+    case 'chip': p.life = 650 + Math.random() * 250; { const a = -Math.PI / 2 + (Math.random() - 0.5) * 2.2, s = 0.03 + Math.random() * 0.05; p.vx = Math.cos(a) * s; p.vy = Math.sin(a) * s; } break;
     case 'spark': p.life = 350 + Math.random() * 300; { const a = Math.random() * Math.PI * 2, s = 0.025 + Math.random() * 0.06; p.vx = Math.cos(a) * s; p.vy = Math.sin(a) * s * 0.6 - 0.025; } break;
     case 'sparkle': p.life = 900; p.vy = -0.015 - Math.random() * 0.01; p.vx = (Math.random() - 0.5) * 0.005; break;
     case 'dust': p.life = 450; p.vx = (Math.random() - 0.5) * 0.01; p.vy = -0.004; break;
@@ -64,7 +74,7 @@ function drawParticles(ctx, ox, oy, now, dt) {
     keep.push(p);
     const t = age / p.life;
     p.x += p.vx * dt; p.y += p.vy * dt;
-    if (p.kind === 'blood' || p.kind === 'shard') p.vy += 0.00012 * ART * dt;
+    if (p.kind === 'blood' || p.kind === 'shard' || p.kind === 'chip') p.vy += 0.00012 * ART * dt;
     const x = Math.round(p.x + ox), y = Math.round(p.y + oy);
     switch (p.kind) {
       case 'smoke': softDab(ctx, x + Math.sin(age / 500 + p.seed) * 4, y, 5 + t * 14, '#8a8a8a', 0.4 * (1 - t)); break;
@@ -86,6 +96,7 @@ function drawParticles(ctx, ox, oy, now, dt) {
       case 'sparkle': ctx.fillStyle = (p.color || 'rgba(255,240,150,A)').replace('A', String(1 - t)); ctx.fillRect(x, y - 1, 1, 3); ctx.fillRect(x - 1, y, 3, 1); break;
       case 'dust': ctx.fillStyle = `rgba(170,150,110,${0.45 * (1 - t)})`; ctx.fillRect(x - 1, y, 2 + Math.round(t * 2), 1); break;
       case 'shard': ctx.fillStyle = `rgba(210,240,255,${1 - t})`; ctx.fillRect(x, y, 1, 2); break;
+      case 'chip': ctx.globalAlpha = t > 0.7 ? (1 - t) / 0.3 : 1; ctx.fillStyle = p.color; ctx.fillRect(x, y, 2, 1); ctx.globalAlpha = 1; break;
       case 'mist': softDab(ctx, x, y, 6 + t * 12, '#eef6ff', 0.4 * (1 - t)); break;
       case 'snow': ctx.fillStyle = `rgba(240,248,255,${1 - t})`; ctx.fillRect(x, y, 1, 1); break;
       case 'blood': ctx.fillStyle = `rgba(150,30,30,${1 - t})`; ctx.fillRect(x, y, 1, 1); break;
@@ -296,6 +307,7 @@ function heroPoseFor(e, now) {
   P.uni = ((e.stb || 0) >> 7) & 7 || undefined;
   P.wpn = e.cls === 'knight' && ((e === G.me ? e.wpn === 'halberd' : (e.stb & 64))) ? 'halberd' : undefined;
   if (e === G.me && G.melee && !e.anim) { const k = G.melee.k, held = now - G.melee.t0; P.act = { k: 'atk_' + k, f: Math.min(4, Math.floor(held / 60)) }; }
+  if (e.anim && e.anim.tool && actProg(e.anim, now) >= 0) P.tool = e.anim.tool;
   if (e.anim) { const t = actProg(e.anim, now); if (e.anim.a === 'adore' && (e.anim.ms || 0) > 3000) { if (now - e.anim.t0 < e.anim.ms) P.act = { k: 'adore', f: Math.min(9, Math.floor((now - e.anim.t0) / 80)) }; } else if (t >= 0 && ACTS[e.anim.a]) P.act = { k: e.anim.a, f: Math.min(11, Math.floor(t * 12)) }; }
   if (!P.act && typeof bowPose === 'function') { const bp = bowPose(e, now); if (bp) P.act = bp; }
   if (!e.isNpc) { P.lost = e.lost || 0; P.pro = e.pro || 0; }
@@ -1010,7 +1022,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       }
       if (it.o === O.TOWER) { const p = iso(it.x - 0.5, it.y - 0.5), s = towerSprite(WORLD.tvar[it.y * MAP_W + it.x], WORLD.toff[it.y * MAP_W + it.x]); blitV(s, p.sx + ox, p.sy + oy, it.d); return; }
       const s = seasonTint(objSprite(it.o, it.x, it.y), it.o);
-      if (s) { const sw = SWAY[it.o] ? wind(it.x, it.y, now) * SWAY[it.o] * (0.7 + ATM.wind * 0.6) : 0; if (s.h > 60 && occTest(s, it.sx, it.sy, it.d)) pblit(ctx, s, it.sx, it.sy, 0.42); else drawSway(ctx, s, it.sx, it.sy, sw); }
+      if (s) { const shk = G.objShake && G.objShake[it.y * MAP_W + it.x], sw = (SWAY[it.o] ? wind(it.x, it.y, now) * SWAY[it.o] * (0.7 + ATM.wind * 0.6) : 0) + (shk && now < shk ? Math.sin(now / 35) * 0.06 * (shk - now) / 450 : 0); if (s.h > 60 && occTest(s, it.sx, it.sy, it.d)) pblit(ctx, s, it.sx, it.sy, 0.42); else drawSway(ctx, s, it.sx, it.sy, sw); }
       liveParts(ctx, it.o, it.sx, it.sy, it.x, it.y, now);
       if (it.o === O.MUSHROOM) { const z = zoneAt(it.x, it.y); if (z === Z.SWAMP || (z === Z.FOREST && hash2(it.x, it.y, 17) < 0.3)) G.lights.push({ x: it.sx, y: it.sy - 8, r: 16, c: '90,200,240', a: 0.6 }); }
       return;

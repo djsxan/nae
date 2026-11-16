@@ -152,7 +152,8 @@ function clientOnServer(m) {
     case 'anim': {
       const e = (m.w === 'p' ? G.players : m.w === 'n' ? G.npcs : G.monsters)[m.id];
       if (!e) break;
-      e.anim = { a: m.a, t0: now, tx: m.tx, ty: m.ty, ms: m.ms, W: m.W, ang: m.ang, reach: m.reach, arc: m.arc }; e.emote = null;
+      e.anim = { a: m.a, t0: now, tx: m.tx, ty: m.ty, ms: m.ms, W: m.W, ang: m.ang, reach: m.reach, arc: m.arc, tool: m.tool }; e.emote = null;
+      if (m.tool && m.i) { const ti = m.i, tl = m.tool; if (m.w === 'p') e.dir = dirFromVec((ti % MAP_W) - e.rx, Math.floor(ti / MAP_W) - e.ry, e.dir); later(tl === 'sickle' ? 380 : 330, () => gatherFx(ti, tl)); }
       if (m.w === 'n') { if (m.a === 'adore' && m.ms > 3000) { e.bubble = { t: '✦', until: now + m.ms }; e.reactT = now + m.ms; if (m.tx != null) e.dir = dirFromVec(m.tx - e.rx, m.ty - e.ry, e.dir); } else if (m.a === 'look' && e.bubble && e.bubble.t === '✦') e.bubble = null; if (m.a === 'shout') { e.bubble = { t: m.txt || 'Guardas!', until: now + 2500 }; e.anim = null; } if (m.a === 'talk') { e.bubble = { t: m.txt || '...', until: now + 2600 + (m.txt || '').length * 60 }; e.anim = null; } if (m.a === 'mercy') { e.bubble = { t: m.txt || 'Misericórdia!', until: now + 3000 }; e.anim = null; } }
       if (m.a === 'execute' && m.id === G.myId) later(380, () => { G.shake = Math.max(G.shake, 6); });
       if (m.tx != null && m.w === 'p' && m.a !== 'spin') e.dir = dirFromVec(m.tx - e.rx, m.ty - e.ry, e.dir);
@@ -182,6 +183,7 @@ function clientOnServer(m) {
     case 'err': showToast(m.text); break;
     case 'wv': gmWvEvent(m); break;
     case 'coins': coinEvent(m, now); break;
+    case 'pmap': G.pmap = m.l; break;
     case 'wt': WT.ph = m.ph ?? null; WT.rain = m.rain ?? null; break;
     case 'denied': askRoomPw(m.why === 'pwbad'); break;
     case 'roompw': G.roomLocked = m.on; pzRoomRefresh(); break;
@@ -685,13 +687,16 @@ function updateSlots(now) {
 // sem chat: avisos aparecem no canto e somem sozinhos; tudo fica guardado no histórico (aba Avisos do menu)
 G.noteLog = [];
 function noteLog(name, text, kind) { G.noteLog.push({ t: Date.now(), name: name || '', text: String(text), kind: kind || (name ? 'say' : 'sys') }); if (G.noteLog.length > 300) G.noteLog.shift(); if (typeof pauseNotesRefresh === 'function') pauseNotesRefresh(); }
+// chat: fica no canto; parado, quase some (modo "Some quando parado"); Enter abre para digitar. Tudo fica também na aba Avisos.
 function addChat(name, text) {
   noteLog(name, text);
-  const box = $('notes'); if (!box) return; const line = document.createElement('div'); line.className = 'note' + (name ? ' say' : '');
+  const log = $('chat-log'); if (!log) return; const line = document.createElement('div'); line.className = name ? 'say' : 'sys';
   if (name) { const b = document.createElement('b'); b.textContent = name + ': '; line.append(b, document.createTextNode(text)); } else line.textContent = text;
-  box.appendChild(line); while (box.children.length > 5) box.firstChild.remove();
-  setTimeout(() => { line.classList.add('out'); setTimeout(() => line.remove(), 700); }, 6500 + Math.min(4000, text.length * 25));
+  log.appendChild(line); while (log.children.length > 60) log.firstChild.remove(); log.scrollTop = log.scrollHeight; chatWake();
 }
+function chatWake(ms = 7000) { const c = $('chat'); if (!c) return; c.classList.add('awake'); clearTimeout(G.chatT); G.chatT = setTimeout(() => { if (document.activeElement !== $('chat-input')) c.classList.remove('awake'); }, ms); }
+function chatOpen() { if (SET.chat === 'off') return; const i = $('chat-input'), c = $('chat'); c.classList.add('typing', 'awake'); i.focus(); }
+function chatClose() { const i = $('chat-input'), c = $('chat'); i.blur(); c.classList.remove('typing'); chatWake(2500); }
 let toastTimer = 0;
 function showToast(text) { noteLog('', text, 'tip'); const t = $('toast'); t.textContent = text; t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 2600); }
 let bannerTimer = 0;
@@ -787,7 +792,8 @@ function npcUnderMouse(mx, my) {
 }
 function openDialog(id) {
   { const e = G.npcs[id]; if (e && (e.npDead || e.npDown)) { showToast(e.npDead ? e.name + ' está morto.' : e.name + ' está caído.'); return; } }
-  const n = NPCS.find(q => q.id === id), def = NPC_DIALOG[n.id === 'captain' ? 'captain' : n.kind];
+  const n = NPCS.find(q => q.id === id) || G.npcs[id]; if (!n) return; const def = NPC_DIALOG[n.id === 'captain' ? 'captain' : n.kind];
+  if (!def) { showToast((n.name || 'Essa pessoa').split(',')[0] + ' não quer conversar agora.'); return; }
   G.dialog = { id };
   $('dlg-name').textContent = n.name; G.dlgOp = null; if (n.kind !== 'guard' && n.kind !== 'captain') Net.send({ t: 'op', id: n.id });
   setDialogText(n.id === 'fruit' && !LIFE.atStall ? LIFE.busyText : def.greet);
@@ -822,6 +828,7 @@ function buildDialogOptions(id) {
     add('Como funciona a cadeia?', () => setDialogText('Quem é pego pelas sentinelas fica aqui o tempo da pena: agressão 2 minutos, ataque à traição 3, assassinato 6. Dormir no catre faz o tempo passar mais rápido. Fiança: 30 de ouro por minuto que falta. E nada de mexer nas fechaduras, ouviu?'));
   } else {
     const def = NPC_DIALOG[n.kind];
+    if (typeof shiftHere === 'function' && shiftHere() && !(G.shiftUntil > performance.now())) add('Trabalhar um turno aqui (2 min e meio)', () => { closeDialog(); Net.send({ t: 'shift', a: 'start' }); });
     for (const [label, act] of def.opts) add(label, () => { const P = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null; if (act.open === 'biz') { if (P && estMine(P.id)) { closeDialog(); bizOpen(P.id); } else setDialogText('Só o dono pode mexer nos livros. ' + (P && G.est.st[P.id] ? 'Este ponto é de ' + G.est.st[P.id].replace('★', '') + '.' : 'Este ponto está à venda: fale com Mestre Anselmo, na Imobiliária.')); } else if (act.open === 'bank') { closeDialog(); bankOpen(); } else if (act.job) { closeDialog(); Net.send({ t: 'job', a: 'take', type: act.job }); } else if (act.counter) { if (P) counterOpen(P.id); } else if (act.owner) setDialogText(P && G.est.st[P.id] ? 'Trabalho para ' + G.est.st[P.id].replace('★', '') + '. Paga em dia… quase sempre.' : 'Ninguém, por enquanto. A Coroa vende ou aluga o ponto, e eu venho junto!'); else if (act.open === 'estate') { closeDialog(); estToggle(true, 'house'); } else if (act.local) setDialogText(act.local); else Net.send({ t: 'npc', n: id, ...act }); });
   }
   if (n.kind !== 'guard' && n.kind !== 'captain' && !String(n.id).startsWith('v_')) { const gk = Object.keys(G.me.inv || {}).find(k => G.me.inv[k] > 0 && (FOOD[k] || ['herb', 'gem', 'wand', 'map'].includes(k))); if (gk) add('Dar ' + (LOOT[gk] ? LOOT[gk].name : gk) + ' de presente', () => Net.send({ t: 'gift', id, k: gk })); }
@@ -934,12 +941,6 @@ canvas.addEventListener('mousedown', e => {
     else { G.path = findPath(me.x, me.y, b.x, b.y, me.z, 1); G.pathGoal = G.path ? { x: Math.round(b.x), y: Math.round(b.y) } : null; G.pendingBed = G.path ? bed : null; }
     return;
   }
-  const npc = npcUnderMouse(e.clientX, e.clientY);
-  if (npc) {
-    if (dist(me.x, me.y, G.npcs[npc.id].x, G.npcs[npc.id].y) <= 3 || (npc.id === 'jailer' && me.jl > 0)) openDialog(npc.id);
-    else { G.path = findPath(me.x, me.y, Math.round(npc.x), Math.round(npc.y), me.z, 2); G.pathGoal = G.path ? { x: Math.round(npc.x), y: Math.round(npc.y) } : null; G.pendingNpc = npc.id; }
-    return;
-  }
   if (e.button !== 0 || me.carriedBy) return;
   const w = screenToWorld(e.clientX, e.clientY), tx = Math.round(w.x), ty = Math.round(w.y);
   if (!walkableTile(tx, ty, me.z)) return;
@@ -962,7 +963,6 @@ function inCombatZone() { const me = G.me; return me && !G.paused && !G.dialog &
 // clique em NPC, assento ou cama por perto: conversa/senta/deita em vez de golpear
 function interactHere(e) {
   const me = G.me; if (e.button !== 0 || !me) return false; const ok = (x, y) => dist(me.x, me.y, x, y) <= 3;
-  const n = npcUnderMouse(e.clientX, e.clientY); if (n && ok(G.npcs[n.id].x, G.npcs[n.id].y)) return true;
   const s = seatUnderMouse(e.clientX, e.clientY); if (s >= 0 && WORLD.seats[s] && ok(WORLD.seats[s].x, WORLD.seats[s].y)) return true;
   const b = typeof bedUnderMouse === 'function' ? bedUnderMouse(e.clientX, e.clientY) : -1; if (b >= 0 && ok(BEDS[b].x, BEDS[b].y)) return true;
   return false;
@@ -980,7 +980,9 @@ window.addEventListener('mouseup', e => { if (e.button === 2 && G.parrying) { G.
 
 window.addEventListener('keydown', e => {
   if (!G.started) return;
+  if (document.activeElement === $('chat-input')) { if (e.key === 'Enter') { const i = $('chat-input'), t = i.value.trim(); if (t) Net.send({ t: 'chat', text: t }); i.value = ''; chatClose(); e.preventDefault(); } else if (e.key === 'Escape') chatClose(); return; }
   if (/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '')) return;
+  if (e.key === 'Enter' && !G.paused && !G.dialog) { chatOpen(); e.preventDefault(); return; }
   const k = e.key.toLowerCase();
   if (G.paused) { if (typeof gmKey === 'function' && gmKey(k, e)) e.preventDefault(); return; }
   if (k === 'escape') { if (G.dialog) { closeDialog(); return; } for (const id of ['bankp', 'biz', 'jobboard', 'counterp', 'estate', 'bizhub', 'roompw-ask']) { const el = $(id); if (el && !el.classList.contains('hidden') && el.parentNode === document.body && el.offsetParent !== null) { if (id === 'biz' && typeof bizClose === 'function') bizClose(); else if (id === 'estate') estToggle(false); else if (id === 'bizhub') hubToggle(false); else el.classList.add('hidden'); return; } } togglePause(); return; }
@@ -998,6 +1000,7 @@ window.addEventListener('keydown', e => {
   if (k === 'f' && !e.repeat && typeof jailKeyF === 'function' && jailKeyF()) return;
   if (k === 'f' && !e.repeat && typeof nearStove === 'function' && nearStove() && !nearestDowned()) { openCook(); return; }
   if (k === 'f' && !e.repeat && !nearestDowned() && !nearCorpse() && typeof jobsF === 'function' && jobsF(e)) return;
+  if (k === 'f' && !e.repeat && !nearestDowned() && talkF()) return;
   if (k === 'f' && !e.repeat && !nearestDowned() && !nearCorpse() && typeof estateF === 'function' && estateF()) return;
   if (k === 'f' && !e.repeat && !nearestDowned() && !nearCorpse() && survivalAction()) return;
   if (k === 'f' && !e.repeat && (G.me.arw || []).length && !nearestDowned() && !nearCorpse()) { Net.send({ t: 'pullarrow' }); return; }   // arrancar flecha cravada
@@ -1018,6 +1021,7 @@ window.addEventListener('keydown', e => {
   if (k === 'l' && !e.repeat) { GM.biz = 'est'; gmToggle('biz'); return; }
   if (k === 'n' && !e.repeat) { GM.biz = 'hub'; gmToggle('biz'); return; }
   if ((k === '5' || k === '6' || k === '7') && !e.repeat) { Net.send({ t: 'tskill', b: +k - 5, a: G.me.fa ?? 0, id: G.target || 0 }); return; }
+  if (k === '8' && !e.repeat) { Net.send({ t: 'tskill', b: 2, n: 5, a: G.me.fa ?? 0 }); return; }
   if (k === 'm' && !e.repeat) { toggleWorldMap(); return; }
   if (k === 't') { if (!e.repeat) openEmoteWheel(); return; }
   if (k === ' ' && G.pick) { e.preventDefault(); if (!e.repeat) lockpickKey(); return; }
@@ -1156,7 +1160,7 @@ function startGame() {
   $('btn-attack').onclick = attackNearest;
   if (matchMedia('(pointer: coarse)').matches) document.body.classList.add('touch');
   if (!$('btn-crouch')) { const b = document.createElement('button'); b.id = 'btn-crouch'; b.textContent = '⤓'; b.title = 'Agachar'; document.body.appendChild(b); b.addEventListener('click', () => { G.crouchToggle = !G.crouchToggle; b.classList.toggle('on', G.crouchToggle); }); }
-  addChat('', `Bem-vindo a Nae, ${G.me.name}. Fale com os moradores clicando neles. Esc abre o menu.`);
+  addChat('', `Bem-vindo a Nae, ${G.me.name}. Chegue perto dos moradores e aperte F para falar. Enter abre o chat, Esc abre o menu.`);
 
 }
 
@@ -1436,9 +1440,11 @@ function drawWorldMap() {
   BUILDINGS.forEach((b, bi) => { const ic = mapIconOf(b, bi); if (!ic) return; const [dx, dy] = doorTile(b); if (!seen(dx, dy) && !G.dev) return; const [px, py] = P(dx, dy); if (px < -10 || py < -10 || px > size + 10 || py > size + 10) return; mapIcon(x, ic, px, py, R); G.mapIcons.push({ px, py, name: (b.name || (ic === 'home' ? 'Sua casa' : '')) }); });
   if (G.mapHover) { const h = G.mapHover; x.font = '700 12px "Alegreya Sans SC", sans-serif'; const w = x.measureText(h.name).width + 12; x.fillStyle = 'rgba(42,26,10,0.88)'; x.fillRect(h.px - w / 2, h.py - R - 22, w, 17); x.fillStyle = '#f4e4b8'; x.fillText(h.name, h.px, h.py - R - 13); }
   for (const gt of WORLD.gates) { const gx = (gt.x0 + gt.x1) / 2, gy = gt.vert ? (gt.y0 + gt.y) / 2 : gt.y; if (gt.kind !== 'keep' && seen(gx, gy)) mark(gx, gy, false); }
-  // jogadores
-  for (const id in G.players) {
-    const e = G.players[id]; if (!e.visible && id !== G.myId) continue;
+  // jogadores: todos do reino (os longe vêm da lista que o anfitrião manda a cada 2 s)
+  const pl = {}; for (const [id, x, y, name, dv] of G.pmap || []) if (!dv || G.dev) pl[id] = { rx: x, ry: y, name };
+  for (const id in G.players) { const e = G.players[id]; if (e.visible || id === G.myId) pl[id] = e; }
+  for (const id in pl) {
+    const e = pl[id];
     const [px, py] = P(e.rx, e.ry), me = id === G.myId;
     x.beginPath(); x.arc(px, py, me ? 6 : 4.5, 0, 7); x.fillStyle = me ? '#c8281e' : '#2a5ab8'; x.fill(); x.lineWidth = 1.5; x.strokeStyle = '#f4e8c8'; x.stroke();
     x.font = '600 11px "Alegreya Sans SC", sans-serif'; x.fillStyle = '#2a1a0a'; x.fillText(e.name, px, py - 12);
@@ -1462,6 +1468,7 @@ function updateGates(dt) {
 // ============================================================
 function applySettings() {
   canvas.style.filter = SET.bright !== 1 ? 'brightness(' + SET.bright + ')' : '';
+  { const c = $('chat'), m = SET.chat || 'fade'; if (c) { c.classList.toggle('fade', m === 'fade'); c.classList.toggle('off', m === 'off'); } for (const b of document.querySelectorAll('#pz-chat button')) b.classList.toggle('on', b.dataset.c === m); }
   if (typeof S3 !== 'undefined' && S3.ok) S3.renderer.shadowMap.enabled = SET.quality !== 'low';
   for (const b of document.querySelectorAll('#pz-quality button')) b.classList.toggle('on', b.dataset.q === SET.quality);
   $('pz-bright').value = SET.bright; $('pz-bright-v').textContent = Math.round(SET.bright * 100) + '%';
@@ -1475,6 +1482,7 @@ function applySettings() {
 for (const b of document.querySelectorAll('#pz-tele button')) b.addEventListener('click', () => { SET.tele = b.dataset.t; saveSettings(); applySettings(); });
 for (const b of document.querySelectorAll('#pz-duel button')) b.addEventListener('click', () => { SET.duel = b.dataset.d === '1'; saveSettings(); applySettings(); Net.send({ t: 'duel', on: SET.duel ? 1 : 0 }); showToast(SET.duel ? 'Modo duelo LIGADO: outros jogadores em duelo podem te atingir fora da cidade.' : 'Modo duelo desligado.'); });
 for (const b of document.querySelectorAll('#pz-phys button')) b.addEventListener('click', () => { SET.phys = b.dataset.p; saveSettings(); applySettings(); });
+for (const b of document.querySelectorAll('#pz-chat button')) b.addEventListener('click', () => { SET.chat = b.dataset.c; saveSettings(); applySettings(); });
 $('pz-pad').addEventListener('input', e => { SET.pad = +e.target.value; saveSettings(); applySettings(); });
 function togglePause(force) {
   if (typeof gmToggle === 'function') { if (force === false) gmClose(); else if (force === true) gmOpen(); else gmToggle(); return; }
@@ -1800,7 +1808,7 @@ function mapIcon(x, ic, px, py, R) {
 
 // ---------- beber água de verdade: anda até a beira (se longe), vira de frente para a água e só então se abaixa ----------
 const isWaterAt = (x, y) => { if (!inBounds(x, y)) return false; const i = y * MAP_W + x, gr = WORLD.ground[i], o = WORLD.obj[i]; return gr === T.WATER || gr === T.SHALLOW || o === O.WELL || o === O.FOUNTAIN; };
-function drinkFace(w) { const me = G.me; me.dir = dirFromVec(w.x - me.x, w.y - me.y, me.dir); me.walking = false; Net.send({ t: 'drinkw', dir: me.dir, fa: Math.atan2(w.y - me.y, w.x - me.x) }); }
+function drinkFace(w) { const me = G.me; me.dir = dirFromVec(w.x - me.x, w.y - me.y, me.dir); me.walking = false; G.busyUntil = performance.now() + 1700; G.busyFace = { x: w.x, y: w.y }; Net.send({ t: 'drinkw', dir: me.dir, fa: Math.atan2(w.y - me.y, w.x - me.x) }); }
 function drinkGo() {
   const me = G.me; if (!me) return false; let best = null, bd = 4.6;
   for (let y = Math.round(me.y) - 4; y <= Math.round(me.y) + 4; y++) for (let x = Math.round(me.x) - 4; x <= Math.round(me.x) + 4; x++) if (isWaterAt(x, y)) { const d = dist(me.x, me.y, x, y); if (d < bd) { bd = d; best = { x, y }; } }
@@ -1817,4 +1825,37 @@ function drinkTick() {
   const w = G.drinkAt, me = G.me; if (!w || !me) return;
   if (G.path && G.path.length) return;   // ainda andando
   G.drinkAt = null; if (dist(me.x, me.y, w.x, w.y) <= 2.4) drinkFace(w);
+}
+
+// lascas de madeira e a árvore balançando; lascas de pedra e poeira; pedaços de mato
+function gatherFx(i, tool) {
+  const x = i % MAP_W, y = Math.floor(i / MAP_W), p = iso(x, y), col = tool === 'axe' ? ['#8a5a2a', '#c89858', '#6a4020'] : tool === 'pickaxe' ? ['#9a9690', '#c8c4bc', '#6a665e'] : ['#6a9a42', '#9ac060', '#c8b060'];
+  const h = tool === 'axe' ? 16 : tool === 'pickaxe' ? 6 : 3;
+  for (let k = 0; k < (tool === 'sickle' ? 6 : 8); k++) spawnPart('chip', p.sx + (Math.random() - 0.5) * 8, p.sy - h - Math.random() * 6, { color: col[k % 3] });
+  if (tool === 'pickaxe') for (let k = 0; k < 4; k++) spawnPart('dust', p.sx + (Math.random() - 0.5) * 10, p.sy - 2);
+  if (tool === 'axe') { G.objShake = G.objShake || {}; G.objShake[i] = performance.now() + 450; }
+}
+
+// ---------- F: conversar com o NPC mais perto (ou doar para o jogador mais perto) ----------
+function talkTarget() {
+  const me = G.me; if (!me || me.downed) return null; let best = null, bd = 2.3;
+  for (const id in G.npcs) { const e = G.npcs[id]; if (e.npDead || e.npDown || e.onBackBy || e.dragged) continue; const d = dist(me.x, me.y, e.rx ?? e.x, e.ry ?? e.y); if (d < bd) { bd = d; best = { k: 'n', id, name: (e.name || '').split(',')[0] }; } }
+  if (!best && me.jl > 0 && G.npcs.jailer) best = { k: 'n', id: 'jailer', name: 'Bruno' };   // preso fala com o carcereiro de dentro da cela
+  for (const id in G.players) { const q = G.players[id]; if (q === me || q.downed || !q.visible) continue; const d = dist(me.x, me.y, q.rx, q.ry); if (d < Math.min(bd, 1.9)) { bd = d; best = { k: 'p', id, name: q.name }; } }
+  return best;
+}
+function talkF() { const t = talkTarget(); if (!t) return false; if (t.k === 'n') openDialog(t.id); else giveOpen(t.id); return true; }
+// doar ouro e itens para outro jogador (chega na hora)
+function giveOpen(pid) {
+  const q = G.players[pid], me = G.me; if (!q) return;
+  let d = $('givep'); if (!d) { d = document.createElement('div'); d.id = 'givep'; d.className = 'gpanel'; document.body.appendChild(d); }
+  const items = Object.entries(me.inv || {}).filter(([k, n]) => n > 0 && LOOT[k]);
+  d.innerHTML = '<div class="gp-head"><span>Dar para ' + q.name.replace(/</g, '') + '</span><span class="gp-gold"><span class="coin"></span><b>' + me.gold + '</b></span><button class="gp-x" id="gv-x">✕</button></div>' +
+    '<div class="gp-sub">Ouro</div><div class="bk-row"><input id="gv-q" type="number" min="1" max="' + me.gold + '" placeholder="Quantia"><button class="est-btn" id="gv-gold">Dar ouro</button></div>' +
+    '<div class="gp-sub">Itens</div><div class="gv-items">' + (items.length ? items.map(([k, n]) => '<button class="gv-it" data-k="' + k + '" title="' + LOOT[k].name + ' (clique: 1 · Shift+clique: todos)"><span style="color:' + LOOT[k].color + '">' + LOOT[k].icon + '</span><small>' + n + '</small></button>').join('') : '<div class="gp-note">Mochila vazia.</div>') + '</div>' +
+    '<div class="gp-note">Clique num item para dar 1 (Shift+clique dá todos). Chega na hora; os dois recebem o aviso.</div>';
+  d.classList.remove('hidden');
+  d.querySelector('#gv-x').onclick = () => d.classList.add('hidden');
+  d.querySelector('#gv-gold').onclick = () => { const v = Math.floor(+d.querySelector('#gv-q').value || 0); if (v > 0) Net.send({ t: 'pgive', to: pid, gold: v }); setTimeout(() => giveOpen(pid), 350); };
+  d.querySelectorAll('.gv-it').forEach(b => b.onclick = ev => { const k = b.dataset.k; Net.send({ t: 'pgive', to: pid, k, n: ev.shiftKey ? (me.inv[k] || 1) : 1 }); setTimeout(() => giveOpen(pid), 350); });
 }

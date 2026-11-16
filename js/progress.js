@@ -13,7 +13,7 @@ function speedMul() {
 const CONST_SHAPES = [   // posições (0..1) dos 5 astros de cada ramo, de baixo para cima
   [[0.5, 0.9], [0.3, 0.72], [0.62, 0.55], [0.35, 0.36], [0.55, 0.14]],
   [[0.5, 0.9], [0.7, 0.72], [0.4, 0.56], [0.66, 0.37], [0.45, 0.14]],
-  [[0.5, 0.9], [0.32, 0.7], [0.58, 0.52], [0.3, 0.34], [0.6, 0.14]],
+  [[0.5, 0.9], [0.32, 0.7], [0.58, 0.52], [0.3, 0.34], [0.6, 0.14], [0.84, 0.3]],
 ];
 const SVGNS = 'http://www.w3.org/2000/svg';
 const svgEl = (t, a) => { const e = document.createElementNS(SVGNS, t); for (const k in a) e.setAttribute(k, a[k]); return e; };
@@ -35,7 +35,7 @@ function updateTree() {
     const title = svgEl('text', { x: x0 + colW / 2, y: 34, class: 'tr-btitle' }); title.textContent = b.icon + '  ' + b.name; svg.appendChild(title);
     const sub = svgEl('text', { x: x0 + colW / 2, y: 52, class: 'tr-bsub' }); sub.textContent = bp + ' pontos'; svg.appendChild(sub);
     // linhas da constelação: acesas até onde o ramo já liberou
-    for (let i = 0; i < pos.length - 1; i++) { const lit = bp >= TREE_REQ[i + 1]; svg.appendChild(svgEl('line', { x1: pos[i][0], y1: pos[i][1], x2: pos[i + 1][0], y2: pos[i + 1][1], class: 'tr-link' + (lit ? ' lit' : '') })); }
+    for (let i = 0; i < Math.min(pos.length, b.nodes.length) - 1; i++) { const lit = bp >= TREE_REQ[i + 1]; svg.appendChild(svgEl('line', { x1: pos[i][0], y1: pos[i][1], x2: pos[i + 1][0], y2: pos[i + 1][1], class: 'tr-link' + (lit ? ' lit' : '') })); }
     b.nodes.forEach((nd, i) => {
       const [x, y] = pos[i], r = (me.tree && me.tree[nd.id]) | 0, unlocked = bp >= TREE_REQ[i], can = unlocked && free > 0 && r < nd.max, R = nd.skill ? 15 : 10;
       const g = svgEl('g', { class: 'tr-star' + (r ? ' got' : '') + (can ? ' can' : '') + (!unlocked ? ' locked' : ''), transform: `translate(${x},${y})` });
@@ -44,7 +44,7 @@ function updateTree() {
       else g.appendChild(svgEl('circle', { r: R * 0.55, class: 'tr-core' }));
       for (let k = 0; k < nd.max && !nd.skill; k++) { const a = -Math.PI / 2 + (k - (nd.max - 1) / 2) * 0.55; g.appendChild(svgEl('circle', { cx: Math.cos(a) * (R + 6), cy: Math.sin(a) * (R + 6), r: 2, class: 'tr-rank' + (k < r ? ' on' : '') })); }
       const lb = svgEl('text', { y: R + 18, class: 'tr-name' }); lb.textContent = nd.name; g.appendChild(lb);
-      const tip = nd.desc + (nd.skill ? ' · Mana ' + nd.mp + ' · Recarga ' + nd.cd / 1000 + 's · Tecla ' + (5 + bi) : ' · ' + r + '/' + nd.max) + (!unlocked ? ' · Precisa de ' + TREE_REQ[i] + ' pontos em ' + b.name + '.' : can ? ' · Clique para aprender.' : '');
+      const tip = nd.desc + (nd.skill ? ' · Mana ' + nd.mp + ' · Recarga ' + nd.cd / 1000 + 's · Tecla ' + (nd.key || 5 + bi) : ' · ' + r + '/' + nd.max) + (!unlocked ? ' · Precisa de ' + TREE_REQ[i] + ' pontos em ' + b.name + '.' : can ? ' · Clique para aprender.' : '');
       g.addEventListener('mouseenter', () => { $('tree-info').innerHTML = '<b>' + nd.name + '</b> — ' + tip; });
       g.addEventListener('click', () => { if (can) Net.send({ t: 'tlearn', id: nd.id }); else if (!unlocked) showToast('Gaste ' + TREE_REQ[i] + ' pontos em ' + b.name + ' para liberar.'); else if (!free) showToast('Sem pontos livres: suba de nível.'); });
       svg.appendChild(g);

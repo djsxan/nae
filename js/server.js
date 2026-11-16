@@ -224,10 +224,17 @@ function hostOnClient(from, m) {
     case 'pot': if (!p.downed) usePot(p, m.k); break;
     case 'npc': npcAction(p, m); break;
     case 'gather': sheatheToggle(p, true, true); gather(p, m); break;
-    case 'gathering': near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: m.a === 'crouch' ? 'gather' : 'atk_slashR', ms: 700 }); break;
+    case 'gathering': { const tool = ['axe', 'pickaxe', 'sickle'].includes(m.tool) ? m.tool : 'axe'; p.taskT = now_(); near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: tool === 'axe' ? 'chop' : tool === 'pickaxe' ? 'pickswing' : 'reap', ms: 750, tool, i: m.i | 0 }); break; }
     case 'job': jobMsg(p, m); break;
     case 'wv': wvMsg(p, m); break;
-    case 'sheathe': sheatheToggle(p); break;
+    case 'sheathe': p.autoShea = false; sheatheToggle(p); break;
+    case 'pgive': {   // doar ouro/itens para outro jogador por perto
+      const q = S.players[m.to]; if (!q || q === p || p.downed || dist(p.x, p.y, q.x, q.y) > 3) { tell(p, 'Chegue mais perto para dar.'); break; }
+      if (m.gold) { const v = Math.min(Math.floor(+m.gold || 0), p.gold); if (v <= 0) break; p.gold -= v; q.gold += v; tell(p, 'Você deu ' + v + ' de ouro para ' + q.name + '.'); tell(q, p.name + ' te deu ' + v + ' de ouro.'); }
+      else { const k = String(m.k), n = Math.min(Math.floor(+m.n || 1), p.inv[k] || 0); if (!LOOT[k] || n <= 0) break; if (!q.inv[k] && Object.keys(q.inv).length >= INV_SLOTS) { tell(p, 'A mochila de ' + q.name + ' está cheia.'); break; }
+        p.inv[k] -= n; if (!p.inv[k]) delete p.inv[k]; q.inv[k] = (q.inv[k] || 0) + n; tell(p, 'Você deu ' + n + 'x ' + LOOT[k].name + ' para ' + q.name + '.'); tell(q, p.name + ' te deu ' + n + 'x ' + LOOT[k].name + '.'); }
+      near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'offer', ms: 900, tx: q.x, ty: q.y }); sendStat(p); sendStat(q); break;
+    }
     case 'menu': p.inMenu = !!m.on; break;
     case 'roompw': if (from === Net.myId) { S.roomPw = String(m.pw || '').trim().toUpperCase().slice(0, 24) || null; tell(p, S.roomPw ? 'Reino trancado: quem chegar agora precisa da senha.' : 'Reino aberto: qualquer um pode entrar.'); Net.toOne(from, { t: 'roompw', on: !!S.roomPw }); } break;
     case 'bank': bankMsg(p, m); break;
@@ -579,8 +586,8 @@ function cookOrDrink(p, what) {
     if (!p.inv.cookedmeat && Object.keys(p.inv).length >= INV_SLOTS) { tell(p, 'Inventário cheio.'); return; }
     p.inv.cookedmeat = (p.inv.cookedmeat || 0) + n; useGain(p, 'cook', n); tell(p, n + ' carne' + (n > 1 ? 's assadas' : ' assada') + '.'); sendStat(p);
   } else if (what === 'drink') {
-    let ok = false; for (let y = Math.round(p.y) - 2; y <= Math.round(p.y) + 2 && !ok; y++) for (let x = Math.round(p.x) - 2; x <= Math.round(p.x) + 2; x++) { if (!inBounds(x, y)) continue; const i = y * MAP_W + x, g = WORLD.ground[i], o = WORLD.obj[i]; if ((g === T.WATER || g === T.SHALLOW || o === O.WELL || o === O.FOUNTAIN) && dist(x, y, p.x, p.y) < (o === O.WELL || o === O.FOUNTAIN ? 2.6 : 1.9)) { ok = true; break; } }
-    if (!ok) return; near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'scoop', ms: 1500 }); p.water = 100; if (p.hasSkin) p.pots.water = 5; tell(p, p.hasSkin ? 'Você bebeu e encheu o odre.' : 'Você bebeu até matar a sede.'); sendStat(p);
+    let ok = false; for (let y = Math.round(p.y) - 2; y <= Math.round(p.y) + 2 && !ok; y++) for (let x = Math.round(p.x) - 2; x <= Math.round(p.x) + 2; x++) { if (!inBounds(x, y)) continue; const i = y * MAP_W + x, g = WORLD.ground[i], o = WORLD.obj[i]; if ((g === T.WATER || g === T.SHALLOW || o === O.WELL || o === O.FOUNTAIN) && dist(x, y, p.x, p.y) < (o === O.WELL || o === O.FOUNTAIN ? 2.6 : 1.9)) { ok = { x, y }; break; } }
+    if (!ok) return; near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'scoop', ms: 1500, tx: ok.x, ty: ok.y }); p.water = 100; if (p.hasSkin) p.pots.water = 5; tell(p, p.hasSkin ? 'Você bebeu e encheu o odre.' : 'Você bebeu até matar a sede.'); sendStat(p);
   }
 }
 // morte permanente: o personagem acaba
@@ -2058,7 +2065,7 @@ function cellScene(n, q, L, now) {
   q.x = c.door[0] + ax * 0.9; q.y = c.door[1] + ay * 0.9; q.dir = dirFromVecS(-ax, -ay);
   const ok = () => n.lead && n.lead.tok === tok && S.players[q.id];
   setTimeout(() => { if (!ok()) return; st[i].open = 1; }, 1100);
-  setTimeout(() => { if (!ok()) return; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'shove', ms: 700, tx: c.spot[0], ty: c.spot[1] }); q.x = c.spot[0]; q.y = c.spot[1]; knockPlayer(q, { x: c.door[0] + ax, y: c.door[1] + ay }, now_()); tell(q, 'A sentinela te empurra para dentro da cela.'); }, 1800);
+  setTimeout(() => { if (!ok()) return; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'shove', ms: 700, tx: c.spot[0], ty: c.spot[1] }); q.x = c.spot[0]; q.y = c.spot[1]; q.knockUntil = 0; Net.toOne(q.id, { t: 'tp', x: q.x, y: q.y, z: 0, fl: 0, fb: -1 }); near(q.x, q.y, { t: 'anim', w: 'p', id: q.id, a: 'hurt', ms: 600 }); tell(q, 'A sentinela te empurra para dentro da cela.'); }, 1800);
   setTimeout(() => { if (!ok()) return; q.bound = null; sendStat(q); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'cuff', ms: 900, tx: c.spot[0], ty: c.spot[1] }); }, 2900);
   setTimeout(() => { if (!ok()) return; st[i].open = 0; if (alive) near(jl.x, jl.y, { t: 'anim', w: 'n', id: 'jailer', a: 'key', ms: 1100 }); }, 3800);
   setTimeout(() => { if (!ok()) return; q.dragBy = null; n.lead = null; st[i].who = null; jailPlayer(q, q.sentence || CRIME_MS.assault, { noTp: true, cell: i }); sys(q.name + ' foi trancado na cadeia.'); if (alive) { jl.x = jl.postX; jl.y = jl.postY; } }, 4700);
@@ -2083,7 +2090,7 @@ function useGain(p, k, amt) {
   if (l1 > l0) { if (k === 'vigor') { const r = p.hp / Math.max(1, p.maxHp); p.maxHp = maxHpOf(p); if (!p.downed) p.hp = Math.max(1, Math.round(p.maxHp * r)); } if (l1 % 5 === 0) Net.toOne(p.id, { t: 'usel', k, l: l1 }); }
 }
 function treeSkill(p, b, msg) {
-  const br = TREE[p.cls] && TREE[p.cls][b], nd = br && br.nodes[4]; if (!nd) return;
+  const br = TREE[p.cls] && TREE[p.cls][b], nd = br && br.nodes[msg.n === 5 ? 5 : 4]; if (!nd) return; if (msg.n === 5) b = b + 10;   // segunda habilidade do ramo (recarga própria)
   if (!treeHas(p, nd.id)) { tell(p, 'Aprenda ' + nd.name + ' na árvore de talentos (K).'); return; }
   const now = now_(); p.tcd = p.tcd || {};
   if (p.downed || p.carrying || p.lifted || p.grabbed || now < (p.stunUntil || 0) || now < (p.knockUntil || 0)) return;
@@ -2120,6 +2127,17 @@ function treeSkill(p, b, msg) {
       if (S.monsters[q.id]) { q.stunUntil = Math.max(q.stunUntil, now + 3000); q.atk = null; } near(q.x, q.y, { t: 'icejail', id: q.id, ms: 3000 }); break;
     }
     case 'sanct': anim('p', p, 'heal', p.x, p.y, shout); addZone(p, 'sanct', p.x, p.y, 0, 8000); break;
+    case 'restore': {   // devolve um membro perdido; custa toda a mana e deixa exausto por 1 minuto
+      const lostOf = q => ['armA', 'armB', 'legL', 'legR'].find(k => (q.lost || 0) & LOST[k]);
+      let q = Object.values(S.players).filter(o => o !== p && !o.dev && dist(o.x, o.y, p.x, p.y) < 2.2 && lostOf(o)).sort((a, b2) => dist(a.x, a.y, p.x, p.y) - dist(b2.x, b2.y, p.x, p.y))[0] || (lostOf(p) ? p : null);
+      if (!q) { tell(p, 'Ninguém por perto (nem você) perdeu um membro.'); return; }
+      if (p.mp < p.maxMp * 0.5) { tell(p, 'É preciso pelo menos metade da mana para a Restauração.'); return; }
+      const part = lostOf(q); q.lost &= ~LOST[part]; q.pro = (q.pro || 0) & ~LOST[part]; if (q.body) q.body[part] = 100; if (q.bleed) q.bleed[part] = 0;
+      p.mp = 0; p.cst = 0; p.exhaustUntil = now + 60000; p.slowUntil = Math.max(p.slowUntil || 0, now + 60000); p.lastCombat = now;
+      anim('p', p, 'heal', q.x, q.y, shout); aoe('heal', q.x, q.y, { id: q.id }); near(q.x, q.y, { t: 'restore', id: q.id, part });
+      tell(p, 'A luz atravessa você e devolve ' + (LOST_NAMES[part] || 'o membro') + (q === p ? '.' : ' a ' + q.name + '.') + ' Você fica exausto por 1 minuto.'); if (q !== p) tell(q, p.name + ' restaurou ' + (LOST_NAMES[part] || 'seu membro') + ' com a Luz!');
+      sendStat(q); break;
+    }
   }
   p.mp -= nd.mp; p.tcd[b] = now + nd.cd; p.lastCombat = now; if (p.cls === 'mage') useGain(p, 'magic', 2); sendStat(p);
 }
@@ -2151,7 +2169,8 @@ function hostTick() {
   const dt = S.lastTick ? Math.min(0.25, (now - S.lastTick) / 1000) : 0.1;
   S.lastTick = now;
   const players = Object.values(S.players);
-  estateTick(now); jobsTick(now); coinTick(now); if (now - (S.bankT || 0) > 5000) { S.bankT = now; bankTick(now); }
+  estateTick(now); jobsTick(now); coinTick(now);
+  if (now - (S.pmapT || 0) > 2000) { S.pmapT = now; const l = Object.values(S.players).filter(p => !p.devHidden).map(p => [p.id, Math.round(p.x), Math.round(p.y), p.name, p.dev ? 1 : 0]); if (l.length > 1) Net.toAll({ t: 'pmap', l }); }   // posição de todos no mapa if (now - (S.bankT || 0) > 5000) { S.bankT = now; bankTick(now); }
 
   if (!S.filled) {
     for (let i = 0; i < 8000 && wildCount() < MAX_WILD; i++) spawnMonster();
@@ -2206,7 +2225,7 @@ function hostTick() {
     for (const p of players) {
       if (p.downed || now - p.lastCombat < OUT_OF_COMBAT_MS) continue;
       if (p.hp >= p.maxHp && p.mp >= p.maxMp) continue;
-      let hr = Math.ceil(p.maxHp * 0.04) + 1, mr = Math.ceil(p.maxMp * 0.05) + 1;
+      let hr = Math.ceil(p.maxHp * 0.04) + 1, mr = now < (p.exhaustUntil || 0) ? 0 : Math.ceil(p.maxMp * 0.05) + 1;
       if (p.cls === 'mage') mr *= 2;
       hr = Math.ceil(hr * (1 + treeEff(p, 'regen'))); mr = Math.ceil(mr * (1 + treeEff(p, 'mregen')));
       if (buffOn(p, 'mead')) { hr = Math.ceil(hr * 1.5); mr = Math.ceil(mr * 1.5); }
@@ -2655,7 +2674,7 @@ function memMeet(n, now) {
 function profGain(p, k, amt) { p.prof = p.prof || {}; const before = profLv(p.prof[k]); p.prof[k] = (p.prof[k] || 0) + amt; const after = profLv(p.prof[k]); if (after > before) tell(p, PROFS[k] + ' subiu para o nível ' + after + '!'); }
 function gather(p, m) {
   const i = m.i | 0, o = WORLD.obj[i], x = i % MAP_W, y = Math.floor(i / MAP_W), G0 = gatherOf(o), now = now_();
-  if (!G0 || p.downed || p.bound || dist(p.x, p.y, x, y) > 1.9 || now < (p.gatherT || 0)) return;
+  if (!G0 || p.downed || p.bound || dist(p.x, p.y, x, y) > 1.9 || now < (p.gatherT || 0)) return; p.taskT = now;
   if (!p.inv[G0.tool]) { tell(p, 'Você precisa de ' + LOOT[G0.tool].name.toLowerCase() + ' (Empório do Borin).'); return; }
   const lv = profLv((p.prof || {})[G0.prof]); if (lv < G0.min) { tell(p, 'Precisa de ' + PROFS[G0.prof] + ' nível ' + G0.min + ' para isso.'); return; }
   S.nodeT = S.nodeT || {}; if (now < (S.nodeT[i] || 0)) { tell(p, o === O.TALLGRASS || o === O.FERN ? 'Já colheram aqui. Volta a crescer daqui a pouco.' : 'Já tiraram tudo daqui por enquanto. Volte mais tarde.'); return; }
@@ -2728,6 +2747,7 @@ function shiftEnd(p, done) {
 }
 function jobsTick(now) {
   for (const p of Object.values(S.players)) {
+    if (p.autoShea && p.sheathed && !p.sheT && now - (p.taskT || 0) > 3500 && !p.carrying && !p.drag && !p.shift && !p.downed && !p.bound) { p.autoShea = false; sheatheToggle(p, false); }
     if (p.shift) { const out = WORLD.bld[tileAt(p.x, p.y)] !== p.shift.bi; if (out || p.downed) shiftEnd(p, false); else if (now >= p.shift.until) shiftEnd(p, true); }
     if (p.job && p.downed && p.pkg) { tell(p, 'Você caiu e o pacote se perdeu. Trabalho perdido.'); p.job = null; p.pkg = false; p.uni = 0; Net.toOne(p.id, { t: 'job', job: null }); }
   }
@@ -3028,6 +3048,7 @@ function sheatheToggle(p, force, quiet) {
   const long = p.cls !== 'knight' || p.wpn === 'halberd', ms = long ? 750 : 500;
   p.sheT = now + ms; p.atk = null; p.parry = null; if (want && p.drawT) p.drawT = 0;
   anim('p', p, (want ? 'sheathe' : 'drawwp') + (long ? 'B' : 'H'), p.x, p.y, { ms });
+  if (quiet && want) { p.autoShea = true; p.taskT = now; }
   setTimeout(() => { if (!S.players[p.id]) return; p.sheathed = want; p.sheT = 0; sendStat(p); }, quiet ? 120 : ms);
 }
 
