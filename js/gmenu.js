@@ -8,7 +8,7 @@ const GM = { tab: 'char', on: false, built: false, biz: 'hub', notes: 'all', wv:
 const GM_TABS = [['char', 'Personagem', '🛡'], ['skills', 'Habilidades', '✦'], ['prog', 'Progresso', '📈'], ['journal', 'Jornada', '📜'], ['map', 'Mapa', '🗺'], ['biz', 'Negócios', '🏛'], ['craft', 'Receitas e ofícios', '⚒'], ['notes', 'Avisos', '✉'], ['opts', 'Configurações', '⚙'], ['weaver', 'Tecelão', '👁']];
 const GM_KEYS = { i: 'char', k: 'skills', j: 'journal', m: 'map', n: 'biz', l: 'biz' };
 const gmEsc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
-const gmIsDev = () => !!(G.dev || G.devTools);
+const gmIsDev = () => !!G.dev;   // aba do Tecelão só no modo Tecelão (vocação normal joga como todo mundo)
 
 function gmBuild() {
   if (GM.built) return; GM.built = true;
@@ -136,7 +136,7 @@ function gmWeaver() {
   P.innerHTML = h;
   P.querySelectorAll('[data-wt]').forEach(b => b.onclick = () => { GM.wvTab = b.dataset.wt; gmWeaver(); });
   P.querySelectorAll('[data-wsel]').forEach(b => b.onclick = () => { GM.wvSel = GM.wvSel === b.dataset.wsel ? null : b.dataset.wsel; gmWeaver(); });
-  P.querySelectorAll('[data-wa]').forEach(b => b.onclick = ev => { ev.stopPropagation(); const [op, kind, id, v] = b.dataset.wa.split('|'); if (op === 'follow') { GM.follow = { kind, id }; showToast('Seguindo. Pare no painel do Tecelão.'); gmWeaver(); return; } if (op === 'coins' && v === 'ask') { const q = prompt('Quanto ouro na chuva?', '1000'); if (q == null || !(+q > 0)) return; wvAct('coins', id, kind, Math.round(+q)); return; } if (op === 'gold') { const q = prompt('Quanto ouro dar (negativo tira)?', '100'); if (q == null || !isFinite(+q)) return; wvAct('gold', id, kind, +q); return; } wvAct(op, id, kind, v === undefined ? undefined : (v === 'null' ? null : +v)); });
+  P.querySelectorAll('[data-wa]').forEach(b => b.onclick = ev => { ev.stopPropagation(); const [op, kind, id, v] = b.dataset.wa.split('|'); if (op === 'follow') { GM.follow = { kind, id }; showToast('Seguindo. Pare no painel do Tecelão.'); gmWeaver(); return; } if (op === 'coins' && v === 'ask') { gameAsk('Quanto ouro na chuva?', { input: '1000', type: 'number', yes: 'Chover' }).then(q => { if (q != null && +q > 0) wvAct('coins', id, kind, Math.round(+q)); }); return; } if (op === 'gold') { gameAsk('Quanto ouro dar? (negativo tira)', { input: '100', type: 'number', yes: 'Dar' }).then(q => { if (q != null && q !== '' && isFinite(+q)) wvAct('gold', id, kind, +q); }); return; } wvAct(op, id, kind, v === undefined ? undefined : (v === 'null' ? null : +v)); });
   P.querySelectorAll('[data-wfoll]').forEach(b => b.onclick = () => { GM.follow = null; gmWeaver(); });
   const f = P.querySelector('#wv-filter'); if (f) { f.value = GM.wvFilter || ''; f.oninput = () => { GM.wvFilter = f.value; const pos = f.selectionStart; gmWeaver(); const g = gmPane('weaver').querySelector('#wv-filter'); g.focus(); g.setSelectionRange(pos, pos); }; }
 }

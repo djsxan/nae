@@ -8,7 +8,7 @@ G.biz = { pid: null, d: null, tab: 'geral' };
 const EST_KIND = { house: 'Casas', shop: 'Lojas', workshop: 'Oficinas', mine: 'Meus imóveis' };
 const EST_PERKS = ['🔒 Porta trancada: só você e quem você autorizar entram', '🧰 Baú seguro dentro de casa (F)', '🛏 Acorda em casa quando entra no reino', '✨ Dormir na sua cama recupera mais rápido e dá "Bem descansado"'];
 const SHOP_LABEL = { apoth: 'Boticário: poções e ervas', arcane: 'Arcanos: cristais e varinhas', tailor: 'Alfaiataria: linho e tecidos', scroll: 'Pergaminhos: papel e pergaminho' };
-const WK_LABEL = { saw: 'Serraria: tira madeira sozinha', mine: 'Mina: tira minério (e às vezes cristais)', farm: 'Horta: dá ervas e linho', carp: 'Carpintaria: madeira → varinhas ou papel', alch: 'Alambique: ervas → poções' };
+const WK_LABEL = { forge: 'Forja: madeira + minério → ferramentas (vendidas no balcão do Hrodgar) e consertos', tavern: 'Taverna: serve comida e bebida aos fregueses; linho deixa o serviço melhor',  saw: 'Serraria: tira madeira sozinha', mine: 'Mina: tira minério (e às vezes cristais)', farm: 'Horta: dá ervas e linho', carp: 'Carpintaria: madeira → varinhas ou papel', alch: 'Alambique: ervas → poções' };
 
 function estateEvent(m) {
   if (m.t === 'biz') { bizEvent(m); return true; }
@@ -124,16 +124,16 @@ function estWire() {
   const root = document.getElementById('estate');
   for (const r of root.querySelectorAll('.est-row:not(.biz)')) r.onclick = () => { G.est.sel = r.dataset.pid; estRender(); };
   for (const b of root.querySelectorAll('[data-rent]')) b.onclick = () => Net.send({ t: 'estate', a: 'rent', pid: b.dataset.rent });
-  for (const b of root.querySelectorAll('[data-buy]')) b.onclick = () => { const P = PROPS_BY[b.dataset.buy]; if (confirm('Comprar ' + P.name + '? Fica seu para sempre (imposto de 1 ouro por dia).')) Net.send({ t: 'estate', a: 'buy', pid: b.dataset.buy }); };
+  for (const b of root.querySelectorAll('[data-buy]')) b.onclick = () => { const P = PROPS_BY[b.dataset.buy]; gameAsk('Comprar ' + P.name + ' por ' + P.buy + ' de ouro? Fica seu para sempre (imposto de 7 ouro por semana).', { yes: 'Comprar' }).then(ok => { if (ok) Net.send({ t: 'estate', a: 'buy', pid: b.dataset.buy }); }); };
   for (const b of root.querySelectorAll('[data-tcol]')) b.onclick = ev => { ev.stopPropagation(); Net.send({ t: 'estate', a: 'collect', pid: b.dataset.tcol }); };
-  for (const b of root.querySelectorAll('[data-evict]')) b.onclick = ev => { ev.stopPropagation(); const P = PROPS_BY[b.dataset.evict]; if (confirm('Despejar ' + tenNames(P) + ' de ' + P.name + '? Eles saem em 1 dia do jogo e vão guardar rancor (podem te atacar se você entrar).')) Net.send({ t: 'estate', a: 'evict', pid: b.dataset.evict }); };
+  for (const b of root.querySelectorAll('[data-evict]')) b.onclick = ev => { ev.stopPropagation(); const P = PROPS_BY[b.dataset.evict]; gameAsk('Despejar ' + tenNames(P) + ' de ' + P.name + '? Eles saem em 1 dia do jogo e vão guardar rancor (podem te atacar se você entrar).', { yes: 'Despejar' }).then(ok => { if (ok) Net.send({ t: 'estate', a: 'evict', pid: b.dataset.evict }); }); };
   for (const b of root.querySelectorAll('[data-manage]')) b.onclick = ev => { ev.stopPropagation(); bizOpen(b.dataset.manage); };
   for (const b of root.querySelectorAll('[data-go]')) b.onclick = () => { G.est.sel = b.dataset.go; G.est.flash = performance.now(); estDrawMap(); };
   for (const b of root.querySelectorAll('[data-unauth]')) b.onclick = () => Net.send({ t: 'estate', a: 'unauth', name: b.dataset.unauth, pid: b.dataset.upid });
   for (const b of root.querySelectorAll('[data-take]')) b.onclick = ev => Net.send({ t: 'estate', a: 'take', k: b.dataset.take, q: ev.shiftKey ? 999 : 1 });
   for (const b of root.querySelectorAll('[data-put]')) b.onclick = ev => Net.send({ t: 'estate', a: 'put', k: b.dataset.put, q: ev.shiftKey ? 999 : 1 });
   const add = root.querySelector('#est-add'); if (add) add.onclick = () => { const v = root.querySelector('#est-name').value.trim(); if (v) Net.send({ t: 'estate', a: 'auth', name: v, pid: add.dataset.apid }); };
-  for (const b of root.querySelectorAll('[data-leave]')) b.onclick = ev => { ev.stopPropagation(); const P = PROPS_BY[b.dataset.leave], own = b.dataset.own === '1'; if (confirm(own ? 'Vender ' + P.name + ' de volta à Coroa por ' + Math.floor(P.buy / 2) + ' de ouro?' : 'Devolver ' + P.name + '? A caução volta' + (P.kind === 'house' ? ' e o baú vai para a mochila.' : ' e o cofre vai para a bolsa (o estoque fica).'))) Net.send({ t: 'estate', a: 'leave', pid: b.dataset.leave }); };
+  for (const b of root.querySelectorAll('[data-leave]')) b.onclick = ev => { ev.stopPropagation(); const P = PROPS_BY[b.dataset.leave], own = b.dataset.own === '1'; gameAsk(own ? 'Vender ' + P.name + ' de volta à Coroa por ' + Math.floor(P.buy / 2) + ' de ouro?' : 'Devolver ' + P.name + '? A caução volta' + (P.kind === 'house' ? ' e o baú vai para a mochila.' : ' (o estoque fica).'), { yes: own ? 'Vender' : 'Devolver' }).then(ok => { if (ok) Net.send({ t: 'estate', a: 'leave', pid: b.dataset.leave }); }); };
 }
 // ---------- mapa da cidade (isométrico, igual à câmera do jogo) ----------
 function estBounds() {
@@ -212,7 +212,7 @@ setInterval(() => { if (!estOpen()) return; for (const el of document.querySelec
 // ============================================================
 //  GESTÃO DE UM NEGÓCIO
 // ============================================================
-const BIZ_TABS = { geral: 'Visão geral', estoque: 'Estoque', melhorias: 'Melhorias', diario: 'Diário' };
+const BIZ_TABS = { geral: 'Visão geral', estoque: 'Estoque', equipe: 'Funcionários', melhorias: 'Melhorias', diario: 'Diário' };
 function bizBuild() {
   if (document.getElementById('biz')) return;
   const d = document.createElement('div'); d.id = 'biz'; d.className = 'gpanel hidden';
@@ -232,13 +232,14 @@ function bizRender() {
   document.getElementById('biz-name').textContent = (shop ? '🛒 ' : '⚒ ') + P.name;
   document.getElementById('biz-gold').textContent = G.me.gold;
   for (const b of el.querySelectorAll('[data-btab]')) b.classList.toggle('on', b.dataset.btab === G.biz.tab);
-  let h = '<div class="biz-top"><div class="biz-cofre"><small>Cofre</small><b>' + Math.floor(B.cofre) + '</b><small>/ ' + cap + '</small></div>' +
-    '<div class="biz-st ' + (B.closed ? 'off' : 'on') + '">' + (B.closed ? '⛔ Parado: falta ouro para o salário' : '✅ Funcionando') + '</div>' +
-    '<div class="biz-btns"><button class="est-btn" data-bcol' + (m.at ? '' : ' disabled title="Só com você no negócio"') + '>Tirar o ouro' + (m.at ? '' : ' (vá até lá)') + '</button><button class="est-btn ghost" data-bdep="50">Depositar 50</button><button class="est-btn ghost" data-bdep="200">Depositar 200</button></div></div>';
+  const working = G.shiftUntil > performance.now();
+  let h = '<div class="biz-top"><div class="biz-cofre"><small>Conta no banco</small><b>' + Math.floor(B.cofre) + '</b><small>lucro entra aqui</small></div>' +
+    '<div class="biz-st ' + (B.closed ? 'off' : 'on') + '">' + (B.closed ? '⛔ Parado: falta ouro no banco para o salário' : '✅ Funcionando') + '</div>' +
+    '<div class="biz-btns">' + (m.at ? '<button class="est-btn" data-bshift>' + (working ? 'Parar o turno' : 'Trabalhar um turno (1 min 15 s)') + '</button>' : '') + '<button class="est-btn ghost" data-bdep="50">Depositar 50</button><button class="est-btn ghost" data-bdep="200">Depositar 200</button></div></div>';
   if (G.biz.tab === 'geral') {
     const hist = [...B.hist, { rev: Math.round(B.today.rev), cost: Math.round(B.today.cost), sold: B.today.sold, now: 1 }], mx = Math.max(10, ...hist.map(d => Math.max(d.rev, d.cost)));
     h += '<div class="gp-sub">Últimos dias (receita × gastos)</div><div class="biz-chart">' + hist.map(d => '<div class="biz-day' + (d.now ? ' now' : '') + '"><i class="r" style="height:' + Math.round(d.rev / mx * 60) + 'px" title="receita ' + d.rev + '"></i><i class="c" style="height:' + Math.round(d.cost / mx * 60) + 'px" title="gastos ' + d.cost + '"></i><small>' + (d.now ? 'hoje' : d.sold + ' un') + '</small></div>').join('') + '</div>';
-    h += '<div class="est-cost">' + (shop ? 'Hoje: ' + B.today.sold + ' vendas · ' + Math.round(B.today.rev) + ' de ouro entraram' : 'Hoje: ' + Math.round(B.today.rev) + ' de ouro com excedente vendido ao fornecedor') + ' · salário ' + (shop ? 6 : 8) + '/dia · ' + (m.mode === 'own' ? 'imposto 1/dia' : 'aluguel ' + P.rent + '/dia (da sua bolsa)') + '</div>';
+    h += '<div class="est-cost">' + (shop ? 'Hoje: ' + B.today.sold + ' vendas · ' + Math.round(B.today.rev) + ' de ouro entraram' : 'Hoje: ' + Math.round(B.today.rev) + ' de ouro com excedente vendido ao fornecedor') + ' · salário ' + (shop ? 6 : 8) + '/dia' + ((B.staff || []).length ? ' + funcionários ' + B.staff.reduce((a, s) => a + s.w, 0) + '/dia' : '') + ' · ' + (m.mode === 'own' ? 'imposto 1/dia' : 'aluguel ' + P.rent + '/dia') + ' (tudo da conta do banco)</div>';
     if (m.cour && m.cour.length) h += '<div class="gp-sub">Mensageiros na rua</div>' + m.cour.map(c => '<div class="est-cost">🏃 ' + c.name + ' · ' + c.st + ' · ' + Object.keys(c.g).map(g => c.g[g] + ' ' + GOODS[g].n).join(', ') + ' → ' + c.to + '</div>').join('');
     h += '<div class="gp-note">' + (shop ? 'A loja vende sozinha para os moradores. Abasteça pelo fornecedor (aba Estoque) ou tenha uma oficina que produza o que ela vende: os mensageiros trazem de graça.' : 'A oficina trabalha sozinha. A produção vai para as suas lojas (ou para outra oficina sua que transforme), levada pelos mensageiros; o que sobra pode ser vendido ao fornecedor.') + '</div>';
   } else if (G.biz.tab === 'estoque' && P.kind === 'bank') {
@@ -248,17 +249,24 @@ function bizRender() {
       const capS = 40 + 40 * (B.up.shelf || 0), used = Object.values(B.stock).reduce((a, b) => a + b, 0), ord = B.orders.reduce((a, o) => a + o.q, 0);
       h += '<div class="est-cost">Prateleiras: <b>' + used + '</b> / ' + capS + (ord ? ' · ' + ord + ' a caminho na carroça' : '') + '</div><table class="biz-tab"><tr><th></th><th>Mercadoria</th><th>Estoque</th><th>Preço</th><th>Fornecedor</th></tr>' +
         (SHOP_GOODS[P.shopType] || []).map(g => { const mg = B.margin[g] ?? 1, M = MARGIN[mg]; return '<tr><td>' + gIc(g) + '</td><td>' + GOODS[g].n + '</td><td><b>' + (B.stock[g] || 0) + '</b></td><td><select data-bmar="' + g + '">' + MARGIN.map((q, i) => '<option value="' + i + '"' + (i === mg ? ' selected' : '') + '>' + q.n + ' (' + (GOODS[g].p * q.k).toFixed(1) + ')</option>').join('') + '</select><small>' + Math.round(M.p * 100) + '% compram</small></td><td><button class="est-btn ghost" data-bord="' + g + '" data-q="10">+10 (' + Math.ceil(GOODS[g].p * 10) + ')</button><button class="est-btn ghost" data-bord="' + g + '" data-q="25">+25 (' + Math.ceil(GOODS[g].p * 25) + ')</button></td></tr>'; }).join('') + '</table>' +
-        '<div class="gp-note">Preço de atacado: o que você paga ao fornecedor (da sua bolsa). A carroça chega em 1 hora do jogo (30 s). Margem cara lucra mais por venda, mas menos gente compra.</div>';
+        '<div class="gp-note">Preço de atacado: o que você paga ao fornecedor (da conta do banco; se faltar, da bolsa). A carroça chega em 1 hora do jogo (30 s). Margem cara lucra mais por venda, mas menos gente compra.</div>' +
+        '<div class="gp-sub">Reposição automática</div><label class="biz-tg"><input type="checkbox" data-brson' + (B.rsOn ? ' checked' : '') + '> Encomendar sozinho do fornecedor quando o estoque cair abaixo do mínimo (pago pela conta do banco)</label>' +
+        '<table class="biz-tab"><tr><th></th><th>Mercadoria</th><th>Mínimo</th><th>Até</th></tr>' + (SHOP_GOODS[P.shopType] || []).map(g => { const [mn, mx] = (B.rs || {})[g] || [10, 30]; return '<tr><td>' + gIc(g) + '</td><td>' + GOODS[g].n + '</td><td><input class="biz-num" type="number" min="0" max="200" value="' + mn + '" data-brs="' + g + '" data-k="mn"></td><td><input class="biz-num" type="number" min="1" max="300" value="' + mx + '" data-brs="' + g + '" data-k="mx"></td></tr>'; }).join('') + '</table>';
     } else {
       const W = WORKS[P.wk], used = Object.values(B.store).reduce((a, b) => a + b, 0);
       h += '<div class="est-cost">' + (W.make ? 'Produz por hora: ' + Object.keys(W.make).map(g => gIc(g) + ' ' + (W.make[g] * (1 + 0.5 * (B.up.tools || 0))).toFixed(1) + ' ' + GOODS[g].n).join(' · ') : 'Receita: <select data-brec>' + Object.keys(W.recipes).map(r => '<option value="' + r + '"' + (r === B.recipe ? ' selected' : '') + '>' + Object.keys(W.recipes[r]).map(g => W.recipes[r][g] + ' ' + GOODS[g].n).join(' + ') + ' → 1 ' + GOODS[r].n + '</option>').join('') + '</select> · ' + (1 + 0.5 * (B.up.tools || 0)).toFixed(1) + ' por hora') + '</div>';
       h += '<div class="est-cost">Depósito: <b>' + Math.floor(used) + '</b> / 120</div><div class="biz-store">' + (Object.keys(B.store).filter(g => B.store[g] >= 1).map(g => '<span>' + gIc(g) + ' <b>' + Math.floor(B.store[g]) + '</b> ' + GOODS[g].n + '</span>').join('') || '<small>Vazio.</small>') + '</div>';
-      if (W.recipes) h += '<label class="biz-tg"><input type="checkbox" data-btog="autobuy"' + (B.autobuy ? ' checked' : '') + '> Comprar matéria-prima do fornecedor com o ouro do cofre quando faltar (só se você não tiver a oficina que a produz)</label>';
-      h += '<label class="biz-tg"><input type="checkbox" data-btog="sell"' + (B.sell ? ' checked' : '') + '> Vender ao fornecedor o que passar de 50 de cada coisa (70% do preço, vai para o cofre)</label>';
+      if (W.recipes) h += '<label class="biz-tg"><input type="checkbox" data-btog="autobuy"' + (B.autobuy ? ' checked' : '') + '> Comprar matéria-prima do fornecedor quando faltar, pago pela conta do banco (só se você não tiver a oficina que a produz)</label>';
+      h += '<label class="biz-tg"><input type="checkbox" data-btog="sell"' + (B.sell ? ' checked' : '') + '> Vender ao fornecedor o que passar de 50 de cada coisa (70% do preço, vai para o banco)</label>';
     }
     { const inv = G.me.inv || {}, W = !shop && WORKS[P.wk], ks = Object.keys(inv).filter(k => inv[k] > 0 && ITEM_GOOD[k] && (shop ? ((SHOP_GOODS[P.shopType] || []).includes(ITEM_GOOD[k][0]) || (P.shopType === 'arcane' && ITEM_GOOD[k][0] === 'wood')) : W && ((W.make && ITEM_GOOD[k][0] in W.make) || (W.recipes && Object.values(W.recipes).some(r => ITEM_GOOD[k][0] in r)) || (W.recipes && ITEM_GOOD[k][0] in W.recipes))));
       if (shop && P.shopType === 'arcane') h += '<div class="gp-sub">🪚 Bancada de entalhe</div><div class="est-cost">Madeira na bancada: <b>' + Math.floor((B.raw || {}).wood || 0) + '</b> / 60 · o atendente faz 1 varinha por hora com 2 de madeira (vai direto para as prateleiras).</div>';
       h += '<div class="gp-sub">Colocar do seu inventário' + (m.at ? '' : ' (vá até o negócio)') + '</div>' + (ks.length ? '<div class="biz-put">' + ks.map(k => { const L = LOOT[k], [g, per] = ITEM_GOOD[k]; return '<div class="biz-putr"><span style="color:' + L.color + '">' + L.icon + '</span> ' + L.name + ' <small>×' + inv[k] + ' → ' + (g === 'wood' && shop ? 'bancada' : GOODS[g].n) + (per > 1 ? ' (vale ' + per + ')' : '') + '</small><button class="est-btn" data-bput="' + k + '" data-n="1"' + (m.at ? '' : ' disabled') + '>1</button><button class="est-btn" data-bput="' + k + '" data-n="999"' + (m.at ? '' : ' disabled') + '>Tudo</button></div>'; }).join('') + '</div>' : '<div class="gp-note">Nada no inventário que este negócio use. ' + (shop ? 'Lojas aceitam o que vendem' + (P.shopType === 'arcane' ? ' (e toras para a bancada)' : '') + '.' : 'Oficinas aceitam a matéria-prima e o que produzem (toras na carpintaria, ervas no alambique…).') + '</div>'); }
+  } else if (G.biz.tab === 'equipe') {
+    const TR = m.staffTr || {}, st = B.staff || [];
+    h += '<div class="gp-sub">Equipe (' + st.length + ' de 3)</div>' + (st.length ? st.map((s, i) => '<div class="biz-putr"><b>' + s.n + '</b> <small>' + ((TR[s.tr] || {}).n || s.tr) + ' · ' + s.w + ' ouro/dia</small><button class="est-btn ghost" data-bfire="' + i + '">Dispensar</button></div>').join('') : '<div class="gp-note">Só o funcionário da casa por enquanto.</div>');
+    h += '<div class="gp-sub">Candidatos</div>' + ((B.cands || []).length ? B.cands.map((c, i) => '<div class="biz-putr"><b>' + c.n + '</b> <small>' + ((TR[c.tr] || {}).n || c.tr) + ' (' + ((TR[c.tr] || {}).d || '') + ') · ' + c.w + ' ouro/dia</small><button class="est-btn" data-bhire="' + i + '"' + (st.length >= 3 ? ' disabled' : '') + '>Contratar</button></div>').join('') : '') + '<button class="est-btn ghost" data-bcands>' + ((B.cands || []).length ? 'Ver outros candidatos' : 'Procurar candidatos') + '</button>';
+    h += '<div class="gp-note">Cada funcionário deixa o negócio 40% mais produtivo (vende ou produz mais). O salário sai da conta do banco todo dia; sem ouro, ele vai embora. Eles trabalham de dia (7h às 20h) e aparecem no prédio.</div>';
   } else if (G.biz.tab === 'melhorias') {
     h += '<div class="biz-ups">' + Object.keys(BIZ_UP).filter(k => BIZ_UP[k].for === 'both' || BIZ_UP[k].for === P.kind).map(k => { const U = BIZ_UP[k], lv = B.up[k] || 0, c = U.cost[lv]; return '<div class="biz-up"><b>' + U.n + '</b><small>' + U.d + '</small><div class="biz-lv">' + [0, 1, 2].map(i => '<i class="' + (i < lv ? 'on' : '') + '"></i>').join('') + '</div>' + (lv >= 3 ? '<em>Máximo</em>' : '<button class="est-btn" data-bup="' + k + '"' + (G.me.gold < c ? ' disabled' : '') + '>Nível ' + (lv + 1) + ' · ' + c + '</button>') + '</div>'; }).join('') + '</div><div class="gp-note">As melhorias são pagas da sua bolsa e ficam no ponto enquanto ele for seu.</div>';
   } else {
@@ -267,6 +275,7 @@ function bizRender() {
   document.getElementById('biz-body').innerHTML = h;
   const body = document.getElementById('biz-body');
   for (const b of body.querySelectorAll('[data-bcol]')) b.onclick = () => bsend('collect');
+  for (const b of body.querySelectorAll('[data-bshift]')) b.onclick = () => { if (G.shiftUntil > performance.now()) Net.send({ t: 'shift', a: 'stop' }); else Net.send({ t: 'shift', a: 'start' }); bizClose(); };
   for (const b of body.querySelectorAll('[data-bdep]')) b.onclick = () => bsend('deposit', { q: +b.dataset.bdep });
   for (const b of body.querySelectorAll('[data-bput]')) b.onclick = () => bsend('put', { k: b.dataset.bput, n: +b.dataset.n });
   for (const b of body.querySelectorAll('[data-bord]')) b.onclick = () => bsend('order', { g: b.dataset.bord, q: +b.dataset.q });
@@ -274,6 +283,11 @@ function bizRender() {
   for (const s of body.querySelectorAll('[data-brec]')) s.onchange = () => bsend('recipe', { v: s.value });
   for (const c of body.querySelectorAll('[data-btog]')) c.onchange = () => bsend('toggle', { k: c.dataset.btog });
   for (const b of body.querySelectorAll('[data-bup]')) b.onclick = () => bsend('up', { k: b.dataset.bup });
+  for (const c of body.querySelectorAll('[data-brson]')) c.onchange = () => bsend('rson');
+  for (const s of body.querySelectorAll('[data-brs]')) s.onchange = () => { const g = s.dataset.brs, row = body.querySelectorAll('[data-brs="' + g + '"]'); bsend('rs', { g, mn: +row[0].value, mx: +row[1].value }); };
+  for (const b of body.querySelectorAll('[data-bcands]')) b.onclick = () => bsend('cands');
+  for (const b of body.querySelectorAll('[data-bhire]')) b.onclick = () => bsend('hire', { i: +b.dataset.bhire });
+  for (const b of body.querySelectorAll('[data-bfire]')) b.onclick = () => gameAsk('Dispensar ' + (G.biz.d.b.staff[+b.dataset.bfire] || {}).n + '?', { yes: 'Dispensar' }).then(ok => { if (ok) bsend('fire', { i: +b.dataset.bfire }); });
 }
 
 // ---------- balcão (na conversa com o balconista) ----------

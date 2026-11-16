@@ -931,7 +931,7 @@ function uniformLook(L, code) {
   return Object.assign(L, { armor: 'robe', body: tone(U.body), body2: tone(U.b2), accent: tone(U.b2), trim: tone(U.trim), head: U.head || 'none', weapon: null, shield: null, pauldron: null, cape: false, capeTone: null, quiver: false, pattern: null });
 }
 // funcionários NPC com o uniforme do lugar onde trabalham
-{ const map = { st_saw: 1, st_carp: 1, st_mine: 7, st_farm: 7, st_alch: 2, st_apoth: 2, st_arcane: 3, st_tailor: 3, st_scroll: 3, courier1: 5, courier2: 5, courier3: 5, banker2: 6, banker3: 6 };
+{ const map = { st_saw: 1, st_carp: 1, st_mine: 7, st_farm: 7, st_alch: 2, st_apoth: 2, st_arcane: 3, st_tailor: 3, st_scroll: 3, courier1: 5, courier2: 5, courier3: 5, supplier: 5, banker2: 6, banker3: 6 };
   for (const k in map) { const f = NPC_LOOKS[k]; if (f) NPC_LOOKS[k] = () => uniformLook(f(), map[k]); } }
 
 // ---------- jeitos de andar dos moradores ----------

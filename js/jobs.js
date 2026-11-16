@@ -17,6 +17,7 @@ function jobsPrompt() {
   if (NOTICE.x >= 0 && dist(me.x, me.y, NOTICE.x, NOTICE.y) < 2) return 'F: quadro de avisos (bicos e entregas)';
   if (G.shiftUntil > performance.now()) return 'Trabalhando… saia do prédio para parar';
   { const t = typeof talkTarget === 'function' ? talkTarget() : null; if (t) return t.k === 'n' ? 'F: falar com ' + t.name : 'F: dar ouro ou itens para ' + t.name; }
+  if (typeof estInBiz === 'function' && estInBiz()) return 'F: gerenciar o negócio';
   if (shiftHere()) return 'F: trabalhar um turno aqui';
   const g = nearGather(); if (g) { const lv = profLv((me.prof || {})[g.G0.prof]); if (!hasTool(g.G0.tool)) return 'Precisa de ' + LOOT[g.G0.tool].name.toLowerCase() + ' para ' + g.G0.verb + ' (Empório)'; if (lv < g.G0.min) return PROFS[g.G0.prof] + ' nível ' + g.G0.min + ' para ' + g.G0.verb; return (G.gath ? 'Trabalhando... (ande para parar)' : 'F: ' + g.G0.verb) + ' · ' + PROFS[g.G0.prof] + ' ' + lv; }
   return '';
@@ -32,7 +33,7 @@ function jobsF(ev) {
   const me = G.me; if (!me || ev.repeat) return false;
   if (G.job && G.job.step && dist(me.x, me.y, G.job.step.x, G.job.step.y) < 1.8) { if (G.job.step.k === 'sweep') { me.anim = { a: 'sweep', t0: performance.now(), ms: 1500 }; } Net.send({ t: 'job', a: 'step' }); return true; }
   if (NOTICE.x >= 0 && dist(me.x, me.y, NOTICE.x, NOTICE.y) < 2) { Net.send({ t: 'job', a: 'board' }); return true; }
-  if (G.shiftUntil <= performance.now() && shiftHere() && !(typeof talkTarget === 'function' && talkTarget())) { Net.send({ t: 'shift', a: 'start' }); return true; }   // bancada sem ninguém por perto; com balconista, é pelo diálogo
+  if (G.shiftUntil <= performance.now() && shiftHere() && !(typeof talkTarget === 'function' && talkTarget()) && !(typeof estInBiz === 'function' && estInBiz())) { Net.send({ t: 'shift', a: 'start' }); return true; }   // no próprio negócio o F abre a gestão (o turno é um botão lá)   // bancada sem ninguém por perto; com balconista, é pelo diálogo
   const g = nearGather(); if (g && hasTool(g.G0.tool) && profLv((me.prof || {})[g.G0.prof]) >= g.G0.min) { if (G.gath) { G.gath = null; return true; } const tx = g.i % MAP_W, ty = Math.floor(g.i / MAP_W); me.dir = dirFromVec(tx - me.x, ty - me.y, me.dir); G.gath = { i: g.i, t0: performance.now(), ms: gatherMs(g.G0), G0: g.G0, animT: 0, x: me.x, y: me.y }; return true; }
   return false;
 }
@@ -82,7 +83,7 @@ function jobsTracker() {
   if (!J) { if (t) t.remove(); return; }
   if (!t) { t = document.createElement('div'); t.id = 'jobtrack'; document.body.appendChild(t); }
   t.innerHTML = '<b>' + J.title + '</b> <small>' + J.i + '/' + J.n + ' · ' + J.pay + ' ouro</small><div>➤ ' + (J.step ? J.step.t : '') + '</div><button title="Desistir">✕</button>';
-  t.querySelector('button').onclick = () => { if (confirm('Desistir deste trabalho?')) Net.send({ t: 'job', a: 'quit' }); };
+  t.querySelector('button').onclick = () => gameAsk('Desistir deste trabalho?', { yes: 'Desistir' }).then(ok => { if (ok) Net.send({ t: 'job', a: 'quit' }); });
 }
 // ofícios na Jornada (J)
 function profsHtml() { const P0 = (G.me && G.me.prof) || {}, rep = G.me ? G.me.rep ?? 50 : 50; return '<div class="gp-sub">Reputação em Nae</div><div class="jb-profs"><div><span>Reputação <b>' + rep + '</b></span><i><em style="width:' + rep + '%"></em></i></div></div><div class="gp-note">Sobe com o que os moradores acham de você, trabalhos feitos, ladrões pegos, negócios e aluguéis em dia; desce com crimes. Com 70 o Conselho vende o banco.</div><div class="gp-sub">Ofícios</div><div class="jb-profs">' + Object.keys(PROFS).map(k => { const xp = P0[k] || 0, lv = profLv(xp), a = 25 * (lv - 1) ** 2, b = 25 * lv ** 2; return '<div><span>' + PROFS[k] + ' <b>' + lv + '</b></span><i><em style="width:' + (lv >= 10 ? 100 : Math.round((xp - a) / (b - a) * 100)) + '%"></em></i></div>'; }).join('') + '</div>'; }

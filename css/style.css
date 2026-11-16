@@ -591,3 +591,11 @@ body.touch #chat { width: 260px; } body.touch #chat-log { height: 70px; }
 #givep { width: min(420px, 94vw); z-index: 34; } .gv-items { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; } .gv-it { position: relative; width: 46px; height: 46px; font-size: 22px; background: rgba(0,0,0,.3); border: 1px solid #6a5028; border-radius: 6px; cursor: pointer; } .gv-it small { position: absolute; right: 3px; bottom: 1px; font-size: 11px; color: #f0d890; } .gv-it:hover { border-color: #e8c870; }
 #tradep { width: min(480px, 94vw); z-index: 34; } #tradep .tr-list { max-height: 52vh; overflow: auto; } .tr-row { display: flex; align-items: center; gap: 8px; padding: 6px 4px; border-bottom: 1px solid rgba(201,162,74,.15); } .tr-ic { font-size: 22px; width: 28px; text-align: center; } .tr-nm { flex: 1; color: #e8dcc0; } .tr-nm small { display: block; font-size: 11px; opacity: .65; } .tr-pr { display: flex; align-items: center; gap: 3px; color: #f0d890; min-width: 54px; } .tr-row .est-btn { padding: 4px 9px; }
 #tradep .gm-sub button { padding: 6px 12px; font: 700 12px 'Cinzel', serif; color: #e8dcc0; background: #241a12; border: 1px solid #6a5028; border-radius: 5px; cursor: pointer; } #tradep .gm-sub button.on { background: linear-gradient(#8a6a2a, #5a4018); color: #fff4d0; } #tradep .gm-sub { display: flex; gap: 6px; margin-bottom: 8px; }
+
+/* confirmação do jogo (no lugar do aviso do navegador) */
+#gask { position: fixed; inset: 0; z-index: 9000; display: flex; align-items: center; justify-content: center; background: rgba(10, 6, 2, 0.45); }
+#gask.hidden { display: none; }
+#gask .gask-box { position: relative; inset: auto; transform: none; max-width: 420px; width: calc(100% - 32px); padding: 18px 20px 14px; }
+#gask .gask-msg { font-size: 15px; line-height: 1.45; margin-bottom: 14px; }
+#gask .gask-in { width: 100%; box-sizing: border-box; margin-bottom: 12px; padding: 6px 8px; font: inherit; background: rgba(0,0,0,0.35); color: inherit; border: 1px solid rgba(232,196,90,0.4); border-radius: 4px; }
+#gask .gask-btns { display: flex; gap: 8px; justify-content: flex-end; }

@@ -4,7 +4,7 @@
 // ============================================================
 function visEvent(m) {
   const add = v => { if (G.npcs[v.id]) return; G.npcs[v.id] = mkEnt({ id: v.id, kind: v.kind, name: v.name, x: v.x, y: v.y, isNpc: true, visible: true, dir: 0, trader: !!v.trader }); if (!NPCS.find(q => q.id === v.id)) NPCS.push({ id: v.id, kind: v.kind, name: v.name, x: v.x, y: v.y, transient: true }); };
-  if (m.t === 'vspawn') { add(m.v); return true; }
+  if (m.t === 'vspawn') { add(m.v); if (m.v.bard && G.npcs[m.v.id]) G.npcs[m.v.id].bard = 1; return true; }
   if (m.t === 'vlist') { for (const v of m.list) add(v); return true; }
   if (m.t === 'vgone') { delete G.npcs[m.id]; const k = NPCS.findIndex(q => q.id === m.id); if (k >= 0) NPCS.splice(k, 1); if (G.dialog && G.dialog.id === m.id) closeDialog(); return true; }
   return false;
@@ -14,6 +14,7 @@ function applyNpcRows(rows, now) {
   for (const [id, x100, y100, fl, onBack, carrying] of rows || []) {
     const e = G.npcs[id]; if (!e) continue; seen.add(id);
     e.srv = true; e.dragMode = fl & 64 ? 'lead' : (e.dragMode === 'lead' ? null : e.dragMode); e.npDown = !!(fl & 1); e.npDead = !!(fl & 2); e.dragged = !!(fl & 4); e.prone = !!(fl & 8); e.npWalk = !!(fl & 32); e.crawl = !!(fl & 128); e.npSleep = !!(fl & 256); e.pkg = !!(fl & 512); e.drunk = !!(fl & 1024); e.npDrawn = !!(fl & 2048);
+    if (fl & 4096) e.custP = { sit: 'c', doze: fl & 8192 ? 1 : 0, npc: 1 }; else if (e.custP && e.custP.npc) e.custP = null;   // sentado na taverna (e cochilando)
     e.onBackBy = onBack || null; e.carrying = carrying || null;
     e.tx = x100 / 100; e.ty = y100 / 100;
     if (e.kind !== 'fruit' || e.npDown || e.npDead || e.dragged || e.onBackBy) { if (e._snap == null || Math.hypot(e.tx - e.rx, e.ty - e.ry) > 4) { e.x = e.rx = e.tx; e.y = e.ry = e.ty; } e._snap = 1; }
@@ -118,6 +119,8 @@ function drawWeaverFlora(ctx, ox, oy, now) {
 
 // caixote/pacote nos braços (mensageiros e o entregador do fornecedor)
 function drawPackage(ctx, e, sx, sy, now) {
+  if (e.bard && !e.npDown && !e.npDead) { ctx.save(); ctx.font = '8px serif'; ctx.textAlign = 'center'; for (let k = 0; k < 3; k++) { const t = ((now / 1600) + k / 3) % 1; ctx.globalAlpha = Math.sin(t * Math.PI) * 0.85; ctx.fillStyle = ['#ffe28a', '#ffffff', '#c8e8ff'][k]; ctx.fillText(k % 2 ? '♫' : '♪', sx + Math.sin(t * 6 + k) * 6 + (k - 1) * 4, sy - 34 - t * 16); } ctx.restore(); }
+  if (e.pkg && !e.npDown && !e.npDead) { const y0 = sy - 57 - Math.sin(now / 300) * 0.8; ctx.save(); ctx.globalAlpha = 0.9; ctx.fillStyle = 'rgba(20,14,8,0.45)'; ctx.beginPath(); ctx.arc(sx, y0, 5, 0, 7); ctx.fill(); ctx.fillStyle = '#c8995a'; ctx.fillRect(sx - 2.8, y0 - 2, 5.6, 4.2); ctx.fillStyle = '#e2b876'; ctx.fillRect(sx - 2.8, y0 - 2.8, 5.6, 1.2); ctx.strokeStyle = '#5a3a18'; ctx.lineWidth = 0.5; ctx.strokeRect(sx - 2.8, y0 - 2.8, 5.6, 5); ctx.restore(); }   // caixinha sobre a cabeça: está entregando
   if (!e.pkg || e.npDown || e.npDead) return; const bob = e.walking ? Math.abs(Math.sin((e.walkDist || 0) * 4)) * 1.2 : 0, x = sx + 3, y = sy - 25 - bob;
   ctx.save(); ctx.fillStyle = '#8a6438'; ctx.strokeStyle = '#3a2410'; ctx.lineWidth = 0.7;
   ctx.beginPath(); ctx.moveTo(x - 5, y - 2); ctx.lineTo(x, y - 4.5); ctx.lineTo(x + 5, y - 2); ctx.lineTo(x, y + 0.5); ctx.closePath(); ctx.fillStyle = '#b08a52'; ctx.fill(); ctx.stroke();   // tampa

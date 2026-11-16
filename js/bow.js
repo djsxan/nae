@@ -7,7 +7,7 @@ G.bow = { st: 'ready' };
 G.flyArrows = {}; G.gArrows = []; G.corpseArrows = {};
 const isArcher = () => G.me && G.me.cls === 'archer';
 function bowPress() {
-  const b = G.bow, now = performance.now(), me = G.me; if (!me || me.downed || me.carrying) return;
+  const b = G.bow, now = performance.now(), me = G.me; if (!me || me.downed || me.carrying || me.shea) return;   // arco guardado: sem mira
   if (b.st === 'nocking' && now < b.until) { b.want = true; return; }
   b.st = 'drawing'; b.t0 = now; b.want = false; Net.send({ t: 'draw', on: 1 });
 }
@@ -22,6 +22,7 @@ function bowRelease() {
 function bowCancel() { if (G.bow.st === 'drawing') Net.send({ t: 'draw', on: 0 }); G.bow.st = 'ready'; }
 function bowUpdate(now) {
   const b = G.bow; if (!isArcher()) return;
+  if (G.me.shea && b.st !== 'ready') { bowCancel(); b.want = false; }
   if (b.st === 'nocking' && now >= b.until) { b.st = 'ready'; if (b.want && G.mouse0) bowPress(); }
 }
 const bowPow = now => G.bow.st === 'drawing' ? Math.min(1, (now - G.bow.t0) / BOW.draw) : 0;
@@ -138,7 +139,7 @@ function drawBowTop(ctx, now) {
   }
   // mira do arqueiro: puxando, mostra a trajetória em arco e onde a flecha cai; anel no cursor enche com a força
   if (isArcher() && G.mouseW && inCombatZone() && G.bow.st === 'drawing') drawArc(ctx, now);
-  if (isArcher() && G.mouseW && inCombatZone()) {
+  if (isArcher() && !G.me.shea && G.mouseW && inCombatZone()) {   // arco guardado: sem anel de mira
     const pw = bowPow(now), sw = 0, p = iso(G.mouseW.x, G.mouseW.y);
     const x = p.sx + ox, y = p.sy + oy;
     ctx.save(); ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, y, 9, 4.5, 0, 0, 7); ctx.stroke();

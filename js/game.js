@@ -196,7 +196,7 @@ function clientOnServer(m) {
     case 'carry': { const c = G.players[m.by]; if (c) c.carrying = m.id || null; break; }
     case 'respawned': showBanner('Capela da Aurora', 'Você despertou nas ruínas e perdeu metade da experiência do nível.', true); break;
     case 'chestopen': showBanner('Baú do chefe', '+' + m.gold + ' de ouro, 2 poções e ' + m.items.filter(k => LOOT[k]).map(k => LOOT[k].name).join(', ')); break;
-    case 'dev': G.devAnswered = true; if (m.ok && m.mode === 'normal') { G.devTools = true; showBanner('Modo criador', 'Vocação normal · F2 abre o painel'); buildDevPanel(); } else if (m.ok) { G.dev = true; G.noclip = true; G.me.skin = 'weaver'; showBanner('O Tecelão desperta', 'F2 abre o painel do criador'); buildDevPanel(); } else showToast('Senha do criador incorreta.'); break;
+    case 'dev': G.devAnswered = true; if (m.ok && m.mode === 'normal') { G.devTools = true; showBanner('Modo criador', 'Vocação normal · F2 abre o painel'); buildDevPanel(); $('devpanel').classList.add('hidden'); /* vocação normal: painel fechado até apertar F2 */ } else if (m.ok) { G.dev = true; G.noclip = true; G.me.skin = 'weaver'; showBanner('O Tecelão desperta', 'F2 abre o painel do criador'); buildDevPanel(); } else showToast('Senha do criador incorreta.'); break;
     case 'shake': G.shake = Math.max(G.shake, m.s || 6); break;
     case 'tele': G.teles.push({ ...m, t0: now }); break;
     case 'fires': for (const [x, y, r, ms] of m.l) { const t = Math.round(y) * MAP_W + Math.round(x); G.fires.push({ x, y, r, z: m.z != null ? m.z : (WORLD.ground[t] === T.CLIFF && WORLD.fl1[t] > 0 ? 1 : 0), t0: now + (m.ms || 0), until: now + ms }); } if (!m.nb) G.breaths.push({ t0: now, ms: 650 }); break;
@@ -241,6 +241,7 @@ function clientOnServer(m) {
     }
     case 'lootgold': showToast('+ ' + m.g + ' de ouro'); break;
     case 'gstop': G.gath = null; break;
+    case 'tfx': { const now = performance.now(); G.tfx = G.tfx || []; if (m.k === 'sale') { if (m.s) G.tfx.push({ id: m.s, k: 'coin', plus: 1, t0: now }); if (m.b) G.tfx.push({ id: m.b, k: 'coin', t0: now + 120 }); } else if (m.k === 'ok') G.tfx.push({ id: m.id, k: 'ok', t0: now }); break; }
     case 'tfall': case 'crumble': fallStart(m); break;
     case 'loot': { const it = LOOT[m.k]; if (it) { showToast('+ ' + it.name); G.newLoot = m.k; } break; }
     case 'qprog': { const q = QUESTS.find(x => x.id === m.id); if (q) showToast(`${q.name}: ${m.n}/${q.count}`); break; }
@@ -827,7 +828,7 @@ function buildDialogOptions(id) {
     const def = NPC_DIALOG[n.kind];
     { const ent = G.npcs[id], P0 = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null, playerShop = P0 && G.est && G.est.st && G.est.st[P0.id];
       if ((TRADE_KINDS.has(n.kind) || (ent && ent.trader)) && !playerShop) add(ent && ent.trader ? '🧳 Ver as mercadorias do viajante' : '⚖ Negociar (comprar e vender)', () => { closeDialog(); Net.send({ t: 'trade', a: 'open', npc: id }); }, 'active'); }
-    if (typeof shiftHere === 'function' && shiftHere() && !(G.shiftUntil > performance.now())) add('Trabalhar um turno aqui (2 min e meio)', () => { closeDialog(); Net.send({ t: 'shift', a: 'start' }); });
+    if (typeof shiftHere === 'function' && shiftHere() && !(G.shiftUntil > performance.now()) && !(typeof estInBiz === 'function' && estInBiz())) add('Trabalhar um turno aqui (1 min e 15 s)', () => { closeDialog(); Net.send({ t: 'shift', a: 'start' }); });
     for (const [label, act] of def.opts) add(label, () => { const P = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null; if (act.open === 'biz') { if (P && estMine(P.id)) { closeDialog(); bizOpen(P.id); } else setDialogText('Só o dono pode mexer nos livros. ' + (P && G.est.st[P.id] ? 'Este ponto é de ' + G.est.st[P.id].replace('★', '') + '.' : 'Este ponto é de ' + ((P && P.npcOwner) || 'um comerciante') + ', que vende por ' + (P ? P.buy : '?') + ' de ouro: fale com Mestre Anselmo, na Imobiliária.')); } else if (act.open === 'bank') { closeDialog(); bankOpen(); } else if (act.hotel) { if (act.hotel === 'view') Net.send({ t: 'hotel', a: 'view' }); else Net.send({ t: 'hotel', a: 'rent', d: act.hotel }); } else if (act.job) { closeDialog(); Net.send({ t: 'job', a: 'take', type: act.job }); } else if (act.counter) { if (P) counterOpen(P.id); } else if (act.owner) setDialogText(P && G.est.st[P.id] ? 'Trabalho para ' + G.est.st[P.id].replace('★', '') + '. Paga em dia… quase sempre.' : (P && P.npcOwner ? 'Trabalho para ' + P.npcOwner + ', que vende o ponto por ' + P.buy + ' de ouro (fale com Mestre Anselmo). E eu venho junto!' : 'Ninguém, por enquanto.')); else if (act.open === 'estate') { closeDialog(); estToggle(true, 'house'); } else if (act.local) setDialogText(act.local); else Net.send({ t: 'npc', n: id, ...act }); });
   }
   if (n.kind !== 'guard' && n.kind !== 'captain' && !String(n.id).startsWith('v_')) { const gk = Object.keys(G.me.inv || {}).find(k => G.me.inv[k] > 0 && (FOOD[k] || ['herb', 'gem', 'wand', 'map'].includes(k))); if (gk) add('Dar ' + (LOOT[gk] ? LOOT[gk].name : gk) + ' de presente', () => Net.send({ t: 'gift', id, k: gk })); }
@@ -906,7 +907,7 @@ canvas.addEventListener('mousedown', e => {
     if (e.button === 2) { G.parrying = true; G.pzMv = { x: e.clientX, y: e.clientY, t: performance.now() }; Net.send({ t: 'parry', on: 1, a: me.fa ?? 0, z: G.pz || 'top' }); return; }
     if (e.button === 0) G.mouse0 = true;
     if (e.button === 0 && me.dragMode === 'grip') { Net.send({ t: 'choke', on: 1 }); G.choking = true; return; }
-    if (e.button === 0 && me.cls === 'archer') { const mon = monsterUnderMouse(e.clientX, e.clientY); if (mon) setTarget(mon.id); bowPress(); return; }   // arco: segurar puxa
+    if (e.button === 0 && me.cls === 'archer' && !me.shea) { const mon = monsterUnderMouse(e.clientX, e.clientY); if (mon) setTarget(mon.id); bowPress(); return; }   // arco: segurar puxa
     if (e.button === 2 && me.cls === 'archer' && G.bow.st === 'drawing') { bowCancel(); return; }                          // botão direito relaxa a corda
     if (e.button === 0 && me.cls !== 'knight') {   // mago: clique esquerdo dispara (segure para continuar)
       const mon = monsterUnderMouse(e.clientX, e.clientY); if (mon) setTarget(mon.id);
@@ -989,7 +990,7 @@ window.addEventListener('keydown', e => {
   if (k === 'q') { drinkPot('hp'); return; }
   if (k === 'e') { drinkPot('mp'); return; }
   if (k === 'r' && !G.me.downed && !e.repeat) { if (G.me.cls === 'knight') Net.send({ t: 'sbash', a: G.me.fa ?? 0 }); return; }
-  if (k === 'r' && G.me.downed) { if (!PERMADEATH || window.confirm('Desistir é MORTE PERMANENTE: seu personagem será apagado. Tem certeza?')) Net.send({ t: 'giveup' }); return; }
+  if (k === 'r' && G.me.downed) { if (!PERMADEATH) { Net.send({ t: 'giveup' }); return; } gameAsk('Desistir é MORTE PERMANENTE: seu personagem será apagado. Tem certeza?', { yes: 'Desistir', no: 'Continuar lutando' }).then(ok => { if (ok) Net.send({ t: 'giveup' }); }); return; }
   if (k === 'f' && !e.repeat && openNearChest(1.8)) return;
   if (k === 'f' && !e.repeat && G.me && (G.me.carrying || G.me.dragMode === 'arms' || G.me.dragMode === 'foot') && STAGE.x >= 0 && dist(G.me.x, G.me.y, STAGE.x, STAGE.y) < 3.4) { Net.send({ t: 'exec' }); return; }
   if (k === 'y' && !e.repeat && G.me && G.me.wantedUntil > performance.now()) { Net.send({ t: 'surrender' }); return; }
@@ -1830,6 +1831,20 @@ function drinkTick() {
 }
 
 // lascas de madeira e a árvore balançando; lascas de pedra e poeira; pedaços de mato
+// ---------- confirmação e pergunta no estilo do jogo ----------
+function gameAsk(msg, opts = {}) {
+  return new Promise(res => {
+    let d = $('gask'); if (!d) { d = document.createElement('div'); d.id = 'gask'; document.body.appendChild(d); }
+    const inp = opts.input != null;
+    d.innerHTML = '<div class="gpanel gask-box"><div class="gask-msg"></div>' + (inp ? '<input class="gask-in" type="' + (opts.type || 'text') + '">' : '') + '<div class="gask-btns"><button class="est-btn" data-ok>' + (opts.yes || 'Sim') + '</button><button class="est-btn ghost" data-no>' + (opts.no || 'Cancelar') + '</button></div></div>';
+    d.querySelector('.gask-msg').textContent = msg; d.classList.remove('hidden'); G.asking = true;
+    const inEl = d.querySelector('.gask-in'); if (inEl) { inEl.value = opts.input; setTimeout(() => { inEl.focus(); inEl.select(); }, 30); }
+    const done = v => { d.classList.add('hidden'); d.innerHTML = ''; G.asking = false; document.removeEventListener('keydown', key, true); res(v); };
+    const key = e => { if (e.key === 'Escape') { e.stopPropagation(); e.preventDefault(); done(inp ? null : false); } else if (e.key === 'Enter') { e.stopPropagation(); e.preventDefault(); done(inp ? inEl.value : true); } else e.stopPropagation(); };
+    document.addEventListener('keydown', key, true);
+    d.querySelector('[data-ok]').onclick = () => done(inp ? inEl.value : true); d.querySelector('[data-no]').onclick = () => done(inp ? null : false);
+  });
+}
 // ---------- portas das cabines da pousada (abrem quando alguém passa) ----------
 G.cabAng = [];
 function cabinDoorItems(items, inB, now) {
@@ -1950,7 +1965,17 @@ window.addEventListener('mousemove', e => {
   if (z !== G.pz) { G.pz = z; Net.send({ t: 'parrya', a: G.me.fa ?? 0, z }); }
 });
 // indicador em volta do personagem: as quatro direções, a ativa acesa
+// sinais minimalistas sobre os NPCs: moedinha nas vendas, ✓ nas entregas
+function drawTradeFx(ctx, now) {
+  if (!G.tfx || !G.tfx.length) return; G.tfx = G.tfx.filter(f => now - f.t0 < 1100); const ox = G.view.ox, oy = G.view.oy;
+  for (const f of G.tfx) { const e = G.npcs[f.id] || G.players[f.id]; if (!e) continue; const t = (now - f.t0) / 1100; if (t < 0) continue; const p = iso(e.rx, e.ry), x = p.sx + ox, y = p.sy + oy - 44 - t * 12, a = t < 0.2 ? t / 0.2 : 1 - (t - 0.2) / 0.8;
+    ctx.save(); ctx.globalAlpha = Math.max(0, a);
+    if (f.k === 'coin') { const w = Math.abs(Math.cos(t * 9)) * 3.2 + 0.6; ctx.fillStyle = '#e8c45a'; ctx.strokeStyle = '#8a6a1a'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.ellipse(x, y, w, 3.2, 0, 0, 7); ctx.fill(); ctx.stroke(); if (f.plus) { ctx.fillStyle = '#7ad870'; ctx.font = 'bold 7px sans-serif'; ctx.textAlign = 'center'; ctx.fillText('+', x + 6, y + 2.5); } }
+    else { ctx.strokeStyle = '#7ad870'; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x - 3, y); ctx.lineTo(x - 0.8, y + 2.4); ctx.lineTo(x + 3.4, y - 2.6); ctx.stroke(); }
+    ctx.restore(); }
+}
 function drawBlockHud(ctx, now) {
+  drawTradeFx(ctx, now);
   if (G.tradeAt) { const tp = $('tradep'); if (!tp || tp.classList.contains('hidden')) { G.tradeAt = null; G.trade = null; } else if (dist(G.me.x, G.me.y, G.tradeAt.x, G.tradeAt.y) > 4) { tp.classList.add('hidden'); G.tradeAt = null; G.trade = null; } }   // longe do vendedor: fecha a troca
   const me = G.me; if (!me || !G.parrying) return; const ox = G.view.ox, oy = G.view.oy, P = iso(me.rx, me.ry), cx = P.sx + ox, cy = P.sy + oy - 26, f = me.fa ?? 0;
   const side = s => { const a = f + (s === 'L' ? Math.PI / 2 : -Math.PI / 2), q = iso(me.rx + Math.cos(a), me.ry + Math.sin(a)); const vx = q.sx - P.sx, vy = q.sy - P.sy, l = Math.hypot(vx, vy) || 1; return [cx + vx / l * 20, cy + vy / l * 9]; };
