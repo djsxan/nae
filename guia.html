@@ -59,7 +59,7 @@
 <body>
 <div class="wrap">
 <nav class="toc">
-  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.48</small>
+  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.49</small>
   <input id="q" type="search" placeholder="Buscar no guia (ex.: banco, fome, G)" autocomplete="off">
   <div class="links" id="links"></div>
 </nav>
@@ -205,6 +205,7 @@
   </section>
 
   <section id="sobrevivencia"><h2>Sobrevivência</h2>
+    <p><b>Come e bebe sozinho</b>: com fome ou sede abaixo de 30%, o personagem come a comida mais simples da mochila (pão antes de ensopado) e bebe chá ou do odre — nunca no meio de uma luta.</p>
     <p>Os dois medalhões na borda esquerda mostram fome e sede (arcos) e frio (termômetro).</p>
     <table>
       <tr><th>Necessidade</th><th>Esvazia em</th><th>Como resolver</th></tr>
@@ -219,7 +220,7 @@
 
   <section id="cidade"><h2>A cidade e os moradores</h2>
     <figure><img src="img/guia/cidade.jpg" alt="A praça do mercado de manhã: moradores trabalhando, conversando e fazendo compras." loading="lazy"><figcaption>A praça do mercado de manhã: moradores trabalhando, conversando e fazendo compras.</figcaption></figure>
-    <p>Nae tem a cidadela e a Vila do Oeste do outro lado do rio. Na cidadela: a <b>praça do mercado</b> no centro, com a <b>Catedral da Aurora</b> logo ao lado — da porta dela desce a <b>avenida da Catedral</b> (calçamento em mosaico, estátuas, estandartes da Aurora, canteiros e lampiões) até a praça do portão sul; a <b>guilhotina</b> fica em frente ao castelo, à esquerda da avenida; o <b>castelo</b> ao norte da praça, com o <b>bairro nobre</b> à direita (casarões de pedra dos dois lados de uma avenida com chafariz, jardins formais, estátuas e lampiões); o <b>Banco de Nae</b> no fim da rua oeste, com a <b>praça do chafariz</b> (bancos, flores e postes) do outro lado da rua; a <b>taverna</b> e as lojas a oeste da praça do mercado, com a casa amarela da Marta (quintal cercado com frutíferas, canteiros e a barraquinha) e o <b>escritório do Mestre Anselmo</b> (pedra clara e bronze, placa da chave, vitrine de anúncios; lá dentro a maquete da cidade) logo atrás delas, de porta para a rua de baixo; a <b>pousada</b> no bairro sudoeste, ao lado do estábulo; o <b>quartel</b> junto ao portão sul, de porta para a rua principal; a cadeia no sudeste. Os moradores têm casa, rotina e necessidades: dormem das 22h às 6h, trabalham, almoçam, conversam na taverna e na praça.</p>
+    <p>Nae tem a cidadela e a Vila do Oeste do outro lado do rio. Na cidadela: a <b>praça do mercado</b> no centro, com a <b>Catedral da Aurora</b> logo ao lado — da porta dela desce a <b>avenida da Catedral</b> (calçamento em mosaico, estátuas, estandartes da Aurora, canteiros e lampiões) até a praça do portão sul; a <b>guilhotina</b> fica em frente ao castelo, à esquerda da avenida; o <b>castelo</b> ao norte da praça, com o <b>bairro nobre</b> à direita (casarões de pedra dos dois lados de uma avenida com chafariz, jardins formais, estátuas e lampiões); o <b>Banco de Nae</b> no fim da rua oeste, com a <b>praça do chafariz</b> (bancos, flores e postes) do outro lado da rua; a <b>taverna</b> e as lojas a oeste da praça do mercado, com a casa amarela da Marta (quintal cercado com frutíferas, canteiros e a barraquinha) e a loja <b>Elixires da Lua Prateada</b> da alquimista Morgana (vitrais coloridos e latão) logo atrás delas, de porta para a rua de baixo; o <b>escritório do Mestre Anselmo</b> (imobiliária) fica no fim da avenida do bairro nobre; a <b>pousada</b> no bairro sudoeste, ao lado do estábulo; o <b>quartel</b> junto ao portão sul, de porta para a rua principal; a cadeia no sudeste. Os moradores têm casa, rotina e necessidades: dormem das 22h às 6h, trabalham, almoçam, conversam na taverna e na praça.</p>
     <ul>
       <li><b>Memória</b>: cada morador lembra do que viu você fazer e do que ouviu falar (a fofoca corre na taverna à noite). A opinião vai de <b>Amigo</b> a <b>Inimigo</b> e aparece no diálogo com o motivo.</li>
       <li>Amigos cumprimentam pelo nome, dão presentes e fazem desconto; inimigos cobram mais e chamam a guarda.</li>
@@ -276,9 +277,12 @@
       <li><b>Preços e margens</b>: na loja, o preço de venda é o preço de atacado × a margem — <i>Barato</i> 1,25 (90% dos clientes compram), <i>Justo</i> 1,6 (70%) ou <i>Caro</i> 2,1 (42%). Atacado: Madeira 2, Minério 3, Ervas 3, Linho 4, Papel 7, Varinhas 8, Poções 11, Cristais 14, Ferramentas 16.</li>
       <li><b>Oficinas vendem a produção</b>: a cada hora, o que passar da <b>reserva</b> vai para o fornecedor a 85% do preço (reserva automática: 10 de cada coisa, ou 40 se um negócio seu usa aquilo; dá para mudar na aba Estoque). Oficinas que transformam só compram matéria-prima <b>se compensar</b> — o painel mostra quanto cada unidade dá de lucro.</li>
       <li><b>Lucro de verdade</b>: a Visão geral mostra o <b>lucro líquido</b> de hoje e dos últimos 7 dias (receita − gastos − salários − imposto) e, se o negócio estiver no prejuízo, diz por quê (receita baixa, prateleira vazia, estoque parado, salários altos).</li>
+      <li><b>Negócios de NPC</b> (Empório do Borin, Ateliê, a forja, a taverna…): também se compram, pagando 50% a mais — o NPC continua trabalhando no balcão, e o que ele vende rende para você.</li>
+      <li><b>Ofertas</b>: no painel da imobiliária, um negócio de outro jogador tem o botão “Fazer uma oferta ao dono”. O dinheiro fica reservado no banco; o dono aceita, recusa ou faz uma contraproposta (você aceita ou não). Sem resposta em 1 dia do jogo, o dinheiro volta.</li>
+      <li><b>Portas abertas</b>: lojas, oficinas, taverna, pousada e banco de jogadores ficam abertos para todo mundo; só as casas são trancadas.</li>
       <li><b>Comprar e melhorar com o banco</b>: comprar imóveis na imobiliária e as melhorias do negócio pagam primeiro com a conta do banco e completam com a bolsa.</li>
       <li><b>O lucro cai direto na sua conta do banco</b> — não existe mais cofre para ir buscar. Salários, encomendas e reposição saem dela (se faltar, da bolsa). À noite, ladrões podem levar um pouco de <b>mercadoria</b> (nunca o ouro do banco); as <b>trancas reforçadas</b> diminuem isso. Melhorias: prateleiras, vitrine, ferramentas e trancas.</li>
-      <li><b>Reposição automática</b> (lojas, aba Estoque): ligue e defina, para cada mercadoria, o <b>mínimo</b> e <b>até quanto</b> encher. Quando o estoque cai abaixo do mínimo, a loja encomenda do fornecedor e paga com a conta do banco. Oficinas que transformam já compram sozinhas a matéria-prima que falta (também pelo banco).</li>
+      <li><b>Reposição automática</b> (lojas, aba Estoque): ligada, a loja encomenda do fornecedor o que faltar para <b>encher as prateleiras</b> (dividido entre as mercadorias) sempre que houver dinheiro no banco. Oficinas que transformam já compram sozinhas a matéria-prima que falta (também pelo banco).</li>
       <li><b>Funcionários</b> (aba Funcionários): procure candidatos e contrate até <b>3</b> por negócio (nas oficinas que extraem, até 2 coletores além do da casa). Cada um deixa o negócio <b>40% mais produtivo</b>, e o traço ajuda mais: <i>rápido</i> (+15%), <i>simpático</i> (clientes compram mais) ou <i>honesto</i> (metade do roubo à noite). O salário sai do banco todo dia — sem ouro, ele vai embora. Eles saem de casa de manhã, andam até o negócio, trabalham das 7h às 20h e voltam para casa no fim do dia. Dispense quando quiser.</li>
       <li><b>Quantos negócios</b>: sem limite. Painel na tecla <kbd>N</kbd>.</li>
       <li><b>Colocar do inventário</b>: no painel do negócio, aba Estoque, você guarda o que coletou ou fez. Toras vão para o depósito da oficina (carpintaria transforma em varinhas ou papel); varinhas, gemas, ervas, mapas e linho vão para as prateleiras da loja que vende aquilo.</li>
@@ -314,6 +318,20 @@
   </section>
 
   <section id="reputacao"><h2>Reputação</h2>
+    <p>Além do número geral (0 a 100), você tem fama com cinco grupos, de −100 a +100: <b>Moradores da cidade</b>, <b>Vila do Oeste</b>, <b>Nobreza</b>, <b>Guarda</b> e <b>Comerciantes</b>. Tudo aparece na Jornada (J), com o seu título e as vantagens.</p>
+    <table>
+      <tr><th>Título</th><th>Reputação</th><th>Vantagem</th></tr>
+      <tr><td>Herói de Nae</td><td>90+</td><td>15% de desconto e metade da pena na cadeia</td></tr>
+      <tr><td>Honrado</td><td>75+</td><td>10% de desconto, imóveis 10% mais baratos, as sentinelas dão um aviso a mais</td></tr>
+      <tr><td>Respeitado</td><td>60+</td><td>5% de desconto nas compras</td></tr>
+      <tr><td>Cidadão</td><td>45+</td><td>—</td></tr>
+      <tr><td>Suspeito · Mal-visto · Odiado</td><td>abaixo de 45</td><td>abaixo de 30, tudo 15% mais caro e as sentinelas ficam de olho</td></tr>
+    </table>
+    <ul>
+      <li><b>Presentes</b> (F → “Dar ... de presente”): sobem a fama com o grupo daquele morador. Cada grupo e alguns moradores têm gostos (o diálogo marca com ♥) — o presente certo vale mais que o dobro; dar o mesmo presente de novo vale cada vez menos. Um presente por morador a cada 10 minutos. Sentinelas também aceitam (gostam de comida).</li>
+      <li><b>Outras formas</b>: doar 25 de ouro à capela (Irmã Lúmina), pegar ladrões (Guarda e Comerciantes), trabalhos, turnos, aluguéis em dia, comprar no comércio, ajudar quem caiu.</li>
+      <li><b>Crimes</b> derrubam com a Guarda e com os moradores.</li>
+    </ul>
     <p>Vai de 0 a 100 e aparece na Jornada. Começa em 50 e soma: a média do que os moradores acham de você, ladrões pegos, trabalhos e turnos feitos, negócios e aluguéis em dia; cada crime tira 5.</p>
     <ul><li>Libera empréstimos maiores e a compra do banco (70).</li><li>Reputação muito baixa faz as sentinelas ficarem de olho em você.</li></ul>
   </section>
@@ -327,6 +345,9 @@
       <div class="card"><h4>Capitã Varn · quartel</h4><p>Contratos de caça e recompensas.</p></div>
       <div class="card"><h4>Mestre Anselmo · imobiliária</h4><p>Casas, lojas e oficinas para alugar ou comprar.</p></div>
     </div>
+    <h3>Elixires da Lua Prateada</h3>
+    <p>A loja da alquimista <b>Morgana Vespertina</b>, atrás da Alfaiataria: elixires que não existem em outro lugar — <b>Fôlego</b> (3 min sem cansar), <b>Brasa</b> (10 min sem frio), <b>Passos Ligeiros</b> (45 s mais rápido) — e o <b>Amuleto da Sorte</b> (na mochila, mais chance de crítico). Ela compra ervas, folha-de-prata, gemas e partes de monstros. A loja pode ser comprada.</p>
+    <p><b>Tudo o que você compra na cidade</b> (lojas, serviços, fiança) é pago primeiro com a conta do banco e completado com a bolsa.</p>
     <h3>Negociar (comprar e vender)</h3>
     <p>Fale com o vendedor (<kbd>F</kbd>) e escolha <b>⚖ Negociar</b>. Abre um painel com duas abas:</p>
     <ul>
@@ -400,7 +421,7 @@
   </section>
 
   <div class="empty" id="empty">Nada encontrado para essa busca.</div>
-  <p class="muted" style="margin-top:40px">Guia da versão 1.48 · atualizado a cada versão do jogo. Veja também o <a href="roadmap.html">Roadmap</a>, com a história de todas as versões.</p>
+  <p class="muted" style="margin-top:40px">Guia da versão 1.49 · atualizado a cada versão do jogo. Veja também o <a href="roadmap.html">Roadmap</a>, com a história de todas as versões.</p>
 </main>
 </div>
 <script>

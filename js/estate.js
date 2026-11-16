@@ -7,7 +7,7 @@ G.est = { st: {}, L: {}, mine: null, biz: [], mineT: 0, tab: 'house', sel: null 
 G.biz = { pid: null, d: null, tab: 'geral' };
 const EST_KIND = { house: 'Casas', shop: 'Lojas', workshop: 'Oficinas', mine: 'Meus imóveis' };
 const EST_PERKS = ['🔒 Porta trancada: só você e quem você autorizar entram', '🧰 Baú seguro dentro de casa (F)', '🛏 Acorda em casa quando entra no reino', '✨ Dormir na sua cama recupera mais rápido e dá "Bem descansado"'];
-const SHOP_LABEL = { apoth: 'Boticário: poções e ervas', arcane: 'Arcanos: cristais e varinhas', tailor: 'Alfaiataria: linho e tecidos', scroll: 'Pergaminhos: papel e pergaminho' };
+const SHOP_LABEL = { witch: 'Alquimia: elixires raros e cristais',  apoth: 'Boticário: poções e ervas', arcane: 'Arcanos: cristais e varinhas', tailor: 'Alfaiataria: linho e tecidos', scroll: 'Pergaminhos: papel e pergaminho' };
 const WK_LABEL = { forge: 'Forja: madeira + minério → ferramentas (vendidas no balcão do Hrodgar) e consertos', tavern: 'Taverna: serve comida e bebida aos fregueses; linho deixa o serviço melhor',  saw: 'Serraria: tira madeira sozinha', mine: 'Mina: tira minério (e às vezes cristais)', farm: 'Horta: dá ervas e linho', carp: 'Carpintaria: madeira → varinhas ou papel', alch: 'Alambique: ervas → poções' };
 
 function estateEvent(m) {
@@ -25,7 +25,8 @@ function estateEvent(m) {
 }
 const estOpen = () => { const el = document.getElementById('estate'); return el && !el.classList.contains('hidden'); };
 const estMine = pid => (G.est.mine && G.est.mine.pid === pid) || G.est.biz.some(b => b.pid === pid);
-const isBizP = P => P && P.kind !== 'house' && !P.npc;
+const isBizP = P => P && P.kind !== 'house' && P.npc !== 'a Guarda' && !(P.kind === 'workshop' && P.npc && !P.wk);
+const estPrice = P => Math.round(P.buy * (P.npc ? 1.5 : 1) * ((G.me && G.me.rep) >= 75 ? 0.9 : 1));
 const tenOf = P => (P && P.tenants && P.tenants.length && !(G.est.ten && G.est.ten.gone && G.est.ten.gone[P.id])) ? P.tenants : [];
 const tenNames = P => tenOf(P).map(id => (NPCS.find(n => n.id === id) || { name: id }).name.split(',')[0]).join(' e ');
 const myMoney = () => (G.me ? G.me.gold : 0) + (G.bankG || 0);   // bolsa + conta do banco (compras e melhorias usam os dois)
@@ -33,7 +34,7 @@ function estStatus(P) {
   const who = G.est.st[P.id];
   if (estMine(P.id)) return { k: 'mine', t: tenOf(P).length ? 'Seu · inquilinos: ' + tenNames(P) : (who || '')[0] === '★' ? 'Seu (comprado)' : 'Seu (alugado)' };
   if (P.kind === 'house' && tenOf(P).length && !who) return { k: 'npc', t: 'Ocupada · mora ' + tenNames(P) };
-  if (P.kind !== 'house' && P.npc) return { k: 'npc', t: 'Ocupado · ' + P.npc };
+  if (P.kind !== 'house' && P.npc && !who) return isBizP(P) ? { k: 'free', t: 'De ' + P.npc + ' · vende por um preço maior (continua trabalhando para você)' } : { k: 'npc', t: 'Ocupado · ' + P.npc };
   if (who) return { k: 'rent', t: (who[0] === '★' ? 'Comprado · ' + who.slice(1) : 'Alugado · ' + who) };
   return { k: 'free', t: P.kind === 'house' ? 'Aluga-se / vende-se' : 'De ' + (P.npcOwner || 'um comerciante') + ' · à venda' };
 }
@@ -86,12 +87,12 @@ function estDetailHtml(P) {
     return h + '</div>';
   }
   if (s.k === 'free' && (P.kind === 'house' || isBizP(P))) {
-    const block = P.kind === 'house' ? (hasHouse ? 'Você já tem uma casa' : '') : (nBiz >= 3 ? 'Limite de 3 negócios' : '');
+    const block = P.kind === 'house' ? (hasHouse ? 'Você já tem uma casa' : '') : '';
     if (P.kind === 'bank') h += '<div class="est-cost">🏛 Só se compra, e o Conselho exige <b>reputação ' + (P.repMin || 70) + '</b> (a sua: ' + (G.me.rep ?? '?') + '). O dono fica com os juros dos empréstimos e com o saldo de quem morre.</div>';
-    h += block ? '<button class="est-btn" disabled>' + block + '</button>' : (P.kind !== 'house' ? '' : '<button class="est-btn" data-rent="' + P.id + '"' + (myMoney() < cost ? ' disabled' : '') + '>Alugar por ' + cost + '</button>') + '<button class="est-btn" data-buy="' + P.id + '"' + (myMoney() < P.buy || (P.kind === 'bank' && (G.me.rep || 0) < (P.repMin || 70)) ? ' disabled' : '') + '>Comprar por ' + P.buy + '</button>';
+    h += block ? '<button class="est-btn" disabled>' + block + '</button>' : (P.kind !== 'house' ? '' : '<button class="est-btn" data-rent="' + P.id + '"' + (myMoney() < cost ? ' disabled' : '') + '>Alugar por ' + cost + '</button>') + '<button class="est-btn" data-buy="' + P.id + '"' + (myMoney() < estPrice(P) || (P.kind === 'bank' && (G.me.rep || 0) < (P.repMin || 70)) ? ' disabled' : '') + '>Comprar por ' + estPrice(P) + '</button>';
     h += '<button class="est-btn ghost" data-go="' + P.id + '">Mostrar no mapa</button>';
   } else if (s.k === 'mine') { const info = (P.kind === 'house' ? G.est.mine : G.est.biz.find(b => b.pid === P.id)) || {}; if (info.mode !== 'own') h += '<button class="est-btn" data-buy="' + P.id + '"' + (myMoney() < P.buy - (info.dep || 0) ? ' disabled' : '') + '>Comprar de vez por ' + (P.buy - (info.dep || 0)) + '</button>'; if (P.kind !== 'house') h += '<button class="est-btn" data-manage="' + P.id + '">Abrir a gestão</button>'; }
-  else h += '<div class="est-cost">' + s.t + '</div>';
+  else { h += '<div class="est-cost">' + s.t + '</div>'; if (s.k === 'rent' && P.kind !== 'house') h += '<button class="est-btn" data-offer="' + P.id + '">Fazer uma oferta ao dono</button>'; }
   return h + '</div>';
 }
 const estClock = info => { const left = Math.max(0, info.next - (performance.now() - G.est.mineT)), h = Math.floor(left / 3600000), m = Math.floor(left / 60000) % 60; return (h ? h + 'h ' : '') + m + 'min'; };
@@ -125,9 +126,10 @@ function estWire() {
   const root = document.getElementById('estate');
   for (const r of root.querySelectorAll('.est-row:not(.biz)')) r.onclick = () => { G.est.sel = r.dataset.pid; estRender(); };
   for (const b of root.querySelectorAll('[data-rent]')) b.onclick = () => Net.send({ t: 'estate', a: 'rent', pid: b.dataset.rent });
-  for (const b of root.querySelectorAll('[data-buy]')) b.onclick = () => { const P = PROPS_BY[b.dataset.buy]; gameAsk('Comprar ' + P.name + ' por ' + P.buy + ' de ouro? Fica seu para sempre (imposto de 7 ouro por semana).', { yes: 'Comprar' }).then(ok => { if (ok) Net.send({ t: 'estate', a: 'buy', pid: b.dataset.buy }); }); };
+  for (const b of root.querySelectorAll('[data-buy]')) b.onclick = () => { const P = PROPS_BY[b.dataset.buy]; gameAsk('Comprar ' + P.name + ' por ' + estPrice(P) + ' de ouro? Fica seu para sempre (imposto de 7 ouro por semana).', { yes: 'Comprar' }).then(ok => { if (ok) Net.send({ t: 'estate', a: 'buy', pid: b.dataset.buy }); }); };
   for (const b of root.querySelectorAll('[data-tcol]')) b.onclick = ev => { ev.stopPropagation(); Net.send({ t: 'estate', a: 'collect', pid: b.dataset.tcol }); };
   for (const b of root.querySelectorAll('[data-evict]')) b.onclick = ev => { ev.stopPropagation(); const P = PROPS_BY[b.dataset.evict]; gameAsk('Despejar ' + tenNames(P) + ' de ' + P.name + '? Eles saem em 1 dia do jogo e vão guardar rancor (podem te atacar se você entrar).', { yes: 'Despejar' }).then(ok => { if (ok) Net.send({ t: 'estate', a: 'evict', pid: b.dataset.evict }); }); };
+  for (const b of root.querySelectorAll('[data-offer]')) b.onclick = ev => { ev.stopPropagation(); const P = PROPS_BY[b.dataset.offer]; gameAsk('Quanto oferecer por ' + P.name + '? O dinheiro fica reservado no banco até o dono responder (1 dia do jogo).', { input: String(estPrice(P)), type: 'number', yes: 'Oferecer' }).then(v => { if (v != null && +v > 0) Net.send({ t: 'estate', a: 'offer', pid: P.id, v: Math.floor(+v) }); }); };
   for (const b of root.querySelectorAll('[data-manage]')) b.onclick = ev => { ev.stopPropagation(); bizOpen(b.dataset.manage); };
   for (const b of root.querySelectorAll('[data-go]')) b.onclick = () => { G.est.sel = b.dataset.go; G.est.flash = performance.now(); estDrawMap(); };
   for (const b of root.querySelectorAll('[data-unauth]')) b.onclick = () => Net.send({ t: 'estate', a: 'unauth', name: b.dataset.unauth, pid: b.dataset.upid });
@@ -174,7 +176,7 @@ function estPick(mx, my) {
 }
 // ---------- no mundo: placas, F, porta trancada ----------
 function estDoorOut(P) { const b = BUILDINGS[P.bi], [dx, dy] = doorTile(b), v = DOOR_V[b.door || 'S']; return { x: dx + v[0] * 0.9, y: dy + v[1] * 0.9, side: [v[1], -v[0]] }; }
-function estFreeSigns() { return PROPS.filter(P => (P.kind === 'house' || isBizP(P)) && !G.est.st[P.id] && !tenOf(P).length); }
+function estFreeSigns() { return PROPS.filter(P => (P.kind === 'house' || isBizP(P)) && !P.npc && !G.est.st[P.id] && !tenOf(P).length); }
 function estNearSign() { const me = G.me; if (!me) return null; let best = null, bd = 2.6; for (const P of estFreeSigns()) { const o = estDoorOut(P), d = dist(me.x, me.y, o.x, o.y); if (d < bd) { bd = d; best = P; } } return best; }
 function estatePrompt() {
   if (estInHome()) return 'F: abrir o baú · L: seus imóveis';

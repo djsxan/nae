@@ -606,3 +606,11 @@ body.touch #chat { width: 260px; } body.touch #chat-log { height: 70px; }
 .biz-net b { font-size: 20px; }
 .biz-net.pos b { color: #9ad870; } .biz-net.neg b { color: #ff9a8a; }
 .biz-net > small { opacity: 0.7; }
+
+/* reputação por grupo (Jornada) */
+.rep-head { display: flex; justify-content: space-between; align-items: baseline; margin: 4px 0 6px; }
+.rep-head b { font: 700 18px 'Cinzel', serif; color: #f0d890; }
+.rep-groups > div { display: grid; grid-template-columns: 150px 1fr 40px; gap: 8px; align-items: center; font-size: 13px; margin: 3px 0; }
+.rep-bi { position: relative; height: 6px; background: rgba(0,0,0,0.35); border-radius: 3px; display: block; }
+.rep-bi::after { content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: rgba(232,196,90,0.6); }
+.rep-bi em { position: absolute; top: 0; bottom: 0; border-radius: 3px; }

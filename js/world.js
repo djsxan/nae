@@ -116,7 +116,7 @@ const BUILDINGS = TEST3D ? [] : [
   // bairro nobre (à direita do castelo): casarões de pedra clara com jardins murados
   { x: C + 26, y: C - 21, ...BH('manor', 6, 6, 4.8, 3.2, 'Casa Valmont', { door: 'W', gen: { x: C + 24, y: C - 18, w: 6, h: 6, door: 'W' } }) },
   { x: C + 26, y: C - 13, ...BH('manor', 6, 6, 4.6, 3.0, 'Casa Aldren', { door: 'W', v: 1, gen: { x: C + 24, y: C - 6, w: 6, h: 6, door: 'W' } }) },
-  { x: C + 26, y: C + 8, ...BH('manor', 6, 5, 4.4, 3.0, 'Casa Morvane', { door: 'W', v: 2, gen: { x: C + 24, y: C + 8, w: 6, h: 5, door: 'W' } }) },
+  { x: C + 26, y: C + 8, ...BH('house', 6, 5, 3.8, 2.0, 'Imobiliária Chave de Bronze', { door: 'W', floors: 2, office: 'estate', gen: { x: C + 24, y: C + 8, w: 6, h: 5, door: 'W' } }) },   // escritório do Mestre Anselmo, no fim da avenida nobre (antiga Casa Morvane)
 ];
 // portas: lado S (+y, padrão), N (-y), E (+x) ou W (-x). O layout interno usa um "quadro local":
 // i = posição ao longo da parede da porta (largura A), j = profundidade (0 = fundo, D-1 = linha da porta)
@@ -224,8 +224,8 @@ function interiorLayout0(b, fl = 0) {
     npcAt(dc, 0); const wk = b.wk;
     put('table', 0, 1, { w: 2 }); put('crate', w - 1, 0); put('barrel', w - 1, 1); put('shelf', 0, 0);
     if (wk === 'alch') { put('stove', w - 2, 0); put('shelf', 1, 0); } else if (wk === 'mine') { put('anvil', w - 2, 1); put('rack', 1, 0); } else if (wk === 'saw' || wk === 'carp') { put('rack', 1, 0); put('crate', w - 1, h - 1); } else { put('crate', 1, 0); put('barrel', w - 1, h - 1); }
-  } else if (k === 'house' && b.office && w >= 6) {   // escritório do corretor: escrivaninha com livros-razão, mapa emoldurado, quadro de chaves, arquivos, cadeira do cliente e a maquete da cidade
-    put('keyboard', 0, 0); npcAt(1, 0); put('desk', 0, 1, { w: 2 }); put('chair', 1, 2, { seat: 3 }); put('filing', 5, 0); put('citymodel', 4, 2, { w: 2 }); put('filing', 0, 3, { v: 1 }); put('mapframe', 5, 1, { block: false });
+  } else if (k === 'house' && b.office && w >= 5 && h >= 4) {   // escritório do corretor: escrivaninha com livros-razão, mapa emoldurado, quadro de chaves, arquivos, cadeira do cliente e a maquete da cidade
+    put('keyboard', 0, 0); npcAt(1, 0); put('desk', 0, 1, { w: 2 }); put('chair', 1, 2, { seat: 3 }); put('filing', w - 1, 0); put('citymodel', w - 2, 2, { w: 2 }); put('filing', 0, h - 1, { v: 1 }); put('mapframe', w - 1, 1, { block: false });
   } else if (k === 'house' && b.office) {   // imobiliária: corretor atrás da mesa, estantes de pastas, mapa da cidade na parede
     npcAt(dc, 0); put('table', dc - 1, 1, { w: 3 }); put('shelf', 0, 0); put('shelf', w - 1, 0); put('banner', dc === 1 ? w - 2 : 1, 0); put('chair', 0, h - 2, { seat: 1 }); put('crate', w - 1, h - 1);
   } else if (k === 'house') {
@@ -235,6 +235,10 @@ function interiorLayout0(b, fl = 0) {
     if (put('table', w - 2, h - 3)) { put('chair', w - 1, h - 3, { seat: 5 }); put('chair', w - 3, h - 3, { seat: 1 }); }
     put('shelf', 0, h - 2); if (h >= 5) put('crate', 0, h - 1);
     put('rug', dc, 1, { block: false });
+  } else if (k === 'shop' && b.v === 6) {   // Elixires da Lua Prateada
+    npcAt(dc, 0); for (let i = 0; i < w; i++) if (i !== dc) put('shelf', i, 0, { v: 1 });
+    put('counter', 1, 1, { w: dc - 1, v: 6 }); if (w - 2 - dc >= 1) put('counter', dc + 1, 1, { w: w - 2 - dc, v: 6 });
+    put('still', 0, h - 2); put('orb', w - 1, h - 2); put('display', 0, 2, { v: 1 }); put('rug', dc - 1, 2, { w: 3, block: false, v: 9 });
   } else if (k === 'shop' && b.blank) {   // loja vazia (à espera de um dono): prateleiras no fundo e um balcão
     for (let i = 0; i < w; i++) if (i !== dc) put('shelf', i, 0, { v: b.v });
   } else if (k === 'shop') {
@@ -874,7 +878,7 @@ function generateWorld() {
   BUILDINGS.push(...houses);
   { // escritório do corretor: a casa mais perto da rua nova e do mercado
     let ob = null, bd = 1e9; for (const hb of houses) { const d = Math.hypot(hb.x + hb.w / 2 - (C - 18), hb.y + hb.h / 2 - (C + 13)); if (d < bd) { bd = d; ob = hb; } }
-    if (ob) { ob.office = 'estate'; ob.name = 'Imobiliária Chave de Bronze'; ob.x = C - 22; ob.y = C + 15; ob.door = 'S'; ob.w = 6; ob.h = 4; ob.floors = 2; ob.H = 3.8; ob.RH = 2.0; ob.wall = Math.round(3.8 * 19.6); ob.roof = Math.round(2.0 * 19.6); } }   // atrás da Alfaiataria, porta para a rua de baixo
+    if (ob) { ob.kind = 'shop'; ob.name = 'Elixires da Lua Prateada'; ob.v = 6; ob.x = C - 22; ob.y = C + 15; ob.door = 'S'; ob.w = 6; ob.h = 4; ob.floors = 1; ob.H = 3.2; ob.RH = 2.4; ob.wall = Math.round(3.2 * 19.6); ob.roof = Math.round(2.4 * 19.6); } }   // loja da alquimista (antiga imobiliária)   // atrás da Alfaiataria, porta para a rua de baixo
   { const h18 = houses.find(q => q.x === C + 15 && q.y === C + 23); if (h18) { h18.x = C + 14; h18.y = C - 13; h18.door = 'E'; h18.w = 4; h18.h = 6; h18.noble = 1; } }   // casa nobre, ao lado do castelo
   for (let i = 0; i < bld.length; i++) if (bld[i] === -2) bld[i] = -1;   // marcas temporárias que sobraram (a imobiliária muda de lugar depois de sorteada)
   // ---- vila do oeste (do outro lado do rio, na estrada que sai do portão oeste): casas espaçadas e oficinas ----
@@ -963,7 +967,7 @@ function generateWorld() {
     for (const [dx, dy] of [[0, -4], [0, 4], [-4, 0], [4, 0]]) decoAny(fx + dx, fy + dy, O.FLOWER); }
   // praça do mercado
   decoAny(C, C + 13, O.FOUNTAIN);
-  for (const [dx, dy] of [[-6, 10], [-3, 10], [5, 10], [7, 10], [-6, 16], [-3, 16], [5, 16], [7, 16]]) decoAny(C + dx, C + dy, O.STALL);
+  for (const [dx, dy] of [[-6, 10], [-3, 10], [-6, 16], [-3, 16]]) decoAny(C + dx, C + dy, O.STALL);   // (as do lado da catedral saíram)
   for (const [dx, dy] of [[-3, 12], [4, 12], [-3, 14], [4, 14]]) decoAny(C + dx, C + dy, O.BENCH);
   for (const [dx, dy] of [[-7, 12], [8, 13], [-7, 17], [8, 17]]) decoAny(C + dx, C + dy, (dx + dy) % 2 ? O.BARREL : O.CRATE);
   decoAny(C - 6, C + 14, O.CART);
@@ -1023,7 +1027,7 @@ function generateWorld() {
     // lampiões ornamentados ao longo da avenida
     for (let y = Y0 + 3; y <= Y1; y += 4) if (Math.abs(y - fy) > 3 && (y < C + 4 || y > C + 7)) { put2(AX0, y, O.LAMP); put2(AX1, y, O.LAMP); }
     // casarões: jardim murado na frente (lado da porta), com canteiros e a passagem da porta livre
-    for (const b of BUILDINGS.filter(q => q.kind === 'manor' || q.noble)) { const [dtx, dty] = doorTile(b), front = b.door === 'E' ? b.x + b.w : b.door === 'W' ? b.x - 1 : -1; if (front < 0) continue;
+    for (const b of BUILDINGS.filter(q => q.kind === 'manor' || q.noble || q.office)) { const [dtx, dty] = doorTile(b), front = b.door === 'E' ? b.x + b.w : b.door === 'W' ? b.x - 1 : -1; if (front < 0) continue;
       for (let y = b.y - 1; y <= b.y + b.h; y++) { if (Math.abs(y - dty) <= 0) continue; put2(front, y, y === b.y - 1 || y === b.y + b.h ? O.LOWWALL : (y % 2 ? O.BUSH : O.FLOWERBED)); } }
     // jardins formais entre os casarões
     for (const gy of [C - 15, C - 14, C - 7, C - 6, C + 1, C + 2]) for (const [x0, x1] of [[C + 13, C + 18], [C + 26, C + 31]]) for (let x = x0; x <= x1; x++) put2(x, gy, x === Math.round((x0 + x1) / 2) && gy % 2 ? O.STATUE : (x + gy) % 2 ? O.FLOWERBED : O.BUSH);
@@ -1176,9 +1180,9 @@ if (!TEST3D) { const hb = BUILDINGS.find(b => b.kind === 'hotel'); if (hb) NPCS.
 if (!TEST3D) { const bb = BUILDINGS.find(b => b.kind === 'bank'); if (bb) { NPCS.push({ id: 'banker', name: 'Mestre Varkas, o Banqueiro', kind: 'banker', ...npcIn(bb, { x: bb.x + 1, y: bb.y + 1 }) }); const [w, h] = bDims(bb); (w >= 8 && h >= 10 ? [['banker2', 'Edda, a Caixa', 6, 3], ['banker3', 'Osric, o Contador', 1, 6], ['banker4', 'Gorim, o Escriturário', 6, 6], ['banker5', 'Hilde, a Tesoureira', 1, 9], ['banker6', 'Brann, o Avaliador', 6, 9], ['bankporter', 'Tobb, o Porteiro', 2, 11]] : w >= 6 && h >= 10 ? [['banker2', 'Edda, a Caixa', w - 1, 3], ['banker3', 'Osric, o Contador', 0, 6], ['banker4', 'Gorim, o Escriturário', w - 1, 6], ['banker5', 'Hilde, a Tesoureira', 0, 9], ['banker6', 'Brann, o Avaliador', w - 1, 9], ['bankporter', 'Tobb, o Porteiro', w - 2, h - 2]] : [['banker2', 'Edda, a Caixa', 2, 1], ['banker3', 'Osric, o Contador', w - 3, 1]]).forEach(([id, name, i, j]) => { const [x, y] = bLocal(bb, i, j); NPCS.push({ id, name, kind: id, x, y }); }); } }
 const STAFF_NAMES = {
   saw: 'Bruno Serra, o Serrador', mine: 'Gunnar Pedrafunda, o Mineiro', farm: 'Rosa Quintal, a Hortelã', carp: 'Elias Plaina, o Carpinteiro', alch: 'Odila Varga, a Destiladora',
-  apoth: 'Clara Malva, a Boticária', arcane: 'Silas Runa, o Balconista', tailor: 'Berta Agulha, a Costureira', scroll: 'Teodoro Tinta, o Copista',
+  witch: 'Morgana Vespertina, a Alquimista', apoth: 'Clara Malva, a Boticária', arcane: 'Silas Runa, o Balconista', tailor: 'Berta Agulha, a Costureira', scroll: 'Teodoro Tinta, o Copista',
 };
-const SHOP_TYPE_BY_NAME = { 'Boticário de Elva': 'apoth', 'Arcanos & Varinhas': 'arcane', 'Alfaiataria Real': 'tailor', 'Pergaminhos & Mapas': 'scroll' };
+const SHOP_TYPE_BY_NAME = { 'Elixires da Lua Prateada': 'witch', 'Boticário de Elva': 'apoth', 'Arcanos & Varinhas': 'arcane', 'Alfaiataria Real': 'tailor', 'Pergaminhos & Mapas': 'scroll' };
 if (!TEST3D) {
   BUILDINGS.forEach((b, bi) => {
     if (b.kind === 'workshop') NPCS.push({ id: 'st_' + b.wk, kind: 'st_' + b.wk, role: 'artisan', bi, name: STAFF_NAMES[b.wk], ...npcIn(b, { x: b.x + 1, y: b.y + 1 }) });
@@ -1197,7 +1201,7 @@ const GOODS = {
 const GOOD_ITEM = { potion: { pot: 'hp' }, flax: { pot: 'band' }, herb: { loot: 'herb' }, crystal: { loot: 'gem' }, woodgoods: { loot: 'wand' }, paper: { loot: 'map' }, wood: { loot: 'firewood' }, ore: { loot: 'gem' } };
 // item do inventário → mercadoria (para colocar no estoque da loja ou no depósito da oficina)
 const ITEM_GOOD = { log: ['wood', 1], hardwood: ['wood', 2], wand: ['woodgoods', 1], wand_fine: ['woodgoods', 2], wand_arcane: ['woodgoods', 4], gem: ['crystal', 1], herb: ['herb', 1], map: ['paper', 1], flaxraw: ['flax', 1], ore: ['ore', 1] };
-const SHOP_GOODS = { apoth: ['potion', 'herb'], arcane: ['crystal', 'woodgoods'], tailor: ['flax'], scroll: ['paper'] };
+const SHOP_GOODS = { witch: ['potion', 'crystal'], apoth: ['potion', 'herb'], arcane: ['crystal', 'woodgoods'], tailor: ['flax'], scroll: ['paper'] };
 const WORKS = {
   saw: { n: 'Serraria', make: { wood: 2 } }, mine: { n: 'Mina', make: { ore: 2, crystal: 0.2 } }, farm: { n: 'Horta', make: { herb: 2, flax: 1 } },
   forge: { n: 'Forja', recipes: { tools: { wood: 1, ore: 2 } } }, tavern: { n: 'Taverna', recipes: { serve: { flax: 1 } } },
@@ -1267,6 +1271,14 @@ function estateBlocked(name, ox, oy, x, y, L) {
   if (!L) return false; const bi = WORLD.bld[tileAt(x, y)]; if (bi == null || bi < 0) return false;
   const a = L[bi]; if (!a) return false; if (WORLD.bld[tileAt(ox, oy)] === bi) return false;
   return !a.includes(String(name || '').trim().toLowerCase());
+}
+function npcGroup(id, kind) {
+  const k = String(kind || ''), n = NPCS.find(q => q.id === id);
+  if (/^(guard|captain|jailer|executioner)/.test(k)) return 'guarda';
+  if (/noble|banker|bankporter|tailor|gardener/.test(k) || /noble/.test(id)) return 'nobres';
+  if (n && n.home != null && BUILDINGS[n.home] && BUILDINGS[n.home].x < C - 52) return 'vila';
+  if (/^(st_|merchant|innkeeper|smith|fruit|broker|hotelkeeper|supplier|courier)/.test(k) || /^st_/.test(id)) return 'comerc';
+  return 'cidade';
 }
 const NPC_AT = new Set(NPCS.map(n => Math.round(n.y) * MAP_W + Math.round(n.x)));
 

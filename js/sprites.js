@@ -55,6 +55,7 @@ const NPC_LOOKS = {
   st_carp: () => Object.assign(heroLook('archer', 'scout', '#8a6a3a'), { armor: 'robe', body: tone('#8a6a3a'), body2: tone('#d8c8a0'), accent: tone('#4a3018'), trim: tone('#4a3018'), head: 'none', hair: tone('#5a3a20'), beard: null, weapon: null, quiver: false, capeTone: null, skin: tone('#dcae88') }),
   st_alch: () => Object.assign(heroLook('mage', 'adept', '#3e5a46'), { armor: 'robe', body: tone('#3e5a46'), body2: tone('#c8b890'), accent: tone('#c9a24a'), trim: tone('#c9a24a'), head: 'none', hairStyle: 'long', hair: tone('#a8342a'), beard: null, weapon: null, capeTone: null, skin: tone('#e8c4a4') }),
   st_apoth: () => Object.assign(heroLook('mage', 'adept', '#6a3a5a'), { armor: 'robe', body: tone('#6a3a5a'), body2: tone('#efe6cf'), accent: tone('#efe6cf'), trim: tone('#3a2a1a'), head: 'none', hairStyle: 'long', hair: tone('#2a1a10'), beard: null, weapon: null, capeTone: null, skin: tone('#d8a888') }),
+  st_witch: () => Object.assign(heroLook('mage', 'adept', '#3a1e4a'), { armor: 'robe', body: tone('#3a1e4a'), body2: tone('#5aa89a'), accent: tone('#c9a24a'), trim: tone('#c9a24a'), head: 'none', hairStyle: 'long', hair: tone('#1a1418'), beard: null, weapon: null, capeTone: null, skin: tone('#f0d8c8') }),
   st_arcane: () => Object.assign(heroLook('mage', 'adept', '#2a2a5a'), { armor: 'robe', body: tone('#2a2a5a'), body2: tone('#8a7ac8'), accent: tone('#c9a24a'), trim: tone('#c9a24a'), head: 'none', hair: tone('#e8e4dc'), beard: null, weapon: null, capeTone: null, skin: tone('#e8c8b0') }),
   st_tailor: () => Object.assign(heroLook('archer', 'scout', '#a83a4a'), { armor: 'robe', body: tone('#a83a4a'), body2: tone('#efe6cf'), accent: tone('#efe6cf'), trim: tone('#d4a94a'), head: 'none', hairStyle: 'long', hair: tone('#8a8478'), weapon: null, quiver: false, capeTone: null, skin: tone('#e6c0a0') }),
   st_scroll: () => Object.assign(heroLook('mage', 'adept', '#4a3a2a'), { armor: 'robe', body: tone('#4a3a2a'), body2: tone('#d8ccb0'), accent: tone('#1a1a1a'), trim: tone('#1a1a1a'), head: 'none', hair: tone('#6a6a6a'), beard: tone('#8a8a8a'), weapon: null, capeTone: null, skin: tone('#dcb090') }),
@@ -438,7 +439,7 @@ function drawHeroPC(pc, L, P, cls) {
   const glove = L.armor === 'plate' ? L.body : L.armor === 'leather' ? L.body2 : L.skin;
 
   // capa
-  if (L.cape) {
+  if (L.cape && L.capeTone) {
     const sway = P.walk >= 0 ? 4 : 1.5, sA = K.A.s, sB = K.B.s, back = mul3(K.fwd, -1);
     const bA = add3(add3(sA, mul3(back, 3 + sway)), [0, 0.8, 27]), bB = add3(add3(sB, mul3(back, 3 + sway)), [0, -0.8, 27]);
     add(dOf(sA, sB) - 4.5 * (view === 'N' ? -1 : 1) * 0 + (view === 'N' ? 3 : -3), () => {
@@ -748,7 +749,7 @@ function heroSprite(cls, skin, color, P) {
   const L = lookFor(lk, () => heroLook(cls, skin, color));
   return sprite('h|' + lk + '|' + poseKey(P), HW, HH, HAX, HAY, pc => drawHeroPC(pc, L, P, cls), { ok: 0.42 });
 }
-const NPC_CLS = { hotelkeeper: 'archer', banker4: 'mage', banker5: 'mage', banker6: 'mage', bankporter: 'archer', v_house3: 'archer', v_house4: 'archer', v_trav3: 'archer', v_monk: 'mage', v_noblef: 'mage', v_noblem: 'knight', v_peasm: 'knight', v_peasf: 'archer', v_elderm: 'mage', v_elderf: 'archer', banker: 'mage', banker2: 'mage', banker3: 'mage', v_house1: 'archer', v_house2: 'archer', v_trav1: 'knight', v_trav2: 'archer', v_vis1: 'mage', v_vis2: 'archer', v_thug1: 'archer', v_thug2: 'knight', supplier: 'knight', st_saw: 'knight', st_mine: 'knight', st_farm: 'archer', st_carp: 'archer', st_alch: 'mage', st_apoth: 'mage', st_arcane: 'mage', st_tailor: 'archer', st_scroll: 'mage', courier1: 'archer', courier2: 'archer', courier3: 'knight', broker: 'archer', noble: 'archer', noble2: 'knight', gardener: 'archer', tailor: 'mage', jailer: 'knight', executioner: 'knight', fruit: 'archer', priest: 'mage', merchant: 'archer', innkeeper: 'archer', guard: 'knight', captain: 'knight', smith: 'knight' };
+const NPC_CLS = { st_witch: 'mage', hotelkeeper: 'archer', banker4: 'mage', banker5: 'mage', banker6: 'mage', bankporter: 'archer', v_house3: 'archer', v_house4: 'archer', v_trav3: 'archer', v_monk: 'mage', v_noblef: 'mage', v_noblem: 'knight', v_peasm: 'knight', v_peasf: 'archer', v_elderm: 'mage', v_elderf: 'archer', banker: 'mage', banker2: 'mage', banker3: 'mage', v_house1: 'archer', v_house2: 'archer', v_trav1: 'knight', v_trav2: 'archer', v_vis1: 'mage', v_vis2: 'archer', v_thug1: 'archer', v_thug2: 'knight', supplier: 'knight', st_saw: 'knight', st_mine: 'knight', st_farm: 'archer', st_carp: 'archer', st_alch: 'mage', st_apoth: 'mage', st_arcane: 'mage', st_tailor: 'archer', st_scroll: 'mage', courier1: 'archer', courier2: 'archer', courier3: 'knight', broker: 'archer', noble: 'archer', noble2: 'knight', gardener: 'archer', tailor: 'mage', jailer: 'knight', executioner: 'knight', fruit: 'archer', priest: 'mage', merchant: 'archer', innkeeper: 'archer', guard: 'knight', captain: 'knight', smith: 'knight' };
 function npcSprite(kind, P) {
   const L = lookFor('npc:' + kind, NPC_LOOKS[kind]);
   return sprite('n|' + kind + '|' + poseKey(P), HW, HH, HAX, HAY, pc => drawHeroPC(pc, L, P, NPC_CLS[kind] || 'knight'), { ok: 0.42 });

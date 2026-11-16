@@ -161,7 +161,7 @@ function hostOnClient(from, m) {
     if (+m.jailLeft > 0) setTimeout(() => { if (S.players[np.id]) jailPlayer(np, Math.min(900000, +m.jailLeft)); }, 1500);
     np.sheathed = true;   // nasce com a arma guardada (sentinelas não implicam)
     np.freeLimb = !!m.freeLimb; np.shieldHp = isFinite(m.shieldHp) ? clamp(+m.shieldHp, 0, 100) : 100;
-    np.feats = {}; if (m.feats && typeof m.feats === 'object') for (const k of ['thief', 'jobs', 'shifts', 'rent']) if (isFinite(m.feats[k])) np.feats[k] = clamp(+m.feats[k], 0, 1e5);
+    np.feats = {}; if (m.feats && typeof m.feats === 'object') { for (const k of ['thief', 'jobs', 'shifts', 'rent']) if (isFinite(m.feats[k])) np.feats[k] = clamp(+m.feats[k], 0, 1e5); if (m.feats.rg && typeof m.feats.rg === 'object') { np.feats.rg = {}; for (const g in REP_G) if (isFinite(m.feats.rg[g])) np.feats.rg[g] = clamp(+m.feats.rg[g], -100, 100); } }
     np.prof = {}; if (m.prof && typeof m.prof === 'object') for (const k in PROFS) if (isFinite(m.prof[k])) np.prof[k] = clamp(+m.prof[k], 0, 1e6);
     np.tree = cleanTree(cls, lvl, m.tree); np.use = {}; if (m.use && typeof m.use === 'object') for (const k in USE) if (isFinite(m.use[k])) np.use[k] = clamp(+m.use[k], 0, 1e6);
     np.maxHp = maxHpOf(np); np.maxMp = maxMpOf(np);
@@ -245,9 +245,12 @@ function hostOnClient(from, m) {
     case 'bank': bankMsg(p, m); break;
     case 'shift': shiftMsg(p, m); break;
     case 'op': { const n = S.npcs && S.npcs[m.id]; if (n) Net.toOne(p.id, { t: 'op', id: n.id, ...opInfo(n, p) }); break; }
-    case 'gift': { const n = S.npcs && S.npcs[m.id], k = String(m.k || ''); if (!n || n.dead || n.downed || dist(p.x, p.y, n.x, n.y) > 3.5 || !(p.inv[k] > 0) || !FOOD[k] && k !== 'herb' && k !== 'gem' && k !== 'wand' && k !== 'map') break;
+    case 'gift': { const n = S.npcs && S.npcs[m.id], k = String(m.k || ''); if (!n || n.dead || n.downed || dist(p.x, p.y, n.x, n.y) > 3.5 || !(p.inv[k] > 0) || !LOOT[k] || !(FOOD[k] || Object.values(REP_LIKES).some(l => l.includes(k)))) break;
       S.giftT = S.giftT || {}; const key = n.id + '|' + memKey(p); if (now_() - (S.giftT[key] || 0) < 600000) { tell(p, n.name.split(',')[0] + ' agradece, mas já ganhou presente seu há pouco.'); break; }
-      S.giftT[key] = now_(); p.inv[k]--; if (!p.inv[k]) delete p.inv[k]; memAdd(n, p, 'gift'); sendStat(p); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: ['Para mim? Obrigado!', 'Que gentileza!', 'Não precisava!'][Math.floor(Math.random() * 3)], ms: 1 }); Net.toOne(p.id, { t: 'op', id: n.id, ...opInfo(n, p) }); break; }
+      S.giftT[key] = now_(); p.inv[k]--; if (!p.inv[k]) delete p.inv[k]; memAdd(n, p, 'gift');
+      { const g = npcGroup(n.id, n.kind), liked = (REP_LIKES[n.id] || REP_LIKES[n.kind] || REP_LIKES[g] || []).includes(k); S.giftN = S.giftN || {}; const rk = n.id + '|' + memKey(p) + '|' + k, c = S.giftN[rk] = (S.giftN[rk] || 0) + 1;
+        const v = Math.max(0.5, (liked ? 5 : 2) * (1 + Math.min(1, (LOOT[k].price || 5) / 40)) / c); repAdd(p, g, v, (liked ? n.name.split(',')[0] + ' adorou o presente' : 'presente para ' + n.name.split(',')[0]) + (c > 1 ? ', mas já ganhou isso antes' : '')); }
+      sendStat(p); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: ['Para mim? Obrigado!', 'Que gentileza!', 'Não precisava!'][Math.floor(Math.random() * 3)], ms: 1 }); Net.toOne(p.id, { t: 'op', id: n.id, ...opInfo(n, p) }); break; }
     case 'revive': {
       const t = S.players[m.id];
       if (m.on && t && !t.downed && t !== p && !p.downed && t.hp < t.maxHp * KNEEL_HP && dist(p.x, p.y, t.x, t.y) <= 1.8) { t.aid = { by: p.id, start: now_() }; near(t.x, t.y, { t: 'rv', id: t.id, by: p.id }); }
@@ -446,7 +449,7 @@ function roll(p, mult = 1, tgt = null) {
   dmg *= 1 + treeEff(p, 'dmg') + (p._el === 'fire' ? treeEff(p, 'fire') : p._el === 'ice' ? treeEff(p, 'ice') : 0) + useBonus(p, p._melee ? MELEE_USE[p.cls] : RANGED_USE[p.cls]);
   if (tgt && MON[tgt.type] && MON[tgt.type].beh) dmg *= 1 + treeEff(p, 'beast');
   if (buffOn(p, 'banner')) dmg *= 1.15;
-  const crit = p._forceCrit || Math.random() < c.crit + treeEff(p, 'crit') + (buffOn(p, 'agile') ? 0.1 : 0);
+  const crit = p._forceCrit || Math.random() < c.crit + (p.inv && p.inv.amulet_luck ? 0.05 : 0) + treeEff(p, 'crit') + (buffOn(p, 'agile') ? 0.1 : 0);
   if (crit) dmg *= 1.8 + treeEff(p, 'critDmg');
   return { dmg: Math.max(1, Math.round(dmg)), crit };
 }
@@ -549,11 +552,16 @@ function survivalTick(p, now, dt) {
   if (p.dev || p.downed) return;
   if (now < ((p.buffs || {}).weaver || 0)) { p.cold = Math.max(0, (p.cold || 0) - dt * 5); return; }   // bênção do Tecelão
   const busy = (p.running && p.walking) || now - p.lastCombat < 4000 ? 1.5 : 1, sick = now < (p.sickUntil || 0);
+  if (now < (p.buffs.breath || 0)) p.cst = cstMaxOf(p);   // Elixir do Fôlego
   p.food = Math.max(0, (p.food ?? 100) - dt * 100 / (SURV.foodMin * 60) * busy);
   p.water = Math.max(0, (p.water ?? 100) - dt * 100 / (SURV.waterMin * 60) * busy * (sick ? 2.5 : 1));
   if (p.water < 25 && !p.atk && !p.parry) drinkCanteen(p, now);   // bebe sozinho do cantil quando a sede aperta
+  if (!p.atk && !p.parry && now - p.lastCombat > 4000 && now > (p.autoEatT || 0)) {
+    if (p.food < 30) { const k = Object.keys(FOOD).filter(f => p.inv[f] > 0 && f !== 'tea').sort((a, b) => FOOD[a] - FOOD[b])[0]; if (k) { p.autoEatT = now + 4000; p.useT = 0; useItem(p, k); near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'eatstand', ms: 1600 }); info(p, 'Você comeu ' + LOOT[k].name.toLowerCase() + ' (estava com fome).'); } }
+    else if (p.water < 30 && p.inv.tea > 0) { p.autoEatT = now + 4000; p.useT = 0; useItem(p, 'tea'); info(p, 'Você bebeu um chá (estava com sede).'); }
+  }
   // frio: à noite, fora da cidade, longe do fogo e fora de casa
-  const night = dayInfo().night, indoor = p.fl > 0 || bldAt(p.x, p.y) >= 0, warm = !night || indoor || nearFire(p);
+  const night = dayInfo().night, indoor = p.fl > 0 || bldAt(p.x, p.y) >= 0, warm = !night || indoor || nearFire(p) || now < (p.buffs.warm || 0);
   const sk = seasonNow().k, cm = sk === 'winter' ? 1.8 : sk === 'autumn' ? 1.2 : sk === 'summer' ? 0.6 : 1;
   p.cold = clamp((p.cold || 0) + dt * (warm ? -2.5 : inSafe(p.x, p.y) ? (sk === 'winter' ? 0.6 : 0.2) : 100 / (SURV.coldMin * 60) * cm), 0, 100);
   // infecção: ferida grave sem bandagem pode infeccionar; piora com o tempo
@@ -577,6 +585,9 @@ function useItem(p, k) {
   if (!p.inv[k]) return;
   const take = () => { if (--p.inv[k] <= 0) delete p.inv[k]; };
   if (FOOD[k]) { take(); p.food = Math.min(100, p.food + FOOD[k] * (1 + useBonus(p, 'cook'))); if (k === 'stew') { p.water = Math.min(100, (p.water ?? 100) + 20); p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.15)); } if (k === 'cookedmeat') p.water = Math.max(0, p.water - 5); if ((k === 'venison' || k === 'pork') && Math.random() < 0.3) { p.sickUntil = now + 120000; tell(p, 'A carne crua caiu mal. Você está enjoado (sede dobrada por 2 min).'); } else tell(p, 'Você comeu ' + LOOT[k].name.toLowerCase() + '.'); }
+  else if (k === 'elixir_breath') { take(); p.buffs.breath = now + 180000; p.cst = cstMaxOf(p); tell(p, 'Um frescor sobe pelo peito: o fôlego não acaba por 3 minutos.'); }
+  else if (k === 'elixir_warm') { take(); p.buffs.warm = now + 600000; p.cold = 0; tell(p, 'Um calor de brasa corre nas veias: nada de frio por 10 minutos.'); }
+  else if (k === 'elixir_swift') { take(); p.buffs.agile = now + 45000; tell(p, 'As pernas ficam leves: passos ligeiros por 45 segundos.'); }
   else if (k === 'ointment') { take(); p.infect = 0; p.infT = 0; tell(p, 'O unguento arde, mas a febre baixa.'); }
   else if (k === 'tea') { take(); p.water = Math.min(100, (p.water ?? 100) + 35); p.infect = Math.max(0, (p.infect || 0) - 1); tell(p, 'O chá quente acalma e mata a sede.'); }
   else if (k === 'herb') { take(); useGain(p, 'aid', 1); p.infect = Math.max(0, (p.infect || 0) - 1); p.infT = 0; for (const b of BODY_PARTS) if (p.bleed[b] > 0 && p.bleed[b] <= 0.6) p.bleed[b] = 0; tell(p, 'A erva amarga acalma a febre e estanca os cortes leves.'); }
@@ -847,11 +858,11 @@ function npcAction(p, m) {
   if (!n || (!inJail && dist(p.x, p.y, (S.npcs && S.npcs[n.id] ? S.npcs[n.id].x : n.x), (S.npcs && S.npcs[n.id] ? S.npcs[n.id].y : n.y)) > 3.5)) { tell(p, 'Chegue mais perto para conversar.'); return; }
   if (n.id === 'jailer' && m.a === 'bail') {
     const q = S.players[m.who || p.id]; if (!q || !(q.jailUntil > now_())) { Net.toOne(p.id, { t: 'npc', n: n.id, text: 'Esse aí não está preso.' }); return; }
-    const price = bailPrice(q); if (p.gold < price) { Net.toOne(p.id, { t: 'npc', n: n.id, text: 'A fiança é ' + price + ' de ouro. Você não tem o bastante.' }); return; }
-    p.gold -= price; releasePlayer(q, (q === p ? 'Você pagou' : p.name + ' pagou') + ' a fiança de ' + price + ' de ouro. Está livre.'); Net.toOne(p.id, { t: 'npc', n: n.id, text: 'Fiança paga: ' + price + ' de ouro. Pode ir.' }); sendStat(p); return;
+    const price = bailPrice(q); if (!canPay(p, price)) { Net.toOne(p.id, { t: 'npc', n: n.id, text: 'A fiança é ' + price + ' de ouro. Você não tem o bastante.' }); return; }
+    payCity(p, price); releasePlayer(q, (q === p ? 'Você pagou' : p.name + ' pagou') + ' a fiança de ' + price + ' de ouro. Está livre.'); Net.toOne(p.id, { t: 'npc', n: n.id, text: 'Fiança paga: ' + price + ' de ouro. Pode ir.' }); sendStat(p); return;
   }
   const say = text => Net.toOne(p.id, { t: 'npc', n: n.id, text });
-  const pay = cost => { if (p.gold < cost) { say('Você não tem ouro suficiente.'); return false; } p.gold -= cost; const rb = npcBiz(S.npcs && S.npcs[n.id]); if (rb && rb.owner !== estOwner(p)) { rb.biz.cofre += cost; rb.biz.today.rev += cost; bizLog(rb.biz, p.name + ' pagou ' + cost + ' de ouro a ' + n.name.split(',')[0] + '.'); } return true; };
+  const pay = cost => { if (!canPay(p, cost)) { say('Você não tem ouro suficiente (banco + bolsa).'); return false; } payCity(p, cost); const rb = npcBiz(S.npcs && S.npcs[n.id]); if (rb && rb.owner !== estOwner(p)) { rb.biz.cofre += cost; rb.biz.today.rev += cost; bizLog(rb.biz, p.name + ' pagou ' + cost + ' de ouro a ' + n.name.split(',')[0] + '.'); } return true; };
   const now = now_();
   if (m.a === 'buyl' && LOOT[m.item] && ((n.id === 'merchant' && ['bread', 'ointment', 'firewood', 'rope', 'lockpick', 'axe', 'pickaxe', 'sickle'].includes(m.item)) || (n.id === 'fruit' && ['apple', 'berries'].includes(m.item)))) {
     const qty = m.qty === 5 ? 5 : 1; if (!p.inv[m.item] && Object.keys(p.inv).length >= INV_SLOTS) { say('Sua mochila está cheia.'); return; }
@@ -873,6 +884,8 @@ function npcAction(p, m) {
     if (!n2) { say('Você não tem nada que me interesse agora.'); return; }
     p.gold += total;
     say(`Fechado: ${n2} ${n2 > 1 ? 'itens' : 'item'} por ${total} de ouro. Traga mais quando puder.`);
+  } else if (n.id === 'priest' && m.a === 'donate') {
+    if (!pay(25)) return; repAdd(p, 'cidade', 3, 'doou à capela'); repAdd(p, 'nobres', 1); say('Que a Aurora retribua sua bondade. A cidade não esquece quem ajuda.');
   } else if (n.id === 'smith' && m.a === 'repair') {
     if ((p.shieldHp ?? 100) >= 100) { say('Esse escudo está inteiro. Volte quando ele apanhar.'); return; }
     if (!pay(15)) return; p.shieldHp = 100; say('Tábuas novas, rebites no lugar e o aro desamassado. Pronto para mais.');
@@ -2032,7 +2045,7 @@ function jailMsg(p, m) {
     p.inv[k]--; if (!p.inv[k]) delete p.inv[k]; q.inv[k] = (q.inv[k] || 0) + 1; tell(p, 'Você passou ' + LOOT[k].name + ' pelas grades.'); tell(q, p.name + ' te passou ' + LOOT[k].name + '.'); sendStat(p); sendStat(q);
   }
 }
-function crimeSentence(p, kind) { if (kind === 'murder') p.murderer = true; p.sentence = Math.min(900000, (p.sentence || 0) + (CRIME_MS[kind] || CRIME_MS.assault)); (p.crimes = p.crimes || []).push(CRIME_TXT[kind] || 'agressão'); if (p.crimes.length > 4) p.crimes.shift(); }
+function crimeSentence(p, kind) { if (kind === 'murder') p.murderer = true; repAdd(p, 'guarda', kind === 'murder' ? -15 : -8, CRIME_TXT[kind] || 'crime'); repAdd(p, 'cidade', kind === 'murder' ? -8 : -4); p.sentence = Math.min(900000, (p.sentence || 0) + (CRIME_MS[kind] || CRIME_MS.assault) * (repOf(p) >= 90 ? 0.5 : 1)); (p.crimes = p.crimes || []).push(CRIME_TXT[kind] || 'agressão'); if (p.crimes.length > 4) p.crimes.shift(); }
 
 // execução na guilhotina: deitar na prancha, fechar a luneta, anúncio, alavanca, lâmina, cabeça no cesto
 const EXEC_T = { lock: 1400, announce: 3000, pull: 28400, drop: 30000, fall: 33500 };
@@ -2105,8 +2118,8 @@ function lawMsg(p, m) {
   if (m.t === 'lastwords') { if (!p.condemned || p.saidLast) return; const tx = String(m.text || '').replace(/[<>]/g, '').trim().slice(0, 120); if (!tx) return; p.saidLast = true; sys('Últimas palavras de ' + p.name + ': "' + tx + '"'); near(p.x, p.y, { t: 'pbubble', id: p.id, text: tx }, VIEW_RADIUS + 12); return; }
   if (m.t === 'execbail') {
     const q = S.players[m.who || p.id]; if (!q || !q.condemned) return; if (p !== q && dist(p.x, p.y, q.x, q.y) > 14) { tell(p, 'Chegue mais perto para pagar a fiança.'); return; }
-    if (p.gold < 1000) { tell(p, 'A fiança da execução é 1000 de ouro. Você não tem o bastante.'); return; }
-    p.gold -= 1000; sendStat(p);
+    if (!canPay(p, 1000)) { tell(p, 'A fiança da execução é 1000 de ouro. Você não tem o bastante.'); return; }
+    payCity(p, 1000); sendStat(p);
     if (q.execTok) { q.execTok = 0; q.execAt = 0; near(STAGE.x, STAGE.y, { t: 'execabort', id: q.id }, VIEW_RADIUS + 12); }
     for (const n of Object.values(S.npcs || {})) if (n.lead && n.lead.id === q.id) n.lead = null;
     q.dragBy = null; q.bound = null; condemn(q, false); sys((p === q ? q.name + ' pagou' : p.name + ' pagou') + ' a fiança de 1000 ouro: ' + q.name + ' escapa da guilhotina e vai para a cadeia.');
@@ -2308,7 +2321,7 @@ const ESTATE_KEY = 'nae-estate-v1', ESTATE_AUTH_MAX = 6, ESTATE_CHEST_SLOTS = 16
 const SALARY = { shop: 6, workshop: 8, bank: 30, hotel: 6 }, SAFE_CAP = 500, WS_CAP = 120, SHOP_CAP = 40, THEFT = [0.06, 0.04, 0.02, 0.01];
 const estOwner = p => String(p.name || '').trim().toLowerCase() + '|' + p.cls;
 const estDay = () => Math.floor(Date.now() / ESTATE_DAY_MS);
-const isBizProp = P => P && (P.kind === 'shop' || P.kind === 'workshop' || P.kind === 'bank' || P.kind === 'hotel') && !P.npc;
+const isBizProp = P => P && (P.kind === 'shop' || P.kind === 'workshop' || P.kind === 'bank' || P.kind === 'hotel') && P.npc !== 'a Guarda' && !(P.kind === 'workshop' && P.npc && !P.wk);
 function estateLoad() {
   if (S.estate) return S.estate; S.estate = { r: {}, lost: {} };
   try { const j = typeof localStorage !== 'undefined' && JSON.parse(localStorage.getItem(ESTATE_KEY) || 'null'); if (j && j.r) { S.estate = { r: j.r, lost: j.lost || {}, hotel: j.hotel || {} }; for (const pid in S.estate.r) { const P = PROPS_BY[pid]; if (!P || (P.kind !== 'house' && !isBizProp(P))) delete S.estate.r[pid]; } } } catch (e) { }
@@ -2316,7 +2329,7 @@ function estateLoad() {
   S.estateL = estateLocks(); return S.estate;
 }
 function estateSave() { try { if (typeof localStorage !== 'undefined') localStorage.setItem(ESTATE_KEY, JSON.stringify(S.estate)); } catch (e) { } }
-function estateLocks() { const E = S.estate, L = {}; if (!E) return L; for (const P of PROPS) if (tenantsOf(P).length) L[P.bi] = []; for (const pid in E.r) { const P = PROPS_BY[pid]; if (P && P.kind !== 'shop') L[P.bi] = [E.r[pid].ownerName.trim().toLowerCase(), ...E.r[pid].auth]; } return L; }
+function estateLocks() { const E = S.estate, L = {}; if (!E) return L; for (const P of PROPS) if (tenantsOf(P).length) L[P.bi] = []; for (const pid in E.r) { const P = PROPS_BY[pid]; if (P && P.kind === 'house') L[P.bi] = [E.r[pid].ownerName.trim().toLowerCase(), ...E.r[pid].auth]; } return L; }
 function tenantsOf(P) { const E = S.estate; if (!P || !P.tenants || !P.tenants.length) return []; if (E && E.gone && E.gone[P.id]) return []; return P.tenants; }
 function estatePublic() { const E = estateLoad(), st = {}; for (const pid in E.r) st[pid] = (E.r[pid].mode === 'own' ? '★' : '') + E.r[pid].ownerName; return st; }
 const estTen = () => { const E = estateLoad(); return { gone: E.gone || {}, evict: E.evict || {} }; };
@@ -2354,7 +2367,17 @@ function estateJoin(np) {
   const pid = rentalOf(np); if (pid) { const s = estHomeSpot(PROPS_BY[pid]); np.x = s.x; np.y = s.y; }
   else { const k = hotelRoomOf(np); if (k >= 0) { const R = hotelRooms()[k]; const sp = HOTEL_CABS[k] && HOTEL_CABS[k].spot; if (sp) { np.x = sp[0]; np.y = sp[1]; } else { np.x = R.bed.x + 0.6; np.y = R.bed.y + 1.0; } setTimeout(() => { if (S.players[np.id]) tell(np, 'Você acorda na sua cabine da Pousada do Javali Magro.'); }, 1300); } }
   for (const b of bizOf(np)) E.r[b].seen = Date.now();
+  setTimeout(() => { if (!S.players[np.id] || !E.offers) return; const k2 = estOwner(np); for (const pid in E.offers) { const O = E.offers[pid], r = E.r[pid]; if (!r) { offerClose(PROPS_BY[pid], false); continue; } if ((r.owner === k2 && !O.counter) || (O.from === k2 && O.counter)) offerNotify(np, pid); } }, 2500);
   setTimeout(() => { if (S.players[np.id]) { estateSend(np); if (pid) tell(np, 'Você acorda em casa: ' + PROPS_BY[pid].name + ' (' + PROPS_BY[pid].district + ').'); } }, 1200);
+}
+function offerNotify(q, pid) { const O = ((S.estate || {}).offers || {})[pid], P = PROPS_BY[pid], r = S.estate.r[pid]; if (!O || !P || !r) return; Net.toOne(q.id, { t: 'offer', pid, name: P.name, v: O.v, counter: O.counter || 0, from: O.fromName, owner: r.ownerName, mine: r.owner === estOwner(q) }); }
+function offerClose(P, ok, why) {
+  const E = S.estate, O = E.offers[P.id], r = E.r[P.id]; delete E.offers[P.id]; if (!O) return; const buyer = Object.values(S.players).find(q => estOwner(q) === O.from), seller = r && ownerOnline(r);
+  if (ok && r) { const A = bankLoad().acc[r.owner] || (bankLoad().acc[r.owner] = { g: 0, loan: 0, due: 0, wk: estDay() }); A.g += O.v; bankSave(); const oldName = r.ownerName;
+    r.owner = O.from; r.ownerName = O.fromName; r.mode = 'own'; r.paid = estDay(); r.auth = []; if (r.biz) bizLog(r.biz, O.fromName + ' comprou o negócio de ' + oldName + ' por ' + O.v + ' de ouro.');
+    if (seller) info(seller, 'Você vendeu ' + P.name + ' a ' + O.fromName + ' por ' + O.v + ' de ouro (no seu banco).'); if (buyer) info(buyer, P.name + ' agora é seu! (' + O.v + ' de ouro)'); estateChanged(); }
+  else { const A = bankLoad().acc[O.from] || (bankLoad().acc[O.from] = { g: 0, loan: 0, due: 0, wk: estDay() }); A.g += O.v; bankSave(); if (buyer && why) info(buyer, why); else if (seller && why && !buyer) {} }
+  estateSave();
 }
 function nearBroker(p) { const n = S.npcs && S.npcs.broker; return !!n && !n.dead && !n.downed && dist(p.x, p.y, n.x, n.y) < 4.5; }
 function nearPropDoor(p, P) { const [dx, dy] = doorTile(BUILDINGS[P.bi]); return dist(p.x, p.y, dx, dy) < 3.4 || WORLD.bld[tileAt(p.x, p.y)] === P.bi; }
@@ -2457,6 +2480,10 @@ function collectorTick(n, now, dt) {
 function npcBiz(n) { if (!n || !S.estate) return null; const bi = n.bi != null ? n.bi : WORLD.bld[tileAt(n.postX ?? n.x, n.postY ?? n.y)]; if (bi == null || bi < 0) return null; const P = PROPS.find(q => q.bi === bi), r = P && S.estate.r[P.id]; return r && r.biz ? r : null; }
 const SELL_K = 0.85;
 function recipeGain(rk) { const W = Object.values(WORKS).find(w => w.recipes && w.recipes[rk]); if (!W) return 0; const rec = W.recipes[rk]; let c = 0; for (const g in rec) c += GOODS[g].p * 1.2 * rec[g]; return (rk === 'serve' ? 5 : GOODS[rk].p * SELL_K) - c; }
+const canPay = (p, amt) => Math.floor((bankLoad().acc[estOwner(p)] || { g: 0 }).g) + Math.floor(p.gold || 0) >= amt;
+const payCity = (p, amt) => !!debit(estOwner(p), p, amt);
+// preço de compra de um imóvel: negócio de NPC custa 50% a mais (o NPC continua trabalhando); Honrado paga 10% menos
+const buyPrice = (P, p) => Math.round(P.buy * (P.npc ? 1.5 : 1) * (p && repOf(p) >= 75 ? 0.9 : 1));
 function bizLog(B, t) { B.log.unshift({ t, at: Date.now() }); if (B.log.length > 12) B.log.length = 12; }
 function canAcquire(p, P, how) {
   if (P.kind === 'house' && tenantsOf(P).length) { if (how !== 'buy') return 'Essa casa tem inquilino: dá para comprar (e receber o aluguel), não para alugar.'; if (bizOf(p).length >= BIZ_MAX) return 'No máximo ' + BIZ_MAX + ' negócios/investimentos por personagem.'; return null; }
@@ -2477,13 +2504,32 @@ function estateMsg(p, m) {
       if (E.r[P.id] && !(mine && m.a === 'buy' && E.r[P.id].mode !== 'own')) { tell(p, 'Esse imóvel já tem dono.'); return; }
       if (!nearBroker(p) && !nearPropDoor(p, P)) { tell(p, 'O contrato se fecha com o corretor, na Imobiliária, ou na porta do imóvel.'); return; }
       if (!mine) { const why = canAcquire(p, P, m.a); if (why) { tell(p, why); return; } }
-      const cost = m.a === 'buy' ? P.buy - (mine ? E.r[P.id].dep || 0 : 0) : P.rent * (RENT_DAYS + 2);   // 1ª semana + caução de 2 dias
+      const cost = m.a === 'buy' ? buyPrice(P, p) - (mine ? E.r[P.id].dep || 0 : 0) : P.rent * (RENT_DAYS + 2);   // 1ª semana + caução de 2 dias
       if (!debit(estOwner(p), p, cost)) { tell(p, 'Você precisa de ' + cost + ' de ouro (banco + bolsa).'); return; }   // paga com o banco e completa com a bolsa
       if (mine) { const r = E.r[P.id]; r.mode = 'own'; r.dep = 0; r.paid = estDay(); tell(p, 'Escritura assinada: ' + P.name + ' agora é sua para sempre (imposto de 1 ouro por dia).'); }
       else { E.r[P.id] = { owner: estOwner(p), ownerName: p.name, mode: m.a === 'buy' ? 'own' : 'rent', paid: estDay(), auth: [], chest: {}, dep: m.a === 'buy' ? 0 : P.rent * 2, since: Date.now(), seen: Date.now() };
         if (P.kind !== 'house') { E.r[P.id].biz = bizInit(P); bizLinkBank(E.r[P.id]); bizLog(E.r[P.id].biz, 'O lucro cai direto na sua conta do banco, e os salários e a reposição saem dela. Mantenha ouro no banco.'); }
         tell(p, (m.a === 'buy' ? 'Escritura assinada! ' + P.name + ' é sua (imposto de 7 ouro por semana).' : 'Contrato assinado! ' + P.name + ' (' + P.district + '). Aluguel: ' + P.week + ' de ouro por semana, debitado sozinho.') + (P.kind !== 'house' ? ' Abra a gestão para abastecer e melhorar.' : '')); }
       sendStat(p); estateChanged(); return;
+    }
+    case 'offer': {   // oferecer um valor pelo negócio de outro jogador
+      const r = E.r[P && P.id]; if (!P || !r || P.kind === 'house' && !r.biz) { tell(p, 'Só dá para fazer oferta por negócios de outros jogadores.'); return; } if (r.owner === estOwner(p)) return;
+      const v = Math.floor(+m.v || 0); if (v < 1) return; E.offers = E.offers || {}; const old = E.offers[P.id]; if (old && old.from === estOwner(p)) { tell(p, 'Você já tem uma oferta por ' + P.name + ' esperando resposta.'); return; }
+      if (old) { tell(p, 'Já existe outra oferta por ' + P.name + ' esperando resposta. Tente mais tarde.'); return; }
+      if (!payCity(p, v)) { tell(p, 'Você precisa de ' + v + ' de ouro (banco + bolsa) para oferecer.'); return; }
+      E.offers[P.id] = { from: estOwner(p), fromName: p.name, v, day: estDay() }; estateSave(); info(p, 'Oferta de ' + v + ' de ouro por ' + P.name + ' enviada a ' + r.ownerName + '. O dinheiro fica reservado até a resposta (1 dia do jogo).');
+      const o = ownerOnline(r); if (o) offerNotify(o, P.id); sendStat(p); return;
+    }
+    case 'offerans': {   // dono responde: aceitar, recusar ou contrapropor; quem ofereceu responde à contraproposta
+      E.offers = E.offers || {}; const O = E.offers[P && P.id], r = E.r[P && P.id]; if (!O || !r) return; const me = estOwner(p);
+      if (r.owner === me && !O.counter) {
+        if (m.ans === 'yes') offerClose(P, true); else if (m.ans === 'counter' && +m.v > O.v) { O.counter = Math.floor(+m.v); estateSave(); info(p, 'Contraproposta de ' + O.counter + ' enviada a ' + O.fromName + '.'); const b = Object.values(S.players).find(q => estOwner(q) === O.from); if (b) offerNotify(b, P.id); }
+        else offerClose(P, false, r.ownerName + ' recusou a sua oferta por ' + P.name + '. O dinheiro voltou para o banco.');
+      } else if (O.from === me && O.counter) {
+        if (m.ans === 'yes') { const extra = O.counter - O.v; if (!payCity(p, extra)) { tell(p, 'Você precisa de mais ' + extra + ' de ouro.'); return; } O.v = O.counter; offerClose(P, true); }
+        else offerClose(P, false, 'Você recusou a contraproposta. O dinheiro voltou para o banco.');
+      }
+      return;
     }
     case 'leave': {   // devolver (alugado) ou vender de volta à Coroa pela metade (comprado)
       const pid = m.pid && E.r[m.pid] && E.r[m.pid].owner === estOwner(p) ? m.pid : rentalOf(p); if (!pid) return; const r = E.r[pid], PP = PROPS_BY[pid];
@@ -2581,9 +2627,9 @@ function counterMsg(p, m, E, pid) {
   if (m.a === 'cbuy') {
     const g = String(m.g), have = Math.floor(B.stock[g] || 0), q = Math.min(have, clamp(m.q | 0, 1, 20)), it = GOOD_ITEM[g]; if (!q || !it) return;
     const each = own ? Math.ceil(GOODS[g].p) : counterPrice(B, g, mul), cost = each * q; if (B.closed && !own) { tell(p, 'A loja está fechada (sem salário para o balconista).'); return; }
-    if (p.gold < cost) { tell(p, 'Você precisa de ' + cost + ' de ouro.'); return; }
+    if (!canPay(p, cost)) { tell(p, 'Você precisa de ' + cost + ' de ouro.'); return; }
     if (it.loot && !p.inv[it.loot] && Object.keys(p.inv).length >= INV_SLOTS) { tell(p, 'Sua mochila está cheia.'); return; }
-    p.gold -= cost; B.stock[g] -= q; if (!B.stock[g]) delete B.stock[g];
+    payCity(p, cost); B.stock[g] -= q; if (!B.stock[g]) delete B.stock[g];
     if (it.pot) p.pots[it.pot] = (p.pots[it.pot] || 0) + q; else p.inv[it.loot] = (p.inv[it.loot] || 0) + q;
     if (own) { B.cofre += cost; bizLog(B, 'Você tirou ' + q + ' ' + GOODS[g].n + ' a preço de custo (' + cost + ' ouro no cofre).'); }
     if (!own) { const cl = Object.values(S.npcs).find(n => n.bi === P.bi && n.role === 'clerk'); if (cl) memAdd(cl, p, 'buy'); }
@@ -2664,8 +2710,8 @@ function bizHour(now) {
       if (!B.closed) { const H = hotelData(), d0 = estDay(), occ = Object.values(H.rooms || {}).filter(x => x && ((x.who && x.until > d0) || (x.npc && S.npcs && S.npcs[x.npc]))).length; if (occ) { B.cofre += occ; B.today.rev += occ; } }
     }
     else if (P.kind === 'shop') {
-      if (B.rsOn) { const ord = g => B.orders.filter(o => o.g === g).reduce((a, o) => a + o.q, 0); for (const g of SHOP_GOODS[P.shopType] || []) { const [mn, mx] = (B.rs || {})[g] || [10, 30], have = (B.stock[g] || 0) + ord(g); if (have >= mn) continue;
-          const room = shopCap(B) - stockSum(B.stock) - B.orders.reduce((a, o) => a + o.q, 0), q = Math.min(mx - have, room); if (q <= 0) continue; const cost = Math.ceil(GOODS[g].p * q);
+      if (B.rsOn) { const GS = SHOP_GOODS[P.shopType] || [], ord = g => B.orders.filter(o => o.g === g).reduce((a, o) => a + o.q, 0), share = Math.floor(shopCap(B) / Math.max(1, GS.length)); for (const g of GS) { const have = (B.stock[g] || 0) + ord(g); if (have >= share) continue;
+          const room = shopCap(B) - stockSum(B.stock) - B.orders.reduce((a, o) => a + o.q, 0), q = Math.min(share - have, room); if (q < 3) continue; const cost = Math.ceil(GOODS[g].p * q);
           if (debit(r.owner, null, cost, B)) { B.orders.push({ g, q, at: Date.now() + BIZ_HOUR_MS }); B.today.cost += cost; bizLog(B, 'Reposição automática: ' + q + ' ' + GOODS[g].n + ' (' + cost + ' ouro do banco).'); } else { bizLog(B, 'Reposição automática: sem ouro no banco para ' + GOODS[g].n + '.'); break; } } }
       if (P.shopType === 'arcane' && !B.closed && B.raw && B.raw.wood >= 2) { B.frac2 = (B.frac2 || 0) + (workerAt(P.bi) ? 1.5 : 1); let nb = Math.floor(B.frac2); B.frac2 -= nb; let made = 0;
         while (nb-- > 0 && B.raw.wood >= 2 && stockSum(B.stock) < shopCap(B)) { B.raw.wood -= 2; B.stock.woodgoods = (B.stock.woodgoods || 0) + 1; made++; } if (made) bizLog(B, 'O atendente entalhou ' + made + ' varinha' + (made > 1 ? 's' : '') + ' na bancada.'); }
@@ -2703,7 +2749,8 @@ function bizHour(now) {
 }
 // débito diário + descanso em casa (roda a cada ~2 s); uma vez por hora do jogo, os negócios
 function estateTick(now) {
-  if (now - (S.estT || 0) < 2000) return; const dt = S.estT ? (now - S.estT) / 1000 : 2; S.estT = now;
+  if (now - (S.estT || 0) < 2000) return;
+  { const E0 = estateLoad(); if (E0.offers) for (const pid in E0.offers) if (estDay() - E0.offers[pid].day >= 1) offerClose(PROPS_BY[pid], false, 'Sua oferta por ' + (PROPS_BY[pid] || {}).name + ' venceu sem resposta. O dinheiro voltou para o banco.'); } const dt = S.estT ? (now - S.estT) / 1000 : 2; S.estT = now;
   const E = estateLoad(), day = estDay();
   if (Date.now() - (S.bizT || 0) >= BIZ_HOUR_MS) { S.bizT = Date.now(); bizHour(now); }
   for (const pid of Object.keys(E.r)) {
@@ -2834,7 +2881,7 @@ function memAdd(n, p, kind, heard, from) {
   if (!n || n.kind === 'guard' || n.kind === 'captain' || n.transient || !p || p.dev) return; const k = memKey(p);
   const T = (S.op[n.id] = S.op[n.id] || {}), o = T[k] || (T[k] = { v: 0, why: '', mag: 0, heard: false });
   if (!heard && o.lk === kind && now_() - (o.lt || 0) < 6000) return; if (!heard) { o.lk = kind; o.lt = now_(); }   // vários golpes seguidos contam como uma vez
-  const d = (MEM_DELTA[kind] || 0) * (heard ? 0.5 : 1); o.v = clamp(o.v + d, -100, 100);
+  const d = (MEM_DELTA[kind] || 0) * (heard ? 0.5 : 1); o.v = clamp(o.v + d, -100, 100); repAdd(p, npcGroup(n.id, n.kind), d * (heard ? 0.1 : 0.2));
   if (Math.abs(d) >= o.mag * 0.6 || !o.why) { const me1 = n.name.split(',')[0], pers = { assault_me: 'atacou ', evict: 'despejou ' };
     o.why = heard ? 'ouviu de ' + from + ' que você ' + (pers[kind] ? pers[kind] + from : MEM_TXT[kind]) : pers[kind] ? 'você ' + pers[kind] + me1 : 'viu você: ' + MEM_TXT[kind]; o.mag = Math.abs(d); o.kind = kind; o.heard = !!heard; }
 }
@@ -2853,7 +2900,7 @@ function memGossip(a, b) {
   const fake = { name: bk }; memAdd(b, fake, best.kind, true, a.name.split(',')[0]); Tb[bk]._from = a.id + best.kind;
 }
 function opInfo(n, p) { const o = S.op[n.id] && S.op[n.id][memKey(p)], v = o ? o.v : 0, L = opLevel(v); return { lv: L.k, ln: L.n, why: o ? o.why : 'nunca ouviu falar de você' }; }
-function opPriceMul(n, p) { const v = opOf(n, p); return v >= 50 ? 0.85 : v >= 15 ? 0.95 : v > -15 ? 1 : v > -50 ? 1.2 : 0; }
+function opPriceMul(n, p) { const v = opOf(n, p), b = v >= 50 ? 0.85 : v >= 15 ? 0.95 : v > -15 ? 1 : v > -50 ? 1.2 : 0; return b ? b * repPriceMul(repOf(p)) : 0; }
 // reações ao encontrar: amigo cumprimenta pelo nome (e às vezes dá um presentinho); inimigo chama a guarda
 function memMeet(n, now) {
   if (n.dead || n.downed || n.sleeping || n.kind === 'guard' || n.transient) return;
@@ -3081,13 +3128,22 @@ function lethalHit(p, q, A, k) {
 // ============================================================
 //  REPUTAÇÃO — 0 a 100: média do que os moradores acham de você (50 = neutro) + feitos − crimes
 // ============================================================
+function repAdd(p, g, amt, why) {   // reputação com um grupo (-100 a 100); avisa no chat quando muda de verdade
+  if (!p || p.dev || !REP_G[g] || !amt) return; const F = p.feats = p.feats || {}, R = F.rg = F.rg || {}; const before = repOf(p);
+  R[g] = clamp((R[g] || 0) + amt, -100, 100);
+  if (why && Math.abs(amt) >= 1) info(p, 'Reputação com ' + REP_G[g] + ' ' + (amt > 0 ? '+' : '') + Math.round(amt) + ' (' + why + ').');
+  const after = repOf(p); if (repTitle(after) !== repTitle(before)) info(p, 'Agora a cidade te vê como: ' + repTitle(after) + '.');
+}
 function repOf(p) {
   let sum = 0, n = 0; const k = memKey(p); for (const id in S.op) { const o = S.op[id][k]; if (o) { sum += o.v; n++; } }
-  const base = 50 + (n ? sum / n : 0) / 2, F = p.feats || {}, owned = typeof bizOf === 'function' ? bizOf(p).length : 0;
+  const RG = (p.feats || {}).rg || {}, gAvg = Object.keys(REP_G).reduce((a, g) => a + (RG[g] || 0), 0) / 5;
+  const base = 50 + (n ? sum / n : 0) / 2 + gAvg * 0.3, F = p.feats || {}, owned = typeof bizOf === 'function' ? bizOf(p).length : 0;
   const feats = (F.thief || 0) * 5 + Math.min(30, (F.jobs || 0)) + Math.min(15, (F.shifts || 0)) + owned * 3 + Math.min(10, (F.rent || 0));
   return Math.round(clamp(base + feats - ((p.crimes || []).length) * 5, 0, 100));
 }
-function featAdd(p, k, n = 1) { p.feats = p.feats || {}; p.feats[k] = (p.feats[k] || 0) + n; }
+function featAdd(p, k, n = 1) { p.feats = p.feats || {}; p.feats[k] = (p.feats[k] || 0) + n;
+  if (k === 'thief') { repAdd(p, 'guarda', 5, 'pegou um ladrão'); repAdd(p, 'comerc', 3, 'pegou um ladrão'); }
+  else if (k === 'jobs') repAdd(p, 'cidade', 0.6 * n); else if (k === 'shifts') repAdd(p, 'comerc', 0.6 * n); else if (k === 'rent') repAdd(p, 'cidade', 0.4 * n); }
 // ============================================================
 //  BANCO DE NAE — guardar ouro (não se perde nem é furtado), juros de 2% por semana, empréstimos (10%/semana, 2 semanas),
 //  e quem morre de vez deixa o saldo para o dono do banco (ou para a Coroa). Guardado neste reino.
@@ -3319,8 +3375,8 @@ function guardThreat(n, now, dt) {
     if (why === 'body') { if (!T.called) { T.called = 1; shout('Pare aí! O que é isso que você está carregando?'); } if (d < 1.6) { bodyInquiry(n, q, now); n.threat = null; } return true; }
     if (why === 'suspect') { if (!T.said) { T.said = 1; shout(['Estou de olho em você.', 'Andando na linha, ouviu?', 'Nada de gracinha na minha cidade.'][Math.floor(Math.random() * 3)]); } if (now - T.t0 > 14000) { q.suspectT = now + 180000; n.threat = null; } return true; }
     if (now >= T.t && d < 10) {
-      if (T.warn >= 3) { q.wanted = Math.max(q.wanted || 0, now + 60000); Net.toAll({ t: 'wanted', id: q.id, ms: q.wanted - now }); tell(q, 'Você desobedeceu a sentinela: procurado por 1 minuto!'); shout('Você pediu por isso!'); n.arrest = q.id; n.aggro = q.id; n.threat = null; return false; }
-      shout(THREAT_LINES[why][T.warn]); T.warn++; T.t = now + 3800; if (T.warn === 1) tell(q, why === 'weapon' ? 'A sentinela manda guardar a arma (G). São três avisos.' : 'A sentinela manda você sair daqui. São três avisos.');
+      if (T.warn >= (repOf(q) >= 75 || (((q.feats || {}).rg || {}).guarda || 0) >= 40 ? 4 : 3)) { q.wanted = Math.max(q.wanted || 0, now + 60000); Net.toAll({ t: 'wanted', id: q.id, ms: q.wanted - now }); tell(q, 'Você desobedeceu a sentinela: procurado por 1 minuto!'); shout('Você pediu por isso!'); n.arrest = q.id; n.aggro = q.id; n.threat = null; return false; }
+      shout(THREAT_LINES[why][Math.min(T.warn, THREAT_LINES[why].length - 1)]); T.warn++; T.t = now + 3800; if (T.warn === 1) tell(q, why === 'weapon' ? 'A sentinela manda guardar a arma (G). São três avisos.' : 'A sentinela manda você sair daqui. São três avisos.');
     }
     return true;
   }
@@ -3490,6 +3546,7 @@ const TRADE = {
   fruit: { sell: { apple: 20, berries: 20 }, buys: ['apple', 'berries', 'herb'] },
   smith: { sell: { axe: 4, pickaxe: 4, sickle: 4, lockpick: 3 }, buys: ['ore', 'gem', 'hardwood', 'log'] },
   st_apoth: { sell: { pot_hp: 8, pot_band: 12, herb: 12, ointment: 5, tea: 6 }, buys: ['herb', 'silverleaf', 'flaxraw'] },
+  st_witch: { sell: { elixir_breath: 3, elixir_warm: 4, elixir_swift: 3, amulet_luck: 1, pot_mp: 6, pot_hp: 6, silverleaf: 4 }, buys: ['herb', 'silverleaf', 'gem', 'goo', 'toadskin', 'wispdust', 'slimecore', 'trollheart', 'dragonscale', 'rattail', 'bone'] },
   st_arcane: { sell: { wand: 4, wand_fine: 2, gem: 3, pot_mp: 8 }, buys: ['gem', 'hardwood', 'silverleaf', 'log', 'wand', 'wand_fine', 'wand_arcane'] },
   st_tailor: { sell: { pot_band: 15, rope: 5 }, buys: ['flaxraw', 'pelt'] },
   st_scroll: { sell: { map: 6 }, buys: ['log', 'hardwood'] },
@@ -3511,10 +3568,10 @@ function tradeStock(n) {
 const tSellPrice = (n, p, k) => { const C = tradeCat(n), own = C.sell && k in C.sell; return Math.max(1, Math.round(tBase(k) * (C.mark || 1) * (own ? 1 : 1.3) * (opPriceMul(n, p) || 1))); };
 const tBuyPrice = (n, p, k) => { const C = tradeCat(n), own = C.sell && k in C.sell; return Math.max(1, Math.floor(tBase(k) * (C.pay || 1) * (own || FOODS.includes(k) ? 0.5 : C.buys === 'all' ? 1 : 0.8))); };
 function tradeView(n, p) {
-  const C = tradeCat(n), T = tradeStock(n);
+  const C = tradeCat(n), T = tradeStock(n), bankG = Math.floor((bankLoad().acc[estOwner(p)] || { g: 0 }).g);
   const sell = Object.entries(T.stock).filter(([k, q]) => q > 0 && tBase(k)).map(([k, q]) => [k, tName(k), tSellPrice(n, p, k), q]);
   const buys = Object.keys(p.inv).filter(k => p.inv[k] > 0 && LOOT[k] && LOOT[k].price && (C.buys === 'all' || C.buys.includes(k))).map(k => [k, tName(k), tBuyPrice(n, p, k), p.inv[k]]);
-  return { t: 'trade', npc: n.id, name: n.name, sell, buys, gold: p.gold, hate: opPriceMul(n, p) === 0 };
+  return { t: 'trade', npc: n.id, name: n.name, sell, buys, gold: p.gold + bankG, hate: opPriceMul(n, p) === 0 };
 }
 function tradeMsg(p, m) {
   const n = S.npcs && S.npcs[m.npc]; if (!n || n.dead || n.downed || !tradeCat(n) || p.downed) return;
@@ -3523,9 +3580,9 @@ function tradeMsg(p, m) {
   const T = tradeStock(n), k = String(m.k || ''), q = Math.max(1, Math.min(99, m.n | 0 || 1));
   if (m.a === 'buy') {
     if (!(T.stock[k] > 0)) { tell(p, 'Acabou. Volte mais tarde.'); return; } const n2 = Math.min(q, T.stock[k]), cost = tSellPrice(n, p, k) * n2;
-    if (p.gold < cost) { tell(p, 'Você precisa de ' + cost + ' de ouro.'); return; }
+    if (!canPay(p, cost)) { tell(p, 'Você precisa de ' + cost + ' de ouro.'); return; }
     if (k.startsWith('pot_')) p.pots[k.slice(4)] = (p.pots[k.slice(4)] || 0) + n2; else { if (!p.inv[k] && Object.keys(p.inv).length >= INV_SLOTS) { tell(p, 'Sua mochila está cheia.'); return; } p.inv[k] = (p.inv[k] || 0) + n2; }
-    p.gold -= cost; T.stock[k] -= n2; if (!T.stock[k] && !(tradeCat(n).sell && k in tradeCat(n).sell)) delete T.stock[k]; memAdd(n, p, 'buy');
+    payCity(p, cost); T.stock[k] -= n2; if (!T.stock[k] && !(tradeCat(n).sell && k in tradeCat(n).sell)) delete T.stock[k]; memAdd(n, p, 'buy');
     { const rb = npcBiz(n); if (rb && rb.owner !== estOwner(p)) { rb.biz.cofre += cost; rb.biz.today.rev += cost; rb.biz.today.sold += n2; bizLog(rb.biz, p.name + ' comprou ' + n2 + 'x ' + tName(k) + ' de ' + n.name.split(',')[0] + ' (' + cost + ' ouro).'); } }
   } else if (m.a === 'sell') {
     const C = tradeCat(n); if (!(p.inv[k] > 0) || !LOOT[k] || !(C.buys === 'all' || C.buys.includes(k))) return; const n2 = Math.min(q, p.inv[k]), pay = tBuyPrice(n, p, k) * n2;

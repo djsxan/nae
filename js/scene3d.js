@@ -1149,6 +1149,7 @@ const WSTYLE = {
   mine: { wall: '#7a756a', roof: '#4a4440', tex: 'stoneblock', roofTex: 'slate', trim: '#2a1e14' },
 };
 function styleOf(b) {
+  if (b.kind === 'shop' && b.v === 6) return { wall: '#3e3a52', roof: '#24403e', tex: 'stoneblock', roofTex: 'slate', trim: '#c9a24a' };   // alquimista: pedra escura arroxeada, latão
   if (b.office) return { wall: '#e8e2d2', roof: '#34404e', tex: 'stoneblock', roofTex: 'slate', trim: '#b08a3a' };   // imobiliária: pedra clara e bronze
   if (b.kind === 'workshop') return WSTYLE[b.wk] || WSTYLE.carp;
   if (b.kind === 'house' || (b.kind === 'shop' && b.v)) { const h = HVAR[(b.v || 0) % HVAR.length]; return { tex: 'plaster', ...h }; }
@@ -1267,7 +1268,7 @@ function mCastle(b, night) {
 }
 // monta o prédio no quadro local (porta virada para +z) e gira para o lado certo;
 // a origem fica no canto da área do prédio (igual ao desenho antigo)
-function localB(b) { const [A, D] = bDims(b); return { ...b, w: A, h: D, door: 'S', x: b.arch != null ? 40 + b.arch * 7 : b.x, y: b.arch != null ? 40 + b.arch * 13 : b.y }; }
+function localB(b) { const [A, D] = bDims(b); return { realDoor: b.door || 'S', ...b, w: A, h: D, door: 'S', x: b.arch != null ? 40 + b.arch * 7 : b.x, y: b.arch != null ? 40 + b.arch * 13 : b.y }; }
 function placeRot(b, inner) {
   const [A, D] = bDims(b), root = grp(), mid = grp(inner);
   inner.position.set(-A / 2, 0, -D / 2);
@@ -1488,13 +1489,24 @@ function mBuilding(b, night) {
     for (let k = 0; k < 26; k++) o.add(mk(new THREE.SphereGeometry(0.08 + (k % 3) * 0.02, 6, 5).translate(w + 0.05, 0.2 + k * 0.08 + Math.sin(k) * 0.05, 0.25 + Math.sin(k * 1.7) * 0.18), leaf));
     for (const s of [-0.62, 0.62]) { const bk = grp(); bk.add(mk(new THREE.CylinderGeometry(0.17, 0.13, 0.22, 10, 1, true).translate(0, 0.11, 0), smat('wood', '#a8803a', { side: THREE.DoubleSide }))); for (let k = 0; k < 6; k++) bk.add(mk(new THREE.SphereGeometry(0.06, 7, 5).translate(Math.cos(k) * 0.08, 0.22, Math.sin(k) * 0.08), smat(null, k % 3 ? '#c02a1e' : '#e8c03a', { rough: 0.45 }))); bk.position.set(dX + s, 0, h + 0.3); o.add(bk); }
   }
+  if (b.kind === 'shop' && b.v === 6) {   // fachada da alquimista: vitrais coloridos com moldura de latão, frascos brilhando, lanternas e placa da lua
+    const brass = smat(null, '#c9a24a', { metal: 0.9, rough: 0.28 }), dX = doorCol(b) + 0.5, cols = ['#7ad8e8', '#e86ac8', '#a8e86a', '#e8c84a', '#8a6ae8'];
+    for (const vx of [0.9, w - 0.9]) { if (Math.abs(vx - dX) < 1.1) continue; const gv = grp(); gv.add(wbox(1.0, 1.15, 0.08, 0, 1.25, 0.04, brass, 1));
+      for (let r = 0; r < 3; r++) for (let c2 = 0; c2 < 3; c2++) gv.add(mk(new THREE.BoxGeometry(0.28, 0.33, 0.02).translate(-0.3 + c2 * 0.3, 0.9 + r * 0.35, 0.09), smat(null, cols[(r * 3 + c2 + Math.round(vx)) % 5], { emissive: cols[(r * 3 + c2 + Math.round(vx)) % 5], ei: night ? 1.2 : 0.45, rough: 0.1, transparent: true, opacity: 0.85 })));
+      for (let k = 0; k < 5; k++) gv.add(mk(new THREE.CylinderGeometry(0.035, 0.05, 0.14, 8).translate(-0.36 + k * 0.18, 0.72, 0.16), smat(null, cols[k], { emissive: cols[k], ei: 1.0, rough: 0.1 })));
+      gv.add(wbox(1.1, 0.06, 0.24, 0, 0.64, 0.12, brass, 1)); gv.position.set(vx, 0, h + 0.01); o.add(gv); }
+    for (const sx of [-0.6, 0.6]) { const lp = grp(mk(new THREE.BoxGeometry(0.04, 0.04, 0.2).translate(0, 0, 0.1), brass), mk(new THREE.SphereGeometry(0.1, 10, 8).translate(0, -0.1, 0.22), smat(null, '#9ae8d8', { emissive: '#5ad8c8', ei: night ? 2 : 0.8 }))); lp.position.set(dX + sx, 1.6, h + 0.02); lp.scale.setScalar(0.8); o.add(lp); }
+    const sg = grp(); sg.add(mk(new THREE.BoxGeometry(0.05, 0.05, 0.55).translate(0, 0, 0.27), brass)); sg.add(mk(new THREE.CylinderGeometry(0.24, 0.24, 0.03, 20).rotateX(Math.PI / 2).translate(0, -0.3, 0.42), brass));
+    sg.add(mk(new THREE.CircleGeometry(0.2, 20).translate(0, -0.3, 0.44), smat(null, '#e8ecf4', { emissive: '#c8d8f8', ei: night ? 1.4 : 0.4 }))); sg.add(mk(new THREE.CircleGeometry(0.17, 20).translate(0.07, -0.27, 0.445), smat(null, '#3e3a52'))); sg.position.set(dX + 1.05, 2.05, h + 0.02); o.add(sg);   // lua crescente
+  }
   if (b.office) {
     const dX = doorCol(b) + 0.5, bronze = smat(null, '#b08a3a', { metal: 0.9, rough: 0.3 }), stone = smat('stoneblock', '#d8d0bc', { bump: 1 });
     for (let s = 0; s < 2; s++) o.add(wbox(1.3 - s * 0.2, 0.09, 0.32 - s * 0.12, dX, 0.045 + s * 0.09, h + 0.16 - s * 0.06, stone, 1));   // degraus
     const sg = grp(); sg.add(mk(new THREE.BoxGeometry(0.05, 0.05, 0.6).translate(0, 0, 0.3), bronze)); sg.add(mk(new THREE.BoxGeometry(0.03, 0.42, 0.5).translate(0, -0.3, 0.38), [smat('keysign', '#ffffff', { bump: 0.5 }), smat('keysign', '#ffffff', { bump: 0.5 }), bronze, bronze, bronze, bronze]));
     sg.position.set(dX + 0.95, 2.1, h + 0.02); o.add(sg);   // placa pendurada com a chave de bronze
+    if (b.realDoor === 'W' || b.realDoor === 'N') { const s2 = sg.clone(); s2.rotation.y = Math.PI / 2; s2.position.set(w + 0.02, 2.1, h * 0.5); o.add(s2); }   // porta num lado escondido: placa também no lado que a câmera vê
     const vt = grp(); vt.add(wbox(1.1, 0.9, 0.12, 0, 1.15, 0.06, bronze, 1)); vt.add(mk(new THREE.PlaneGeometry(0.98, 0.78).translate(0, 1.15, 0.125), smat('adsboard', '#ffffff', { rough: 0.6, emissive: night ? '#3a2a10' : '#000000', ei: night ? 0.6 : 0 })));
-    vt.add(wbox(1.2, 0.08, 0.22, 0, 0.66, 0.1, stone, 1)); vt.position.set(dX - 1.55 < 0.6 ? dX + 1.6 : dX - 1.55, 0, h + 0.01); o.add(vt);   // vitrine com anúncios de imóveis
+    vt.add(wbox(1.2, 0.08, 0.22, 0, 0.66, 0.1, stone, 1)); vt.position.set(dX - 1.55 < 0.6 ? dX + 1.6 : dX - 1.55, 0, h + 0.01); o.add(vt); if (b.realDoor === 'W' || b.realDoor === 'N') { const v2 = vt.clone(); v2.rotation.y = Math.PI / 2; v2.position.set(w + 0.01, 0, h * 0.25 + 0.4); o.add(v2); }   // vitrine com anúncios de imóveis
     for (const sx of [-0.62, 0.62]) { const lp = grp(mk(new THREE.BoxGeometry(0.04, 0.04, 0.2).translate(0, 0, 0.1), bronze), mk(new THREE.BoxGeometry(0.13, 0.19, 0.13).translate(0, -0.11, 0.2), smat(null, '#ffd890', { emissive: '#ffbb60', ei: night ? 1.6 : 0.5 }))); lp.position.set(dX + sx, 1.55, h + 0.02); lp.scale.setScalar(0.7); o.add(lp); }
   }
   if (b.kind === 'tavern' || b.kind === 'shop') { const br = mBarrel(); br.scale.setScalar(0.8); br.position.set(w + 0.32, 0, h * 0.25); o.add(br); }
@@ -1693,6 +1705,10 @@ function mInterior(b, fl = 0) {
       case 'goldsacks': { const sk = smat(null, '#a8916a', { rough: 1 }), gold = smat(null, '#e8c048', { metal: 1, rough: 0.25 });
         for (const [x, z, s] of [[-0.2, -0.1, 1], [0.2, 0.05, 0.85], [0, 0.3, 0.75], [-0.05, -0.05, 0.6]]) { const b = mk(new THREE.SphereGeometry(0.28 * s, 10, 8).translate(x, 0.24 * s + (s < 0.7 ? 0.38 : 0), z), sk); b.scale.set(1, 1.15, 1); g.add(b); g.add(mk(new THREE.CylinderGeometry(0.05 * s, 0.09 * s, 0.1, 8).translate(x, 0.55 * s + (s < 0.7 ? 0.38 : 0), z), smat(null, '#7a5a30', { rough: 1 }))); }
         for (let k = 0; k < 9; k++) g.add(mk(new THREE.CylinderGeometry(0.06, 0.06, 0.015, 10).translate(-0.35 + (k % 3) * 0.12, 0.01 + Math.floor(k / 3) * 0.016, 0.42), gold)); break; }
+      case 'still': {   // destilador de latão e vidro, com líquido brilhando
+        const brass = smat(null, '#c9a24a', { metal: 0.9, rough: 0.3 }), glass = smat(null, '#9ae8d8', { emissive: '#3ac8a8', ei: 0.9, rough: 0.05, transparent: true, opacity: 0.75 });
+        g.add(wbox(0.8, 0.7, 0.6, 0, 0.35, 0, DW(), 2)); g.add(mk(new THREE.SphereGeometry(0.18, 14, 10).translate(-0.18, 0.92, 0), glass)); g.add(mk(new THREE.CylinderGeometry(0.03, 0.03, 0.4, 6).rotateZ(-0.9).translate(0.02, 1.12, 0), brass));
+        g.add(mk(new THREE.CylinderGeometry(0.1, 0.12, 0.26, 12).translate(0.24, 0.84, 0), glass)); g.add(mk(new THREE.TorusGeometry(0.08, 0.015, 6, 14).translate(0.24, 1.0, 0), brass)); g.add(mk(new THREE.CylinderGeometry(0.06, 0.07, 0.05, 10).translate(-0.18, 0.72, 0), smat(null, '#ff7a2a', { emissive: '#ff5a10', ei: 1.4 }))); break; }
       case 'goldbars': {   // pilha de barras de ouro e moedas (no tesouro, atrás das grades)
         const gold = smat(null, '#e8c048', { metal: 1, rough: 0.22 }); g.add(wbox(0.8, 0.12, 0.6, 0, 0.06, -0.1, smat('wood', '#4a2e1a'), 1));
         for (let l = 0; l < 3; l++) for (let k = 0; k < 4 - l; k++) g.add(mk(new THREE.BoxGeometry(0.16, 0.07, 0.3).translate(-0.27 + k * 0.18 + l * 0.09, 0.16 + l * 0.075, -0.1), gold));

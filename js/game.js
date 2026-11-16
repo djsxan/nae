@@ -182,6 +182,10 @@ function clientOnServer(m) {
     }
     case 'err': showToast(m.text); break;
     case 'info': showToast(m.text); addChat('', m.text); break;
+    case 'offer': {   // oferta por um negócio: o dono aceita/recusa/contrapropõe; quem ofereceu responde à contraproposta
+      if (m.mine) gameAsk(m.from + ' oferece ' + m.v + ' de ouro por ' + m.name + '. Aceitar? (mude o valor para fazer uma contraproposta)', { input: String(m.v), type: 'number', yes: 'Responder', no: 'Recusar' }).then(v => { if (v == null) Net.send({ t: 'estate', a: 'offerans', pid: m.pid, ans: 'no' }); else if (+v > m.v) Net.send({ t: 'estate', a: 'offerans', pid: m.pid, ans: 'counter', v: Math.floor(+v) }); else Net.send({ t: 'estate', a: 'offerans', pid: m.pid, ans: 'yes' }); });
+      else gameAsk(m.owner + ' pede ' + m.counter + ' de ouro por ' + m.name + ' (você ofereceu ' + m.v + '). Aceitar?', { yes: 'Aceitar', no: 'Recusar' }).then(ok => Net.send({ t: 'estate', a: 'offerans', pid: m.pid, ans: ok ? 'yes' : 'no' }));
+      break; }
     case 'wv': gmWvEvent(m); break;
     case 'coins': coinEvent(m, now); break;
     case 'pmap': G.pmap = m.l; break;
@@ -751,6 +755,7 @@ const NPC_DIALOG = {
   st_apoth: { greet: "Bem-vindo ao Boticário. Poções, ervas secas, unguentos. Tudo fresquinho, quando o patrão abastece.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_arcane: { greet: "Cristais, varinhas, coisas que zumbem. Não encoste no que brilha.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_tailor: { greet: "Linho, lã e linha. Se o patrão mandar tecido, eu deixo a loja cheia de cor.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  st_witch: { greet: "Bem-vindo à Lua Prateada. Cada frasco aqui foi destilado sob a lua cheia. Não toque no que borbulha.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_scroll: { greet: "Papel, pergaminho, tinta. Um bom mapa vale mais que uma espada, acredite.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   courier1: { greet: "Pip, mensageiro! Levo e trago o que for, da vila até a Rua Nova, num pé só.", opts: [['Tem alguma entrega para mim?', { job: 'delivery' }], ['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
   courier2: { greet: "Lia Ventura. Conheço cada viela daqui até o rio. Ninguém me alcança.", opts: [['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
@@ -774,7 +779,7 @@ const NPC_DIALOG = {
   merchant: { greet: 'Bem-vindo ao Empório. Não é muito, mas o que vendo funciona.', opts: [
     ['Precisa de ajuda? (carregar caixas)', { job: 'crates' }],
     ['Odre cheio — 12 ouro', { a: 'buy', item: 'water' }], ['Vender todo o saque (rápido)', { a: 'sell' }]] },
-  priest: { greet: 'Paz, viajante. A capela é pequena, mas a Aurora ainda escuta quem pede. Traga aqui os que caírem; eu cuido deles.', opts: [['Receber a bênção (grátis)', { a: 'bless' }], ['Ritual de restauração dos membros — 120 ouro (o primeiro é de graça)', { a: 'ritual' }]] },
+  priest: { greet: 'Paz, viajante. A capela é pequena, mas a Aurora ainda escuta quem pede. Traga aqui os que caírem; eu cuido deles.', opts: [['Receber a bênção (grátis)', { a: 'bless' }], ['Doar 25 de ouro à capela (reputação)', { a: 'donate' }], ['Ritual de restauração dos membros — 120 ouro (o primeiro é de graça)', { a: 'ritual' }]] },
   innkeeper: { greet: 'Sente-se. Tem fogo, comida quente e gente falando demais. Do que precisa?', opts: [['Precisa de ajuda? (água do poço)', { job: 'water' }], 
     ['Hidromel — 15 ouro (+10% de dano por 3 min)', { a: 'mead' }], ['Ensopado de javali — 10 ouro (recupera tudo)', { a: 'stew' }], ['Ouvir as conversas da taverna', { a: 'rumor' }]] },
   guard: { greet: 'Fique atento lá fora. Quanto mais longe da cidadela, mais o mundo tenta te matar.', opts: [['Quais são as regiões?', { local: GUARD_TEXT }]] },
@@ -832,7 +837,9 @@ function buildDialogOptions(id) {
     if (typeof shiftHere === 'function' && shiftHere() && !(G.shiftUntil > performance.now()) && !(typeof estInBiz === 'function' && estInBiz())) add('Trabalhar um turno aqui (1 min e 15 s)', () => { closeDialog(); Net.send({ t: 'shift', a: 'start' }); });
     for (const [label, act] of def.opts) add(label, () => { const P = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null; if (act.open === 'biz') { if (P && estMine(P.id)) { closeDialog(); bizOpen(P.id); } else setDialogText('Só o dono pode mexer nos livros. ' + (P && G.est.st[P.id] ? 'Este ponto é de ' + G.est.st[P.id].replace('★', '') + '.' : 'Este ponto é de ' + ((P && P.npcOwner) || 'um comerciante') + ', que vende por ' + (P ? P.buy : '?') + ' de ouro: fale com Mestre Anselmo, na Imobiliária.')); } else if (act.open === 'bank') { closeDialog(); bankOpen(); } else if (act.hotel) { if (act.hotel === 'view') Net.send({ t: 'hotel', a: 'view' }); else Net.send({ t: 'hotel', a: 'rent', d: act.hotel }); } else if (act.job) { closeDialog(); Net.send({ t: 'job', a: 'take', type: act.job }); } else if (act.counter) { if (P) counterOpen(P.id); } else if (act.owner) setDialogText(P && G.est.st[P.id] ? 'Trabalho para ' + G.est.st[P.id].replace('★', '') + '. Paga em dia… quase sempre.' : (P && P.npcOwner ? 'Trabalho para ' + P.npcOwner + ', que vende o ponto por ' + P.buy + ' de ouro (fale com Mestre Anselmo). E eu venho junto!' : 'Ninguém, por enquanto.')); else if (act.open === 'estate') { closeDialog(); estToggle(true, 'house'); } else if (act.local) setDialogText(act.local); else Net.send({ t: 'npc', n: id, ...act }); });
   }
-  if (n.kind !== 'guard' && n.kind !== 'captain' && !String(n.id).startsWith('v_')) { const gk = Object.keys(G.me.inv || {}).find(k => G.me.inv[k] > 0 && (FOOD[k] || ['herb', 'gem', 'wand', 'map'].includes(k))); if (gk) add('Dar ' + (LOOT[gk] ? LOOT[gk].name : gk) + ' de presente', () => Net.send({ t: 'gift', id, k: gk })); }
+  if (!String(n.id).startsWith('v_')) { const grp = npcGroup(id, n.kind), likes = REP_LIKES[id] || REP_LIKES[n.kind] || REP_LIKES[grp] || [], inv = G.me.inv || {}, ok = k => inv[k] > 0 && LOOT[k] && (FOOD[k] || Object.values(REP_LIKES).some(l => l.includes(k)));
+    const ks = Object.keys(inv).filter(ok).sort((a, b) => (likes.includes(b) ? 1 : 0) - (likes.includes(a) ? 1 : 0)).slice(0, 3);
+    for (const gk of ks) add('Dar ' + LOOT[gk].name + ' de presente' + (likes.includes(gk) ? ' ♥' : ''), () => Net.send({ t: 'gift', id, k: gk })); }
   add('Até logo', closeDialog, 'ghost');
 }
 function setDialogText(t) { $('dlg-text').textContent = t; }
@@ -1719,13 +1726,14 @@ function prebakeCity(done) {
   const ov = document.createElement('div'); ov.id = 'prebake';
   ov.innerHTML = '<div class="pb-box"><div class="pb-title">Preparando Nae</div><div class="pb-bar"><div id="pb-fill"></div></div><div class="pb-txt" id="pb-txt">0%</div></div>';
   document.body.appendChild(ov);
-  const total = jobs.length; let k = 0;
+  const total = jobs.length; let k = 0, skip = false; const T0 = performance.now();
+  setTimeout(() => { const t = document.getElementById('pb-txt'); if (t && ov.isConnected) { const bt = document.createElement('button'); bt.className = 'est-btn'; bt.style.marginTop = '10px'; bt.textContent = 'Pular e entrar (prepara aos poucos)'; bt.onclick = () => { skip = true; }; t.parentNode.appendChild(bt); } }, 15000);
   S3.pinning = true;
   (function step() {
     const t0 = performance.now();
     while (k < total && performance.now() - t0 < 30) { S3.budget = 1e9; try { jobs[k](); } catch (e) { console.warn(e); } k++; }
     const pc = Math.round(k / total * 100); document.getElementById('pb-fill').style.width = pc + '%'; document.getElementById('pb-txt').textContent = pc + '%';
-    if (k < total) requestAnimationFrame(step);
+    if (k < total && !skip) requestAnimationFrame(step);
     else { S3.pinning = false; ov.style.opacity = 0; setTimeout(() => ov.remove(), 400); done && done(); }
   })();
 }
@@ -1949,7 +1957,7 @@ function hotelChestShow() {
 }
 
 // ---------- janela de troca com os NPCs: abas Comprar / Vender ----------
-const TRADE_KINDS = new Set(['merchant', 'innkeeper', 'fruit', 'smith', 'st_apoth', 'st_arcane', 'st_tailor', 'st_scroll']);
+const TRADE_KINDS = new Set(['st_witch', 'merchant', 'innkeeper', 'fruit', 'smith', 'st_apoth', 'st_arcane', 'st_tailor', 'st_scroll']);
 G.tradeTab = 'buy';
 function tradeShow(m) {
   if (!G.trade || G.trade.npc !== m.npc) G.tradeAt = { x: G.me.x, y: G.me.y }; G.trade = m; let d = $('tradep'); if (!d) { d = document.createElement('div'); d.id = 'tradep'; d.className = 'gpanel'; document.body.appendChild(d); }

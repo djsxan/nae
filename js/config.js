@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.48.0';
-const VERSION_NAME = 'Nae · Avenida dos Nobres';
+const VERSION = 'v1.49.0';
+const VERSION_NAME = 'Nae · Fama e Fortuna';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -163,6 +163,10 @@ const LOOT = {
   ore:      { name: 'Minério',           price: 4,  icon: '🪨', color: '#8a8a90', desc: 'Pedra com metal. Vende no Empório ou vai para a forja.' },
   flaxraw:  { name: 'Linho cru',         price: 3,  icon: '🌾', color: '#d8c890', desc: 'Fibra para tecido e bandagens.' },
   silverleaf: { name: 'Folha-de-prata',  price: 15, icon: '🍃', color: '#c8e0e8', desc: 'Erva rara que brilha ao luar. Boticários pagam bem.' },
+  elixir_breath: { name: 'Elixir do Fôlego', price: 45, icon: '🧪', color: '#7ad8e8', desc: 'Por 3 minutos o fôlego não acaba. Da alquimista Morgana.' },
+  elixir_warm: { name: 'Elixir da Brasa', price: 35, icon: '🧪', color: '#e8883a', desc: 'Por 10 minutos o frio não te pega. Da alquimista Morgana.' },
+  elixir_swift: { name: 'Elixir dos Passos Ligeiros', price: 40, icon: '🧪', color: '#a8e86a', desc: 'Por 45 segundos você anda e ataca muito mais rápido.' },
+  amulet_luck: { name: 'Amuleto da Sorte', price: 120, icon: '🧿', color: '#5aa8f0', desc: 'Na mochila: um pouco mais de chance de acerto crítico.' },
   wand:     { name: 'Varinha entalhada', price: 10, icon: '🪄', color: '#c8a070', desc: 'Pinho entalhado. Na mão do mago: +10% de dano mágico e +10 de mana.' },
   wand_fine: { name: 'Varinha de carvalho', price: 28, icon: '🪄', color: '#8a5a30', desc: 'Madeira nobre de veio fino. Na mão do mago: +20% de dano mágico e +20 de mana.' },
   wand_arcane: { name: 'Varinha arcana', price: 90, icon: '🪄', color: '#7ad0f0', desc: 'Carvalho com uma gema encravada na ponta. Na mão do mago: +30% de dano mágico e +35 de mana.' },
@@ -277,7 +281,7 @@ const RECIPES = {
 };
 const KNOCK_MS = 1700, PROSTH_PRICE = 30, RITUAL_PRICE = 120;
 const STRIKE_PART = { head: ['head', 'head', 'torso', 'armA'], legs: ['legL', 'legR', 'legL', 'torso'], torso: ['torso', 'torso', 'armA', 'armB'] };
-const BUFF_NAMES = { weaver: 'Bênção do Tecelão', warcry: 'Grito de Guerra', wall: 'Muralha de Ferro', agile: 'Passo Ágil', bless: 'Bênção da Aurora', mead: 'Hidromel', whet: 'Lâmina Afiada', rested: 'Bem descansado' };
+const BUFF_NAMES = { breath: 'Elixir do Fôlego', warm: 'Elixir da Brasa', weaver: 'Bênção do Tecelão', warcry: 'Grito de Guerra', wall: 'Muralha de Ferro', agile: 'Passo Ágil', bless: 'Bênção da Aurora', mead: 'Hidromel', whet: 'Lâmina Afiada', rested: 'Bem descansado' };
 const BUFF_BITS = { wall: 16, agile: 32, bless: 64, warcry: 128 };
 
 const need = l => Math.floor(20 * Math.pow(l, 1.75));
@@ -401,6 +405,14 @@ const CARVE = {
   wand_fine: { need: { hardwood: 1, log: 1 }, lv: 3, desc: 'Madeira nobre: varinha melhor.' },
   wand_arcane: { need: { hardwood: 1, gem: 1 }, lv: 5, desc: 'Carvalho com uma gema na ponta: a melhor.' },
 };
+// reputação por grupo (-100 a 100), presentes que cada grupo gosta, títulos e vantagens
+const REP_G = { cidade: 'Moradores da cidade', vila: 'Vila do Oeste', nobres: 'Nobreza', guarda: 'Guarda', comerc: 'Comerciantes' };
+const REP_LIKES = { guarda: ['bread', 'cookedmeat', 'stew', 'venison'], nobres: ['wand', 'wand_fine', 'wand_arcane', 'gem', 'pie'], comerc: ['map', 'herb', 'gem', 'flaxraw'], vila: ['bread', 'apple', 'berries', 'stew'], cidade: ['pie', 'apple', 'bread', 'tea'],
+  smith: ['ore', 'gem', 'hardwood'], innkeeper: ['venison', 'pork', 'berries'], fruit: ['apple', 'berries', 'herb'], priest: ['herb', 'tea', 'bread'], broker: ['map', 'gem'], tailor: ['flaxraw', 'gem'], st_witch: ['herb', 'silverleaf', 'gem'] };
+const REP_TITLES = [[90, 'Herói de Nae'], [75, 'Honrado'], [60, 'Respeitado'], [45, 'Cidadão'], [30, 'Suspeito'], [15, 'Mal-visto'], [0, 'Odiado']];
+const repTitle = r => (REP_TITLES.find(([m]) => r >= m) || REP_TITLES[REP_TITLES.length - 1])[1];
+const REP_PERKS = [[30, 'abaixo de 30: tudo 15% mais caro e as sentinelas ficam de olho'], [60, 'Respeitado: 5% de desconto nas compras'], [75, 'Honrado: 10% de desconto, imóveis 10% mais baratos e as sentinelas dão um aviso a mais'], [90, 'Herói de Nae: 15% de desconto e metade da pena na cadeia']];
+const repPriceMul = r => r >= 90 ? 0.85 : r >= 75 ? 0.9 : r >= 60 ? 0.95 : r < 30 ? 1.15 : 1;
 const maxMpOf = p => Math.floor(maxMpFor(p.cls, p.lvl) * (1 + treeEff(p, 'mp'))) + (wandOf(p) ? WANDS[wandOf(p)].mp : 0);
 const cstMaxOf = p => Math.round(CST_MAX * (1 + treeEff(p, 'cst')));
 
