@@ -98,7 +98,7 @@ const KEEP = { x0: C - 9, y0: C - 22, x1: C + 10, y1: C - 3 };       // castelo 
 const WALL_UNITS = 176 / (32 * Math.SQRT2 * Math.cos(Math.PI / 6));   // altura da muralha em tiles
 const BH = (kind, w, h, H, RH, name, extra) => ({ kind, w, h, H, RH, floors: Math.max(1, Math.min(3, Math.round(H / 1.75))), name: name || '', wall: Math.round(H * 19.6), roof: Math.round(RH * 19.6), ...extra });
 const BUILDINGS = TEST3D ? [] : [
-  { x: C + 9, y: C + 8, ...BH('temple', 8, 9, 6.5, 5.0, 'Catedral da Aurora', { floors: 1, door: 'S', gen: { x: C - 21, y: C - 30, w: 8, h: 9, door: 'W' } }) },   // ao lado da praça do mercado, porta para o sul
+  { x: C + 9, y: C + 8, ...BH('temple', 8, 9, 4.4, 1.6, 'Catedral da Aurora', { floors: 1, door: 'S', gen: { x: C - 21, y: C - 30, w: 8, h: 9, door: 'W' } }) },   // ao lado da praça do mercado, porta para o sul
   { x: C - 30, y: C - 1, ...BH('shop', 5, 5, 4.0, 2.8, 'Empório do Borin') },
   { x: C - 22, y: C - 1, ...BH('smith', 5, 5, 2.6, 2.6, 'Forja de Hrodgar') },
   { x: C - 15, y: C + 10, ...BH('tavern', 6, 7, 3.0, 2.8, 'Taverna do Javali', { door: 'E', floors: 1 }) },   // de frente para a praça do mercado (só térreo)
@@ -112,7 +112,7 @@ const BUILDINGS = TEST3D ? [] : [
   { x: C - 27, y: C - 30, ...BH('bank', 6, 12, 5.6, 2.4, 'Banco de Nae', { floors: 1, door: 'S', gen: { x: C - 31, y: C - 23, w: 6, h: 12, door: 'S' } }) },   // no fim da rua oeste, porta para o sul
   { x: C + 22, y: C + 20, ...BH('jail', 6, 8, 3.2, 2.4, 'Cadeia de Nae', { floors: 1, door: 'W' }) },
   { x: C - 16, y: C, ...BH('boutique', 5, 4, 4.2, 3.0, 'Ateliê Real de Nae', { floors: 1, door: 'S' }) },
-  { x: C + 3, y: C + 28, ...BH('fruithouse', 5, 4, 2.9, 2.6, '', { floors: 1, door: 'E', gen: { x: C - 13, y: C + 18, w: 5, h: 4, door: 'E' } }) },   // sul, à direita da rua principal
+  { x: C - 29, y: C + 15, ...BH('fruithouse', 5, 4, 2.9, 2.6, '', { floors: 1, door: 'S', gen: { x: C - 13, y: C + 18, w: 5, h: 4, door: 'E' } }) },   // atrás do Boticário, porta para a rua de baixo
   // bairro nobre (à direita do castelo): casarões de pedra clara com jardins murados
   { x: C + 24, y: C - 18, ...BH('manor', 6, 6, 4.8, 3.2, 'Casa Valmont', { door: 'W' }) },
   { x: C + 24, y: C - 6, ...BH('manor', 6, 6, 4.6, 3.0, 'Casa Aldren', { door: 'W', v: 1 }) },
@@ -142,7 +142,7 @@ function bDir(b, d) {
   const x = lv[0] * Math.cos(a) + lv[1] * Math.sin(a), y = -lv[0] * Math.sin(a) + lv[1] * Math.cos(a);
   return Math.abs(x) > Math.abs(y) ? (x > 0 ? 1 : 5) : (y > 0 ? 7 : 3);
 }
-const doorCol = b => Math.floor((bDims(b)[0] - 1) / 2);
+const doorCol = b => b.dcol != null ? b.dcol : Math.floor((bDims(b)[0] - 1) / 2);
 // 10 modelos de casa (A = largura da fachada com a porta, D = profundidade)
 const HOUSE_TYPES = [
   { A: 4, D: 4, H: 2.4, RH: 2.4, v: 1, floors: 1 }, { A: 5, D: 4, H: 2.4, RH: 2.6, v: 0, floors: 1 }, { A: 5, D: 5, H: 2.6, RH: 2.8, v: 3, floors: 1 }, { A: 6, D: 4, H: 2.4, RH: 2.6, v: 5, floors: 1 },
@@ -248,6 +248,15 @@ function interiorLayout0(b, fl = 0) {
   } else if (k === 'tavern') {
     npcAt(1, 0); put('barrel', 0, 0); put('counter', 0, 1, { w: 2 }); put('barrel', 0, 2);   // passagem atrás do balcão pelo lado put('fireplace', w - 2, 0); put('shelf', 3, 0); for (const [i, j, fi, fj] of [[4, 0, 4, 1], [w - 1, 1, w - 2, 1], [w - 1, 2, w - 2, 2]]) if (can(i, j) && can(fi, fj)) { put('stove', i, j); taken.add(key(fi, fj)); break; }
     for (const [ti, tj] of [[5, 2], [1, 3], [5, 4]]) if (put('table', ti, tj)) { put('chair', ti - 1, tj, { seat: 1 }); put('chair', ti + 1, tj, { seat: 5 }); }
+  } else if (k === 'hotel' && w >= 11 && h >= 10 && w < 15 && b.dcol === 8) {   // 4 cabines grandes (3x3), corredor de 2 tiles, balcão e entrada na ponta norte
+    let ck = 0;
+    for (const a of [0, 4]) { const q = ck++, inn = []; for (let i = a; i < a + 3; i++) for (let j = 0; j < 3; j++) inn.push([i, j]);
+      put('cot', a, 0, { h: 2, cab: q }); put('chest', a + 2, 0, { cab: q }); put('hpart', a, 3, { v: 0, wp: 'nz' }); put('hpart', a + 2, 3, { v: 0, wp: 'nz' }); put('cabindoor', a + 1, 3, { v: 0, block: false, cab: q, adj: [a + 1, 2], inner: inn }); }
+    for (const a of [0, 4]) { const q = ck++, inn = []; for (let i = a; i < a + 3; i++) for (let j = 7; j < 10; j++) inn.push([i, j]);
+      put('hpart', a, 6, { v: 0, wp: 'pz' }); put('hpart', a + 2, 6, { v: 0, wp: 'pz' }); put('cabindoor', a + 1, 6, { v: 0, block: false, cab: q, adj: [a + 1, 7], inner: inn }); put('cot', a, 8, { h: 2, cab: q }); put('chest', a + 2, 9, { cab: q }); }
+    for (const c of [3, 7]) { const wp = c === 3 ? 'px nx' : 'nx'; for (const j of [0, 1, 2]) put('hpart', c, j, { v: 1, wp }); put('hpart', c, 3, { v: 2 }); put('hpart', c, 6, { v: 2 }); for (const j of [7, 8, 9]) put('hpart', c, j, { v: 1, wp }); }
+    put('shelf', 10, 0); put('fireplace', 8, 0); npcAt(9, 0); put('counter', 9, 1);
+    put('table', 10, 7, { h: 2 }); put('rug', 4, 4, { w: 4, h: 2, block: false, v: 9 });
   } else if (k === 'hotel' && w >= 11 && h >= 10 && w < 15) {   // 6 cabines (3 no fundo, 3 do outro lado do corredor), Ilsa no canto do fundo, sala comum na entrada
     let ck = 0; const wpP = c => 'px nx';
     for (const a of [0, 3, 6]) { const q = ck++; put('cot', a, 0, { h: 2, cab: q }); put('chest', a + 1, 0, { cab: q }); put('hpart', a, 2, { v: 0, wp: 'nz' }); put('cabindoor', a + 1, 2, { v: 0, block: false, cab: q, adj: [a + 1, 1], inner: [[a, 0], [a + 1, 0], [a, 1], [a + 1, 1]] }); }
@@ -732,7 +741,7 @@ function generateWorld() {
   for (const t of sideT) { towers.push([C + t, y0], [C + t, y1 - 1], [x0, C + t], [x1 - 1, C + t]); }
   towers.push([C - 2, y0], [C + 2, y0]);                                   // portão norte (secundário)
   towers.push([x0, C + 2], [x0, C + 8]);                                   // portão oeste (rua nova)
-  const gateTowers = [[C - 4, y1 - 1], [C + 3, y1 - 1]];                    // portão principal: torres altas
+  const gateTowers = [[C - 3, y1 - 1], [C + 3, y1 - 1]];                    // portão principal: torres altas (as duas encostadas no portão)
   towers.push(...gateTowers);
   const inTower = (x, y) => towers.some(([tx, ty]) => x >= tx && x <= tx + 1 && y >= ty && y <= ty + 1);
   const isGate = (x, y) => (y === y1 && x >= C - 1 && x <= C + 2) || (y === y0 && (x === C || x === C + 1)) || (x === x0 && y >= C + 4 && y <= C + 7);
@@ -848,7 +857,7 @@ function generateWorld() {
   BUILDINGS.push(...houses);
   { // escritório do corretor: a casa mais perto da rua nova e do mercado
     let ob = null, bd = 1e9; for (const hb of houses) { const d = Math.hypot(hb.x + hb.w / 2 - (C - 18), hb.y + hb.h / 2 - (C + 13)); if (d < bd) { bd = d; ob = hb; } }
-    if (ob) { ob.office = 'estate'; ob.name = 'Imobiliária Chave de Bronze'; ob.x = C + 9; ob.y = C + 27; ob.door = 'E'; ob.w = 4; ob.h = 5; } }   // mudou para o sul, à direita da rua principal
+    if (ob) { ob.office = 'estate'; ob.name = 'Imobiliária Chave de Bronze'; ob.x = C - 22; ob.y = C + 15; ob.door = 'S'; ob.w = 5; ob.h = 4; } }   // atrás da Alfaiataria, porta para a rua de baixo
   // ---- vila do oeste (do outro lado do rio, na estrada que sai do portão oeste): casas espaçadas e oficinas ----
   const HAM = { x0: x0 - 58, y0: C - 22, x1: x0 - 27, y1: C + 19, road: C };
   if (!TEST3D) {
@@ -872,7 +881,8 @@ function generateWorld() {
     lane(X(49), C + 8, X(48), C + 10);   // trilha da horta
   }
   // pousada do outro lado da rua, atrás das lojas da taverna, porta para a rua (no fim da lista: não muda o número dos prédios salvos)
-  if (!TEST3D) BUILDINGS.push({ x: C - 11, y: C + 21, ...BH('hotel', 10, 11, 4.0, 2.2, 'Pousada do Javali Magro', { floors: 1, door: 'E' }) });   // porta direto na rua principal
+  if (!TEST3D) BUILDINGS.push({ x: C - 11, y: C + 21, ...BH('hotel', 10, 11, 4.0, 2.2, 'Pousada do Javali Magro', { floors: 1, door: 'E', dcol: 8 }) });
+  if (!TEST3D) BUILDINGS.push({ x: C - 30, y: C - 18, ...BH('house', 5, 7, 3.0, 2.6, '', { door: 'E', v: 2, floors: 1, extra: 1 }) });   // casa nova na rua do banco, alinhada com as lojas   // porta direto na rua principal
   BUILDINGS.forEach((b, bi) => {
     for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { bld[idx(x, y)] = bi; obj[idx(x, y)] = O.NONE; ground[idx(x, y)] = T.COBBLE; }
   });
@@ -905,9 +915,13 @@ function generateWorld() {
   const doorFree = new Set(); for (const b of BUILDINGS) { const [dx, dy] = doorTile(b), v = DOOR_V[b.door || 'S']; for (let k = 1; k <= 2; k++) for (const s2 of [-1, 0, 1]) doorFree.add(idx(dx + v[0] * k + (v[1] ? s2 : 0), dy + v[1] * k + (v[0] ? s2 : 0))); }
   const deco = (x, y, o) => { const i = idx(x, y); if (doorFree.has(i)) return; if (bld[i] < 0 && !stair[i] && !fl1[i] && !nearBld(x, y)) obj[i] = o; };
   const decoAny = (x, y, o) => { const i = idx(x, y); if (doorFree.has(i)) return; if (bld[i] < 0 && !stair[i] && !fl1[i]) obj[i] = o; };
-  // pracinha do banco (onde ficava o banco): chafariz, bancos e postes
-  for (let y = C - 18; y <= C - 12; y++) for (let x = C - 31; x <= C - 26; x++) if (bld[idx(x, y)] < 0) { ground[idx(x, y)] = T.FLOORSTONE; obj[idx(x, y)] = O.NONE; }
-  decoAny(C - 29, C - 15, O.FOUNTAIN); decoAny(C - 31, C - 17, O.BENCH); decoAny(C - 31, C - 13, O.BENCH); decoAny(C - 26, C - 17, O.LAMP); decoAny(C - 26, C - 12, O.LAMP);
+  // praça do banco (do outro lado da rua, onde ficava a catedral antiga): chafariz no meio, bancos, flores e postes
+  { const X0 = C - 21, X1 = C - 12, Y0 = C - 30, Y1 = C - 20, fx = C - 17, fy = C - 25;
+    for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) { const i = idx(x, y); if (bld[i] >= 0 || rdir[i]) continue; obj[i] = O.NONE; const edge = x === X0 || x === X1 || y === Y0 || y === Y1; ground[i] = edge ? T.GRASS : T.FLOORSTONE; if (edge && (x + y) % 2 === 0) obj[i] = O.FLOWER; }
+    decoAny(fx, fy, O.FOUNTAIN);
+    for (const [dx, dy] of [[-3, -2], [3, -2], [-3, 2], [3, 2]]) decoAny(fx + dx, fy + dy, O.BENCH);
+    for (const [dx, dy] of [[-4, -4], [4, -4], [-4, 4], [4, 4]]) decoAny(fx + dx, fy + dy, O.LAMP);
+    for (const [dx, dy] of [[0, -4], [0, 4], [-4, 0], [4, 0]]) decoAny(fx + dx, fy + dy, O.FLOWER); }
   // praça do mercado
   decoAny(C, C + 13, O.FOUNTAIN);
   for (const [dx, dy] of [[-6, 10], [-3, 10], [5, 10], [7, 10], [-6, 16], [-3, 16], [5, 16], [7, 16]]) decoAny(C + dx, C + dy, O.STALL);
@@ -1184,7 +1198,7 @@ const RES_HOME = {}, RES_LINES = {
   courier1: ['Num pé só!', 'Quero botas de verdade.', 'Lia corre mais que eu... às vezes.'], courier2: ['Ninguém me alcança!', 'Um dia entro para a guarda.', 'Pip, cuidado na viela!'], courier3: ['Devagar se vai longe.', 'Saudade da minha mula.', 'Bom dia, Rosa...'],
 };
 if (!TEST3D) {
-  const houses = PROPS.filter(P => P.kind === 'house'), used = new Set();
+  const houses = PROPS.filter(P => P.kind === 'house' && !BUILDINGS[P.bi].extra), used = new Set();
   const take = (ids, P) => { if (!P) return; used.add(P.id); P.tenants = ids; for (const id of ids) RES_HOME[id] = P.bi; };
   const nearestTo = (x, y, pool) => pool.filter(P => !used.has(P.id)).sort((a, b) => Math.hypot(BUILDINGS[a.bi].x - x, BUILDINGS[a.bi].y - y) - Math.hypot(BUILDINGS[b.bi].x - x, BUILDINGS[b.bi].y - y))[0];
   const vila = houses.filter(P => P.district === 'Vila do Oeste'), city = houses.filter(P => P.district !== 'Vila do Oeste');

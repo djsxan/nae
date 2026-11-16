@@ -1375,12 +1375,7 @@ function mBuilding(b, night) {
   }
   // catedral: torre do sino com flecha e sol dourado + vitrais
   if (b.kind === 'temple') {
-    const mx = W2 * 0.5, mz = H2 * 0.5, base = H + RH * 0.3, th = RH * 0.7 + 7;
-    o.add(gwall(1.5, th, 1.5, mx, base + th / 2, mz, 'brick', st.wall, th + base, seed, 0.8, 1.2));
-    for (const [dx, dz, ry] of [[0, 0.76, 0], [0.76, 0, Math.PI / 2]]) { const a = mk(new THREE.BoxGeometry(0.5, 0.9, 0.04), smat(null, '#141210')); a.position.set(mx + dx, base + th - 0.7, mz + dz); a.rotation.y = ry; o.add(a); }
-    o.add(mk(new THREE.BoxGeometry(1.65, 0.14, 1.65).translate(mx, base + th, mz), smat('stoneblock', '#b4ae9f')));
-    o.add(mk(new THREE.ConeGeometry(1.1, 3.2, 4).rotateY(Math.PI / 4).translate(mx, base + th + 1.65, mz), roofM));
-    o.add(mk(new THREE.SphereGeometry(0.16, 14, 10).translate(mx, base + th + 3.4, mz), smat(null, '#e2b74e', { metal: 1, rough: 0.25, emissive: '#6a5010', ei: 0.6 })));
+    // (sem a torre central: catedral baixa, telhado rente)
     const rose = mk(new THREE.CircleGeometry(0.6, 20), smat(null, night ? '#ffcc80' : '#2e2440', { emissive: night ? '#ffaa40' : '#000000', ei: night ? 1.4 : 0, rough: 0.15, metal: 0.3 }));
     rose.position.set(w * 0.5, H * 0.76, h + 0.05); o.add(rose);
     o.add(mk(new THREE.TorusGeometry(0.62, 0.06, 6, 24).translate(w * 0.5, H * 0.76, h + 0.05), smat('stoneblock', '#b4ae9f')));

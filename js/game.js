@@ -1855,18 +1855,28 @@ function cabinDoorItems(items, inB, now) {
     const open = ents.some(e => dist(e.rx ?? e.x, e.ry ?? e.y, Q.door[0], Q.door[1]) < 0.85) ? 1 : 0; G.cabAng[i] = (G.cabAng[i] || 0) + (open - (G.cabAng[i] || 0)) * Math.min(1, dt * 6);
     const p = iso(Q.door[0], Q.door[1]); items.push({ d: Q.door[0] + Q.door[1] + 0.05, k: 10, cab: i, sx: p.sx + G.view.ox, sy: p.sy + G.view.oy, inside: true }); });
 }
-function drawCabinDoor(ctx, it) {
-  const Q = HOTEL_CABS[it.cab], a = (G.cabAng[it.cab] || 0) * 1.5;
-  const ax = Q.door[0] - Q.spot[0], ay = Q.door[1] - Q.spot[1], ux = -ay, uy = ax;   // abre para o corredor
-  const hx = Q.door[0] + ux * 0.44, hy = Q.door[1] + uy * 0.44, ex = hx - (Math.cos(a) * ux - Math.sin(a) * ax) * 0.88, ey = hy - (Math.cos(a) * uy - Math.sin(a) * ay) * 0.88;
-  const P0 = (x, y) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy]; }, [x0, y0] = P0(hx, hy), [x1, y1] = P0(ex, ey), H = 1.95 * (typeof HV !== 'undefined' ? HV : 25);
+function drawCabinDoor(ctx, it) {   // cortina de pano: pendurada num varão; quando alguém passa, corre e se junta num canto
+  const Q = HOTEL_CABS[it.cab], op = G.cabAng[it.cab] || 0, now = performance.now();
+  const ax = Q.door[0] - Q.spot[0], ay = Q.door[1] - Q.spot[1], ux = -ay, uy = ax;
+  const hx = Q.door[0] + ux * 0.46, hy = Q.door[1] + uy * 0.46, ox = hx - ux * 0.92, oy = hy - uy * 0.92;   // varão de ponta a ponta do vão
+  const wv = 1 - 0.78 * op, ex = hx - ux * 0.92 * wv, ey = hy - uy * 0.92 * wv;                            // largura do pano (junta no canto da dobradiça)
+  const P0 = (x, y) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy]; }, HVv = typeof HV !== 'undefined' ? HV : 25, H = 1.9 * HVv, top = 2.02 * HVv;
+  const [rx0, ry0] = P0(hx, hy), [rx1, ry1] = P0(ox, oy), [x0, y0] = P0(hx, hy), [x1, y1] = P0(ex, ey);
+  const COL = [['#8a2a26', '#a8423a'], ['#2e5a3a', '#44784e'], ['#2e3e6a', '#46588a'], ['#9a7a2a', '#b8963e']][it.cab % 4];
   ctx.save();
-  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.lineTo(x1, y1 - H); ctx.lineTo(x0, y0 - H); ctx.closePath();
-  const gr = ctx.createLinearGradient(x0, y0, x1, y1); gr.addColorStop(0, '#5a3a20'); gr.addColorStop(1, '#7a5230'); ctx.fillStyle = gr; ctx.fill(); ctx.strokeStyle = '#2e1c0e'; ctx.lineWidth = 1.2; ctx.stroke();
-  ctx.strokeStyle = 'rgba(30,18,8,0.55)'; ctx.lineWidth = 0.8; for (let k = 1; k < 4; k++) { const t = k / 4; ctx.beginPath(); ctx.moveTo(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t); ctx.lineTo(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t - H); ctx.stroke(); }
-  for (const hh of [0.18, 0.82]) { ctx.strokeStyle = '#2a2622'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x0, y0 - H * hh); ctx.lineTo(x0 + (x1 - x0) * 0.35, y0 + (y1 - y0) * 0.35 - H * hh); ctx.stroke(); }
-  const lx = x0 + (x1 - x0) * 0.84, ly = y0 + (y1 - y0) * 0.84 - H * 0.5; ctx.fillStyle = '#c8a050'; ctx.beginPath(); ctx.arc(lx, ly, 1.8, 0, 7); ctx.fill();
-  const nx = x0 + (x1 - x0) * 0.5, ny = y0 + (y1 - y0) * 0.5 - H * 0.8; ctx.fillStyle = '#d8b868'; ctx.font = 'bold 7px serif'; ctx.textAlign = 'center'; ctx.fillText(String(it.cab + 1), nx, ny);   // número da cabine
+  // varão de ferro com argolas
+  ctx.strokeStyle = '#2a2420'; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(rx0, ry0 - top); ctx.lineTo(rx1, ry1 - top); ctx.stroke();
+  // pano em gomos (dobras claras e escuras); a barra de baixo balança de leve
+  const n = Math.max(3, Math.round(7 * wv)), sway = Math.sin(now / 700 + it.cab) * 0.8 * (1 - op);
+  for (let k = 0; k < n; k++) {
+    const t0 = k / n, t1 = (k + 1) / n, ax0 = x0 + (x1 - x0) * t0, ay0 = y0 + (y1 - y0) * t0, ax1 = x0 + (x1 - x0) * t1, ay1 = y0 + (y1 - y0) * t1;
+    const b0 = H * (0.04 + 0.03 * Math.sin(k * 1.7)), b1 = H * (0.04 + 0.03 * Math.sin((k + 1) * 1.7));
+    ctx.beginPath(); ctx.moveTo(ax0, ay0 - top + 1); ctx.lineTo(ax1, ay1 - top + 1); ctx.lineTo(ax1 + sway, ay1 - b1); ctx.lineTo(ax0 + sway, ay0 - b0); ctx.closePath();
+    ctx.fillStyle = COL[k % 2]; ctx.fill();
+  }
+  ctx.strokeStyle = 'rgba(20,10,6,0.45)'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(x0, y0 - top + 1); ctx.lineTo(x0 + sway, y0 - H * 0.04); ctx.lineTo(x1 + sway, y1 - H * 0.04); ctx.lineTo(x1, y1 - top + 1); ctx.stroke();
+  for (let k = 0; k <= n; k++) { const t = k / n; ctx.fillStyle = '#c8a050'; ctx.beginPath(); ctx.arc(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t - top + 0.5, 0.9, 0, 7); ctx.fill(); }   // argolas
+  if (op < 0.5) { const nx = x0 + (x1 - x0) * 0.5, ny = y0 + (y1 - y0) * 0.5 - H * 0.72; ctx.fillStyle = 'rgba(240,226,190,0.85)'; ctx.font = 'bold 7px serif'; ctx.textAlign = 'center'; ctx.fillText(String(it.cab + 1), nx, ny); }   // número da cabine bordado
   ctx.restore();
 }
 // ---------- árvore caindo / pedra se desfazendo ----------

@@ -154,8 +154,13 @@ function lieDown(k) {
 function getUp() {
   const me = G.me; if (!me || !me.sleep) return;
   const s = me.sleep; me.sleep = null; me.sleepB = null;
-  if (s.ox != null) { me.x = me.rx = s.ox; me.y = me.ry = s.oy; }
+  // levanta para o chão livre ao lado da cama (no mesmo cômodo); senão volta de onde veio
+  const b = BEDS[s.bed], bi = b ? WORLD.bld[tileAt(b.x, b.y)] : -1; let spot = null;
+  if (b) for (const rr of [0.9, 1.1, 1.4, 1.7]) for (let a = 0; a < 6.28 && !spot; a += 0.35) { const x = b.x + Math.cos(a) * rr, y = b.y + Math.sin(a) * rr; if (WORLD.bld[tileAt(x, y)] === bi && canStandZ(x, y, 0) && freeAt(x, y, 0)) spot = [x, y]; }
+  if (!spot && s.ox != null) spot = [s.ox, s.oy];
+  if (spot) { me.x = me.rx = spot[0]; me.y = me.ry = spot[1]; }
   Net.send({ t: 'sleep', on: 0 });
+  Net.send({ t: 'mv', x: Math.round(me.x * 100) / 100, y: Math.round(me.y * 100) / 100, z: Math.round((me.z || 0) * 100) / 100, d: me.dir, w: 0 }, true);
 }
 
 // ---------- reinos online (lista na tela inicial) ----------
