@@ -51,9 +51,14 @@ function townSpot() {
 }
 
 function monsterAtPos(x, y, self, r = 0.62) {
+  const Gd = S.mgrid; if (Gd && now_() - S.mgridAt < 250) {   // grade espacial (células de 2 tiles): só olha as vizinhas
+    const r2 = r * r; for (let cx = Math.floor((x - r) / 2); cx <= Math.floor((x + r) / 2); cx++) for (let cy = Math.floor((y - r) / 2); cy <= Math.floor((y + r) / 2); cy++) { const L = Gd.get(cx * 4096 + cy); if (L) for (const m of L) if (m !== self && (m.x - x) * (m.x - x) + (m.y - y) * (m.y - y) < r2) return true; }
+    return false;
+  }
   for (const id in S.monsters) { const m = S.monsters[id]; if (m !== self && dist(m.x, m.y, x, y) < r) return true; }
   return false;
 }
+function monGridBuild(now) { const Gd = new Map(); for (const id in S.monsters) { const m = S.monsters[id], k = Math.floor(m.x / 2) * 4096 + Math.floor(m.y / 2); let L = Gd.get(k); if (!L) Gd.set(k, L = []); L.push(m); } S.mgrid = Gd; S.mgridAt = now; }
 function monStand(x, y, m) {
   if (m && m.z) { if (!canStandZ(x, y, 1, 0.3) || stairH(x, y) >= 0) return false; }
   else if (!canStand(x, y, 0, 0.3) || inSafe(x, y)) return false;
@@ -1170,7 +1175,7 @@ function combatTick(p, now, dt) {
 
 // ---------------- DRAGÃO ----------------
 const angDiff = (a, b) => { let d = (a - b) % (Math.PI * 2); if (d > Math.PI) d -= Math.PI * 2; if (d < -Math.PI) d += Math.PI * 2; return d; };
-function dragonDir(m) { const dx = Math.cos(m.ang), dy = Math.sin(m.ang); return dirFromVec(dx, dy, 0); }
+function dragonDir(m) { const dx = Math.cos(m.ang), dy = Math.sin(m.ang); return typeof dirFromVec === "function" ? dirFromVec(dx, dy, 0) : dirFromVecS(dx, dy); }
 const DRG_MS = { bite: 700, breath: 2000, tail: 900, roar: 1300, takeoff: 1100, land: 800 };
 const DRG = { bite: 5.4, tail: 7.2, bMin: 3.6, bMax: 12.5, bLen: 11.5, mouth: 2.8, circR: 8, altAir: 5, altStrafe: 2.4, fly: 7, strafe: 10, altPatrol: 6.5 };
 // o dragão caça qualquer um fora da cidade — inclusive o Tecelão, a não ser que esteja invisível
@@ -2188,7 +2193,12 @@ function hostTick() {
     if (false && p.cls !== 'knight' && dist(p.x, p.y, m.x, m.y) > 2.2 && !p.atk && !p.parry && !p.casting && !p.carrying && !p.lifted && now >= p.nextAtk && !inSafe(p.x, p.y) && Math.abs(p.z - (m.z || 0)) < 0.5 && dist(p.x, p.y, m.x, m.y) <= CLASSES[p.cls].range + (MON[m.type].rad || 0)) basicAttack(p, m, now);
   }
 
-  for (const m of Object.values(S.monsters)) monsterThink(m, players, now, dt);
+  // monstros: grade espacial para a colisão; os que estão longe de todo mundo (e calmos) pensam 1 vez a cada 4
+  monGridBuild(now); S.mtick = (S.mtick || 0) + 1;
+  for (const m of Object.values(S.monsters)) {
+    if (!m.aggro && !m.atk && !m.carrying && !m.dragging && !m.leadP && !m.gripBy && players.every(p => Math.abs(p.x - m.x) > 45 || Math.abs(p.y - m.y) > 45)) { if ((S.mtick + (m._h ?? (m._h = [...String(m.id)].reduce((a, c) => a + c.charCodeAt(0), 0)))) % 4) continue; monsterThink(m, players, now, dt * 4); }
+    else monsterThink(m, players, now, dt);
+  }
 
   // regeneração fora de combate
   if (now - S.lastRegen >= 1000) {
@@ -2900,7 +2910,7 @@ function wvMsg(p, m) {
 //  fila na porta, desvio de quem está na frente, curvas suaves, cada um no seu ritmo e na sua "faixa". Nunca atravessa parede.
 // ============================================================
 const ROAD_T = new Set([T.COBBLE, T.STONE, T.BRIDGE, T.DIRT, T.FLOORSTONE]);
-function npcPath(sx, sy, tx, ty, maxN = 26000) {
+function npcPath(sx, sy, tx, ty, maxN = 16000) {
   const W = MAP_W; sx = Math.round(sx); sy = Math.round(sy); const gx = Math.round(tx), gy = Math.round(ty);
   if (!inBounds(sx, sy) || !inBounds(gx, gy)) return null;
   const start = sy * W + sx, goal = gy * W + gx; if (start === goal) return [[tx, ty]];
@@ -2908,9 +2918,16 @@ function npcPath(sx, sy, tx, ty, maxN = 26000) {
   const hf = (x, y) => { const dx = Math.abs(x - gx), dy = Math.abs(y - gy); return Math.max(dx, dy) + 0.414 * Math.min(dx, dy); };
   const push = (k, f) => { H.push([f, k]); let i = H.length - 1; while (i > 0) { const p = (i - 1) >> 1; if (H[p][0] <= H[i][0]) break; [H[p], H[i]] = [H[i], H[p]]; i = p; } };
   const pop = () => { const top = H[0], last = H.pop(); if (H.length) { H[0] = last; let i = 0; for (;;) { const l = i * 2 + 1, r = l + 1; let m = i; if (l < H.length && H[l][0] < H[m][0]) m = l; if (r < H.length && H[r][0] < H[m][0]) m = r; if (m === i) break; [H[m], H[i]] = [H[i], H[m]]; i = m; } } return top[1]; };
-  push(start, hf(sx, sy)); let n = 0, best = start, bestH = hf(sx, sy), found = false;
+  let goalOk = walkableTile(gx, gy, 0);   // destino ocupado (balcão, posto): chegar ao lado já basta, sem varrer o mapa
+  if (!goalOk && ![[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, c]) => walkableTile(gx + a, gy + c, 0) && edgeOk(gx + a, gy + c, gx, gy))) {   // fechado por móveis: troca pelo chão livre mais perto (mesmo prédio)
+    let bd = 9, bx = -1, by = -1; const bi = WORLD.bld[goal];
+    for (let yy = gy - 2; yy <= gy + 2; yy++) for (let xx = gx - 2; xx <= gx + 2; xx++) { if (!inBounds(xx, yy) || WORLD.bld[yy * W + xx] !== bi || !walkableTile(xx, yy, 0)) continue; const d = (xx - tx) * (xx - tx) + (yy - ty) * (yy - ty); if (d < bd) { bd = d; bx = xx; by = yy; } }
+    if (bx < 0) return null; return npcPath(sx, sy, bx, by, maxN);
+  }
+  push(start, hf(sx, sy)); let n = 0, best = start, bestH = hf(sx, sy), found = false, nearK = -1;
   while (H.length && n++ < maxN) {
     const k = pop(); if (closed.has(k)) continue; closed.add(k); if (k === goal) { found = true; break; }
+    if (!goalOk) { const kx = k % W, ky = (k - kx) / W; if (Math.max(Math.abs(kx - gx), Math.abs(ky - gy)) <= 1 && (kx === gx || ky === gy) && edgeOk(kx, ky, gx, gy)) { nearK = k; break; } }
     const x = k % W, y = (k - x) / W, gk = g.get(k);
     for (const [dx, dy] of DIRS8) {
       const nx = x + dx, ny = y + dy; if (!inBounds(nx, ny)) continue; const nk = ny * W + nx; if (closed.has(nk)) continue;
@@ -2922,9 +2939,9 @@ function npcPath(sx, sy, tx, ty, maxN = 26000) {
       if (c < (g.get(nk) ?? 1e9)) { g.set(nk, c); prev.set(nk, k); const h = hf(nx, ny); push(nk, c + h * 0.9); if (h < bestH) { bestH = h; best = nk; } }
     }
   }
-  let end = found ? goal : (bestH <= 1.5 ? best : -1); if (end < 0) return null;
+  let end = found ? goal : nearK >= 0 ? nearK : (bestH <= 1.5 ? best : -1); if (end < 0) return null;
   const path = []; for (let k = end; k !== start && k !== -1; k = prev.get(k)) path.push([k % W, Math.floor(k / W)]);
-  path.reverse(); if (found) path[path.length - 1] = [tx, ty]; return path;
+  path.reverse(); if (found && path.length) path[path.length - 1] = [tx, ty]; return path.length ? path : [[tx, ty]];
 }
 // espaço livre para NPC: paredes, tiles sólidos e objetos redondos (sem contar os postos fixos de outros NPCs)
 function npcStand(x, y, r) {
@@ -2950,7 +2967,11 @@ function npcPace(n) {
 function npcWalk(n, tx, ty, speed, dt) {
   const now = now_(), calm = speed < 1.8; if (calm) speed *= npcPace(n);
   const key = Math.round(tx * 4) + ',' + Math.round(ty * 4);
-  if (n.walkKey !== key) { n.walkKey = key; n.legs = npcLegs(n, tx, ty); n.path = null; n._stuck = 0; n.doorWait = 0; }
+  if (n.walkKey !== key) {   // alvo andando (perseguição): só refaz o caminho se ele se afastou mais de 1,5 tile ou mudou de prédio
+    const far = !n.walkT || dist(n.walkT[0], n.walkT[1], tx, ty) > 1.5 || WORLD.bld[tileAt(tx, ty)] !== WORLD.bld[tileAt(n.walkT[0], n.walkT[1])] || !n.legs || !n.legs.length; n.walkKey = key;
+    if (far) { n.walkT = [tx, ty]; n.legs = npcLegs(n, tx, ty); n.path = null; n._stuck = 0; n.doorWait = 0; }
+    else { const L = n.legs[n.legs.length - 1]; L[0] = tx; L[1] = ty; if (n.path && n.path.length && n.legs.length === 1) n.path[n.path.length - 1] = [tx, ty]; }
+  }
   if (!n.legs || !n.legs.length) n.legs = [[tx, ty, 0]];
   let leg = n.legs[0];
   if (n.legs.length > 1 && dist(n.x, n.y, leg[0], leg[1]) < 0.4) { n.legs.shift(); leg = n.legs[0]; n.path = null; }
@@ -2958,12 +2979,13 @@ function npcWalk(n, tx, ty, speed, dt) {
     if (npcLine(n.x, n.y, leg[0], leg[1])) n.path = [[leg[0], leg[1]]];
     else { S.pathWin = S.pathWin || { t: 0, n: 0 }; if (now - S.pathWin.t > 100) S.pathWin = { t: now, n: 0 }; if (S.pathWin.n >= 4) { n.walk = false; return false; } S.pathWin.n++; n.path = npcPath(n.x, n.y, leg[0], leg[1]) || [[leg[0], leg[1]]]; }
   }
+  if (!n.path.length) n.path = [[leg[0], leg[1]]];
   // corta caminho quando a linha está livre (vira diagonal suave em vez de zigue-zague de tiles)
   while (n.path.length > 1 && npcLine(n.x, n.y, n.path[1][0], n.path[1][1])) n.path.shift();
   let [gx, gy] = n.path[0]; const last = n.path.length === 1 && n.legs.length === 1;
   if (!last && dist(n.x, n.y, gx, gy) < 0.35) { n.path.shift(); if (!n.path.length) { if (n.legs.length > 1) { n.legs.shift(); n.path = null; } else n.path = [[tx, ty]]; } return false; }
   let dx = gx - n.x, dy = gy - n.y, d = Math.hypot(dx, dy);
-  if (d < 0.05) { n.walk = false; return dist(n.x, n.y, tx, ty) < 0.6; }
+  if (d < 0.05) { n.walk = false; const dt0 = dist(n.x, n.y, tx, ty); return dt0 < 0.6 || (n.legs.length === 1 && dt0 < 1.3); }
   let ux = dx / d, uy = dy / d;
   if (calm && !leg[2] && d > 1.2) { const ox = gx - uy * n._lane, oy = gy + ux * n._lane; if (npcStand(ox, oy, 0.24)) { dx = ox - n.x; dy = oy - n.y; d = Math.hypot(dx, dy); ux = dx / d; uy = dy / d; } }   // cada um na sua faixa
   // desvia de quem está logo à frente (gente parada ou vindo de frente)
