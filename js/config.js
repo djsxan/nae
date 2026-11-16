@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.41.0';
-const VERSION_NAME = 'Nae · Pousada e Plateia';
+const VERSION = 'v1.42.0';
+const VERSION_NAME = 'Nae · Escudo e Troca';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -242,11 +242,11 @@ const HEAVY = 0.7;   // carga a partir da qual o golpe é "forte" (letal em part
 const MELEE = { knight: { wpn: 'espada', reach: 1.0, dmg: 1.0, spd: 1.0 }, archer: { wpn: 'adaga', reach: 0.8, dmg: 0.7, spd: 0.82 }, mage: { wpn: 'cajado', reach: 1.15, dmg: 0.6, spd: 1.1 } };
 // golpes: W preparação, R impacto, C recuperação (ms); alcance (tiles); arco (meio-ângulo, rad); dano; parte do corpo; fôlego
 const STRIKES = {
-  over:   { n: 'de cima',   W: 430, R: 150, C: 430, reach: 1.6,  arc: 0.45, mult: 1.25, zone: 'head',  st: 11 },
-  under:  { n: 'de baixo',  W: 360, R: 150, C: 380, reach: 1.5,  arc: 0.55, mult: 0.9,  zone: 'legs',  st: 8 },
+  over:   { n: 'de cima',   W: 480, R: 150, C: 450, reach: 1.6,  arc: 0.45, mult: 1.4,  zone: 'head',  st: 12, bz: 'top' },   // lento e forte; fácil de prever
+  under:  { n: 'de baixo',  W: 320, R: 140, C: 360, reach: 1.5,  arc: 0.55, mult: 0.75, zone: 'legs',  st: 7, bz: 'low', trip: 0.25 },   // rápido, pouco dano, pode derrubar
   slashL: { n: 'lateral',   W: 390, R: 170, C: 400, reach: 1.55, arc: 1.15, mult: 1.0,  zone: 'torso', st: 9, multi: 2 },
   slashR: { n: 'lateral',   W: 390, R: 170, C: 400, reach: 1.55, arc: 1.15, mult: 1.0,  zone: 'torso', st: 9, multi: 2 },
-  stab:   { n: 'estocada',  W: 330, R: 130, C: 360, reach: 1.9,  arc: 0.24, mult: 0.95, zone: 'torso', st: 7 },
+  stab:   { n: 'estocada',  W: 300, R: 120, C: 340, reach: 2.05, arc: 0.24, mult: 0.8,  zone: 'torso', st: 7, bz: 'side' },   // rápida e longa, pouco dano; fura bloqueio alto/baixo
   bite:   { n: 'mordida',   W: 340, R: 120, C: 480, reach: 1.25, arc: 0.6,  mult: 1.0,  zone: 'legs',  st: 0 },
 };
 const PARRY_PERFECT = 300, PARRY_ARC = 1.15, RIPOSTE_MS = 1300, FEINT_COST = 10, CST_MAX = 200, CST_REGEN = 24;

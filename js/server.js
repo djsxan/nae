@@ -24,7 +24,7 @@ function pinfo(p) { return { id: p.id, name: p.name, color: p.color, cls: p.cls,
 function fullStat(p) {
   const now = now_();
   return {
-    t: 'pstat', id: p.id, shea: p.sheathed ? 1 : 0, freeLimb: p.freeLimb ? 1 : 0, rep: repOf(p), feats: p.feats || {}, wpn: p.wpn || 'sword', prof: p.prof || {}, job: p.job ? jobView(p) : null, hp: p.hp, maxHp: p.maxHp, mp: p.mp, maxMp: p.maxMp, lvl: p.lvl, xp: p.xp, gold: p.gold,
+    t: 'pstat', id: p.id, shp: Math.round(p.shieldHp ?? 100), shea: p.sheathed ? 1 : 0, freeLimb: p.freeLimb ? 1 : 0, rep: repOf(p), feats: p.feats || {}, wpn: p.wpn || 'sword', prof: p.prof || {}, job: p.job ? jobView(p) : null, hp: p.hp, maxHp: p.maxHp, mp: p.mp, maxMp: p.maxMp, lvl: p.lvl, xp: p.xp, gold: p.gold,
     pots: { hp: p.pots.hp, mp: p.pots.mp, band: p.pots.band || 0 }, body: p.body, bleed: p.bleed, food: Math.round(p.food ?? 100), water: Math.round(p.water ?? 100), cold: Math.round(p.cold || 0), infect: p.infect || 0, sick: Math.max(0, (p.sickUntil || 0) - now), hasSkin: !!p.hasSkin, lost: p.lost || 0, pro: p.pro || 0, knock: Math.max(0, (p.knockUntil || 0) - now), inv: { ...p.inv }, quests: { ...p.quests }, qdone: { ...p.qdone },
     buffs: Object.entries(p.buffs).filter(([, u]) => u > now).map(([k, u]) => [k, u - now]),
     cds: [0, 1, 2, 3].map(i => Math.max(0, (p.cds[i] || 0) - now)),
@@ -61,7 +61,7 @@ function monsterAtPos(x, y, self, r = 0.62) {
 function monGridBuild(now) { const Gd = new Map(); for (const id in S.monsters) { const m = S.monsters[id], k = Math.floor(m.x / 2) * 4096 + Math.floor(m.y / 2); let L = Gd.get(k); if (!L) Gd.set(k, L = []); L.push(m); } S.mgrid = Gd; S.mgridAt = now; }
 function monStand(x, y, m) {
   if (m && m.z) { if (!canStandZ(x, y, 1, 0.3) || stairH(x, y) >= 0) return false; }
-  else if (!canStand(x, y, 0, 0.3) || inSafe(x, y)) return false;
+  else if (!canStand(x, y, 0, 0.3) || (inSafe(x, y) && !(m && m.aggro))) return false;   // perseguindo, entra na cidade
   if (monsterAtPos(x, y, m)) return false;
   for (const id in S.players) { const p = S.players[id]; if (p.z < 0.5 && !p.downed && dist(p.x, p.y, x, y) < 0.55) return false; }
   return true;
@@ -158,7 +158,7 @@ function hostOnClient(from, m) {
     };
     if (m.inv) for (const k in LOOT) if (m.inv[k] > 0) np.inv[k] = clamp(m.inv[k] | 0, 0, 999);
     if (+m.jailLeft > 0) setTimeout(() => { if (S.players[np.id]) jailPlayer(np, Math.min(900000, +m.jailLeft)); }, 1500);
-    np.sheathed = false; np.freeLimb = !!m.freeLimb;
+    np.sheathed = false; np.freeLimb = !!m.freeLimb; np.shieldHp = isFinite(m.shieldHp) ? clamp(+m.shieldHp, 0, 100) : 100;
     np.feats = {}; if (m.feats && typeof m.feats === 'object') for (const k of ['thief', 'jobs', 'shifts', 'rent']) if (isFinite(m.feats[k])) np.feats[k] = clamp(+m.feats[k], 0, 1e5);
     np.prof = {}; if (m.prof && typeof m.prof === 'object') for (const k in PROFS) if (isFinite(m.prof[k])) np.prof[k] = clamp(+m.prof[k], 0, 1e6);
     np.tree = cleanTree(cls, lvl, m.tree); np.use = {}; if (m.use && typeof m.use === 'object') for (const k in USE) if (isFinite(m.use[k])) np.use[k] = clamp(+m.use[k], 0, 1e6);
@@ -229,6 +229,7 @@ function hostOnClient(from, m) {
     case 'wv': wvMsg(p, m); break;
     case 'sheathe': p.autoShea = false; sheatheToggle(p); break;
     case 'hotel': hotelMsg(p, m); break;
+    case 'trade': if (m.a === 'open') { const n = S.npcs && S.npcs[m.npc]; if (n && tradeCat(n) && dist(n.x, n.y, p.x, p.y) <= 3.6) Net.toOne(p.id, tradeView(n, p)); } else tradeMsg(p, m); break;
     case 'pgive': {   // doar ouro/itens para outro jogador por perto
       const q = S.players[m.to]; if (!q || q === p || p.downed || dist(p.x, p.y, q.x, q.y) > 3) { tell(p, 'Chegue mais perto para dar.'); break; }
       if (m.gold) { const v = Math.min(Math.floor(+m.gold || 0), p.gold); if (v <= 0) break; p.gold -= v; q.gold += v; tell(p, 'Você deu ' + v + ' de ouro para ' + q.name + '.'); tell(q, p.name + ' te deu ' + v + ' de ouro.'); }
@@ -318,8 +319,9 @@ function hostOnClient(from, m) {
     }
     case 'atk': playerStrike(p, m.k, +m.a, now_(), +m.c); break;
     case 'wpn': if (p.cls === 'knight' && !p.atk && !p.downed) { p.wpn = p.wpn === 'halberd' ? 'sword' : 'halberd'; tell(p, (p.wpn === 'halberd' ? 'Você empunha a alabarda (alcance longo, duas mãos).' : 'Você volta para espada e escudo.')); anim('p', p, 'nock', p.x, p.y, { ms: 500 }); sendStat(p); } break;
-    case 'parry': if (m.on) { if (p.atk && !p.atk.done && p.cst >= FEINT_COST) { p.cst -= FEINT_COST; p.atk = null; } if (!p.atk && !p.downed && now_() >= (p.stunUntil || 0)) p.parry = { t0: now_(), a: +m.a || 0 }; } else p.parry = null; break;
-    case 'parrya': if (p.parry && isFinite(+m.a)) p.parry.a = +m.a; break;
+    case 'parry': if (m.on) { if (p.atk && !p.atk.done && p.cst >= FEINT_COST) { p.cst -= FEINT_COST; p.atk = null; } if (PZ.includes(m.z)) p.pz = m.z; if (!p.atk && !p.downed && now_() >= (p.stunUntil || 0)) p.parry = { t0: now_(), a: +m.a || 0, z: p.pz || 'top' }; } else p.parry = null; break;
+    case 'parrya': if (PZ.includes(m.z)) { p.pz = m.z; if (p.parry && p.parry.z !== m.z) { p.parry.z = m.z; p.parry.t0 = now_(); } } if (p.parry && isFinite(+m.a)) p.parry.a = +m.a; break;
+    case 'sbash': shieldBash(p, +m.a || 0, now_()); break;
     case 'dodge': { const now = now_(); const lg = (p.lost || 0) & ~(p.pro || 0) & 24; if (lg || now < (p.knockUntil || 0) || p.downed || now < (p.dodgeCd || 0) || p.cst < DODGE.cost * Math.max(0.4, 1 - treeEff(p, 'dodgeCost') - useBonus(p, 'dodge')) || now < (p.stunUntil || 0)) break; p.cst -= DODGE.cost * Math.max(0.4, 1 - treeEff(p, 'dodgeCost') - useBonus(p, 'dodge')); useGain(p, 'dodge', 1); p.dodgeCd = now + DODGE.cd; p.dodgeUntil = now + DODGE.iframe; p.dodgeAllow = now + DODGE.ms + 400; p.parry = null; if (p.atk && !p.atk.done) p.atk = null; near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'dash', ms: DODGE.ms + 120 }); sendStat(p);
       if (p.burnUntil > now) { p.burnUntil -= 3000; if (p.burnUntil <= now + 400) extinguish(p, 'Você rola no chão e apaga o fogo.'); else near(p.x, p.y, { t: 'burn', id: p.id, ms: p.burnUntil - now }); }
       break; }
@@ -865,6 +867,9 @@ function npcAction(p, m) {
     if (!n2) { say('Você não tem nada que me interesse agora.'); return; }
     p.gold += total;
     say(`Fechado: ${n2} ${n2 > 1 ? 'itens' : 'item'} por ${total} de ouro. Traga mais quando puder.`);
+  } else if (n.id === 'smith' && m.a === 'repair') {
+    if ((p.shieldHp ?? 100) >= 100) { say('Esse escudo está inteiro. Volte quando ele apanhar.'); return; }
+    if (!pay(15)) return; p.shieldHp = 100; say('Tábuas novas, rebites no lugar e o aro desamassado. Pronto para mais.');
   } else if (n.id === 'smith' && m.a === 'prosth') {
     const part = ['legL', 'legR', 'armA', 'armB'].find(k => (p.lost || 0) & LOST[k] && !((p.pro || 0) & LOST[k]));
     if (!part) { say('Você está inteiro. Volte se precisar de mim.'); return; }
@@ -992,13 +997,14 @@ function monsterThink(m, players, now, dt) {
     return false;
   };
   if (m.taunt && m.taunt.until > now && valid(S.players[m.taunt.pid])) tgt = S.players[m.taunt.pid];
-  if (!tgt && m.aggro && valid(S.players[m.aggro]) && dist(m.x, m.y, S.players[m.aggro].x, S.players[m.aggro].y) <= 11) tgt = S.players[m.aggro];
+  if (!tgt && m.aggro) { const q = S.players[m.aggro], ok = q && !q.dev && !buffOn(q, 'smoke') && (!q.downed || (pred && !q.carriedBy)) && q.z < 0.5;
+    if (ok) { const dq = dist(m.x, m.y, q.x, q.y), sees = dq <= 16 && (dq < 4 || sightClear(m.x, m.y, q.x, q.y)); if (sees) m.lostAt = 0; else m.lostAt = m.lostAt || now; if (sees || now - m.lostAt < 5000) tgt = q; else { m.aggro = null; m.lostAt = 0; m.returning = true; } } else m.aggro = null; }
   if (!tgt) {
     let best = 99;
     if (d.aggro > 0) for (const p of players) { if (!valid(p) || !prey(p)) continue; const dd = dist(m.x, m.y, p.x, p.y); if (dd <= d.aggro * (p.crouch ? 0.5 * (1 - treeEff(p, 'stealth')) : 1) && dd < best) { best = dd; tgt = p; } }
   }
   if (tgt) {
-    if (homeDist > 13) { m.returning = true; m.aggro = null; m.taunt = null; return; }
+    if (homeDist > 13 && !m.aggro) { m.returning = true; m.taunt = null; return; }   // só volta à toca quem não está perseguindo ninguém
     const dd = dist(m.x, m.y, tgt.x, tgt.y);
     const sdx = (tgt.x - m.x) - (tgt.y - m.y); if (Math.abs(sdx) > 0.05) m.face = sdx > 0 ? 1 : -1;
     if (d.thrower && dd > 2.6 && dd < 7 && now >= (m.cdThrow || 0) && now >= m.nextAtk) {
@@ -1065,14 +1071,16 @@ function resolveMonStrike(m, A, now) {
     if (now < (p.dodgeUntil || 0)) { near(p.x, p.y, { t: 'whiff', id: p.id }); continue; }       // esquivou
     if (Math.random() < treeEff(p, 'evade')) { near(p.x, p.y, { t: 'whiff', id: p.id }); continue; }   // reflexos (talento)
     const toM = Math.atan2(m.y - p.y, m.x - p.x);
-    if (p.parry && Math.abs(angDiff(p.parry.a, toM)) <= PARRY_ARC) {
-      const perfect = now - p.parry.t0 <= PARRY_PERFECT + A.W * 0.25 + treeEff(p, 'parry') + useLvl(p, 'parry') * 0.6; useGain(p, 'parry', perfect ? 3 : 1);
+    const BK = blockEval(p, A.k, m.x, m.y, A.a, now, A.W);
+    if (BK && BK.okZ) {
+      const perfect = BK.perfect; useGain(p, 'parry', perfect ? 3 : 1); if (BK.shield) shieldWear(p, d.big ? 9 : 3);
       if (perfect) { m.stunUntil = now + 850; m.nextAtk = Math.max(m.nextAtk, now + 900); p.ripUntil = now + RIPOSTE_MS; p.cst = Math.min(CST_MAX, p.cst + 5); near(p.x, p.y, { t: 'clang', x: (p.x + m.x) / 2, y: (p.y + m.y) / 2, perfect: 1, id: m.id }); }
-      else { p.cst -= (10 + (d.big ? 18 : 6)) * ((p.lost || 0) & LOST.armB ? 1.6 : 1) * (1 - useBonus(p, 'parry')); near(p.x, p.y, { t: 'clang', x: (p.x + m.x) / 2, y: (p.y + m.y) / 2 }); if (p.cst <= 0) guardBreak(p, now); }
+      else { p.cst -= (BK.shield ? 4 + (d.big ? 9 : 2) : 10 + (d.big ? 18 : 6)) * ((p.lost || 0) & LOST.armB ? 1.6 : 1) * (1 - useBonus(p, 'parry')); near(p.x, p.y, { t: 'clang', x: (p.x + m.x) / 2, y: (p.y + m.y) / 2 }); if (p.cst <= 0) guardBreak(p, now); }
       sendStat(p); continue;
     }
+    const partial = BK && BK.shield ? 0.75 : 1;   // escudo na direção errada ainda amortece um pouco
     const crit = MON_MELEE[m.type] && A.k !== 'stab' && A.k !== 'bite' && Math.random() < (d.big ? 0.12 : 0.07);
-    damagePlayer(p, Math.round(rint(d.dmg[0], d.dmg[1]) * STRIKES[A.k].mult * ((m.lost || 0) & 6 ? 0.4 : 1) * (crit ? 1.6 : 1)), m, 0, STRIKES[A.k].zone);
+    damagePlayer(p, Math.round(rint(d.dmg[0], d.dmg[1]) * STRIKES[A.k].mult * ((m.lost || 0) & 6 ? 0.4 : 1) * (crit ? 1.6 : 1) * partial), m, 0, STRIKES[A.k].zone);
     const svp = crit && !p.downed ? severPart(A.k, p.lost || 0) : null;
     if (svp && svp !== 'head' && (p.body[svp] ?? 100) <= 30 && Math.random() < 0.5) severPlayer(p, svp, m);
     else if (d.big && !p.downed && Math.random() < 0.35 * Math.max(0, 1 - treeEff(p, 'knockRes'))) knockPlayer(p, m, now);
@@ -1118,17 +1126,22 @@ function pvpHit(p, q, A, now) {
   witnessCrime(p, p.x, p.y);
   if (now < (q.dodgeUntil || 0)) { near(q.x, q.y, { t: 'whiff', id: q.id }); return; }
   const toP = Math.atan2(p.y - q.y, p.x - q.x);
-  if (q.parry && Math.abs(angDiff(q.parry.a, toP)) <= PARRY_ARC) {
-    if (now - q.parry.t0 <= PARRY_PERFECT + A.W * 0.25) { p.stunUntil = now + 750; q.ripUntil = now + RIPOSTE_MS; q.cst = Math.min(CST_MAX, q.cst + 5); near(q.x, q.y, { t: 'clang', x: (p.x + q.x) / 2, y: (p.y + q.y) / 2, perfect: 1 }); near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'hurt', ms: 750 }); sendStat(p); }
-    else { q.cst -= 14; near(q.x, q.y, { t: 'clang', x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 }); if (q.cst <= 0) guardBreak(q, now); }
+  const BK = blockEval(q, A.k, p.x, p.y, A.a, now, A.W);
+  if (BK && BK.okZ && !BK.shield && (A.c || 0) >= HEAVY && !BK.perfect) { guardBreak(q, now); near(q.x, q.y, { t: 'clang', x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 }); }   // sem escudo, golpe carregado fora do tempo quebra a guarda
+  else if (BK && BK.okZ) {
+    if (BK.shield) shieldWear(q, (A.c || 0) >= HEAVY ? 8 : 3);
+    if (BK.perfect) { p.stunUntil = now + 750; q.ripUntil = now + RIPOSTE_MS; q.cst = Math.min(CST_MAX, q.cst + 5); near(q.x, q.y, { t: 'clang', x: (p.x + q.x) / 2, y: (p.y + q.y) / 2, perfect: 1 }); near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'hurt', ms: 750 }); sendStat(p); }
+    else { q.cst -= BK.shield ? 6 : 14; near(q.x, q.y, { t: 'clang', x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 }); if (q.cst <= 0) guardBreak(q, now); }
     sendStat(q); return;
   }
+  const partial = BK && BK.shield ? 0.75 : (BK && BK.okZ ? 0.5 : 1);
   const B = STRIKES[A.k], M = MELEE[p.cls] || MELEE.knight, { dmg } = roll(p, B.mult * M.dmg * (A.wdmg || 1) * (1 + 0.6 * (A.c || 0)) * (A.rip ? 1.25 : 1));
   const crit = roll(p, 1).crit;
   if (A.wpn === 'fist') { const d = Math.min(Math.round(dmg), Math.max(0, Math.floor(q.hp) - 1)); if (d > 0) damagePlayer(q, d, { x: p.x, y: p.y, name: p.name }, 0, B.zone); if (q.hp <= 1.5 || A.c >= HEAVY) { q.stunUntil = Math.max(q.stunUntil || 0, now + 1400); knockPlayer(q, { x: p.x, y: p.y }, now); } sendStat(q); return; }
   if (lethalHit(p, q, A, 'p')) return;
-  damagePlayer(q, Math.round(dmg * (crit ? 1.6 : 1)), { x: p.x, y: p.y, name: p.name }, 0, B.zone);
+  damagePlayer(q, Math.round(dmg * (crit ? 1.6 : 1) * partial), { x: p.x, y: p.y, name: p.name }, 0, B.zone);
   if (crit && A.k !== 'stab' && !q.downed) severPlayer(q, severPart(A.k, q.lost || 0), { x: p.x, y: p.y, name: p.name });
+  if (B.trip && !q.downed && Math.random() < B.trip) knockPlayer(q, { x: p.x, y: p.y }, now);   // golpe de baixo pode derrubar
   if (q.atk && !q.atk.done) { q.atk = null; near(q.x, q.y, { t: 'anim', w: 'p', id: q.id, a: 'hurt' }); }
 }
 function resolvePlayerStrike(p, A, now) { p._melee = true; try { resolvePlayerStrike0(p, A, now); } finally { p._melee = false; } }
@@ -1153,7 +1166,7 @@ function resolvePlayerStrike0(p, A, now) {
     if (crit && A.k === 'over' && !sev && !MON[q.type].big) knockMon(q, p, now);
     if (q.atk && !q.atk.done && A.k !== 'stab') { q.atk = null; q.nextAtk = now + 600; }   // golpe pesado interrompe o inimigo
     if (A.k === 'over' && Math.random() < 0.18) q.stunUntil = Math.max(q.stunUntil, now + 650);
-    if (A.k === 'under') q.slowUntil = Math.max(q.slowUntil, now + 2500);
+    if (A.k === 'under') { q.slowUntil = Math.max(q.slowUntil, now + 2500); if (!MON[q.type].big && Math.random() < (STRIKES.under.trip || 0)) knockMon(q, p, now); }
   }
   if (!targets.length) near(p.x, p.y, { t: 'swoosh', id: p.id });
 }
@@ -1524,6 +1537,7 @@ function arrowHit(A, p, q, k, part, h, dx, dy, fa) {
   if (k === 'n') { const r = p ? roll(p, mult) : { dmg: Math.round(12 * mult) }; npcDamage(q, r.dmg, p); }
   else if (k === 'p') {
     if (now < (q.dodgeUntil || 0)) { near(q.x, q.y, { t: 'whiff', id: q.id }); return; }
+    if (hasShield(q) && q.parry && q.parry.z !== 'low' && Math.abs(angDiff(q.parry.a, fa + Math.PI)) <= PARRY_ARC) { shieldWear(q, 3); near(q.x, q.y, { t: 'clang', x: q.x + Math.cos(fa + Math.PI) * 0.4, y: q.y + Math.sin(fa + Math.PI) * 0.4 }); sendStat(q); return; }   // flecha cravada no escudo
     if (p && inSafe(q.x, q.y)) witnessCrime(p, p.x, p.y);
     const r = p ? roll(p, mult) : { dmg: Math.round(12 * mult), crit: false };
     damagePlayer(q, Math.round(r.dmg * (part === 'head' ? 1 : 1)), { x: A.x - Math.cos(fa), y: A.y - Math.sin(fa), name: p ? p.name : '' }, 0, null, part);
@@ -1819,6 +1833,7 @@ function guardThink(n, now, dt) {
   }
   n.aggro = null; n.goFetch = null;
   if (n.chaseNpc) { const t = S.npcs[n.chaseNpc]; if (!t || !(t.wantedT > now)) n.chaseNpc = null; else { if (dist(n.x, n.y, t.x, t.y) < 1.3) { n.chaseNpc = null; thiefCaught(t, null); } else npcWalk(n, t.x, t.y, 2.7, dt); return; } }
+  if (guardFightMonster(n, now, dt)) return;
   if (guardThreat(n, now, dt)) return;
   if (n.alert && now < n.alert.until) { if (npcWalk(n, n.alert.x, n.alert.y, 2.3, dt)) n.alert = null; return; } else n.alert = null;   // chamado por um morador: corre até lá
   // socorro: jogador caído (não procurado) dentro da cidade, sem ninguém cuidando
@@ -2251,7 +2266,7 @@ function hostTick() {
       if (p.devHidden && p.id !== r.id) continue;
       let fl = (p.walking ? 1 : 0) | (p.downed ? 2 : 0) | (p.carriedBy ? 4 : 0) | (p.carrying ? 8 : 0) | (p.running && p.walking ? 256 : 0) | (p.sit ? 512 : 0) | (p.sit === 'c' ? 1024 : 0) | (p.sleep != null ? 32768 : 0) | (p.drawT ? 65536 : 0) | (p.dragBy ? 131072 : 0) | (p.dragMode === 'foot' ? 262144 : 0) | (p.drag && p.drag.mode === 'arms' ? 524288 : 0) | (p.drag && p.drag.mode === 'foot' ? 1048576 : 0) | (p.drag && p.drag.mode === 'back' ? 2097152 : 0) | (p.drag && p.drag.mode === 'grip' ? 4194304 : 0) | (p.gripBy ? 8388608 : 0) | (p.tied ? 16777216 : 0) | (p.choked ? 33554432 : 0) | (p.choking ? 67108864 : 0) | (p.escortBy || p.surrendered ? 134217728 : 0) | (p.jailUntil > now ? 536870912 : 0) | (p.bound ? 1073741824 : 0) | (p.drag && (p.drag.helper || ((dragTarget(p.drag.k, p.drag.id) || {}).dragBy2)) ? 268435456 : 0) | ((p.fl || 0) << 11) | (p.crouch ? 8192 : 0) | (p.slide ? 16384 : 0);
       for (const b in BUFF_BITS) if (buffOn(p, b)) fl |= BUFF_BITS[b];
-      pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0, (p.surrendered ? 1 : 0) | (p.bound && p.bound.kind === 'rope' ? 2 : 0) | (p.bound && p.bound.kind === 'cuffs' ? 4 : 0) | (p.dragBy && (/^(n:|m:)/.test(String(p.dragBy)) || p.dragMode === 'lead') && !p.downed ? 8 : 0) | (p.pkg ? 16 : 0) | (p.shift ? 32 : 0) | (p.wpn === 'halberd' ? 64 : 0) | ((p.uni || 0) << 7) | (p.inMenu ? 1024 : 0) | (p.sheathed ? 2048 : 0)]);
+      pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0, (p.surrendered ? 1 : 0) | (p.bound && p.bound.kind === 'rope' ? 2 : 0) | (p.bound && p.bound.kind === 'cuffs' ? 4 : 0) | (p.dragBy && (/^(n:|m:)/.test(String(p.dragBy)) || p.dragMode === 'lead') && !p.downed ? 8 : 0) | (p.pkg ? 16 : 0) | (p.shift ? 32 : 0) | (p.wpn === 'halberd' ? 64 : 0) | ((p.uni || 0) << 7) | (p.inMenu ? 1024 : 0) | (p.sheathed ? 2048 : 0) | (p.parry ? (PZ.indexOf(p.parry.z) + 1) << 12 : 0) | ((p.shieldHp ?? 100) <= 0 && p.cls === 'knight' ? 32768 : 0)]);
     }
     for (const m of mons) {
       if (Math.abs(m.x - r.x) > VIEW_RADIUS || Math.abs(m.y - r.y) > VIEW_RADIUS) continue;
@@ -2456,7 +2471,7 @@ const inVillage = P => BUILDINGS[P.bi].x < CENTER - 52;
 function routeBetween(A, B) {   // pontos de passagem curtos (o pathfinding não precisa varrer o mapa todo)
   const W = COURIER_WP(), a = bizDoorOut(A), b = bizDoorOut(B), out = [a];
   if (inVillage(A) && !inVillage(B)) out.push(W.sq, W.road, W.bridge, W.ring, W.gate); else if (!inVillage(A) && inVillage(B)) out.push(W.gate, W.ring, W.bridge, W.road, W.sq); else out.push(W.sq);
-  out.push(b); const tb = BUILDINGS[B.bi], st = S.npcs && Object.values(S.npcs).find(n => n.bi === B.bi && n.role && n.role !== 'courier'); out.push(doorTile(tb)); if (st) { const v = DOOR_V[tb.door || 'S']; out.push([st.postX + v[0] * 0.9, st.postY + v[1] * 0.9]); } return out;   /* na frente da balconista, do lado da porta */
+  out.push(b); const tb = BUILDINGS[B.bi], st = S.npcs && Object.values(S.npcs).find(n => n.bi === B.bi && n.role && n.role !== 'courier'); out.push(doorTile(tb)); if (st) out.push(clerkFront(tb, st)); return out;   /* na frente da balconista, do lado da porta */
 }
 function courierJobs(owner) { return Object.values(S.npcs || {}).filter(n => n.role === 'courier' && n.job && n.job.owner === owner).map(n => ({ name: n.name.split(',')[0], g: n.job.goods, to: PROPS_BY[n.job.to].name, st: n.job.st })); }
 function bizNeeds(owner) {   // o que cada negócio do dono precisa receber
@@ -2481,7 +2496,8 @@ function dispatchCouriers() {
 function courierTick(n, now, dt) {
   const J = n.job; if (!J) { if (dist(n.x, n.y, n.postX, n.postY) > 0.5) npcWalk(n, n.postX, n.postY, 1.4, dt); return; }
   const E = S.estate, wp = J.wp[J.i]; if (!wp) { n.job = null; return; }
-  if (npcWalk(n, wp[0], wp[1], 1.7, dt) || dist(n.x, n.y, wp[0], wp[1]) < 0.6) {
+  if (J.wi !== J.i) { J.wi = J.i; J.wt = now; }
+  if (npcWalk(n, wp[0], wp[1], 1.7, dt) || dist(n.x, n.y, wp[0], wp[1]) < 0.6 || (now - J.wt > 9000 && dist(n.x, n.y, wp[0], wp[1]) < 2.5)) {   // ponto inalcançável há 9 s mas perto: conta como alcançado
     if (J.i === 1 && J.st === 'indo buscar') {   // pegou na oficina
       const r = E.r[J.from]; if (!r || !r.biz) { n.job = null; return; } for (const g in J.goods) { const q = Math.min(J.goods[g], Math.floor(r.biz.store[g] || 0)); J.goods[g] = q; r.biz.store[g] -= q; } J.st = 'levando';
     }
@@ -2497,9 +2513,10 @@ function supplierTick(n, now, dt) {
   const J = n.job;
   if (!J) { const q = (S.supplyQ || []).shift(); if (!q) { if (dist(n.x, n.y, n.postX, n.postY) > 0.5) npcWalk(n, n.postX, n.postY, 1.3, dt); return; }
     const P = PROPS_BY[q.pid], b = BUILDINGS[P.bi], st = Object.values(S.npcs).find(o => o.bi === P.bi && o.role === 'clerk');
-    n.job = { pid: q.pid, o: q.o, st: 'levando', i: 0, wp: [[CENTER + 0.5, CENTER + 22], [CENTER + 0.5, CENTER + 12], [CENTER - 8, CENTER + 6.5], bizDoorOut(P), doorTile(b), st ? [st.postX, st.postY + 0.9] : doorTile(b)] }; return; }
+    n.job = { pid: q.pid, o: q.o, st: 'levando', i: 0, wp: [[CENTER + 0.5, CENTER + 22], [CENTER + 0.5, CENTER + 12], [CENTER - 8, CENTER + 6.5], bizDoorOut(P), doorTile(b), st ? clerkFront(b, st) : doorTile(b)] }; return; }
   const wp = J.wp[J.i]; if (!wp) { n.job = null; return; }
-  if (npcWalk(n, wp[0], wp[1], 1.6, dt) || dist(n.x, n.y, wp[0], wp[1]) < 0.6) {
+  if (J.wi !== J.i) { J.wi = J.i; J.wt = now; }
+  if (npcWalk(n, wp[0], wp[1], 1.6, dt) || dist(n.x, n.y, wp[0], wp[1]) < 0.6 || (now - J.wt > 9000 && dist(n.x, n.y, wp[0], wp[1]) < 2.5)) {   // ponto inalcançável há 9 s mas perto: conta como alcançado
     J.i++;
     if (J.i >= J.wp.length) {
       if (J.st === 'levando') { const r = S.estate.r[J.pid]; if (r && r.biz) { const B = r.biz, o = J.o; B.stock[o.g] = (B.stock[o.g] || 0) + o.q; const k = B.orders.indexOf(o); if (k >= 0) B.orders.splice(k, 1); bizLog(B, 'Jonas, o entregador, trouxe ' + o.q + ' ' + GOODS[o.g].n + '.'); estateSave(); } J.st = 'voltando'; J.wp = J.wp.slice(0, -1).reverse().concat([[n.postX, n.postY]]); J.i = 0; }
@@ -2772,7 +2789,7 @@ const VIS_TYPES = { house: { n: 'dona de casa', looks: ['v_house1', 'v_house2', 
 const VIS_TITLE = { v_monk: 'peregrino', v_noblef: 'dama da corte', v_noblem: 'nobre de passagem', v_peasm: 'camponês', v_peasf: 'camponesa', v_elderm: 'ancião', v_elderf: 'anciã', v_trav3: 'menestrel' };
 const visGates = () => { const x0 = CENTER - 32; return [[CENTER + 0.5, CENTER + 30.5], [x0 + 3, CENTER + 5.5], [CENTER + 0.5, CENTER - 30.5]]; };
 const VIS_HUB = [CENTER + 0.5, CENTER + 12];
-function visPublic(n) { return { id: n.id, kind: n.kind, name: n.name, x: n.x, y: n.y }; }
+function visPublic(n) { return { id: n.id, kind: n.kind, name: n.name, x: n.x, y: n.y, trader: n.trader ? 1 : 0 }; }
 function visSpawn(now) {
   const night = typeof dayInfoS === 'function' ? dayInfoS().night : false, r = Math.random();
   const type = r < 0.07 ? 'thug' : r < 0.42 ? 'house' : r < 0.7 ? 'trav' : 'vis', T = VIS_TYPES[type];
@@ -2780,12 +2797,13 @@ function visSpawn(now) {
   const gk = Math.floor(Math.random() * 3), gate = visGates()[gk], g = T.g === 'x' ? (Math.random() < 0.5 ? 'f' : 'm') : T.g;
   const nm = VIS_NAMES[g][Math.floor(Math.random() * VIS_NAMES[g].length)], id = 'v_' + (S.visN = (S.visN || 0) + 1), pool = T.looks || (g === 'f' ? T.looksF : T.looksM), kind = pool[Math.floor(Math.random() * pool.length)];
   const n = { id, kind, name: nm + ', ' + (VIS_TITLE[kind] || T.n), transient: true, vtype: type, x: gate[0] + (Math.random() - 0.5), y: gate[1], z: 0, postX: gate[0], postY: gate[1], hp: 60, maxHp: 60, downed: null, dead: false, gate: gk, stops: visPlan(type), si: 0, wait: 0, born: now };
+  if (type === 'trav' && Math.random() < 0.35) { n.trader = true; n.name = nm + ', mercador viajante'; }   // alguns viajantes trazem coisas raras
   S.npcs[id] = n; Net.toAll({ t: 'vspawn', v: visPublic(n) });
 }
 function visPlan(type) {
   const shops = PROPS.filter(P => P.kind === 'shop'), owned = shops.filter(P => S.estate && S.estate.r[P.id] && S.estate.r[P.id].biz && Object.keys(S.estate.r[P.id].biz.stock).length);
   const pick = a => a[Math.floor(Math.random() * a.length)], tav = BUILDINGS.findIndex(b => b.kind === 'tavern'), spot = (x, y, w) => ({ x: x + (Math.random() - 0.5) * 2, y: y + (Math.random() - 0.5) * 2, w });
-  const shopStop = P => { const st = Object.values(S.npcs).find(q => q.bi === P.bi && q.role === 'clerk'); const t = bldTiles(P.bi); const c = st ? [st.postX, st.postY + 1] : t[0] || doorTile(BUILDINGS[P.bi]); return { x: c[0], y: c[1], w: 6000 + Math.random() * 6000, shop: P.id }; };
+  const shopStop = P => { const st = Object.values(S.npcs).find(q => q.bi === P.bi && q.role === 'clerk'); const t = bldTiles(P.bi); const c = st ? clerkFront(BUILDINGS[P.bi], st) : t[0] || doorTile(BUILDINGS[P.bi]); return { x: c[0], y: c[1], w: 6000 + Math.random() * 6000, shop: P.id }; };
   const plaza = () => spot(CENTER + 0.5, CENTER + 13, 8000 + Math.random() * 10000), fountain = () => spot(CENTER + 18, CENTER + 1, 9000), tavern = () => { const t = bldTiles(tav); const c = t.length ? pick(t) : [CENTER, CENTER + 12]; return { x: c[0], y: c[1], w: 20000 + Math.random() * 25000 }; };
   if (type === 'house') { const L = []; const pool = owned.length ? owned.concat(owned, shops) : shops; for (let k = 0; k < 2 + Math.floor(Math.random() * 2); k++) L.push(shopStop(pick(pool))); L.splice(1, 0, plaza()); return L; }
   if (type === 'trav') return [plaza(), tavern(), Math.random() < 0.5 ? shopStop(pick(owned.length ? owned : shops)) : fountain()];
@@ -3232,4 +3250,106 @@ function crowdTick(n, now, dt) {
     else if (C.op <= -15) { if (Math.random() < 0.6) sh('shout', ['Corta logo!', 'Justiça para Nae!', 'Assassino!', 'Que sirva de exemplo!'][Math.floor(Math.random() * 4)]); else sh('anger'); }
     else { const r = Math.random(); if (r < 0.3) sh('pray'); else if (r < 0.55) sh('fear'); else if (r < 0.8) sh('talk', ['Que coisa...', 'O que será que fez?', 'Não gosto de ver isso.', 'Coitado.'][Math.floor(Math.random() * 4)]); else sh('look'); } }
   return true;
+}
+
+// ponto de entrega: na frente da balconista, do lado da porta (qualquer orientação de loja)
+function clerkFront(b, st) { const v = DOOR_V[b.door || 'S']; return [st.postX + v[0] * 0.9, st.postY + v[1] * 0.9]; }
+
+// monstro dentro da cidade: a sentinela mais perto vai lutar (o crédito vai para o jogador mais perto)
+function guardFightMonster(n, now, dt) {
+  let m = n.monT && S.monsters[n.monT]; if (m && (!inSafe(m.x, m.y) || dist(n.x, n.y, m.x, m.y) > 18)) m = null;
+  if (!m) { n.monT = null; let bd = 14; for (const q of Object.values(S.monsters)) { if (!inSafe(q.x, q.y) || (q.alt || 0) > 1) continue; const d = dist(n.x, n.y, q.x, q.y); if (d < bd) { bd = d; m = q; } } if (!m) return false; n.monT = m.id; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'shout', txt: 'Fera na cidade! Às armas!', ms: 1 }); }
+  const d = dist(n.x, n.y, m.x, m.y); n.fight = n.fight || null;
+  if (d > 1.4) { npcWalk(n, m.x, m.y, 2.4, dt); return true; }
+  if (now >= (n.nextAtk || 0)) { n.nextAtk = now + 1300; n.face = Math.atan2(m.y - n.y, m.x - n.x); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'atk_slashR', ms: 900, tx: m.x, ty: m.y });
+    setTimeout(() => { if (!S.monsters[m.id] || n.dead || n.downed || dist(n.x, n.y, m.x, m.y) > 2) return; const dmg = rint(14, 24); m.hp -= dmg; near(m.x, m.y, { t: 'hit', k: 'm', id: m.id, x: m.x, y: m.y, dmg, ax: n.x, ay: n.y });
+      if (m.hp <= 0) { const pp = Object.values(S.players).filter(q => !q.downed).sort((a, b) => dist(a.x, a.y, m.x, m.y) - dist(b.x, b.y, m.x, m.y))[0]; if (pp && dist(pp.x, pp.y, m.x, m.y) < 14) killMonster(m, pp, 0); else { delete S.monsters[m.id]; near(m.x, m.y, { t: 'mdie', id: m.id, d: 0 }); } n.monT = null; } }, 450); }
+  return true;
+}
+
+// ============================================================
+//  TROCA COM AS LOJAS (NPCs) — abas Comprar / Vender, estoque que acaba e repõe com o tempo;
+//  o que o jogador vende fica à venda para os outros. A opinião do NPC muda o preço; inimigo não negocia.
+// ============================================================
+const FOODS = ['bread', 'cookedmeat', 'ointment', 'firewood', 'berries', 'herb', 'apple', 'stew', 'pie', 'tea', 'venison', 'pork'];
+const TRADE = {
+  merchant: { sell: { bread: 20, ointment: 6, firewood: 15, rope: 6, lockpick: 4, axe: 3, pickaxe: 3, sickle: 3, pot_hp: 10, pot_mp: 8, pot_band: 15 }, buys: 'all' },
+  innkeeper: { sell: { bread: 15, cookedmeat: 10, stew: 6, pie: 4, tea: 8 }, buys: ['venison', 'pork', 'berries', 'apple', 'herb', 'cookedmeat'] },
+  fruit: { sell: { apple: 20, berries: 20 }, buys: ['apple', 'berries', 'herb'] },
+  smith: { sell: { axe: 4, pickaxe: 4, sickle: 4, lockpick: 3 }, buys: ['ore', 'gem', 'hardwood', 'log'] },
+  st_apoth: { sell: { pot_hp: 8, pot_band: 12, herb: 12, ointment: 5, tea: 6 }, buys: ['herb', 'silverleaf', 'flaxraw'] },
+  st_arcane: { sell: { wand: 4, gem: 3, pot_mp: 8 }, buys: ['gem', 'hardwood', 'silverleaf'] },
+  st_tailor: { sell: { pot_band: 15, rope: 5 }, buys: ['flaxraw', 'pelt'] },
+  st_scroll: { sell: { map: 6 }, buys: ['log', 'hardwood'] },
+};
+const TRADER_POOL = ['gem', 'silverleaf', 'hardwood', 'wand', 'map', 'lockpick', 'ointment', 'pot_hp', 'pot_mp'];
+const tBase = k => k.startsWith('pot_') ? (ITEMS[k.slice(4)] || {}).price || 10 : (LOOT[k] || {}).price || 0;
+const tName = k => k.startsWith('pot_') ? (ITEMS[k.slice(4)] || {}).name || k : (LOOT[k] || {}).name || k;
+function tradeCat(n) {
+  if (n.trader) { if (!n.tcat) { const sell = {}; for (let i = 0; i < 4; i++) { const k = TRADER_POOL[Math.floor(Math.random() * TRADER_POOL.length)]; sell[k] = 1 + Math.floor(Math.random() * 3); } n.tcat = { sell, buys: 'all', mark: 1.3, pay: 0.7 }; } return n.tcat; }
+  return TRADE[n.kind] || TRADE[n.id];
+}
+function tradeStock(n) {
+  const C = tradeCat(n); S.trade = S.trade || {}; let T = S.trade[n.id]; const now = now_();
+  if (!T) T = S.trade[n.id] = { stock: { ...C.sell }, t: now };
+  const steps = Math.floor((now - T.t) / (BIZ_HOUR_MS * 2)); if (steps > 0 && !n.trader) { T.t += steps * BIZ_HOUR_MS * 2; for (const k in C.sell) T.stock[k] = Math.min(C.sell[k], (T.stock[k] || 0) + steps); }   // repõe 1 de cada a cada 2 horas do jogo
+  return T;
+}
+const tSellPrice = (n, p, k) => { const C = tradeCat(n), own = C.sell && k in C.sell; return Math.max(1, Math.round(tBase(k) * (C.mark || 1) * (own ? 1 : 1.3) * (opPriceMul(n, p) || 1))); };
+const tBuyPrice = (n, p, k) => { const C = tradeCat(n), own = C.sell && k in C.sell; return Math.max(1, Math.floor(tBase(k) * (C.pay || 1) * (own || FOODS.includes(k) ? 0.5 : C.buys === 'all' ? 1 : 0.8))); };
+function tradeView(n, p) {
+  const C = tradeCat(n), T = tradeStock(n);
+  const sell = Object.entries(T.stock).filter(([k, q]) => q > 0 && tBase(k)).map(([k, q]) => [k, tName(k), tSellPrice(n, p, k), q]);
+  const buys = Object.keys(p.inv).filter(k => p.inv[k] > 0 && LOOT[k] && LOOT[k].price && (C.buys === 'all' || C.buys.includes(k))).map(k => [k, tName(k), tBuyPrice(n, p, k), p.inv[k]]);
+  return { t: 'trade', npc: n.id, name: n.name, sell, buys, gold: p.gold, hate: opPriceMul(n, p) === 0 };
+}
+function tradeMsg(p, m) {
+  const n = S.npcs && S.npcs[m.npc]; if (!n || n.dead || n.downed || !tradeCat(n) || p.downed) return;
+  if (dist(n.x, n.y, p.x, p.y) > 3.6) { tell(p, 'Chegue mais perto de ' + n.name.split(',')[0] + '.'); return; }
+  if (opPriceMul(n, p) === 0 && m.a !== 'open') { tell(p, n.name.split(',')[0] + ' não quer negociar com você.'); return; }
+  const T = tradeStock(n), k = String(m.k || ''), q = Math.max(1, Math.min(99, m.n | 0 || 1));
+  if (m.a === 'buy') {
+    if (!(T.stock[k] > 0)) { tell(p, 'Acabou. Volte mais tarde.'); return; } const n2 = Math.min(q, T.stock[k]), cost = tSellPrice(n, p, k) * n2;
+    if (p.gold < cost) { tell(p, 'Você precisa de ' + cost + ' de ouro.'); return; }
+    if (k.startsWith('pot_')) p.pots[k.slice(4)] = (p.pots[k.slice(4)] || 0) + n2; else { if (!p.inv[k] && Object.keys(p.inv).length >= INV_SLOTS) { tell(p, 'Sua mochila está cheia.'); return; } p.inv[k] = (p.inv[k] || 0) + n2; }
+    p.gold -= cost; T.stock[k] -= n2; if (!T.stock[k] && !(tradeCat(n).sell && k in tradeCat(n).sell)) delete T.stock[k]; memAdd(n, p, 'buy');
+  } else if (m.a === 'sell') {
+    const C = tradeCat(n); if (!(p.inv[k] > 0) || !LOOT[k] || !(C.buys === 'all' || C.buys.includes(k))) return; const n2 = Math.min(q, p.inv[k]), pay = tBuyPrice(n, p, k) * n2;
+    p.inv[k] -= n2; if (!p.inv[k]) delete p.inv[k]; p.gold += pay; T.stock[k] = Math.min(40, (T.stock[k] || 0) + n2);   // fica à venda para os outros
+  }
+  sendStat(p); Net.toOne(p.id, tradeView(n, p));
+}
+
+// ============================================================
+//  BLOQUEIO DIRECIONAL — segurando o botão direito, o jogador escolhe a direção: alto, esquerda, direita ou baixo.
+//  De cima pede alto; de baixo pede baixo; lateral pede o lado de onde vem a lâmina; estocada pede um dos lados.
+//  Escudo: bloqueia na direção certa gastando pouco fôlego, aguenta golpe carregado, para flechas e se desgasta.
+// ============================================================
+const PZ = ['top', 'L', 'R', 'low'];
+const hasShield = p => p && p.cls === 'knight' && (p.wpn || 'sword') !== 'halberd' && !p.sheathed && (p.shieldHp ?? 100) > 0;
+function reqZone(k, ax, ay, aa, def) {
+  const B = STRIKES[k]; if (!B) return null;
+  if (B.bz === 'top') return ['top']; if (B.bz === 'low') return ['low']; if (B.bz === 'side') return ['L', 'R'];
+  if (k === 'slashR' || k === 'slashL') { const o = aa + (k === 'slashR' ? Math.PI / 2 : -Math.PI / 2), ox = ax + Math.cos(o) * 0.7 - def.x, oy = ay + Math.sin(o) * 0.7 - def.y, f = def.parry.a, cr = Math.cos(f) * oy - Math.sin(f) * ox; return [cr > 0 ? 'L' : 'R']; }
+  return null;   // mordida e golpes sem direção: qualquer bloqueio serve
+}
+function blockEval(def, k, ax, ay, aa, now, W) {
+  if (!def.parry || Math.abs(angDiff(def.parry.a, Math.atan2(ay - def.y, ax - def.x))) > PARRY_ARC) return null;
+  const need = reqZone(k, ax, ay, aa, def), okZ = !need || need.includes(def.parry.z), shield = hasShield(def);
+  const perfect = okZ && now - def.parry.t0 <= PARRY_PERFECT + (W || 400) * 0.25 + treeEff(def, 'parry') + useLvl(def, 'parry') * 0.6 + (k === 'over' ? 80 : 0);
+  return { okZ, shield, perfect };
+}
+function shieldWear(p, n) { if (!hasShield(p)) return; p.shieldHp = Math.max(0, (p.shieldHp ?? 100) - n); if (p.shieldHp <= 0) { tell(p, 'Seu escudo rachou e não segura mais! Hrodgar, na forja, conserta por 15 de ouro.'); near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'hurt', ms: 500 }); } }
+// empurrão de escudo (R): empurra e desequilibra quem está na frente
+function shieldBash(p, a, now) {
+  if (!hasShield(p) || p.downed || p.atk || now < (p.bashT || 0) || now < (p.stunUntil || 0)) return;
+  if (p.cst < 25) { tell(p, 'Sem fôlego.'); return; } p.cst -= 25; p.bashT = now + 2500; p.parry = null; p.lastCombat = now;
+  anim('p', p, 'sbash', p.x + Math.cos(a), p.y + Math.sin(a), { ms: 600 });
+  setTimeout(() => {
+    if (!S.players[p.id] || p.downed) return; const t = now_();
+    for (const q of Object.values(S.players)) if (pvpOk(p, q) && inArc(p.x, p.y, a, q.x, q.y, 1.4, 0.8, 0.3)) { if (q.parry) { q.parry = null; } q.atk = null; q.stunUntil = Math.max(q.stunUntil || 0, t + 700); damagePlayer(q, rint(3, 7), { x: p.x, y: p.y, name: p.name }, 0, 'torso'); near(q.x, q.y, { t: 'anim', w: 'p', id: q.id, a: 'hurt', ms: 700 }); Net.toOne(q.id, { t: 'push', a, d: 0.9 }); if (inSafe(q.x, q.y)) witnessCrime(p, p.x, p.y); }
+    for (const m of Object.values(S.monsters)) if (inArc(p.x, p.y, a, m.x, m.y, 1.5, 0.8, MON[m.type].rad || 0.3)) { m.atk = null; m.stunUntil = Math.max(m.stunUntil, t + 900); if (!MON[m.type].big) knockMon(m, p, t); hitRolled(p, m, rint(2, 5), false, 0); }
+    for (const n of Object.values(S.npcs || {})) if (!n.dead && !n.downed && inArc(p.x, p.y, a, n.x, n.y, 1.4, 0.8, 0.3)) npcDamage(n, rint(2, 5), p);
+    sendStat(p);
+  }, 220);
 }

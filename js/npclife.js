@@ -3,7 +3,7 @@
 //  sentinelas que andam, prisioneiros amarrados no poste e o que cada um carrega.
 // ============================================================
 function visEvent(m) {
-  const add = v => { if (G.npcs[v.id]) return; G.npcs[v.id] = mkEnt({ id: v.id, kind: v.kind, name: v.name, x: v.x, y: v.y, isNpc: true, visible: true, dir: 0 }); if (!NPCS.find(q => q.id === v.id)) NPCS.push({ id: v.id, kind: v.kind, name: v.name, x: v.x, y: v.y, transient: true }); };
+  const add = v => { if (G.npcs[v.id]) return; G.npcs[v.id] = mkEnt({ id: v.id, kind: v.kind, name: v.name, x: v.x, y: v.y, isNpc: true, visible: true, dir: 0, trader: !!v.trader }); if (!NPCS.find(q => q.id === v.id)) NPCS.push({ id: v.id, kind: v.kind, name: v.name, x: v.x, y: v.y, transient: true }); };
   if (m.t === 'vspawn') { add(m.v); return true; }
   if (m.t === 'vlist') { for (const v of m.list) add(v); return true; }
   if (m.t === 'vgone') { delete G.npcs[m.id]; const k = NPCS.findIndex(q => q.id === m.id); if (k >= 0) NPCS.splice(k, 1); if (G.dialog && G.dialog.id === m.id) closeDialog(); return true; }

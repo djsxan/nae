@@ -59,7 +59,7 @@
 <body>
 <div class="wrap">
 <nav class="toc">
-  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.41</small>
+  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.42</small>
   <input id="q" type="search" placeholder="Buscar no guia (ex.: banco, fome, G)" autocomplete="off">
   <div class="links" id="links"></div>
 </nav>
@@ -99,7 +99,8 @@
       <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / setas / clique no chão</td><td>Andar (no celular, o joystick). <kbd>Shift</kbd> corre (gasta estamina).</td></tr>
       <tr><td>Clique esquerdo</td><td>Golpe lateral. Segure para carregar o golpe: aparece o arco no chão e a parte do corpo que vai acertar.</td></tr>
       <tr><td>Roda ↑ / ↓ · <kbd>Z</kbd></td><td>Golpe de cima (cabeça) · estocada · golpe de baixo (pernas).</td></tr>
-      <tr><td>Botão direito (segurar)</td><td>Aparar. No tempo certo vira contra-ataque.</td></tr>
+      <tr><td>Botão direito (segurar)</td><td>Bloquear. Segurando, um movimento rápido do mouse escolhe a zona: para cima (alto), para os lados (esquerda/direita) ou para baixo. No tempo certo vira contra-ataque.</td></tr>
+      <tr><td><kbd>R</kbd> (cavaleiro com escudo)</td><td>Empurrão de escudo: desequilibra quem está na frente.</td></tr>
       <tr><td><kbd>Espaço</kbd></td><td>Esquiva. Amarrado ou agarrado: martele para se soltar. Na gazua: acerte o tempo.</td></tr>
       <tr><td><kbd>X</kbd> / <kbd>Tab</kbd></td><td>Atacar / escolher o alvo mais próximo (arqueiro e mago atiram sozinhos no alvo).</td></tr>
       <tr><td><kbd>1</kbd>–<kbd>4</kbd> (e <kbd>5</kbd>–<kbd>8</kbd>)</td><td>Habilidades da vocação (e as da árvore de constelações; a 8 é a Restauração do Mago).</td></tr>
@@ -112,7 +113,7 @@
       <tr><td><kbd>C</kbd> · <kbd>C</kbd>+<kbd>Shift</kbd> · <kbd>V</kbd></td><td>Agachar · deslizar correndo · sentar no chão. Para sentar numa cadeira ou deitar numa cama, clique nela de perto.</td></tr>
       <tr><td><kbd>T</kbd> (segurar)</td><td>Roda de emoções: saudar, dançar, apontar, comemorar, surpresa, adorar, raiva, medo, tristeza.</td></tr>
       <tr><td><kbd>Y</kbd></td><td>Render-se às sentinelas quando procurado.</td></tr>
-      <tr><td><kbd>R</kbd> (caído)</td><td>Desistir (morte permanente).</td></tr>
+      <tr><td><kbd>R</kbd> (caído no chão)</td><td>Desistir (morte permanente).</td></tr>
       <tr><td><kbd>Esc</kbd> · <kbd>I</kbd> <kbd>K</kbd> <kbd>J</kbd> <kbd>M</kbd> <kbd>N</kbd> <kbd>L</kbd></td><td>Menu do jogo e atalhos das abas: inventário, habilidades, jornada, mapa, negócios, imóveis.</td></tr>
       <tr><td>Roda do mouse · <kbd>+</kbd> <kbd>−</kbd></td><td>Zoom da câmera (no mapa, zoom do mapa).</td></tr>
     </table>
@@ -122,7 +123,8 @@
     <figure><img src="img/guia/menu.jpg" alt="O menu do jogo: personagem, corpo e inventário na primeira aba." loading="lazy"><figcaption>O menu do jogo: personagem, corpo e inventário na primeira aba.</figcaption></figure>
     <p>Tudo fica num menu com abas. O mundo <b>não para</b> enquanto ele está aberto: seu personagem fica parado e os outros veem “📜 no menu” sobre ele.</p>
     <div class="grid">
-      <div class="card"><h4>Personagem</h4><p>Vida, mana, estamina, corpo e ferimentos, fome/sede/frio, habilidades por uso e o inventário (24 espaços).</p></div>
+      <div class="card"><h4>Personagem</h4><p>Vida, mana, estamina, corpo e ferimentos, fome/sede/frio e o inventário (24 espaços).</p></div>
+      <div class="card"><h4>Progresso</h4><p>As habilidades que sobem com o uso (combate, ofícios, sobrevivência) e o botão de <b>exportar/importar o herói</b> num arquivo.</p></div>
       <div class="card"><h4>Habilidades</h4><p>A árvore de constelações: 1 ponto por nível; cada ramo termina numa habilidade nova.</p></div>
       <div class="card"><h4>Jornada</h4><p>Contratos da Capitã Varn, reputação e ofícios.</p></div>
       <div class="card"><h4>Mapa</h4><p>Zoom (roda, Reino / Cidade / Perto de mim) e ícones dos lugares; passe o mouse para ver o nome.</p></div>
@@ -155,19 +157,31 @@
     <p>O corpo a corpo é direcional: você escolhe o golpe, o lado e a altura. Cada golpe tem preparação, impacto e recuperação, e gasta <b>fôlego</b> (a barra amarela, 200 no máximo).</p>
     <table>
       <tr><th>Golpe</th><th>Como</th><th>Acerta</th><th>Particularidade</th></tr>
-      <tr><td>Lateral</td><td>clique</td><td>tronco</td><td>arco largo, pega até 2 inimigos</td></tr>
-      <tr><td>De cima</td><td>roda ↑</td><td>cabeça</td><td>o mais forte (125%), mais lento</td></tr>
-      <tr><td>Estocada</td><td>roda ↓</td><td>tronco</td><td>alcance maior, arco estreito</td></tr>
-      <tr><td>De baixo</td><td><kbd>Z</kbd> / botão lateral</td><td>pernas</td><td>mais rápido, deixa o alvo lento</td></tr>
+      <tr><td>Lateral</td><td>clique</td><td>tronco</td><td>o equilibrado (100%): arco largo, pega até 2 inimigos. Bloqueie do lado de onde ele vem.</td></tr>
+      <tr><td>De cima</td><td>roda ↑</td><td>cabeça</td><td>o mais forte (140%), lento e fácil de ver chegando. Bloqueie no alto.</td></tr>
+      <tr><td>Estocada</td><td>roda ↓</td><td>tronco</td><td>rápida e longa (80%, alcance 2), arco estreito. <b>Fura</b> o bloqueio alto e o baixo: bloqueie de lado.</td></tr>
+      <tr><td>De baixo</td><td><kbd>Z</kbd> / botão lateral</td><td>pernas</td><td>o mais rápido (75%), deixa lento e às vezes <b>derruba</b> (1 em 4). Bloqueie embaixo.</td></tr>
     </table>
     <ul>
       <li><b>Golpe carregado</b> (segurar o clique): até 60% mais dano. Na <b>cabeça</b>, mata ou decapita (o elmo do cavaleiro reduz a chance pela metade); no <b>tronco</b>, abre sangramento grave; nos <b>membros</b>, ferida feia e pode decepar.</li>
-      <li><b>Aparar</b> (botão direito): bloqueia; no tempo certo (0,3 s) atordoa quem atacou e libera um contra-ataque mais forte.</li>
+      <li><b>Bloquear</b> (botão direito): veja abaixo. No tempo certo (≈0,3 s antes do impacto) atordoa quem atacou e libera um contra-ataque mais forte.</li>
       <li><b>Finta</b>: trocar de golpe durante a preparação (gasta fôlego).</li>
       <li><b>Alabarda</b>: alcance 65% maior, 22% menos dano, mais lenta, duas mãos.</li>
       <li><b>Arco</b>: mira em arco com a trajetória exata e o ponto de queda (mostra a parte do corpo). Flechas fazem dano triplo e ficam cravadas (<kbd>F</kbd> para arrancar).</li>
       <li><b>Aviso dos golpes inimigos</b>: um arco no chão mostra o golpe que vem (Discreto, Forte ou Desligado nas configurações).</li>
     </ul>
+    <h3>Bloqueio direcional e escudo</h3>
+    <p>Segure o botão direito: aparecem quatro pontinhos em volta do personagem (alto, esquerda, direita, baixo). Um movimento rápido do mouse para um lado escolhe a zona — o ponto aceso é onde você está defendendo.</p>
+    <ul>
+      <li><b>Zona certa</b>: o golpe é defendido. Gasta um pouco de fôlego (com escudo, bem menos).</li>
+      <li><b>Zona errada</b>: com escudo, ainda segura uma parte (você leva 75% do dano); sem escudo, leva o golpe inteiro.</li>
+      <li><b>Sem escudo</b> (alabarda, adaga, cajado), um golpe <b>carregado</b> defendido fora do tempo quebra a guarda.</li>
+      <li><b>O escudo segura flechas</b> que vêm pela frente (bloqueando no alto ou dos lados).</li>
+      <li><b>Empurrão de escudo</b> (<kbd>R</kbd>): curto, gasta 25 de fôlego, atordoa por um instante e empurra monstros pequenos. Espera 2,5 s para repetir.</li>
+      <li><b>O escudo gasta</b>: cada bloqueio tira um pouco (golpe carregado tira mais). A barrinha embaixo dos pontos mostra quanto falta. Quebrado, ele não protege mais — <b>Hrodgar conserta na forja por 15 de ouro</b>.</li>
+    </ul>
+    <h3>Monstros</h3>
+    <p>Monstro que pegou você para alvo persegue <b>até morrer ou até perder você de vista</b> (uns 5 segundos sem ver). Fugir para a cidade não basta: ele entra atrás — mas as sentinelas saem para brigar com ele.</p>
     <h3>Guardar a arma (<kbd>G</kbd>)</h3>
     <p>A espada vai para a bainha na cintura; escudo, alabarda, arco e cajado vão para as costas. Leva meio segundo (a espada) ou um pouco mais (o resto). Com a arma guardada:</p>
     <ul>
@@ -242,7 +256,7 @@
   <section id="negocios"><h2>Imóveis e negócios</h2>
     <ul>
       <li>Fale com <b>Mestre Anselmo</b> na Imobiliária Chave de Bronze ou procure as placas “Aluga-se” e “À venda”. O preço depende do lugar (perto do castelo é caro, a vila é barata).</li>
-      <li><b>Casa</b>: aluguel cobrado por semana (7 dias do jogo) — sem pagar por 2 dias, perde a casa. Casa sua: porta trancada (só você e autorizados), baú seguro, você acorda nela, e dormir na própria cama dá <i>Bem descansado</i>. Casas com morador podem ser compradas, e ele paga aluguel a você.</li>
+      <li><b>Casa</b>: aluguel cobrado por semana (7 dias do jogo) — sem pagar por 2 dias, perde a casa. Casa sua: porta trancada (só você e autorizados), baú seguro (chegue perto dele e aperte <kbd>F</kbd>), você acorda nela, e dormir na própria cama dá <i>Bem descansado</i>. Casas com morador podem ser compradas, e ele paga aluguel a você.</li>
       <li>Casas ficaram mais caras: morar numa casa é a meta de quem já tem renda. Para começar, use a pousada (abaixo).</li>
       <li><b>Comprar</b> custa 60 dias de aluguel, com imposto pequeno; vende de volta pela metade.</li>
       <li><b>Lojas</b> vendem sozinhas (margem barato, justo ou caro), reabastecem pelo fornecedor ou pelas suas oficinas. <b>Oficinas</b> extraem (serraria, mina, horta) ou transformam (carpintaria, alambique). Mensageiros levam a produção andando — e podem ser assaltados.</li>
@@ -285,12 +299,22 @@
   <section id="servicos"><h2>Serviços da cidade</h2>
     <div class="grid">
       <div class="card"><h4>Irmã Lúmina · capela</h4><p>Reanima caídos trazidos a ela, bênção grátis (vida e mana cheias), ritual dos membros (120, o 1º grátis).</p></div>
-      <div class="card"><h4>Hrodgar · forja</h4><p>Afiar a arma (25: +15% de dano por 4 min), prótese (30).</p></div>
-      <div class="card"><h4>Borin · Empório</h4><p>Compra o seu saque; vende pão, pomada, lenha, corda, gazua e as ferramentas de coleta.</p></div>
+      <div class="card"><h4>Hrodgar · forja</h4><p>Afiar a arma (25: +15% de dano por 4 min), consertar o escudo (15), prótese (30); negocia ferramentas e compra minério, gemas e madeira.</p></div>
+      <div class="card"><h4>Borin · Empório</h4><p>Compra de tudo; vende pão, unguento, lenha, corda, gazua, ferramentas de coleta e poções. Tem o odre e a venda rápida do saque.</p></div>
       <div class="card"><h4>Greta · taverna</h4><p>Comida, bebida e o lugar da fofoca à noite.</p></div>
       <div class="card"><h4>Capitã Varn · quartel</h4><p>Contratos de caça e recompensas.</p></div>
       <div class="card"><h4>Mestre Anselmo · imobiliária</h4><p>Casas, lojas e oficinas para alugar ou comprar.</p></div>
     </div>
+    <h3>Negociar (comprar e vender)</h3>
+    <p>Fale com o vendedor (<kbd>F</kbd>) e escolha <b>⚖ Negociar</b>. Abre um painel com duas abas:</p>
+    <ul>
+      <li><b>Comprar</b>: o que ele tem e quantos restam. Clique em Comprar (1) ou no ×5 (até 5).</li>
+      <li><b>Vender</b>: o que ele aceita do seu inventário e quanto paga. Cada loja paga melhor pelo que é do ramo dela; o Borin compra de tudo.</li>
+      <li><b>Estoque de verdade</b>: acaba, e volta 1 de cada a cada 2 horas do jogo. O que você vende fica à venda para os outros jogadores (um pouco mais caro).</li>
+      <li>Quem negocia: Borin, as lojas da cidade (boticário, arcanos, alfaiate, pergaminhos), Greta na taverna, Hrodgar na forja, Marta das frutas e os <b>mercadores viajantes</b> que às vezes chegam pelos portões (cada um com mercadorias diferentes).</li>
+      <li>Quem gosta de você cobra menos e paga mais; inimigo não negocia. Lojas de outros jogadores continuam pelo balcão.</li>
+      <li>Esc fecha o painel; ele também fecha se você se afastar.</li>
+    </ul>
   </section>
 
   <section id="multi"><h2>Jogando com amigos</h2>
@@ -299,6 +323,7 @@
       <li>Combate entre jogadores vale em todo lugar — mas a lei da cidade também.</li>
       <li><b>Doar</b>: chegue perto de outro jogador e aperte <kbd>F</kbd> — dê ouro (digite a quantia) ou itens (clique: 1; Shift+clique: todos). Chega na hora.</li>
       <li>Todos os jogadores do reino aparecem no mapa, com o nome.</li>
+      <li><b>Seu herói fica salvo no navegador</b> do computador onde você joga. Para levar para outro computador (ou guardar uma cópia), use Esc → Progresso → <b>Exportar herói</b>; no outro, <b>Importar herói</b> (também nas Configurações da tela inicial). Limpar os dados do navegador apaga o herói — exporte antes.</li>
       <li>Ajude aliados caídos: reanime (<kbd>F</kbd>), carregue (<kbd>H</kbd>), pague a fiança deles na cadeia, passe itens pelas grades (Shift + clique no item).</li>
     </ul>
   </section>
@@ -320,6 +345,9 @@
     <details class="faq"><summary>Fui preso. E agora?</summary><p>Espere a pena (dormir no catre faz passar 2× mais rápido), pague a fiança ao carcereiro (você ou um amigo) ou tente a gazua na porta da cela. Fugir deixa você procurado de novo.</p></details>
     <details class="faq"><summary>Arrastei um corpo e a guarda veio atrás.</summary><p>Moradores se assustam e chamam a sentinela, que interroga. Se alguém viu você atacar, é prisão; se ninguém viu, ela manda levar o corpo ao templo. Desmaiado levado à capela não dá problema.</p></details>
     <details class="faq"><summary>Não consigo coletar.</summary><p>Precisa da ferramenta certa no inventário (machado para árvores, picareta para pedras, foice para mato alto) e do nível do ofício (carvalho e rochas grandes pedem nível 3). Aperte <kbd>F</kbd> uma vez, bem perto; andar interrompe.</p></details>
+    <details class="faq"><summary>Bloqueei e levei o golpe mesmo assim.</summary><p>Zona errada. Golpe de cima pede bloqueio no alto, golpe de baixo embaixo, lateral do lado de onde vem, e a estocada só de lado. Olhe os pontinhos: o aceso é onde você defende.</p></details>
+    <details class="faq"><summary>Meu escudo não segura mais nada.</summary><p>Ele rachou. Hrodgar, na forja, conserta por 15 de ouro.</p></details>
+    <details class="faq"><summary>Não consigo abrir o baú da casa.</summary><p>Chegue bem perto do baú e aperte <kbd>F</kbd>. Perto do baú, o F abre o baú (mesmo com alguém do lado).</p></details>
     <details class="faq"><summary>Onde fica tal loja?</summary><p>Abra o mapa (<kbd>M</kbd>), clique em <i>Cidade</i> e passe o mouse nos ícones.</p></details>
   </section>
 

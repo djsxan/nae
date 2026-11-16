@@ -333,3 +333,6 @@ function bankShow(m) {
   const q = () => Math.max(0, Math.floor(+d.querySelector('#bk-q').value || 0));
   for (const b of d.querySelectorAll('[data-bk]')) b.onclick = () => { const a = b.dataset.bk; if (a === 'depall') Net.send({ t: 'bank', a: 'dep', q: G.me.gold }); else if (a === 'repayall') Net.send({ t: 'bank', a: 'repay', q: m.loan }); else Net.send({ t: 'bank', a, q: q() }); };
 }
+
+// perto do baú da sua casa (o F abre o baú mesmo com gente por perto)
+function estChestHere() { const M = G.est && G.est.mine, me = G.me; if (!M || !me || !PROPS_BY[M.pid]) return false; const bi = PROPS_BY[M.pid].bi; if (WORLD.bld[tileAt(me.x, me.y)] !== bi) return false; const c = CHESTS.find(q => q.bi === bi); return !c || dist(me.x, me.y, c.x, c.y) < 2.4; }

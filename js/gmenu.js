@@ -5,7 +5,7 @@
 //  Os painéis antigos (inventário, árvore, jornada, mapa, negócios) são reaproveitados: entram na aba.
 // ============================================================
 const GM = { tab: 'char', on: false, built: false, biz: 'hub', notes: 'all', wv: null, wvTab: 'people', wvSel: null, wvT: 0, follow: null };
-const GM_TABS = [['char', 'Personagem', '🛡'], ['skills', 'Habilidades', '✦'], ['journal', 'Jornada', '📜'], ['map', 'Mapa', '🗺'], ['biz', 'Negócios', '🏛'], ['craft', 'Receitas e ofícios', '⚒'], ['notes', 'Avisos', '✉'], ['opts', 'Configurações', '⚙'], ['weaver', 'Tecelão', '👁']];
+const GM_TABS = [['char', 'Personagem', '🛡'], ['skills', 'Habilidades', '✦'], ['prog', 'Progresso', '📈'], ['journal', 'Jornada', '📜'], ['map', 'Mapa', '🗺'], ['biz', 'Negócios', '🏛'], ['craft', 'Receitas e ofícios', '⚒'], ['notes', 'Avisos', '✉'], ['opts', 'Configurações', '⚙'], ['weaver', 'Tecelão', '👁']];
 const GM_KEYS = { i: 'char', k: 'skills', j: 'journal', m: 'map', n: 'biz', l: 'biz' };
 const gmEsc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const gmIsDev = () => !!(G.dev || G.devTools);
@@ -27,6 +27,13 @@ function gmBuild() {
   const ch = pane('char'); ch.innerHTML = '<div class="gm-cols"><div class="gm-c1"></div><div class="gm-c2"></div></div>';
   ch.querySelector('.gm-c1').appendChild(left); ch.querySelector('.gm-c2').appendChild($('inv'));
   pane('opts').appendChild(right);
+  { // habilidades por uso: aba própria
+    const sec = [...left.querySelectorAll('.pz-sec')].find(e => /Habilidades por uso/.test(e.textContent)), use = left.querySelector('#pz-use'), P = pane('prog');
+    P.innerHTML = '<div class="gp-note">Cada habilidade sobe com o uso: quanto mais você golpeia, apara, corre, cozinha ou lança magia, melhor fica. O bônus aparece à direita.</div>';
+    if (sec) P.appendChild(sec); if (use) P.appendChild(use);
+    const io = document.createElement('div'); io.innerHTML = '<div class="pz-sec">Seu herói neste navegador</div><div class="gp-note">O herói fica salvo neste navegador. Exporte para guardar uma cópia ou levar para outro computador; importe o arquivo lá.</div><div class="wv-acts"><button class="est-btn" id="hero-exp">Exportar herói</button><label class="est-btn" style="cursor:pointer">Importar herói<input type="file" id="hero-imp" accept=".json,application/json" style="display:none"></label></div>';
+    P.appendChild(io); heroIOWire(io);
+  }
   pane('skills').appendChild($('tree')); pane('journal').appendChild($('journal'));
   const wm = document.querySelector('#worldmap .wm-frame'); if (wm) pane('map').appendChild(wm);
   pane('biz').innerHTML = '<div class="gm-sub"><button data-gb="hub">Meus negócios</button><button data-gb="est">Imóveis e mapa da cidade</button></div><div class="gm-bizbox"></div>';
@@ -54,6 +61,7 @@ function gmShow(tab) {
   G.mapOpen = tab === 'map';
   if (tab === 'char') { if (typeof updateInv === 'function') updateInv(); if (typeof updateHud === 'function') updateHud(); }
   else if (tab === 'skills') { if (typeof updateTree === 'function') updateTree(); }
+  else if (tab === 'prog') { if (typeof updateHud === 'function') updateHud(); }
   else if (tab === 'journal') { if (typeof updateQuests === 'function') updateQuests(); }
   else if (tab === 'map') { if (typeof drawWorldMap === 'function') drawWorldMap(); }
   else if (tab === 'biz') gmBiz();
@@ -185,3 +193,10 @@ setInterval(() => {
   if (e && e !== G.me) { x = e.rx ?? e.x; y = e.ry ?? e.y; } else if (GM.wv) { const r = (F.kind === 'p' ? GM.wv.players : GM.wv.npcs).find(q => q.id === F.id); if (r) { x = r.x; y = r.y; } if (!GM.on && performance.now() - GM.wvT > 2000) { GM.wvT = performance.now(); Net.send({ t: 'wv', a: 'snap' }); } }
   if (x == null) return; if (dist(G.me.x, G.me.y, x, y) > 2.2 && typeof devTp === 'function') devTp(x + 1.2, y + 0.6);
 }, 400);
+
+// exportar / importar o herói (arquivo .json): cópia de segurança ou levar para outro navegador
+function heroIOWire(root) {
+  const ex = root.querySelector('#hero-exp'), im = root.querySelector('#hero-imp');
+  if (ex) ex.onclick = () => { try { if (typeof saveChar === 'function') saveChar(); const all = loadChars(), k = charKey(G.me.name, G.me.cls), data = { nae: 1, at: Date.now(), heroes: { [k]: all[k] } }; const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(data, null, 1)], { type: 'application/json' })); a.download = 'nae-' + G.me.name.replace(/[^w-]+/g, '_') + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); showToast('Herói exportado.'); } catch (e) { showToast('Não foi possível exportar.'); } };
+  if (im) im.onchange = () => { const f = im.files && im.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { const d = JSON.parse(r.result); if (!d || !d.heroes) throw 0; const all = loadChars(); let n = 0; for (const k in d.heroes) if (d.heroes[k] && d.heroes[k].name) { all[k] = d.heroes[k]; n++; } localStorage.setItem(SAVE_KEY, JSON.stringify(all)); showToast(n + ' herói(s) importado(s). Saia e entre de novo com o mesmo nome e vocação para usar.'); } catch (e) { showToast('Arquivo inválido.'); } }; r.readAsText(f); };
+}

@@ -116,7 +116,7 @@ function clientOnServer(m) {
       if (m.knock) G.knockUntil = now + m.knock;
       G.cst = m.cst ?? CST_MAX; G.cstMax = m.cstMax || CST_MAX; e.arw = m.arw || []; e.esc = m.esc || 0; e.chk = m.chk || 0; e.bnd = m.bnd || ''; e.bndE = m.bndE || 0; e.jl = m.jl || 0; e.cell = m.cell ?? -1; if (m.tree) e.tree = m.tree; if (m.use) e.use = m.use; if (typeof onProgStat === 'function') onProgStat(); G.stunUntil = now + (m.stun || 0); G.ripUntil = now + (m.rip || 0);
       Object.assign(e, { hp: m.hp, maxHp: m.maxHp, mp: m.mp, maxMp: m.maxMp, lvl: m.lvl, xp: m.xp, gold: m.gold, pots: m.pots, food: m.food, water: m.water, cold: m.cold, infect: m.infect, sick: m.sick, hasSkin: m.hasSkin, body: m.body, bleed: m.bleed, lost: m.lost || 0, pro: m.pro || 0, inv: m.inv || {}, combat: m.combat, quests: m.quests, qdone: m.qdone });
-      setBuffs(e, m.buffs); if (m.wpn) e.wpn = m.wpn; e.shea = !!m.shea; e.freeLimb = !!m.freeLimb; if (m.rep != null) e.rep = m.rep; if (m.feats) e.feats = m.feats; if (m.prof) e.prof = m.prof; if ('job' in m && typeof jobsTracker === 'function') { G.job = m.job; jobsTracker(); }
+      setBuffs(e, m.buffs); if (m.wpn) e.wpn = m.wpn; e.shea = !!m.shea; e.shp = m.shp ?? 100; e.freeLimb = !!m.freeLimb; if (m.rep != null) e.rep = m.rep; if (m.feats) e.feats = m.feats; if (m.prof) e.prof = m.prof; if ('job' in m && typeof jobsTracker === 'function') { G.job = m.job; jobsTracker(); }
       G.cdEnd = m.cds.map(r => now + r);
       e.downed = m.downed > 0; e.downUntil = now + m.downed;
       saveChar(); updateHud(); updateQuests(); if (!$('inv').classList.contains('hidden')) updateInv();
@@ -184,6 +184,7 @@ function clientOnServer(m) {
     case 'wv': gmWvEvent(m); break;
     case 'coins': coinEvent(m, now); break;
     case 'pmap': G.pmap = m.l; break;
+    case 'trade': tradeShow(m); break;
     case 'hotel': G.hotel = m; if (G.dialog && G.dialog.id === 'hotelkeeper') setDialogText(m.room >= 0 ? 'Seu cubículo é o ' + (m.room + 1) + ', por mais ' + m.until + ' dia(s). O baú fica ao lado do catre.' : 'Você não tem cubículo. Vagas agora: ' + m.free + ' de 6.'); if ($('hchest') && !$('hchest').classList.contains('hidden')) hotelChestShow(); break;
     case 'wt': WT.ph = m.ph ?? null; WT.rain = m.rain ?? null; break;
     case 'denied': askRoomPw(m.why === 'pwbad'); break;
@@ -522,7 +523,7 @@ function saveChar() {
   const me = G.me;
   try {
     const all = loadChars();
-    all[charKey(me.name, me.cls)] = { name: me.name, cls: me.cls, skin: me.skin, color: me.color, lvl: me.lvl, xp: me.xp, gold: me.gold, pots: me.pots, food: me.food, water: me.water, infect: me.infect, hasSkin: me.hasSkin, tree: me.tree, prof: me.prof, feats: me.feats, freeLimb: me.freeLimb, use: me.use, jailLeft: me.jl || 0, body: me.body, bleed: me.bleed, lost: (me.lost || 0) & 30, pro: me.pro || 0, inv: me.inv, quests: me.quests, qdone: me.qdone, t: Date.now() };
+    all[charKey(me.name, me.cls)] = { name: me.name, cls: me.cls, skin: me.skin, color: me.color, lvl: me.lvl, xp: me.xp, gold: me.gold, pots: me.pots, food: me.food, water: me.water, infect: me.infect, hasSkin: me.hasSkin, tree: me.tree, prof: me.prof, feats: me.feats, freeLimb: me.freeLimb, shieldHp: me.shp, use: me.use, jailLeft: me.jl || 0, body: me.body, bleed: me.bleed, lost: (me.lost || 0) & 30, pro: me.pro || 0, inv: me.inv, quests: me.quests, qdone: me.qdone, t: Date.now() };
     localStorage.setItem(SAVE_KEY, JSON.stringify(all));
   } catch (e) { }
 }
@@ -765,23 +766,15 @@ const NPC_DIALOG = {
   jailer: { greet: 'Cadeia de Nae. Quem entra, cumpre a pena — ou paga a fiança.', opts: [] },
   executioner: { greet: 'A justiça de Nae é rápida e limpa. Traga o condenado caído até o cadafalso — carregue-o e aperte F aqui perto — e eu cuido do resto.', opts: [] },
   fruit: { greet: 'Frutas fresquinhas do pomar, colhidas hoje cedo! Maçã docinha, amora do mato... leva uma?', opts: [
-    ['Maçã — 3 ouro', { a: 'buyl', item: 'apple', qty: 1 }], ['5 Maçãs — 15 ouro', { a: 'buyl', item: 'apple', qty: 5 }],
-    ['Frutas Silvestres — 3 ouro', { a: 'buyl', item: 'berries', qty: 1 }], ['5 Frutas Silvestres — 15 ouro', { a: 'buyl', item: 'berries', qty: 5 }]] },
+    ['Tudo fresquinho?', { local: 'Colhido hoje cedo, juro pela minha avó!' }]] },
   merchant: { greet: 'Bem-vindo ao Empório. Não é muito, mas o que vendo funciona.', opts: [
     ['Precisa de ajuda? (carregar caixas)', { job: 'crates' }],
-    ['Machado — 25 ouro', { a: 'buyl', item: 'axe', qty: 1 }], ['Picareta — 25 ouro', { a: 'buyl', item: 'pickaxe', qty: 1 }], ['Foice — 25 ouro', { a: 'buyl', item: 'sickle', qty: 1 }],
-    ['Corda — 15 ouro', { a: 'buyl', item: 'rope', qty: 1 }], ['Gazua — 40 ouro', { a: 'buyl', item: 'lockpick', qty: 1 }],
-    ['Poção de Vida — 20 ouro', { a: 'buy', item: 'hp', qty: 1 }], ['5 Poções de Vida — 100 ouro', { a: 'buy', item: 'hp', qty: 5 }],
-    ['Poção de Mana — 25 ouro', { a: 'buy', item: 'mp', qty: 1 }], ['5 Poções de Mana — 125 ouro', { a: 'buy', item: 'mp', qty: 5 }],
-    ['Pão — 4 ouro', { a: 'buyl', item: 'bread', qty: 1 }], ['5 Pães — 20 ouro', { a: 'buyl', item: 'bread', qty: 5 }], ['Odre cheio — 12 ouro', { a: 'buy', item: 'water' }],
-    ['Unguento — 25 ouro (cura infecção)', { a: 'buyl', item: 'ointment', qty: 1 }], ['Lenha — 5 ouro', { a: 'buyl', item: 'firewood', qty: 1 }],
-    ['Bandagem — 8 ouro', { a: 'buy', item: 'band', qty: 1 }], ['5 Bandagens — 40 ouro', { a: 'buy', item: 'band', qty: 5 }],
-    ['Vender todo o saque', { a: 'sell' }]] },
+    ['Odre cheio — 12 ouro', { a: 'buy', item: 'water' }], ['Vender todo o saque (rápido)', { a: 'sell' }]] },
   priest: { greet: 'Paz, viajante. A capela é pequena, mas a Aurora ainda escuta quem pede. Traga aqui os que caírem; eu cuido deles.', opts: [['Receber a bênção (grátis)', { a: 'bless' }], ['Ritual de restauração dos membros — 120 ouro (o primeiro é de graça)', { a: 'ritual' }]] },
   innkeeper: { greet: 'Sente-se. Tem fogo, comida quente e gente falando demais. Do que precisa?', opts: [['Precisa de ajuda? (água do poço)', { job: 'water' }], 
     ['Hidromel — 15 ouro (+10% de dano por 3 min)', { a: 'mead' }], ['Ensopado de javali — 10 ouro (recupera tudo)', { a: 'stew' }], ['Ouvir as conversas da taverna', { a: 'rumor' }]] },
   guard: { greet: 'Fique atento lá fora. Quanto mais longe da cidadela, mais o mundo tenta te matar.', opts: [['Quais são as regiões?', { local: GUARD_TEXT }]] },
-  smith: { greet: 'Hrodgar. Ferreiro da cidadela. Se a lâmina está cega, eu resolvo.', opts: [['Afiar a arma — 25 ouro (+15% de dano por 4 min)', { a: 'whet' }], ['Prótese (perna de pau / gancho) — 30 ouro', { a: 'prosth' }], ['Conversar', { a: 'talk' }]] },
+  smith: { greet: 'Hrodgar. Ferreiro da cidadela. Se a lâmina está cega, eu resolvo.', opts: [['Afiar a arma — 25 ouro (+15% de dano por 4 min)', { a: 'whet' }], ['Consertar o escudo — 15 ouro', { a: 'repair' }], ['Prótese (perna de pau / gancho) — 30 ouro', { a: 'prosth' }], ['Conversar', { a: 'talk' }]] },
   captain: { greet: 'Sou a Capitã Varn. Temos poucos braços e muitas ameaças. Aceite um contrato e eu pago pelo serviço.', opts: [] },
 };
 function npcUnderMouse(mx, my) {
@@ -830,6 +823,8 @@ function buildDialogOptions(id) {
     add('Como funciona a cadeia?', () => setDialogText('Quem é pego pelas sentinelas fica aqui o tempo da pena: agressão 2 minutos, ataque à traição 3, assassinato 6. Dormir no catre faz o tempo passar mais rápido. Fiança: 30 de ouro por minuto que falta. E nada de mexer nas fechaduras, ouviu?'));
   } else {
     const def = NPC_DIALOG[n.kind];
+    { const ent = G.npcs[id], P0 = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null, playerShop = P0 && G.est && G.est.st && G.est.st[P0.id];
+      if ((TRADE_KINDS.has(n.kind) || (ent && ent.trader)) && !playerShop) add(ent && ent.trader ? '🧳 Ver as mercadorias do viajante' : '⚖ Negociar (comprar e vender)', () => { closeDialog(); Net.send({ t: 'trade', a: 'open', npc: id }); }, 'active'); }
     if (typeof shiftHere === 'function' && shiftHere() && !(G.shiftUntil > performance.now())) add('Trabalhar um turno aqui (2 min e meio)', () => { closeDialog(); Net.send({ t: 'shift', a: 'start' }); });
     for (const [label, act] of def.opts) add(label, () => { const P = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null; if (act.open === 'biz') { if (P && estMine(P.id)) { closeDialog(); bizOpen(P.id); } else setDialogText('Só o dono pode mexer nos livros. ' + (P && G.est.st[P.id] ? 'Este ponto é de ' + G.est.st[P.id].replace('★', '') + '.' : 'Este ponto está à venda: fale com Mestre Anselmo, na Imobiliária.')); } else if (act.open === 'bank') { closeDialog(); bankOpen(); } else if (act.hotel) { if (act.hotel === 'view') Net.send({ t: 'hotel', a: 'view' }); else Net.send({ t: 'hotel', a: 'rent', d: act.hotel }); } else if (act.job) { closeDialog(); Net.send({ t: 'job', a: 'take', type: act.job }); } else if (act.counter) { if (P) counterOpen(P.id); } else if (act.owner) setDialogText(P && G.est.st[P.id] ? 'Trabalho para ' + G.est.st[P.id].replace('★', '') + '. Paga em dia… quase sempre.' : 'Ninguém, por enquanto. A Coroa vende ou aluga o ponto, e eu venho junto!'); else if (act.open === 'estate') { closeDialog(); estToggle(true, 'house'); } else if (act.local) setDialogText(act.local); else Net.send({ t: 'npc', n: id, ...act }); });
   }
@@ -906,7 +901,7 @@ canvas.addEventListener('mousedown', e => {
   if (inCombatZone() && !((G.dev || G.devTools) && G.devPlace) && !interactHere(e)) {
     const me = G.me;
     if (e.button === 3 || e.button === 4) { e.preventDefault(); strike('under'); return; }
-    if (e.button === 2) { G.parrying = true; Net.send({ t: 'parry', on: 1, a: me.fa ?? 0 }); return; }
+    if (e.button === 2) { G.parrying = true; G.pzMv = { x: e.clientX, y: e.clientY, t: performance.now() }; Net.send({ t: 'parry', on: 1, a: me.fa ?? 0, z: G.pz || 'top' }); return; }
     if (e.button === 0) G.mouse0 = true;
     if (e.button === 0 && me.dragMode === 'grip') { Net.send({ t: 'choke', on: 1 }); G.choking = true; return; }
     if (e.button === 0 && me.cls === 'archer') { const mon = monsterUnderMouse(e.clientX, e.clientY); if (mon) setTarget(mon.id); bowPress(); return; }   // arco: segurar puxa
@@ -987,10 +982,11 @@ window.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !G.paused && !G.dialog) { chatOpen(); e.preventDefault(); return; }
   const k = e.key.toLowerCase();
   if (G.paused) { if (typeof gmKey === 'function' && gmKey(k, e)) e.preventDefault(); return; }
-  if (k === 'escape') { if (G.dialog) { closeDialog(); return; } for (const id of ['bankp', 'biz', 'jobboard', 'counterp', 'estate', 'bizhub', 'roompw-ask']) { const el = $(id); if (el && !el.classList.contains('hidden') && el.parentNode === document.body && el.offsetParent !== null) { if (id === 'biz' && typeof bizClose === 'function') bizClose(); else if (id === 'estate') estToggle(false); else if (id === 'bizhub') hubToggle(false); else el.classList.add('hidden'); return; } } togglePause(); return; }
+  if (k === 'escape') { if (G.dialog) { closeDialog(); return; } for (const id of ['bankp', 'biz', 'jobboard', 'counterp', 'estate', 'bizhub', 'roompw-ask', 'tradep']) { const el = $(id); if (el && !el.classList.contains('hidden') && el.parentNode === document.body && getComputedStyle(el).display !== 'none') { if (id === 'biz' && typeof bizClose === 'function') bizClose(); else if (id === 'estate') estToggle(false); else if (id === 'bizhub') hubToggle(false); else el.classList.add('hidden'); return; } } togglePause(); return; }
   if (k >= '1' && k <= '4') { castSkill(+k - 1); return; }
   if (k === 'q') { drinkPot('hp'); return; }
   if (k === 'e') { drinkPot('mp'); return; }
+  if (k === 'r' && !G.me.downed && !e.repeat) { if (G.me.cls === 'knight') Net.send({ t: 'sbash', a: G.me.fa ?? 0 }); return; }
   if (k === 'r' && G.me.downed) { if (!PERMADEATH || window.confirm('Desistir é MORTE PERMANENTE: seu personagem será apagado. Tem certeza?')) Net.send({ t: 'giveup' }); return; }
   if (k === 'f' && !e.repeat && openNearChest(1.8)) return;
   if (k === 'f' && !e.repeat && G.me && (G.me.carrying || G.me.dragMode === 'arms' || G.me.dragMode === 'foot') && STAGE.x >= 0 && dist(G.me.x, G.me.y, STAGE.x, STAGE.y) < 3.4) { Net.send({ t: 'exec' }); return; }
@@ -1194,7 +1190,7 @@ function lockLobby(b) { for (const el of document.querySelectorAll('#lobby butto
 function helloMsg() {
   const name = $('name').value.trim() || 'Aventureiro';
   const saved = loadChars()[charKey(name, chosenClass)] || {};
-  return { t: 'hello', pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, freeLimb: saved.freeLimb, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
+  return { t: 'hello', pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, freeLimb: saved.freeLimb, shieldHp: saved.shieldHp, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
 }
 // reino trancado: pede a senha e manda o hello de novo pela mesma conexão
 function askRoomPw(bad) {
@@ -1842,7 +1838,8 @@ function gatherFx(i, tool) {
 
 // ---------- F: conversar com o NPC mais perto (ou doar para o jogador mais perto) ----------
 function talkTarget() {
-  const me = G.me; if (!me || me.downed) return null; let best = null, bd = 2.3;
+  const me = G.me; if (!me || me.downed) return null; if (typeof estChestHere === 'function' && estChestHere()) return null;   // perto do baú de casa: o F abre o baú
+  let best = null, bd = 2.3;
   for (const id in G.npcs) { const e = G.npcs[id]; if (e.npDead || e.npDown || e.onBackBy || e.dragged) continue; const d = dist(me.x, me.y, e.rx ?? e.x, e.ry ?? e.y); if (d < bd) { bd = d; best = { k: 'n', id, name: (e.name || '').split(',')[0] }; } }
   if (!best && me.jl > 0 && G.npcs.jailer) best = { k: 'n', id: 'jailer', name: 'Bruno' };   // preso fala com o carcereiro de dentro da cela
   for (const id in G.players) { const q = G.players[id]; if (q === me || q.downed || !q.visible) continue; const d = dist(me.x, me.y, q.rx, q.ry); if (d < Math.min(bd, 1.9)) { bd = d; best = { k: 'p', id, name: q.name }; } }
@@ -1874,4 +1871,45 @@ function hotelChestShow() {
   d.innerHTML = '<div class="gp-head"><span>Baú do cubículo ' + ((H.room ?? -1) + 1) + '</span><button class="gp-x" id="hc-x">✕</button></div><div class="gp-sub">No baú (' + box.length + '/4)</div><div class="gv-items">' + (box.length ? box.map(([k, n]) => cell(k, n, 'take')).join('') : '<div class="gp-note">Vazio.</div>') + '</div><div class="gp-sub">Sua mochila</div><div class="gv-items">' + inv.map(([k, n]) => cell(k, n, 'put')).join('') + '</div><div class="gp-note">Clique para guardar ou tirar 1 (Shift+clique: todos).</div>';
   d.classList.remove('hidden'); d.querySelector('#hc-x').onclick = () => d.classList.add('hidden');
   d.querySelectorAll('[data-a]').forEach(b => b.onclick = ev => { const k = b.dataset.k, a = b.dataset.a, all = a === 'put' ? G.me.inv[k] : (H.items || {})[k]; Net.send({ t: 'hotel', a, k, n: ev.shiftKey ? all : 1 }); });
+}
+
+// ---------- janela de troca com os NPCs: abas Comprar / Vender ----------
+const TRADE_KINDS = new Set(['merchant', 'innkeeper', 'fruit', 'smith', 'st_apoth', 'st_arcane', 'st_tailor', 'st_scroll']);
+G.tradeTab = 'buy';
+function tradeShow(m) {
+  if (!G.trade || G.trade.npc !== m.npc) G.tradeAt = { x: G.me.x, y: G.me.y }; G.trade = m; let d = $('tradep'); if (!d) { d = document.createElement('div'); d.id = 'tradep'; d.className = 'gpanel'; document.body.appendChild(d); }
+  const icon = k => k.startsWith('pot_') ? { i: '🧪', c: k === 'pot_hp' ? '#e85a5a' : k === 'pot_mp' ? '#5a8ae8' : '#e8dcc0' } : { i: (LOOT[k] || {}).icon || '?', c: (LOOT[k] || {}).color || '#ccc' };
+  const row = (k, name, price, q, a) => { const ic = icon(k); return '<div class="tr-row"><span class="tr-ic" style="color:' + ic.c + '">' + ic.i + '</span><span class="tr-nm">' + name + '<small>' + (a === 'buy' ? q + ' em estoque' : 'você tem ' + q) + '</small></span><span class="tr-pr"><span class="coin"></span>' + price + '</span><button class="est-btn" data-a="' + a + '" data-k="' + k + '" data-n="1">' + (a === 'buy' ? 'Comprar' : 'Vender') + '</button>' + (q > 1 ? '<button class="est-btn ghost" data-a="' + a + '" data-k="' + k + '" data-n="' + (a === 'buy' ? Math.min(5, q) : q) + '">' + (a === 'buy' ? '×' + Math.min(5, q) : 'Todos') + '</button>' : '') + '</div>'; };
+  const list = G.tradeTab === 'buy' ? (m.sell.length ? m.sell.map(([k, nm, pr, q]) => row(k, nm, pr, q, 'buy')).join('') : '<div class="gp-note">Nada à venda agora. O estoque volta com o tempo.</div>') : (m.buys.length ? m.buys.map(([k, nm, pr, q]) => row(k, nm, pr, q, 'sell')).join('') : '<div class="gp-note">Você não tem nada que interesse aqui.</div>');
+  d.innerHTML = '<div class="gp-head"><span>' + m.name.split(',')[0] + '</span><span class="gp-gold"><span class="coin"></span><b>' + m.gold + '</b></span><button class="gp-x" id="tr-x">✕</button></div>' +
+    '<div class="gm-sub tr-tabs"><button data-tt="buy"' + (G.tradeTab === 'buy' ? ' class="on"' : '') + '>Comprar</button><button data-tt="sell"' + (G.tradeTab === 'sell' ? ' class="on"' : '') + '>Vender</button></div>' +
+    (m.hate ? '<div class="gp-note" style="color:#ff8a7a">Não quer negociar com você (é seu inimigo).</div>' : '') + '<div class="tr-list">' + list + '</div>' +
+    '<div class="gp-note">Preço melhor com quem gosta de você. O que você vende fica à venda para os outros.</div>';
+  d.classList.remove('hidden');
+  d.querySelector('#tr-x').onclick = () => d.classList.add('hidden');
+  d.querySelectorAll('[data-tt]').forEach(b => b.onclick = () => { G.tradeTab = b.dataset.tt; tradeShow(G.trade); });
+  d.querySelectorAll('[data-a]').forEach(b => b.onclick = () => Net.send({ t: 'trade', a: b.dataset.a, npc: m.npc, k: b.dataset.k, n: +b.dataset.n }));
+}
+
+// ---------- bloqueio direcional: segurando o botão direito, um peteleco do mouse escolhe alto / esquerda / direita / baixo ----------
+G.pz = 'top';
+window.addEventListener('mousemove', e => {
+  if (!G.parrying || !G.me) return; const M = G.pzMv || (G.pzMv = { x: e.clientX, y: e.clientY, t: performance.now() }), now = performance.now();
+  if (now - M.t > 450) { M.x = e.clientX; M.y = e.clientY; M.t = now; return; }
+  const dx = e.clientX - M.x, dy = e.clientY - M.y; if (Math.hypot(dx, dy) < 26) return;
+  let z; if (Math.abs(dy) > Math.abs(dx) * 1.15) z = dy < 0 ? 'top' : 'low';
+  else { const wx = (dx / 32 + dy / 16) / 2, wy = (dy / 16 - dx / 32) / 2, f = G.me.fa ?? 0, cr = Math.cos(f) * wy - Math.sin(f) * wx; z = cr > 0 ? 'L' : 'R'; }
+  M.x = e.clientX; M.y = e.clientY; M.t = now;
+  if (z !== G.pz) { G.pz = z; Net.send({ t: 'parrya', a: G.me.fa ?? 0, z }); }
+});
+// indicador em volta do personagem: as quatro direções, a ativa acesa
+function drawBlockHud(ctx, now) {
+  if (G.tradeAt) { const tp = $('tradep'); if (!tp || tp.classList.contains('hidden')) { G.tradeAt = null; G.trade = null; } else if (dist(G.me.x, G.me.y, G.tradeAt.x, G.tradeAt.y) > 4) { tp.classList.add('hidden'); G.tradeAt = null; G.trade = null; } }   // longe do vendedor: fecha a troca
+  const me = G.me; if (!me || !G.parrying) return; const ox = G.view.ox, oy = G.view.oy, P = iso(me.rx, me.ry), cx = P.sx + ox, cy = P.sy + oy - 26, f = me.fa ?? 0;
+  const side = s => { const a = f + (s === 'L' ? Math.PI / 2 : -Math.PI / 2), q = iso(me.rx + Math.cos(a), me.ry + Math.sin(a)); const vx = q.sx - P.sx, vy = q.sy - P.sy, l = Math.hypot(vx, vy) || 1; return [cx + vx / l * 20, cy + vy / l * 9]; };
+  const spots = { top: [cx, cy - 26], low: [cx, cy + 26], L: side('L'), R: side('R') }, sh = me.cls === 'knight' && (me.shp ?? 100) > 0 && me.wpn !== 'halberd' && !me.shea;
+  ctx.save();
+  for (const z of ['top', 'L', 'R', 'low']) { const [x, y] = spots[z], on = G.pz === z; ctx.beginPath(); ctx.arc(x, y, on ? 5.5 : 3.5, 0, 7); ctx.fillStyle = on ? (sh ? 'rgba(240,210,120,0.95)' : 'rgba(220,220,230,0.9)') : 'rgba(30,24,16,0.45)'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = on ? 'rgba(80,50,10,0.9)' : 'rgba(240,226,190,0.5)'; ctx.stroke(); }
+  if (sh) { const hp = me.shp ?? 100; ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(cx - 14, cy + 34, 28, 3); ctx.fillStyle = hp > 50 ? '#c8a050' : hp > 20 ? '#d8803a' : '#d84a3a'; ctx.fillRect(cx - 14, cy + 34, 28 * hp / 100, 3); }
+  ctx.restore();
 }

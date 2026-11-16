@@ -372,7 +372,7 @@ function applyPose(R, Q, P, walkPh) {
       R.shield.rotation.set(-0.15 - raise * 0.25, 0.35 - raise * 0.3, 0);
     }
   }
-  sheathProps(R, P);
+  sheathProps(R, P); if (P.shb && R.shield) R.shield.visible = false;   // escudo rachado: fica na forja
   // capa: dobra para trás conforme o movimento
   if (R.cape) {
     const pos = R.cape.geometry.attributes.position, base = R.capeBase, sway = (P.walk >= 0 ? 0.32 : 0.1) + Math.sin(walkPh) * 0.05;
@@ -443,7 +443,7 @@ function applyLost(R, mask = 0, pro = 0) {
   if (R.shield) R.shield.visible = !lost('armB');
   for (const k in R.stumps) { R.stumps[k].visible = lost(k) && !pr(k); if (R.pegs[k]) R.pegs[k].visible = lost(k) && pr(k); }
 }
-function pose3Key(P) { return (P.dir | 0) + '|' + (P.shea ? 'S' : '') + (P.tool ? 'T' + P.tool : '') + (P.gait ? 'g' + P.gait : '') + (P.hold ? 'o' + P.hold : '') + (P.walk >= 0 ? (P.run ? 'r' : 'w') + P.walk : '') + (P.act ? P.act.k + P.act.f : '') + (P.idle ? P.idle.k + P.idle.f : '') + (P.sit ? 's' + P.sit + (P.sv || '') : '') + (P.smk != null ? 'k' + Math.floor(P.smk * 8) : '') + (P.eat != null ? 'e' + Math.floor(P.eat * 8) : '') + (P.carry ? 'c' : '') + (P.down ? 'd' + (P.prone ? 'p' : '') : '') + (P.nowp ? 'nw' : '') + (P.wpn === 'halberd' ? 'hb' : '') + (P.crawl ? 'cw' + P.crawl : '') + (P.drag ? 'D' + P.drag : '') + (P.tied ? 'T' + P.tied : '') + (P.surr ? 'U' : '') + (P.led ? 'L' : '') + (P.held ? 'H' + P.held + (P.held === 2 ? Math.floor(Date.now() / 90) % 4 : '') : '') + (P.cr ? 'K' : '') + (P.sl ? 'L' : '') + (P.hs ? 'h' + P.hs : '') + (P.br != null ? 'b' + P.br : '') + (P.limp ? 'm' + P.limp : '') + (P.armw ? 'W' : '') + (P.lost ? 'X' + P.lost + '_' + (P.pro || 0) : ''); }
+function pose3Key(P) { return (P.dir | 0) + '|' + (P.shea ? 'S' : '') + (P.shb ? 'B' : '') + (P.tool ? 'T' + P.tool : '') + (P.gait ? 'g' + P.gait : '') + (P.hold ? 'o' + P.hold : '') + (P.walk >= 0 ? (P.run ? 'r' : 'w') + P.walk : '') + (P.act ? P.act.k + P.act.f : '') + (P.idle ? P.idle.k + P.idle.f : '') + (P.sit ? 's' + P.sit + (P.sv || '') : '') + (P.smk != null ? 'k' + Math.floor(P.smk * 8) : '') + (P.eat != null ? 'e' + Math.floor(P.eat * 8) : '') + (P.carry ? 'c' : '') + (P.down ? 'd' + (P.prone ? 'p' : '') : '') + (P.nowp ? 'nw' : '') + (P.wpn === 'halberd' ? 'hb' : '') + (P.crawl ? 'cw' + P.crawl : '') + (P.drag ? 'D' + P.drag : '') + (P.tied ? 'T' + P.tied : '') + (P.surr ? 'U' : '') + (P.led ? 'L' : '') + (P.held ? 'H' + P.held + (P.held === 2 ? Math.floor(Date.now() / 90) % 4 : '') : '') + (P.cr ? 'K' : '') + (P.sl ? 'L' : '') + (P.hs ? 'h' + P.hs : '') + (P.br != null ? 'b' + P.br : '') + (P.limp ? 'm' + P.limp : '') + (P.armw ? 'W' : '') + (P.lost ? 'X' + P.lost + '_' + (P.pro || 0) : ''); }
 function heroSprite3D(cls, skin, color, P) {
   const lk = cls + ':' + skin + ':' + color + (P.wpn === 'halberd' && !P.uni ? ':hb' : '') + (P.uni ? ':u' + P.uni : '');
   return cache3('h3|' + lk + '|' + pose3Key(P) , () => {

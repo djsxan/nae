@@ -83,6 +83,12 @@ function titleMenu() {
   const opts = document.createElement('section'); opts.id = 'nae-opts'; opts.className = 'nae-opts';
   opts.innerHTML = '<h2>Configurações</h2><label>Qualidade gráfica</label><div class="nae-row" id="nae-q"><button data-q="low">Baixa</button><button data-q="med">Média</button><button data-q="high">Alta</button></div><p class="hint">As demais opções ficam no menu de pausa, dentro do jogo (Esc).</p>';
   lob.querySelector('.scroll').appendChild(opts);
+  { // importar herói de um arquivo exportado em outro navegador
+    const box = document.createElement('div'); box.className = 'nae-dev';
+    box.innerHTML = '<label>Importar herói</label><div class="nae-row"><label class="btn ghost" style="cursor:pointer">Escolher arquivo .json<input type="file" id="title-imp" accept=".json,application/json" style="display:none"></label></div><small id="title-imp-st">Use o arquivo de “Exportar herói” (menu do jogo → Progresso).</small>';
+    opts.appendChild(box);
+    box.querySelector('#title-imp').onchange = ev => { const f = ev.target.files && ev.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { const d = JSON.parse(r.result); if (!d || !d.heroes) throw 0; const all = loadChars(); let n = 0, last = null; for (const k in d.heroes) if (d.heroes[k] && d.heroes[k].name) { all[k] = d.heroes[k]; n++; last = d.heroes[k]; } localStorage.setItem(SAVE_KEY, JSON.stringify(all)); box.querySelector('#title-imp-st').textContent = n + ' herói(s) importado(s).'; if (last) { document.getElementById('name').value = last.name; chosenClass = last.cls; if (window.naeQuick) window.naeQuick(); } } catch (e) { box.querySelector('#title-imp-st').textContent = 'Arquivo inválido.'; } }; r.readAsText(f); };
+  }
   { // senha do criador: fica salva neste navegador; ao entrar, pergunta se é o Tecelão ou um herói normal
     const box = document.createElement('div'); box.className = 'nae-dev';
     box.innerHTML = '<label>Senha do Criador</label><div class="nae-row"><input id="nae-devpw" type="password" maxlength="24" placeholder="(opcional)" autocomplete="off"><button id="nae-devsave">Salvar</button><button id="nae-devclr">Apagar</button></div><small id="nae-devst"></small>';

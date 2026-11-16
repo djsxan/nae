@@ -46,7 +46,7 @@ function jobsTickC(now) {
 }
 // ---------- desenho: barra de coleta/turno e marcador do trabalho ----------
 function drawJobsOverlay(ctx, now) {
-  const me = G.me; if (!me) return; if (typeof drawCoinFx === 'function') drawCoinFx(ctx, now); const ox = G.view.ox, oy = G.view.oy, P = iso(me.rx, me.ry), x = P.sx + ox, y = P.sy + oy - 62;
+  const me = G.me; if (!me) return; if (typeof drawCoinFx === 'function') drawCoinFx(ctx, now); if (typeof drawBlockHud === 'function') drawBlockHud(ctx, now); const ox = G.view.ox, oy = G.view.oy, P = iso(me.rx, me.ry), x = P.sx + ox, y = P.sy + oy - 62;
   const bar = (k, col, txt) => { ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - 20, y, 40, 5); ctx.fillStyle = col; ctx.fillRect(x - 19, y + 1, 38 * k, 3); if (txt) { ctx.font = 'bold 6px serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.fillText(txt, x, y - 2); } ctx.restore(); };
   if (G.gath) bar(Math.min(1, (now - G.gath.t0) / G.gath.ms), '#9ad860', G.gath.G0.verb);
   if (G.shiftUntil > now) bar(1 - (G.shiftUntil - now) / G.shiftMs, '#e8c45a', 'turno');
