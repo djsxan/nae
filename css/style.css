@@ -574,3 +574,4 @@ body.nae[data-tp=play] .start .start-row, body.nae[data-tp=play] .start h2, body
 #pause .wv-kv { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; } #pause .wv-kv b { color: #f0d890; }
 #pause #pz-roompw input { padding: 6px 8px; border-radius: 5px; border: 1px solid #6a5028; background: #120e0a; color: #eee; }
 #pause .wv-stats .coin { display: inline-block; vertical-align: middle; }
+.wm-zoom { display: flex; gap: 6px; align-items: center; justify-content: center; margin: 4px 0 6px; flex-wrap: wrap; } .wm-zoom button { padding: 4px 10px; font: 700 12px 'Cinzel', serif; color: #e8dcc0; background: #241a12; border: 1px solid #6a5028; border-radius: 5px; cursor: pointer; } .wm-zoom span { font-size: 11px; opacity: .65; color: #e8dcc0; }

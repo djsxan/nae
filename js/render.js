@@ -13,6 +13,7 @@ function wind(x, y, now) { return Math.sin(now / 1400 + x * 0.37 + y * 0.21) + M
 
 // ---------- dia e noite (igual para todos: usa o relógio) ----------
 const DAY_CYCLE_MS = 12 * 60 * 1000;
+const ARMED_NPC = new Set(['guard', 'captain', 'executioner']);   // andam com a arma guardada e sacam na briga
 const WT = { ph: null, rain: null };   // hora (fase do dia) e chuva fixadas pelo Tecelão; null = natural
 function dayInfo() {
   const ph = typeof G !== 'undefined' && G.devTime ? (G.devTime === 'day' ? 0.06 : 0.5) : WT.ph != null ? WT.ph : (Date.now() % DAY_CYCLE_MS) / DAY_CYCLE_MS;
@@ -249,7 +250,7 @@ function healthState(e) {
   const r = e.hp / e.maxHp;
   if (r < KNEEL_HP) return 3;
   if (r < DYING_HP) return 2;
-  if (r < 0.6 || (e === G.me && (G.tired || (G.stam ?? STAM_MAX) < STAM_MAX * 0.3))) return 1;
+  if (r < 0.35 || (e === G.me && (G.tired || (G.stam ?? STAM_MAX) < STAM_MAX * 0.2))) return 1;
   return 0;
 }
 // ferimentos no corpo: mais sangue, sujeira e rasgos a cada estado (à beira da morte 1, de joelhos 2, caído 3)
@@ -288,6 +289,7 @@ function heroPoseFor(e, now) {
   if (e.custP && !e.walking) { Object.assign(P, e.custP); if (P.sit) P.walk = -1; if (e.isNpc && typeof martaOfferPose === 'function') martaOfferPose(e, P, now); return P; }
   if (e.isNpc && e.kind === 'fruit' && typeof martaOfferPose === 'function' && !e.walking) martaOfferPose(e, P, now);
   if (e.custP && e.custP.sweep && e.walking) P.act = e.custP.act;
+  if (e.isNpc ? (ARMED_NPC.has(e.kind) && !e.npDrawn && !e.npDown && !e.npDead) : (e === G.me ? G.me.shea : e.sheaS)) P.shea = 1;
   if (e.isNpc) { P.gait = e.drunk ? 'drunk' : NPC_GAIT[e.kind] || undefined; const h = typeof npcHeld === 'function' ? npcHeld(e) : null; if (h) P.hold = h; }
   if (e.walking) { P.walk = Math.floor(e.walkDist * (e.isNpc ? (GAIT_CAD[P.gait] || 9.5) : e.cls === 'knight' ? 8.5 : 9.5) / (e.running ? 1.45 : 1)) % 12; if (e.running) P.run = 1; if (e.dragMode === 'arms') P.walk = (12 - P.walk) % 12; }   // puxando pelos braços anda de costas
   if (e.skin === 'weaver') { P.walk = -1; P.run = 0; }
@@ -875,6 +877,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   for (const c of (G.started && G.corpses) || []) { const p = iso(c.x, c.y); const it = { d: c.x + c.y - 0.35, k: 0, corpse: c, sx: p.sx + ox, sy: p.sy + oy - (c.z || 0) * FLOOR_PX }; (c.z ? upper : items).push(it); }
   if (typeof estSignItems === 'function') estSignItems(items, ox, oy);
   for (const c of (G.started && G.chests) || []) { const p = iso(c.x, c.y); items.push({ d: c.x + c.y, k: 0, chest: c, sx: p.sx + ox, sy: p.sy + oy }); }
+  for (const id in (G.started && G.coins) || {}) { const c = G.coins[id], p = iso(c.x, c.y); items.push({ d: c.x + c.y - 0.05, k: 8, coin: c, sx: p.sx + ox, sy: p.sy + oy }); }
   for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) {
     const i = y * MAP_W + x, o = WORLD.obj[i], g = WORLD.ground[i];
     const wx = (x - y) * HTW, wy = (x + y) * HTH, sx = wx + ox, sy = wy + oy;
@@ -1022,6 +1025,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     }
     if (it.k === 6) { drawCellDoor(ctx, it); return; }
     if (it.k === 7) { drawDoorOpen(ctx, it); return; }
+    if (it.k === 8) { drawCoin(ctx, it, now); return; }
     if (it.k === 5) { pblit(ctx, slabSprite(Math.floor(hash2(it.x, it.y, 4) * 3)), it.sx, it.sy - FLOOR_PX); return; }
     const e = it.e;
     ctx.imageSmoothingEnabled = false;
@@ -1310,4 +1314,37 @@ function drawDoorOpen(ctx, it) {
   ctx.fillStyle = '#6e4626'; ctx.fill(); ctx.strokeStyle = 'rgba(30,18,8,0.8)'; ctx.lineWidth = 0.8; ctx.stroke();
   ctx.strokeStyle = 'rgba(60,60,64,0.9)'; ctx.lineWidth = 1; for (const t of [0.2, 0.75]) { ctx.beginPath(); ctx.moveTo(h0[0] + (h1[0] - h0[0]) * t, h0[1] + (h1[1] - h0[1]) * t); ctx.lineTo(e0[0] + (e1[0] - e0[0]) * t, e0[1] + (e1[1] - e0[1]) * t); ctx.stroke(); }
   ctx.restore();
+}
+
+// ---------- ouro do Tecelão: a moeda cai girando do alto, quica, fica pulsando com fios de luz; ao pegar, sobe em espiral até quem pegou ----------
+function coinEvent(m, now) {
+  G.coins = G.coins || {}; G.coinFx = G.coinFx || [];
+  for (const c of m.add || []) G.coins[c.id] = { ...c, t0: now + (c.d || 0), seed: Math.random() * 10 };
+  for (const [id, by, v] of m.del || []) { const c = G.coins[id]; delete G.coins[id]; if (c && by) G.coinFx.push({ x: c.x, y: c.y, by, v, t0: now }); if (by === G.myId && v) { G.coinSum = (G.coinSum || 0) + v; G.coinSumT = now; } }
+}
+function drawCoin(ctx, it, now) {
+  const c = it.coin, t = (now - c.t0) / 1000; if (t < 0) return;
+  const fall = 0.55, h = t < fall ? (1 - (t / fall) ** 2) * 70 : t < fall + 0.25 ? Math.sin((t - fall) / 0.25 * Math.PI) * 9 : t < fall + 0.4 ? Math.sin((t - fall - 0.25) / 0.15 * Math.PI) * 3 : 0;
+  const spin = t < fall + 0.4 ? Math.cos(t * 18 + c.seed) : 1, pulse = 0.5 + Math.sin(now / 380 + c.seed) * 0.5, x = it.sx, y = it.sy - h, big = c.v >= 50 ? 1.35 : c.v >= 15 ? 1.15 : 1;
+  ctx.save();
+  // brilho no chão
+  const g = ctx.createRadialGradient(it.sx, it.sy, 0, it.sx, it.sy, 11 * big); g.addColorStop(0, 'rgba(255,214,110,' + (0.28 + pulse * 0.22).toFixed(2) + ')'); g.addColorStop(1, 'rgba(255,200,80,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(it.sx, it.sy, 11 * big, 5.5 * big, 0, 0, 7); ctx.fill();
+  // fios de luz dourada subindo (como os do manto do Tecelão)
+  if (h < 1) { ctx.strokeStyle = 'rgba(255,226,140,' + (0.25 + pulse * 0.35).toFixed(2) + ')'; ctx.lineWidth = 0.6; for (let k = 0; k < 3; k++) { const ph = now / 600 + c.seed + k * 2.1, len = 9 + ((now / 40 + k * 13 + c.seed * 9) % 12); ctx.beginPath(); ctx.moveTo(x + (k - 1) * 1.6, y - 1); ctx.quadraticCurveTo(x + (k - 1) * 1.6 + Math.sin(ph) * 3, y - len * 0.5, x + (k - 1) * 2.2 + Math.sin(ph * 1.3) * 2, y - len); ctx.stroke(); } }
+  // a moeda (deitada no chão; girando enquanto cai)
+  const rw = 3.6 * big * Math.max(0.15, Math.abs(spin)), rh = h > 1 ? 3.6 * big : 1.9 * big;
+  ctx.fillStyle = '#8a5a12'; ctx.beginPath(); ctx.ellipse(x, y + 0.7, rw, rh, 0, 0, 7); ctx.fill();
+  const cg = ctx.createLinearGradient(x - rw, y - rh, x + rw, y + rh); cg.addColorStop(0, '#fff2b0'); cg.addColorStop(0.45, '#f2c040'); cg.addColorStop(1, '#b07a18'); ctx.fillStyle = cg; ctx.beginPath(); ctx.ellipse(x, y, rw, rh, 0, 0, 7); ctx.fill();
+  ctx.strokeStyle = 'rgba(120,70,10,0.8)'; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.ellipse(x, y, rw * 0.62, rh * 0.62, 0, 0, 7); ctx.stroke();
+  // cintilar
+  if (pulse > 0.85 || h > 1) { ctx.fillStyle = 'rgba(255,255,240,0.95)'; ctx.fillRect(x - rw * 0.4, y - rh * 0.5, 1, 1); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(255,240,180,0.6)'; ctx.fillRect(x - rw * 0.4 - 2, y - rh * 0.5, 5, 0.6); ctx.fillRect(x - rw * 0.4, y - rh * 0.5 - 2, 0.6, 5); }
+  ctx.restore();
+}
+function drawCoinFx(ctx, now) {
+  const ox = G.view.ox, oy = G.view.oy;
+  G.coinFx = (G.coinFx || []).filter(f => now - f.t0 < 700);
+  for (const f of G.coinFx) { const e = G.players[f.by]; if (!e) continue; const k = (now - f.t0) / 700, a = iso(f.x, f.y), b = iso(e.rx, e.ry), r = (1 - k) * 10, ang = k * 9;
+    const x = a.sx + (b.sx - a.sx) * k + Math.cos(ang) * r + ox, y = a.sy + (b.sy - a.sy) * k - Math.sin(k * Math.PI) * 30 - k * 20 + Math.sin(ang) * r * 0.5 + oy;
+    ctx.save(); ctx.globalAlpha = 1 - k * 0.6; ctx.fillStyle = '#f6cc48'; ctx.beginPath(); ctx.ellipse(x, y, 2.4, 2.4, 0, 0, 7); ctx.fill(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(255,230,150,0.5)'; ctx.beginPath(); ctx.arc(x, y, 5, 0, 7); ctx.fill(); ctx.restore(); }
+  if (G.coinSum && now - G.coinSumT < 1600 && G.me) { const p = iso(G.me.rx, G.me.ry), k = (now - G.coinSumT) / 1600; ctx.save(); ctx.globalAlpha = 1 - k; pxText(ctx, '+' + G.coinSum + ' ouro', p.sx + ox, p.sy + oy - 70 - k * 14, '#ffe08a', 13, '"Cinzel", serif', '700'); ctx.restore(); } else if (G.coinSum && now - G.coinSumT >= 1600) G.coinSum = 0;
 }

@@ -31,7 +31,7 @@ function later(ms, fn) { if (!ms || ms <= 0) fn(); else G.timers.push({ at: perf
 const IDLE_SETS = {
   v_house3: ['look', 'wave', 'look'], v_house4: ['look', 'wave', 'look'], v_trav3: ['look', 'wave', 'look'], v_monk: ['look', 'wave', 'look'], v_noblef: ['look', 'wave', 'look'], v_noblem: ['look', 'wave', 'look'], v_peasm: ['look', 'wave', 'look'], v_peasf: ['look', 'wave', 'look'], v_elderm: ['look', 'wave', 'look'], v_elderf: ['look', 'wave', 'look'],
   v_house1: ['look', 'wave', 'look'], v_house2: ['look', 'look', 'wave'], v_trav1: ['stretch', 'look', 'yawn'], v_trav2: ['look', 'stretch'], v_vis1: ['look', 'wave'], v_vis2: ['look', 'wave', 'look'], v_thug1: ['look', 'look'], v_thug2: ['look', 'stretch'], supplier: ['look', 'stretch', 'yawn'],
-  banker: ['look', 'polish', 'look'], banker2: ['polish', 'look'], banker3: ['look', 'polish'],
+  banker: ['look', 'polish', 'look'], banker2: ['polish', 'look'], banker3: ['look', 'polish'], banker4: ['read', 'polish', 'look'], banker5: ['polish', 'look', 'read'], banker6: ['look', 'polish', 'crossarms'], bankporter: ['handsback', 'look', 'salute'],
   st_saw: ['stretch', 'polish', 'look'], st_mine: ['stretch', 'look', 'polish'], st_farm: ['look', 'stretch', 'yawn'], st_carp: ['polish', 'look', 'polish'], st_alch: ['look', 'polish', 'look'],
   st_apoth: ['look', 'polish', 'wave'], st_arcane: ['look', 'yawn', 'polish'], st_tailor: ['polish', 'look', 'wave'], st_scroll: ['look', 'polish', 'yawn'],
   courier1: ['look', 'stretch', 'wave'], courier2: ['look', 'yawn', 'stretch'], courier3: ['stretch', 'look', 'yawn'],
@@ -116,7 +116,7 @@ function clientOnServer(m) {
       if (m.knock) G.knockUntil = now + m.knock;
       G.cst = m.cst ?? CST_MAX; G.cstMax = m.cstMax || CST_MAX; e.arw = m.arw || []; e.esc = m.esc || 0; e.chk = m.chk || 0; e.bnd = m.bnd || ''; e.bndE = m.bndE || 0; e.jl = m.jl || 0; e.cell = m.cell ?? -1; if (m.tree) e.tree = m.tree; if (m.use) e.use = m.use; if (typeof onProgStat === 'function') onProgStat(); G.stunUntil = now + (m.stun || 0); G.ripUntil = now + (m.rip || 0);
       Object.assign(e, { hp: m.hp, maxHp: m.maxHp, mp: m.mp, maxMp: m.maxMp, lvl: m.lvl, xp: m.xp, gold: m.gold, pots: m.pots, food: m.food, water: m.water, cold: m.cold, infect: m.infect, sick: m.sick, hasSkin: m.hasSkin, body: m.body, bleed: m.bleed, lost: m.lost || 0, pro: m.pro || 0, inv: m.inv || {}, combat: m.combat, quests: m.quests, qdone: m.qdone });
-      setBuffs(e, m.buffs); if (m.wpn) e.wpn = m.wpn; if (m.rep != null) e.rep = m.rep; if (m.feats) e.feats = m.feats; if (m.prof) e.prof = m.prof; if ('job' in m && typeof jobsTracker === 'function') { G.job = m.job; jobsTracker(); }
+      setBuffs(e, m.buffs); if (m.wpn) e.wpn = m.wpn; e.shea = !!m.shea; e.freeLimb = !!m.freeLimb; if (m.rep != null) e.rep = m.rep; if (m.feats) e.feats = m.feats; if (m.prof) e.prof = m.prof; if ('job' in m && typeof jobsTracker === 'function') { G.job = m.job; jobsTracker(); }
       G.cdEnd = m.cds.map(r => now + r);
       e.downed = m.downed > 0; e.downUntil = now + m.downed;
       saveChar(); updateHud(); updateQuests(); if (!$('inv').classList.contains('hidden')) updateInv();
@@ -181,6 +181,7 @@ function clientOnServer(m) {
     }
     case 'err': showToast(m.text); break;
     case 'wv': gmWvEvent(m); break;
+    case 'coins': coinEvent(m, now); break;
     case 'wt': WT.ph = m.ph ?? null; WT.rain = m.rain ?? null; break;
     case 'denied': askRoomPw(m.why === 'pwbad'); break;
     case 'roompw': G.roomLocked = m.on; pzRoomRefresh(); break;
@@ -251,7 +252,7 @@ function applySnapshot(m, now) {
     if (!e) e = G.players[id] = mkEnt({ id, name: '...', cls: 'knight', skin: 'iron', color: '#888888', lvl: 1 });
     const x = x100 / 100, y = y100 / 100;
     e.flags = fl; e.visible = true; e.carrying = carrying || null; e.lifted = lifted || 0; if (id !== G.myId) { e.lost = (lp || 0) & 31; e.pro = ((lp || 0) >> 5) & 31; } e.parrying = !!((bb || 0) & 32); e.stunned = !!((bb || 0) & 64); e.duel = !!((bb || 0) & 128); e.limp = (bb || 0) & 3; e.armWeak = !!((bb || 0) & 4); e.dizzy = !!((bb || 0) & 8); e.bleeding = !!((bb || 0) & 16); e.carriedBy = !!(fl & 4); z = z / 100;
-    e.stb = stb || 0; e.tow = tow || null; e.tied = !!(fl & 16777216); e.dragged = !!(fl & 131072); e.prone = !!(fl & 262144); e.gripped = !!(fl & 8388608);
+    e.stb = stb || 0; e.sheaS = !!(e.stb & 2048); e.tow = tow || null; e.tied = !!(fl & 16777216); e.dragged = !!(fl & 131072); e.prone = !!(fl & 262144); e.gripped = !!(fl & 8388608);
     e.dragMode = fl & 524288 ? 'arms' : fl & 1048576 ? 'foot' : fl & 2097152 ? 'back' : fl & 4194304 ? 'grip' : null;
     if (e === G.me && e.dragged) { e.cx = x; e.cy = y; if (e.rx == null || Math.hypot(x - e.rx, y - e.ry) > 4) { e.x = e.rx = x; e.y = e.ry = y; } G.path = null; }
     e.bound = !!(fl & 1073741824); e.jailed = !!(fl & 536870912); e.choked = !!(fl & 33554432); e.choking = !!(fl & 67108864); e.escorted = !!(fl & 134217728); e.pullHelp = !!(fl & 268435456);   // sendo puxado/agarrado: a posição vem do servidor
@@ -518,7 +519,7 @@ function saveChar() {
   const me = G.me;
   try {
     const all = loadChars();
-    all[charKey(me.name, me.cls)] = { name: me.name, cls: me.cls, skin: me.skin, color: me.color, lvl: me.lvl, xp: me.xp, gold: me.gold, pots: me.pots, food: me.food, water: me.water, infect: me.infect, hasSkin: me.hasSkin, tree: me.tree, prof: me.prof, feats: me.feats, use: me.use, jailLeft: me.jl || 0, body: me.body, bleed: me.bleed, lost: (me.lost || 0) & 30, pro: me.pro || 0, inv: me.inv, quests: me.quests, qdone: me.qdone, t: Date.now() };
+    all[charKey(me.name, me.cls)] = { name: me.name, cls: me.cls, skin: me.skin, color: me.color, lvl: me.lvl, xp: me.xp, gold: me.gold, pots: me.pots, food: me.food, water: me.water, infect: me.infect, hasSkin: me.hasSkin, tree: me.tree, prof: me.prof, feats: me.feats, freeLimb: me.freeLimb, use: me.use, jailLeft: me.jl || 0, body: me.body, bleed: me.bleed, lost: (me.lost || 0) & 30, pro: me.pro || 0, inv: me.inv, quests: me.quests, qdone: me.qdone, t: Date.now() };
     localStorage.setItem(SAVE_KEY, JSON.stringify(all));
   } catch (e) { }
 }
@@ -674,10 +675,10 @@ function updateSlots(now) {
   const pr = $('prompt');
   const sp = G.survPrompt || '';
   if (me.bound && sp) { if (pr.textContent !== sp) pr.textContent = sp; pr.classList.remove('hidden'); }
-  else if (me.carrying) { pr.textContent = '[G] Soltar · leve até a Irmã Lúmina, na capela'; pr.classList.remove('hidden'); }
+  else if (me.carrying) { pr.textContent = '[H] Soltar · leve até a Irmã Lúmina, na capela'; pr.classList.remove('hidden'); }
   else if (!me.downed && nearCorpse()) { /* updateLooting cuida */ }
   else if (sp && !dn) { if (pr.textContent !== sp) pr.textContent = sp; pr.classList.remove('hidden'); }
-  else if (dn) { pr.textContent = `[F segurar] Reanimar ${dn.name} · [G] Carregar`; pr.classList.remove('hidden'); }
+  else if (dn) { pr.textContent = `[F segurar] Reanimar ${dn.name} · [H] Carregar`; pr.classList.remove('hidden'); }
   else pr.classList.add('hidden');
 }
 
@@ -716,6 +717,10 @@ const NPC_DIALOG = {
   banker: { greet: 'Bem-vindo ao Banco de Nae. Aqui o seu ouro dorme tranquilo atrás de uma porta que nem um dragão abre.', opts: [['Minha conta', { open: 'bank' }], ['Como funciona o banco?', { local: 'Você deposita e o ouro rende 2% por semana. Ninguém rouba, nem quando você cai. Emprestamos também, a 10% por semana, por duas semanas... e quem não paga conhece as sentinelas.' }], ['E se eu morrer?', { local: 'Então, com todo o respeito, o seu saldo fica com o banco. Ouro não tem herdeiro por aqui.' }], ['Posso comprar o banco?', { local: 'Só quem o Conselho respeita: reputação 70 ou mais, e uma fortuna. Fale com Mestre Anselmo, na Imobiliária.' }]] },
   banker2: { greet: 'Caixa aberto! Depósito ou saque?', opts: [['Minha conta', { open: 'bank' }]] },
   banker3: { greet: 'Os números nunca mentem. As pessoas, sim.', opts: [['Minha conta', { open: 'bank' }]] },
+  banker4: { greet: 'Assine aqui. E aqui. E aqui também.', opts: [['Minha conta', { open: 'bank' }]] },
+  banker5: { greet: 'O tesouro de Nae está em boas mãos. As minhas.', opts: [['Minha conta', { open: 'bank' }]] },
+  banker6: { greet: 'Ouro verdadeiro tem um som. O falso, outro. Eu escuto os dois.', opts: [['Minha conta', { open: 'bank' }]] },
+  bankporter: { greet: 'Bem-vindo ao Banco de Nae. Os banqueiros atendem nos balcões. O cofre... só com acompanhamento.', opts: [['Tudo bem?', { local: 'Ninguém passa daquela porta redonda sem permissão. Ninguém.' }]] },
   v_house1: { greet: "Bom dia! Vim fazer as compras da semana.", opts: [['Tudo bem?', { local: "Tudo tão caro hoje em dia..." }]] },
   v_house2: { greet: "Bom dia! Vim fazer as compras da semana.", opts: [['Tudo bem?', { local: "Tudo tão caro hoje em dia..." }]] },
   v_trav1: { greet: "Acabei de chegar de longe. Onde fica a taverna?", opts: [['Tudo bem?', { local: "Estrada perigosa, essa até Nae." }]] },
@@ -765,11 +770,11 @@ const NPC_DIALOG = {
     ['Unguento — 25 ouro (cura infecção)', { a: 'buyl', item: 'ointment', qty: 1 }], ['Lenha — 5 ouro', { a: 'buyl', item: 'firewood', qty: 1 }],
     ['Bandagem — 8 ouro', { a: 'buy', item: 'band', qty: 1 }], ['5 Bandagens — 40 ouro', { a: 'buy', item: 'band', qty: 5 }],
     ['Vender todo o saque', { a: 'sell' }]] },
-  priest: { greet: 'Paz, viajante. A capela é pequena, mas a Aurora ainda escuta quem pede. Traga aqui os que caírem; eu cuido deles.', opts: [['Receber a bênção (grátis)', { a: 'bless' }], ['Ritual de restauração dos membros — 600 ouro', { a: 'ritual' }]] },
+  priest: { greet: 'Paz, viajante. A capela é pequena, mas a Aurora ainda escuta quem pede. Traga aqui os que caírem; eu cuido deles.', opts: [['Receber a bênção (grátis)', { a: 'bless' }], ['Ritual de restauração dos membros — 120 ouro (o primeiro é de graça)', { a: 'ritual' }]] },
   innkeeper: { greet: 'Sente-se. Tem fogo, comida quente e gente falando demais. Do que precisa?', opts: [['Precisa de ajuda? (água do poço)', { job: 'water' }], 
     ['Hidromel — 15 ouro (+10% de dano por 3 min)', { a: 'mead' }], ['Ensopado de javali — 10 ouro (recupera tudo)', { a: 'stew' }], ['Ouvir as conversas da taverna', { a: 'rumor' }]] },
   guard: { greet: 'Fique atento lá fora. Quanto mais longe da cidadela, mais o mundo tenta te matar.', opts: [['Quais são as regiões?', { local: GUARD_TEXT }]] },
-  smith: { greet: 'Hrodgar. Ferreiro da cidadela. Se a lâmina está cega, eu resolvo.', opts: [['Afiar a arma — 25 ouro (+15% de dano por 4 min)', { a: 'whet' }], ['Prótese (perna de pau / gancho) — 150 ouro', { a: 'prosth' }], ['Conversar', { a: 'talk' }]] },
+  smith: { greet: 'Hrodgar. Ferreiro da cidadela. Se a lâmina está cega, eu resolvo.', opts: [['Afiar a arma — 25 ouro (+15% de dano por 4 min)', { a: 'whet' }], ['Prótese (perna de pau / gancho) — 30 ouro', { a: 'prosth' }], ['Conversar', { a: 'talk' }]] },
   captain: { greet: 'Sou a Capitã Varn. Temos poucos braços e muitas ameaças. Aceite um contrato e eu pago pelo serviço.', opts: [] },
 };
 function npcUnderMouse(mx, my) {
@@ -986,7 +991,7 @@ window.addEventListener('keydown', e => {
   if (k === 'f' && !e.repeat && openNearChest(1.8)) return;
   if (k === 'f' && !e.repeat && G.me && (G.me.carrying || G.me.dragMode === 'arms' || G.me.dragMode === 'foot') && STAGE.x >= 0 && dist(G.me.x, G.me.y, STAGE.x, STAGE.y) < 3.4) { Net.send({ t: 'exec' }); return; }
   if (k === 'y' && !e.repeat && G.me && G.me.wantedUntil > performance.now()) { Net.send({ t: 'surrender' }); return; }
-  if (k === 'h' && !e.repeat && typeof grabKeyDown === 'function') { grabKeyDown(); return; }   // segurar H: menu radial (puxar / carregar / agarrar / soltar)
+  if (k === 'h' && !e.repeat) { const me = G.me; if (me && (me.lifted || me.carrying)) { liftOrThrow(); return; } if (typeof grabKeyDown === 'function' && grabKeyDown()) return; liftOrThrow(); return; }   // H: toque pega/carrega; segurar abre o menu de agarrar   // segurar H: menu radial (puxar / carregar / agarrar / soltar)
   if (k === 'f' && !e.repeat && !nearestDowned()) { const c = nearCorpse(); if (c) { G.loot = { id: c.id, t0: performance.now() }; G.keys.add('f'); return; } }
   if (k === 'f' && !e.repeat && G.appleOffer && performance.now() < G.appleOffer.until) { Net.send({ t: 'appleoffer' }); G.appleOffer = null; if (G.npcs.fruit) G.npcs.fruit.bubble = { t: '♥', until: performance.now() + 1500 }; return; }
   if (k === 'f' && !e.repeat && typeof boundNear === 'function') { const q = boundNear(); if (q) { Net.send({ t: 'untie', id: q.id }); return; } }
@@ -998,7 +1003,8 @@ window.addEventListener('keydown', e => {
   if (k === 'f' && !e.repeat && (G.me.arw || []).length && !nearestDowned() && !nearCorpse()) { Net.send({ t: 'pullarrow' }); return; }   // arrancar flecha cravada
   if (k === 'f' && !e.repeat && inCombatZone() && !nearestDowned() && !nearCorpse() && !(G.chests || []).some(c => c.mine && !c.open && dist(c.x, c.y, G.me.x, G.me.y) < 1.8)) { Net.send({ t: 'kick', a: G.me.fa ?? 0 }); return; }
   if (k === 'f' && !e.repeat) { const d = nearestDowned(); if (d) { G.reviving = d.id; Net.send({ t: 'revive', id: d.id, on: true }); } return; }
-  if (k === 'g' && !e.repeat) { liftOrThrow(); return; }
+  if (k === 'u' && !e.repeat && G.dev) { wvAct('coins', '0', 'w', GM.lastCoins || 50); return; }
+  if (k === 'g' && !e.repeat) { if (G.me && !G.me.downed && !G.dev) Net.send({ t: 'sheathe' }); return; }
   if (k === 'x') { attackNearest(); return; }
   if (k === 'o' && !e.repeat && G.me && G.me.cls === 'knight') { Net.send({ t: 'wpn' }); return; }
   if (k === '0' && !e.repeat) { Net.send({ t: 'use', k: 'water' }); return; }
@@ -1181,7 +1187,7 @@ function lockLobby(b) { for (const el of document.querySelectorAll('#lobby butto
 function helloMsg() {
   const name = $('name').value.trim() || 'Aventureiro';
   const saved = loadChars()[charKey(name, chosenClass)] || {};
-  return { t: 'hello', pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
+  return { t: 'hello', pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, freeLimb: saved.freeLimb, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
 }
 // reino trancado: pede a senha e manda o hello de novo pela mesma conexão
 function askRoomPw(bad) {
@@ -1413,9 +1419,8 @@ function drawWorldMap() {
   const cv = $('wm-canvas'), size = Math.min(innerWidth, innerHeight) * 0.86, dpr = Math.min(2, devicePixelRatio || 1);
   cv.width = size * dpr; cv.height = size * dpr; cv.style.width = size + 'px'; cv.style.height = size + 'px';
   const x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0);
-  const s = size / (MAP_W * Math.SQRT2) * 1.02;
-  const P = (wx, wy) => { const dx = (wx - MAP_W / 2) * s, dy = (wy - MAP_H / 2) * s; return [size / 2 + (dx - dy) * Math.SQRT1_2, size / 2 + (dx + dy) * Math.SQRT1_2]; };
-  x.save(); x.translate(size / 2, size / 2); x.rotate(Math.PI / 4); x.scale(s, s); x.translate(-MAP_W / 2, -MAP_H / 2);
+  const V = wmView(size), s = V.s, P = V.P; G.mapSize = size;
+  x.save(); x.translate(size / 2, size / 2); x.rotate(Math.PI / 4); x.scale(s, s); x.translate(-V.cx, -V.cy);
   x.imageSmoothingEnabled = false; x.drawImage(MINI, 0, 0);
   x.imageSmoothingEnabled = true; const f = fogLayer(); if (f) { x.filter = 'blur(1.5px)'; x.drawImage(f, 0, 0); x.filter = 'none'; }
   x.restore();
@@ -1426,7 +1431,10 @@ function drawWorldMap() {
   // sem nomes: pontos de interesse já descobertos ganham um "X" (bastiões, covil do dragão, lojas e serviços, portões)
   const mark = (wx, wy, big) => { const [px, py] = P(wx, wy), r = big ? 7 : 5; x.lineCap = 'round'; for (const [w, c] of [[big ? 6 : 5, 'rgba(240,226,190,0.9)'], [big ? 3 : 2.4, big ? '#8a1a10' : '#4a2e14']]) { x.lineWidth = w; x.strokeStyle = c; x.beginPath(); x.moveTo(px - r, py - r); x.lineTo(px + r, py + r); x.moveTo(px + r, py - r); x.lineTo(px - r, py + r); x.stroke(); } };
   for (const B of BASTIONS) if (seen(B.x, B.y)) mark(B.x, B.y, true);
-  for (const n of NPCS) if (n.kind !== 'guard' && seen(n.x, n.y)) mark(n.x, n.y, false);
+  // lugares da cidade: ícones pequenos e simples na porta (passe o mouse para ver o nome)
+  G.mapIcons = []; const R = V.z >= 2.5 ? 7 : V.z >= 1.5 ? 5.5 : 4;
+  BUILDINGS.forEach((b, bi) => { const ic = mapIconOf(b, bi); if (!ic) return; const [dx, dy] = doorTile(b); if (!seen(dx, dy) && !G.dev) return; const [px, py] = P(dx, dy); if (px < -10 || py < -10 || px > size + 10 || py > size + 10) return; mapIcon(x, ic, px, py, R); G.mapIcons.push({ px, py, name: (b.name || (ic === 'home' ? 'Sua casa' : '')) }); });
+  if (G.mapHover) { const h = G.mapHover; x.font = '700 12px "Alegreya Sans SC", sans-serif'; const w = x.measureText(h.name).width + 12; x.fillStyle = 'rgba(42,26,10,0.88)'; x.fillRect(h.px - w / 2, h.py - R - 22, w, 17); x.fillStyle = '#f4e4b8'; x.fillText(h.name, h.px, h.py - R - 13); }
   for (const gt of WORLD.gates) { const gx = (gt.x0 + gt.x1) / 2, gy = gt.vert ? (gt.y0 + gt.y) / 2 : gt.y; if (gt.kind !== 'keep' && seen(gx, gy)) mark(gx, gy, false); }
   // jogadores
   for (const id in G.players) {
@@ -1534,9 +1542,8 @@ function buildDevPanel() {
   // viajar clicando no mapa
   $('wm-canvas').addEventListener('click', e => {
     if (!G.dev && !G.devTools) return;
-    const cv = $('wm-canvas'), r = cv.getBoundingClientRect(), size = r.width, s = size / (MAP_W * Math.SQRT2) * 1.02;
-    const a = (e.clientX - r.left - size / 2) / Math.SQRT1_2, b2 = (e.clientY - r.top - size / 2) / Math.SQRT1_2;
-    devTp((a + b2) / 2 / s + MAP_W / 2, (b2 - a) / 2 / s + MAP_H / 2); toggleWorldMap();
+    const cv = $('wm-canvas'), r = cv.getBoundingClientRect(), V = wmView(r.width), w = V.inv(e.clientX - r.left, e.clientY - r.top);
+    devTp(w[0], w[1]); toggleWorldMap();
   });
 }
 function devTp(x, y) { const me = G.me; Object.assign(me, { x, y, rx: x, ry: y, z: 0, fl: 0, fb: -1 }); Net.send({ t: 'dev', a: 'tp', x, y, z: 0 }); }
@@ -1549,7 +1556,7 @@ function survivalAction() {
   const me = G.me, raw = me.inv && (me.inv.venison || me.inv.pork), hv = nearHarvest();
   if (hv >= 0) { Net.send({ t: 'harvest', i: hv }); return true; }
   if (raw && nearFireC()) { Net.send({ t: 'cook' }); return true; }
-  if (nearWaterC() && ((me.water ?? 100) < 98 || (me.hasSkin && (me.pots.water || 0) < 5))) { Net.send({ t: 'drinkw' }); return true; }
+  if (((me.water ?? 100) < 98 || (me.hasSkin && (me.pots.water || 0) < 5)) && drinkGo()) return true;
   return false;
 }
 function updateNeeds() {
@@ -1736,4 +1743,78 @@ function closeEmoteWheel(fire) {
   const wl = G.wheel; G.wheel = null; $('emote-wheel').classList.add('hidden');
   document.querySelectorAll('#emote-wheel .ew-opt').forEach(o => o.classList.remove('on'));
   if (fire && wl && wl.sel >= 0) { const k = EMOTES[wl.sel].k; if (G.me.sit) standUp(); G.me.emote = { k, t0: performance.now() }; Net.send({ t: 'emote', k }); }
+}
+
+// ---------- mapa: zoom (roda do mouse / botões) e ícones minimalistas dos lugares ----------
+G.mapZ = 1;
+function wmView(size) {
+  const z = G.mapZ || 1, s = size / (MAP_W * Math.SQRT2) * 1.02 * z, k = Math.min(1, (z - 1) / 1.5);
+  const fx = G.mapCity ? CENTER : (G.me ? G.me.x : MAP_W / 2), fy = G.mapCity ? CENTER : (G.me ? G.me.y : MAP_H / 2), cx = MAP_W / 2 + (fx - MAP_W / 2) * k, cy = MAP_H / 2 + (fy - MAP_H / 2) * k;
+  const P = (wx, wy) => { const dx = (wx - cx) * s, dy = (wy - cy) * s; return [size / 2 + (dx - dy) * Math.SQRT1_2, size / 2 + (dx + dy) * Math.SQRT1_2]; };
+  const inv = (px, py) => { const a = (px - size / 2) / Math.SQRT1_2, b = (py - size / 2) / Math.SQRT1_2; return [(a + b) / 2 / s + cx, (b - a) / 2 / s + cy]; };
+  return { z, s, cx, cy, P, inv };
+}
+function mapIconOf(b, bi) {
+  if (b.office) return 'key';
+  const mine = G.est && G.est.mine && typeof PROPS_BY !== 'undefined' && PROPS_BY[G.est.mine.pid] && PROPS_BY[G.est.mine.pid].bi === bi;
+  if (mine) return 'home';
+  const t = { tavern: 'mug', smith: 'anvil', temple: 'sun', bank: 'coin', boutique: 'needle', jail: 'bars', barracks: 'shield', castle: 'crown', fruithouse: 'apple', workshop: 'saw' }[b.kind];
+  if (t) return t;
+  if (b.kind === 'shop') return ({ apoth: 'potion', arcane: 'wand', tailor: 'needle', scroll: 'scroll' })[SHOP_TYPE_BY_NAME[b.name]] || 'bag';
+  return null;
+}
+function mapIcon(x, ic, px, py, R) {
+  x.save(); x.translate(px, py);
+  x.beginPath(); x.arc(0, 0, R + 1.5, 0, 7); x.fillStyle = 'rgba(244,232,200,0.95)'; x.fill(); x.lineWidth = 1.2; x.strokeStyle = '#4a2e14'; x.stroke();
+  const k = R / 6; x.scale(k, k); x.strokeStyle = '#3a2410'; x.fillStyle = '#3a2410'; x.lineWidth = 1.3; x.lineCap = 'round'; x.lineJoin = 'round';
+  const L = (...p) => { x.beginPath(); x.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) x.lineTo(p[i], p[i + 1]); x.stroke(); };
+  switch (ic) {
+    case 'bag': L(-3, -1, 3, -1, 3.5, 4, -3.5, 4, -3, -1); L(-1.5, -1, -1.5, -3, 1.5, -3, 1.5, -1); break;
+    case 'mug': L(-3, -3, -3, 3.5, 2, 3.5, 2, -3); L(2, -1.5, 3.8, -1.5, 3.8, 1.5, 2, 1.5); break;
+    case 'anvil': L(-4, -1.5, 4, -1.5, 2, 0.5, -2, 0.5, -4, -1.5); L(-1, 0.5, -1, 3); L(1, 0.5, 1, 3); L(-2.5, 3, 2.5, 3); break;
+    case 'sun': x.beginPath(); x.arc(0, 0, 1.8, 0, 7); x.stroke(); for (let a = 0; a < 8; a++) { const c = Math.cos(a * Math.PI / 4), s = Math.sin(a * Math.PI / 4); L(c * 3, s * 3, c * 4.3, s * 4.3); } break;
+    case 'coin': x.beginPath(); x.arc(0, 0, 3.5, 0, 7); x.stroke(); L(0, -2, 0, 2); L(-1.2, -1, 1, -1); L(-1, 1, 1.2, 1); break;
+    case 'needle': L(-3.5, 3.5, 3, -3); x.beginPath(); x.arc(2.4, -2.4, 0.9, 0, 7); x.stroke(); L(3, -3, 1, 1, -2, 2.5); break;
+    case 'bars': L(-3, -3.5, -3, 3.5); L(0, -3.5, 0, 3.5); L(3, -3.5, 3, 3.5); L(-4, -3.5, 4, -3.5); break;
+    case 'shield': L(-3, -3, 3, -3, 3, 0, 0, 4, -3, 0, -3, -3); break;
+    case 'crown': L(-3.5, 2.5, -3.5, -2, -1.5, 0, 0, -3, 1.5, 0, 3.5, -2, 3.5, 2.5, -3.5, 2.5); break;
+    case 'apple': x.beginPath(); x.arc(0, 1, 3, 0, 7); x.stroke(); L(0, -2, 0.8, -3.8); break;
+    case 'saw': L(-4, 0, 3, 0); L(-4, 0, -4, 2, 3, 2); L(3, -1, 4.2, -1, 4.2, 1, 3, 1); break;
+    case 'potion': L(-1, -4, 1, -4); L(-1, -4, -1, -1.5, -3, 1, -2, 3.5, 2, 3.5, 3, 1, 1, -1.5, 1, -4); break;
+    case 'wand': L(-3.5, 3.5, 2, -2); for (const [a, b] of [[3, -3], [2, -4.2], [4.2, -2]]) L(2.5, -2.5, a, b); break;
+    case 'scroll': L(-3, -3, 3, -3, 3, 3, -3, 3, -3, -3); L(-1.5, -1, 1.5, -1); L(-1.5, 1, 1.5, 1); break;
+    case 'key': x.beginPath(); x.arc(-2, 0, 1.6, 0, 7); x.stroke(); L(-0.4, 0, 4, 0); L(2.5, 0, 2.5, 1.5); L(3.8, 0, 3.8, 1.5); break;
+    case 'home': L(-3.5, 0, 0, -3.5, 3.5, 0); L(-2.5, -0.5, -2.5, 3.5, 2.5, 3.5, 2.5, -0.5); x.fillStyle = '#c8281e'; x.fillRect(-0.8, 1, 1.6, 2.5); break;
+  }
+  x.restore();
+}
+(function wmControls() {
+  const cv = document.getElementById('wm-canvas'); if (!cv) return;
+  cv.addEventListener('wheel', e => { e.preventDefault(); G.mapZ = Math.max(1, Math.min(7, (G.mapZ || 1) * (e.deltaY < 0 ? 1.25 : 0.8))); if (G.mapZ <= 1.01) G.mapCity = false; drawWorldMap(); }, { passive: false });
+  cv.addEventListener('mousemove', e => { const r = cv.getBoundingClientRect(), k = (G.mapSize || r.width) / r.width, mx = (e.clientX - r.left) * k, my = (e.clientY - r.top) * k; let best = null, bd = 12; for (const ic of G.mapIcons || []) { const d = Math.hypot(ic.px - mx, ic.py - my); if (d < bd && ic.name) { bd = d; best = ic; } } if ((best && best.name) !== (G.mapHover && G.mapHover.name)) { G.mapHover = best; drawWorldMap(); } });
+  const fr = cv.parentNode, bar = document.createElement('div'); bar.className = 'wm-zoom';
+  bar.innerHTML = '<button data-z="1">Reino</button><button data-z="city">Cidade</button><button data-z="me">Perto de mim</button><span>Roda do mouse aproxima · passe o mouse nos ícones</span>';
+  fr.insertBefore(bar, cv);
+  bar.querySelectorAll('button').forEach(b => b.onclick = () => { const z = b.dataset.z; if (z === '1') { G.mapZ = 1; G.mapCity = false; } else if (z === 'city') { G.mapZ = 4.2; G.mapCity = true; } else { G.mapZ = 5.5; G.mapCity = false; } drawWorldMap(); });
+})();
+
+// ---------- beber água de verdade: anda até a beira (se longe), vira de frente para a água e só então se abaixa ----------
+const isWaterAt = (x, y) => { if (!inBounds(x, y)) return false; const i = y * MAP_W + x, gr = WORLD.ground[i], o = WORLD.obj[i]; return gr === T.WATER || gr === T.SHALLOW || o === O.WELL || o === O.FOUNTAIN; };
+function drinkFace(w) { const me = G.me; me.dir = dirFromVec(w.x - me.x, w.y - me.y, me.dir); me.walking = false; Net.send({ t: 'drinkw', dir: me.dir, fa: Math.atan2(w.y - me.y, w.x - me.x) }); }
+function drinkGo() {
+  const me = G.me; if (!me) return false; let best = null, bd = 4.6;
+  for (let y = Math.round(me.y) - 4; y <= Math.round(me.y) + 4; y++) for (let x = Math.round(me.x) - 4; x <= Math.round(me.x) + 4; x++) if (isWaterAt(x, y)) { const d = dist(me.x, me.y, x, y); if (d < bd) { bd = d; best = { x, y }; } }
+  if (!best) return false;
+  const big = WORLD.obj[best.y * MAP_W + best.x] === O.FOUNTAIN || WORLD.obj[best.y * MAP_W + best.x] === O.WELL, reach = big ? 2.3 : 1.45;
+  if (bd <= reach) { drinkFace(best); return true; }
+  let spot = null, sd = 1e9;
+  for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2; for (const r of (big ? [1.4, 1.8, 2.2] : [0.95, 1.2, 1.5])) { const px = best.x + Math.cos(a) * r, py = best.y + Math.sin(a) * r; if (isWaterAt(Math.round(px), Math.round(py)) || !freeAt(px, py, 0)) continue; const d = dist(me.x, me.y, px, py); if (d < sd) { sd = d; spot = [px, py]; } } }
+  if (!spot) return false;
+  let path = findPath(me.x, me.y, spot[0], spot[1], 0, 0); if (!path) { path = findPath(me.x, me.y, spot[0], spot[1], 0, 1); if (path) path.push(spot); } if (!path) path = sd < 4 ? [spot] : null; if (!path) return false;
+  G.path = path.length ? path : [spot]; G.pathGoal = spot; G.drinkAt = best; showToast('Indo até a água...'); return true;
+}
+function drinkTick() {
+  const w = G.drinkAt, me = G.me; if (!w || !me) return;
+  if (G.path && G.path.length) return;   // ainda andando
+  G.drinkAt = null; if (dist(me.x, me.y, w.x, w.y) <= 2.4) drinkFace(w);
 }

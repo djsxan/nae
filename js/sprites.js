@@ -83,6 +83,10 @@ const NPC_LOOKS = {
   v_peasf: () => Object.assign(heroLook('archer', 'scout', '#8a7a5a'), { armor: 'robe', body: tone('#8a7a5a'), body2: tone('#e8dcc0'), accent: tone('#e8dcc0'), trim: tone('#5a4a2a'), head: 'hood', hairStyle: 'long', hair: tone('#3a2414'), weapon: null, quiver: false, capeTone: null, skin: tone('#c89070') }),
   v_elderm: () => Object.assign(heroLook('mage', 'adept', '#4a4a4a'), { armor: 'robe', body: tone('#4a4a4a'), body2: tone('#8a8a8a'), accent: tone('#2a2a2a'), trim: tone('#2a2a2a'), head: 'none', hair: tone('#e8e4dc'), beard: tone('#e8e4dc'), weapon: 'staff', capeTone: null, skin: tone('#d8b096') }),
   v_elderf: () => Object.assign(heroLook('archer', 'scout', '#3a3a5a'), { armor: 'robe', body: tone('#3a3a5a'), body2: tone('#d8d0c0'), accent: tone('#d8d0c0'), trim: tone('#2a2a3a'), head: 'hood', hairStyle: 'long', hair: tone('#d8d4cc'), weapon: null, quiver: false, capeTone: null, skin: tone('#e2bca0') }),
+  banker4: () => Object.assign(heroLook('mage', 'adept', '#2a2a3a'), { armor: 'robe', body: tone('#22303e'), body2: tone('#e8dcc0'), accent: tone('#c9a24a'), trim: tone('#c9a24a'), head: 'none', hair: tone('#6a6a6a'), beard: tone('#6a6a6a'), weapon: null, capeTone: null, skin: tone('#d8b494') }),
+  banker5: () => Object.assign(heroLook('mage', 'adept', '#2a2a3a'), { armor: 'robe', body: tone('#3a2230'), body2: tone('#e8dcc0'), accent: tone('#c9a24a'), trim: tone('#c9a24a'), head: 'none', hairStyle: 'long', hair: tone('#a8a8a8'), beard: null, weapon: null, capeTone: null, skin: tone('#e2c0a0') }),
+  banker6: () => Object.assign(heroLook('mage', 'adept', '#2a2a3a'), { armor: 'robe', body: tone('#1e2a22'), body2: tone('#e8dcc0'), accent: tone('#c9a24a'), trim: tone('#c9a24a'), head: 'none', hair: tone('#2a1a10'), beard: tone('#2a1a10'), weapon: null, capeTone: null, skin: tone('#b88868') }),
+  bankporter: () => Object.assign(heroLook('knight', 'iron', '#5a1418'), { armor: 'vest', body: tone('#5a1418'), body2: tone('#c9a24a'), accent: tone('#c9a24a'), trim: tone('#e2b74e'), head: 'none', hair: tone('#3a2a1a'), beard: tone('#3a2a1a'), weapon: null, shield: null, capeTone: null, skin: tone('#c89878') }),
   broker: () => Object.assign(heroLook('archer', 'scout', '#3a2a1a'), { armor: 'robe', body: tone('#4a3420'), body2: tone('#e8dcc0'), accent: tone('#c9a24a'), trim: tone('#c9a24a'), head: 'none', hair: tone('#5a5048'), beard: tone('#5a5048'), weapon: null, quiver: false, capeTone: null, skin: tone('#dcb090') }),
   tailor: () => Object.assign(heroLook('mage', 'adept', '#6e1424'), { armor: 'robe', body: tone('#5e1422'), body2: tone('#2a0e14'), accent: tone('#d4a94a'), trim: tone('#d4a94a'), head: 'none', hair: tone('#d8d4cc'), beard: tone('#d8d4cc'), weapon: null, capeTone: tone('#2a0e14'), skin: tone('#e2c0a0') }),
   fruit: () => Object.assign(heroLook('archer', 'scout', '#3e5a34'), { armor: 'robe', body: tone('#3e5a34'), body2: tone('#efe6cf'), accent: tone('#efe6cf'), trim: tone('#a8342a'), head: 'none', hairStyle: 'long', hair: tone('#3a2414'), weapon: null, quiver: false, skin: tone('#e6bea0'), capeTone: null }),
@@ -115,6 +119,7 @@ function proj(p, view) {
 // ---------- poses-base por classe ----------
 const BASE = {
   knight: { aA: [0.3, 0.12, 0.55], aB: [0.55, 0.2, 0.9], wp: 0.55, tl: 0.02 },
+  free: { aA: [0.08, 0.13, 0.2], aB: [0.08, 0.13, 0.2], wp: 0, tl: 0 },   // arma guardada: mãos livres
   archer: { aA: [0.12, 0.12, 0.35], aB: [0.06, 0.1, 0.25], wp: 3.14, tl: 0 },
   mage: { aA: [0.4, 0.16, 0.85], aB: [0.15, 0.12, 0.4], wp: 3.1, tl: 0.02 },
 };
@@ -207,8 +212,14 @@ const ACTS = {
   scoop: [[0, {}], [0.22, { lA: [1.55, -1.6], lB: [-0.15, -1.95], tl: 0.75, ht: 0.45, aA: [0.55, 0.2, 0.35], aB: [0.55, 0.2, 0.35] }], [0.45, { lA: [1.55, -1.6], lB: [-0.15, -1.95], tl: 0.85, ht: 0.5, aA: [0.25, 0.12, 0.25], aB: [0.25, 0.12, 0.25] }], [0.7, { lA: [1.55, -1.6], lB: [-0.15, -1.95], tl: 0.3, ht: -0.15, aA: [1.55, 0.3, 2.35], aB: [1.55, 0.3, 2.35] }], [0.85, { lA: [1.55, -1.6], lB: [-0.15, -1.95], tl: 0.3, ht: -0.15, aA: [1.55, 0.3, 2.35], aB: [1.55, 0.3, 2.35] }], [1, {}]],
   // ---- reação ao golpe ----
   hurt: [[0, {}], [0.25, { tl: -0.38, aA: [0.7, 0.55, 0.6], aB: [0.7, 0.55, 0.6], ht: -0.45, kn: -0.35 }], [1, {}]],
+  // ---- guardar / sacar: na cintura (espada) ou por cima do ombro (alabarda, arco, cajado); soco ----
+  sheatheH: [[0, {}], [0.35, { aA: [0.35, -0.45, 1.35], tw: 0.25, ht: 0.25, hw: 0.2 }], [0.6, { aA: [0.12, -0.35, 1.0], tw: 0.3, ht: 0.3, hw: 0.25 }], [1, {}]],
+  drawwpH: [[0, {}], [0.3, { aA: [0.12, -0.35, 1.0], tw: 0.3, ht: 0.3, hw: 0.25 }], [0.6, { aA: [0.9, 0.3, 0.6], tw: -0.1 }], [1, {}]],
+  sheatheB: [[0, {}], [0.4, { aA: [2.75, 0.15, 2.55], tl: 0.06, ht: 0.1, tw: -0.15 }], [0.7, { aA: [2.9, 0.1, 2.8], tl: 0.06, tw: -0.2 }], [1, {}]],
+  drawwpB: [[0, {}], [0.35, { aA: [2.9, 0.1, 2.8], tl: 0.06, tw: -0.2 }], [0.65, { aA: [2.2, 0.25, 1.4], tw: -0.05 }], [1, {}]],
+  punch: [[0, {}], [0.3, { aA: [1.15, 0.1, 2.3], aB: [1.25, 0.1, 2.2], tw: 0.35, tl: -0.04, lA: [0.25, -0.15] }], [0.5, { aA: [1.55, 0.05, 0.12], aB: [1.2, 0.1, 2.25], tw: -0.4, tl: 0.14, lA: [0.35, -0.1], lB: [-0.2, -0.05] }], [0.72, { aA: [1.35, 0.1, 1.0], aB: [1.2, 0.1, 2.2], tw: -0.15, tl: 0.06 }], [1, {}]],
 };
-const ACT_MS = { gather: 700, cuff: 1900, key: 1100, shove: 700, lever: 1100, cheer: 1400, surprise: 1000, adore: 2600, anger: 1400, fear: 1600, sad: 2200, cook: 3000, sweep: 1400, loose: 350, nock: 800, drinkb: 1600, scoop: 1500, hurt_head: 420, hurt_leg: 420, getup: 650, kick: 520, execute: 720, quiver: 760, turnshot: 950, dualcast: 560, turncast: 950, salute: 1200, point: 1300, dance: 900, hurt: 300, swing: 440, bash: 560, spin: 560, block: 650, warcry: 700, shoot: 440, double: 620, pierce: 640, rain: 560, dash: 560, bolt: 400, fireball: 520, nova: 620, heal: 680, meteor: 720, cast: 600, bite: 320 };
+const ACT_MS = { sheatheH: 500, drawwpH: 500, sheatheB: 750, drawwpB: 750, punch: 520, gather: 700, cuff: 1900, key: 1100, shove: 700, lever: 1100, cheer: 1400, surprise: 1000, adore: 2600, anger: 1400, fear: 1600, sad: 2200, cook: 3000, sweep: 1400, loose: 350, nock: 800, drinkb: 1600, scoop: 1500, hurt_head: 420, hurt_leg: 420, getup: 650, kick: 520, execute: 720, quiver: 760, turnshot: 950, dualcast: 560, turncast: 950, salute: 1200, point: 1300, dance: 900, hurt: 300, swing: 440, bash: 560, spin: 560, block: 650, warcry: 700, shoot: 440, double: 620, pierce: 640, rain: 560, dash: 560, bolt: 400, fireball: 520, nova: 620, heal: 680, meteor: 720, cast: 600, bite: 320 };
 const IDLES = {
   look: [[0, {}], [0.25, { hw: 0.6 }], [0.6, { hw: -0.6 }], [1, {}]],
   stretch: [[0, {}], [0.4, { aA: [3.0, 0.3, 0.2], aB: [3.0, 0.3, 0.2], tl: -0.12, mouth: 1, wp: 3.1 }], [0.7, { aA: [3.0, 0.3, 0.2], aB: [3.0, 0.3, 0.2], tl: -0.12, wp: 3.1 }], [1, {}]],
@@ -250,7 +261,7 @@ function mixField(base, a, b, t, key) {
 
 // calcula a pose final (ângulos) a partir de caminhada + ação + idle
 function buildPose(cls, P) {
-  const base = BASE[cls] || BASE.knight;
+  const base = P.shea ? BASE.free : BASE[cls] || BASE.knight;
   const Q = { aA: base.aA.slice(), aB: base.aB.slice(), wp: base.wp, tl: base.tl, tw: 0, lA: [0.04, -0.06], lB: [-0.04, -0.06], kn: 0, drop: 0, ht: 0, hw: 0, mouth: 0, pull: 0, glow: 0, bot: 0, harrow: 0, broom: 0, apple: 0, ay: 0, wr: 0 };
   if (P.walk >= 0) {
     // ciclo de passada: a perna de apoio fica quase reta; o joelho dobra quando a perna avança
@@ -267,7 +278,7 @@ function buildPose(cls, P) {
     const armSw = (0.32 - heavy * 0.1) * (1 + run * 0.8);
     if (run) { Q.tl += 0.16; Q.aA[2] += cls === 'knight' ? 0 : 0.5; Q.aB[2] += 0.6; }
     Q.aB[0] += Math.sin(ph) * armSw; Q.aB[2] += 0.15 + Math.max(0, Math.sin(ph)) * 0.25;
-    if (cls !== 'knight') { Q.aA[0] += -Math.sin(ph) * armSw * 0.7; Q.aA[2] += 0.1 + Math.max(0, -Math.sin(ph)) * 0.2; }
+    if (cls !== 'knight' || P.shea) { Q.aA[0] += -Math.sin(ph) * armSw * 0.7; Q.aA[2] += 0.1 + Math.max(0, -Math.sin(ph)) * 0.2; }
     Q.tl += 0.06 + heavy * 0.05;
     Q.tw += -Math.sin(ph) * (0.06 + heavy * 0.06);          // ombros giram ao contrário do quadril
     Q.sway = Math.sin(ph) * (0.035 + heavy * 0.02);            // quadril balança para os lados
@@ -312,7 +323,7 @@ function buildPose(cls, P) {
     const br = P.br != null ? [0, 0.6, 1, 0.6][P.br] : 0;
     if (P.hs === 1) {
       // exausto: curvado, cabeça baixa, respiração pesada; andando, braços caídos arrastando a arma e passos arrastados
-      Q.tl += 0.32 + br * 0.12; Q.ht = (Q.ht || 0) + 0.2 + br * 0.06;
+      Q.tl += 0.16 + br * 0.07; Q.ht = (Q.ht || 0) + 0.1 + br * 0.04;
       // braços pendurados na vertical (compensa a curvatura do tronco) e a ponta da arma arrastando atrás
       if (!P.act) { const t = Q.tl; Q.aA = [-t * 0.9, 0.16, 0.08]; Q.aB = [-t * 0.85, 0.14, 0.12]; const arm = Q.aA[0] + Q.aA[2]; Q.wp = cls === 'knight' ? arm + 0.25 : cls === 'mage' ? arm + Math.PI + 0.35 : Q.wp; }
       if (P.walk >= 0 && !P.cr && P.run) {
@@ -725,7 +736,7 @@ function heroSprite(cls, skin, color, P) {
   const L = lookFor(lk, () => heroLook(cls, skin, color));
   return sprite('h|' + lk + '|' + poseKey(P), HW, HH, HAX, HAY, pc => drawHeroPC(pc, L, P, cls), { ok: 0.42 });
 }
-const NPC_CLS = { v_house3: 'archer', v_house4: 'archer', v_trav3: 'archer', v_monk: 'mage', v_noblef: 'mage', v_noblem: 'knight', v_peasm: 'knight', v_peasf: 'archer', v_elderm: 'mage', v_elderf: 'archer', banker: 'mage', banker2: 'mage', banker3: 'mage', v_house1: 'archer', v_house2: 'archer', v_trav1: 'knight', v_trav2: 'archer', v_vis1: 'mage', v_vis2: 'archer', v_thug1: 'archer', v_thug2: 'knight', supplier: 'knight', st_saw: 'knight', st_mine: 'knight', st_farm: 'archer', st_carp: 'archer', st_alch: 'mage', st_apoth: 'mage', st_arcane: 'mage', st_tailor: 'archer', st_scroll: 'mage', courier1: 'archer', courier2: 'archer', courier3: 'knight', broker: 'archer', noble: 'archer', noble2: 'knight', gardener: 'archer', tailor: 'mage', jailer: 'knight', executioner: 'knight', fruit: 'archer', priest: 'mage', merchant: 'archer', innkeeper: 'archer', guard: 'knight', captain: 'knight', smith: 'knight' };
+const NPC_CLS = { banker4: 'mage', banker5: 'mage', banker6: 'mage', bankporter: 'archer', v_house3: 'archer', v_house4: 'archer', v_trav3: 'archer', v_monk: 'mage', v_noblef: 'mage', v_noblem: 'knight', v_peasm: 'knight', v_peasf: 'archer', v_elderm: 'mage', v_elderf: 'archer', banker: 'mage', banker2: 'mage', banker3: 'mage', v_house1: 'archer', v_house2: 'archer', v_trav1: 'knight', v_trav2: 'archer', v_vis1: 'mage', v_vis2: 'archer', v_thug1: 'archer', v_thug2: 'knight', supplier: 'knight', st_saw: 'knight', st_mine: 'knight', st_farm: 'archer', st_carp: 'archer', st_alch: 'mage', st_apoth: 'mage', st_arcane: 'mage', st_tailor: 'archer', st_scroll: 'mage', courier1: 'archer', courier2: 'archer', courier3: 'knight', broker: 'archer', noble: 'archer', noble2: 'knight', gardener: 'archer', tailor: 'mage', jailer: 'knight', executioner: 'knight', fruit: 'archer', priest: 'mage', merchant: 'archer', innkeeper: 'archer', guard: 'knight', captain: 'knight', smith: 'knight' };
 function npcSprite(kind, P) {
   const L = lookFor('npc:' + kind, NPC_LOOKS[kind]);
   return sprite('n|' + kind + '|' + poseKey(P), HW, HH, HAX, HAY, pc => drawHeroPC(pc, L, P, NPC_CLS[kind] || 'knight'), { ok: 0.42 });

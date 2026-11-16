@@ -372,6 +372,7 @@ function applyPose(R, Q, P, walkPh) {
       R.shield.rotation.set(-0.15 - raise * 0.25, 0.35 - raise * 0.3, 0);
     }
   }
+  sheathProps(R, P);
   // capa: dobra para trás conforme o movimento
   if (R.cape) {
     const pos = R.cape.geometry.attributes.position, base = R.capeBase, sway = (P.walk >= 0 ? 0.32 : 0.1) + Math.sin(walkPh) * 0.05;
@@ -442,7 +443,7 @@ function applyLost(R, mask = 0, pro = 0) {
   if (R.shield) R.shield.visible = !lost('armB');
   for (const k in R.stumps) { R.stumps[k].visible = lost(k) && !pr(k); if (R.pegs[k]) R.pegs[k].visible = lost(k) && pr(k); }
 }
-function pose3Key(P) { return (P.dir | 0) + '|' + (P.gait ? 'g' + P.gait : '') + (P.hold ? 'o' + P.hold : '') + (P.walk >= 0 ? (P.run ? 'r' : 'w') + P.walk : '') + (P.act ? P.act.k + P.act.f : '') + (P.idle ? P.idle.k + P.idle.f : '') + (P.sit ? 's' + P.sit + (P.sv || '') : '') + (P.smk != null ? 'k' + Math.floor(P.smk * 8) : '') + (P.eat != null ? 'e' + Math.floor(P.eat * 8) : '') + (P.carry ? 'c' : '') + (P.down ? 'd' + (P.prone ? 'p' : '') : '') + (P.nowp ? 'nw' : '') + (P.wpn === 'halberd' ? 'hb' : '') + (P.crawl ? 'cw' + P.crawl : '') + (P.drag ? 'D' + P.drag : '') + (P.tied ? 'T' + P.tied : '') + (P.surr ? 'U' : '') + (P.led ? 'L' : '') + (P.held ? 'H' + P.held + (P.held === 2 ? Math.floor(Date.now() / 90) % 4 : '') : '') + (P.cr ? 'K' : '') + (P.sl ? 'L' : '') + (P.hs ? 'h' + P.hs : '') + (P.br != null ? 'b' + P.br : '') + (P.limp ? 'm' + P.limp : '') + (P.armw ? 'W' : '') + (P.lost ? 'X' + P.lost + '_' + (P.pro || 0) : ''); }
+function pose3Key(P) { return (P.dir | 0) + '|' + (P.shea ? 'S' : '') + (P.gait ? 'g' + P.gait : '') + (P.hold ? 'o' + P.hold : '') + (P.walk >= 0 ? (P.run ? 'r' : 'w') + P.walk : '') + (P.act ? P.act.k + P.act.f : '') + (P.idle ? P.idle.k + P.idle.f : '') + (P.sit ? 's' + P.sit + (P.sv || '') : '') + (P.smk != null ? 'k' + Math.floor(P.smk * 8) : '') + (P.eat != null ? 'e' + Math.floor(P.eat * 8) : '') + (P.carry ? 'c' : '') + (P.down ? 'd' + (P.prone ? 'p' : '') : '') + (P.nowp ? 'nw' : '') + (P.wpn === 'halberd' ? 'hb' : '') + (P.crawl ? 'cw' + P.crawl : '') + (P.drag ? 'D' + P.drag : '') + (P.tied ? 'T' + P.tied : '') + (P.surr ? 'U' : '') + (P.led ? 'L' : '') + (P.held ? 'H' + P.held + (P.held === 2 ? Math.floor(Date.now() / 90) % 4 : '') : '') + (P.cr ? 'K' : '') + (P.sl ? 'L' : '') + (P.hs ? 'h' + P.hs : '') + (P.br != null ? 'b' + P.br : '') + (P.limp ? 'm' + P.limp : '') + (P.armw ? 'W' : '') + (P.lost ? 'X' + P.lost + '_' + (P.pro || 0) : ''); }
 function heroSprite3D(cls, skin, color, P) {
   const lk = cls + ':' + skin + ':' + color + (P.wpn === 'halberd' && !P.uni ? ':hb' : '') + (P.uni ? ':u' + P.uni : '');
   return cache3('h3|' + lk + '|' + pose3Key(P) , () => {
@@ -457,7 +458,7 @@ function heroSprite3D(cls, skin, color, P) {
 function npcSprite3D(kind, P) {
   return cache3('n3|' + kind + '|' + pose3Key(P), () => {
     const L = lookFor('npc:' + kind, NPC_LOOKS[kind]);
-    const R = rigFor('npc:' + kind, L);
+    const R = rigFor('npc:' + kind, L, NPC_SCALE[kind] ? { scale: NPC_SCALE[kind] } : undefined);
     const Q = buildPose(NPC_CLS[kind] || 'knight', P);
     applyPose(R, Q, P, 0);
     return shoot3D(R, P.dir | 0, P.down ? -Math.PI / 2 : 0);
@@ -738,3 +739,24 @@ function holdProps(R, Q) {
   show('mug', on('mug'), g => { g.add(mesh(cylG(0.038, 0.034, 0.08, 10), wood(), 0, -0.03, 0.05)); g.add(mesh(cylG(0.033, 0.033, 0.004, 10), mat('#f2ead8', 'cloth'), 0, 0.012, 0.05)); const h = mesh(torG(0.025, 0.007), wood(), 0.045, -0.03, 0.05); h.rotation.y = Math.PI / 2; g.add(h); }, R.A.hand);
   if (on('bucket') || on('sack') || on('mug') || on('basket') || on('book')) { if (R.weapon) R.weapon.obj.visible = false; if (R.shield) R.shield.visible = false; }
 }
+
+// arma guardada no corpo: lâmina curta na bainha da cintura; arma longa, arco e escudo nas costas
+function sheathProps(R, P) {
+  const on = !!P.shea;
+  if (R.weapon && !R.weapon.bow) {
+    if (on) R.weapon.obj.visible = false;
+    if (on && !R.sheath) {
+      const c = R.weapon.obj.clone(true); c.position.set(0, 0, 0); c.rotation.set(0, 0, 0); c.visible = true;
+      const bb = new THREE.Box3().setFromObject(c), len = bb.max.y - bb.min.y, g = new THREE.Group(); g.add(c);
+      if (len > 1.3) { R.chest.add(g); g.position.set(0.0, 0.05, -0.2); g.rotation.set(0, 0, 2.55); }   // nas costas, atravessada
+      else { const sc = mesh(boxG(0.075, Math.max(0.2, -bb.min.y - 0.05), 0.035), mat('#3a2414', 'leather'), 0, (bb.min.y - 0.05) / 2 - 0.02, 0); c.add(sc); const tip = mesh(boxG(0.08, 0.04, 0.04), mat('#9a7a3a', 'gold'), 0, bb.min.y - 0.03, 0); c.add(tip); R.hips.add(g); g.position.set(0.2, -0.02, 0.04); g.rotation.set(-0.42, 0, 0.16); }   // bainha na cintura
+      R.sheath = g;
+    }
+    if (R.sheath) R.sheath.visible = on;
+  }
+  if (!on) return;
+  if (R.weapon && R.weapon.bow) { const o = R.weapon.obj; o.position.set(0.05, 0.04, -0.2); o.rotation.set(0.05, 0, -0.5); if (R.weapon.bow.arrow) R.weapon.bow.arrow.visible = false; }
+  if (R.shield) { R.shield.position.set(-0.02, -0.02, -0.21); R.shield.rotation.set(0.08, Math.PI, 0); }
+}
+
+const NPC_SCALE = { banker: 0.84, banker2: 0.82, banker3: 0.84, banker4: 0.82, banker5: 0.8, banker6: 0.84 };   // banqueiros sérios e baixinhos

@@ -301,7 +301,7 @@ function hubRender() {
   const d = document.getElementById('bizhub'); if (!d || d.classList.contains('hidden') || !G.me) return;
   document.getElementById('hub-gold').textContent = G.me.gold;
   const L = G.est.biz || [], totCofre = L.reduce((a, b) => a + (b.cofre || b.box || 0), 0), totWeek = L.reduce((a, b) => a + ((b.sum && b.sum.week) || 0), 0);
-  let h = '<div class="hub-top"><div><small>Nos cofres</small><b>' + totCofre + '</b></div><div><small>Lucro da semana</small><b class="' + (totWeek < 0 ? 'neg' : '') + '">' + totWeek + '</b></div><div><small>Negócios</small><b>' + L.length + ' / 3</b></div></div>';
+  let h = '<div class="hub-top"><div><small>Nos cofres</small><b>' + totCofre + '</b></div><div><small>Lucro da semana</small><b class="' + (totWeek < 0 ? 'neg' : '') + '">' + totWeek + '</b></div><div><small>Negócios</small><b>' + L.length + ' / ' + ((G.me.rep ?? 0) >= 90 ? '∞' : 3 + Math.floor((G.me.rep ?? 0) / 10)) + '</b></div></div>';
   if (!L.length) h += '<div class="gp-note">Você ainda não tem negócios. Fale com Mestre Anselmo na Imobiliária ou procure as placas "À VENDA" (lojas na Rua Nova, oficinas na Vila do Oeste).</div>';
   h += L.map(b => { const P = PROPS_BY[b.pid], S0 = b.sum;
     if (P.kind === 'house') return '<div class="hub-card"><div class="hub-h"><b>🏘 ' + P.name + '</b><span>' + P.district + ' · inquilinos</span></div><div class="hub-row"><span>Caixa de aluguel: <b>' + (b.box || 0) + '</b></span><span>Renda: ' + P.week + '/semana</span></div><div class="hub-act"><button class="est-btn ghost" data-hest="1">Ver no painel de imóveis</button></div></div>';

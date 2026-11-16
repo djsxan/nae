@@ -37,6 +37,7 @@ function jobsF(ev) {
 }
 function jobsKeyUp(k) { if (k === 'f' && G.gath) G.gath = null; }
 function jobsTickC(now) {
+  if (typeof drinkTick === 'function') drinkTick();
   const g = G.gath, me = G.me; if (!g || !me) return;
   if (me.walking || !G.keys.has('f')) { G.gath = null; return; }
   if (now > g.animT) { g.animT = now + 750; const crouch = g.G0.tool === 'sickle'; me.anim = { a: crouch ? 'gather' : 'atk_slashR', t0: now, ms: 700 }; Net.send({ t: 'gathering', a: crouch ? 'crouch' : 'swing' }); }
@@ -44,7 +45,7 @@ function jobsTickC(now) {
 }
 // ---------- desenho: barra de coleta/turno e marcador do trabalho ----------
 function drawJobsOverlay(ctx, now) {
-  const me = G.me; if (!me) return; const ox = G.view.ox, oy = G.view.oy, P = iso(me.rx, me.ry), x = P.sx + ox, y = P.sy + oy - 62;
+  const me = G.me; if (!me) return; if (typeof drawCoinFx === 'function') drawCoinFx(ctx, now); const ox = G.view.ox, oy = G.view.oy, P = iso(me.rx, me.ry), x = P.sx + ox, y = P.sy + oy - 62;
   const bar = (k, col, txt) => { ctx.save(); ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(x - 20, y, 40, 5); ctx.fillStyle = col; ctx.fillRect(x - 19, y + 1, 38 * k, 3); if (txt) { ctx.font = 'bold 6px serif'; ctx.textAlign = 'center'; ctx.fillStyle = '#fff'; ctx.fillText(txt, x, y - 2); } ctx.restore(); };
   if (G.gath) bar(Math.min(1, (now - G.gath.t0) / G.gath.ms), '#9ad860', G.gath.G0.verb);
   if (G.shiftUntil > now) bar(1 - (G.shiftUntil - now) / G.shiftMs, '#e8c45a', 'turno');

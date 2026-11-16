@@ -24,7 +24,7 @@ function pinfo(p) { return { id: p.id, name: p.name, color: p.color, cls: p.cls,
 function fullStat(p) {
   const now = now_();
   return {
-    t: 'pstat', id: p.id, rep: repOf(p), feats: p.feats || {}, wpn: p.wpn || 'sword', prof: p.prof || {}, job: p.job ? jobView(p) : null, hp: p.hp, maxHp: p.maxHp, mp: p.mp, maxMp: p.maxMp, lvl: p.lvl, xp: p.xp, gold: p.gold,
+    t: 'pstat', id: p.id, shea: p.sheathed ? 1 : 0, freeLimb: p.freeLimb ? 1 : 0, rep: repOf(p), feats: p.feats || {}, wpn: p.wpn || 'sword', prof: p.prof || {}, job: p.job ? jobView(p) : null, hp: p.hp, maxHp: p.maxHp, mp: p.mp, maxMp: p.maxMp, lvl: p.lvl, xp: p.xp, gold: p.gold,
     pots: { hp: p.pots.hp, mp: p.pots.mp, band: p.pots.band || 0 }, body: p.body, bleed: p.bleed, food: Math.round(p.food ?? 100), water: Math.round(p.water ?? 100), cold: Math.round(p.cold || 0), infect: p.infect || 0, sick: Math.max(0, (p.sickUntil || 0) - now), hasSkin: !!p.hasSkin, lost: p.lost || 0, pro: p.pro || 0, knock: Math.max(0, (p.knockUntil || 0) - now), inv: { ...p.inv }, quests: { ...p.quests }, qdone: { ...p.qdone },
     buffs: Object.entries(p.buffs).filter(([, u]) => u > now).map(([k, u]) => [k, u - now]),
     cds: [0, 1, 2, 3].map(i => Math.max(0, (p.cds[i] || 0) - now)),
@@ -153,6 +153,7 @@ function hostOnClient(from, m) {
     };
     if (m.inv) for (const k in LOOT) if (m.inv[k] > 0) np.inv[k] = clamp(m.inv[k] | 0, 0, 999);
     if (+m.jailLeft > 0) setTimeout(() => { if (S.players[np.id]) jailPlayer(np, Math.min(900000, +m.jailLeft)); }, 1500);
+    np.sheathed = false; np.freeLimb = !!m.freeLimb;
     np.feats = {}; if (m.feats && typeof m.feats === 'object') for (const k of ['thief', 'jobs', 'shifts', 'rent']) if (isFinite(m.feats[k])) np.feats[k] = clamp(+m.feats[k], 0, 1e5);
     np.prof = {}; if (m.prof && typeof m.prof === 'object') for (const k in PROFS) if (isFinite(m.prof[k])) np.prof[k] = clamp(+m.prof[k], 0, 1e6);
     np.tree = cleanTree(cls, lvl, m.tree); np.use = {}; if (m.use && typeof m.use === 'object') for (const k in USE) if (isFinite(m.use[k])) np.use[k] = clamp(+m.use[k], 0, 1e6);
@@ -174,6 +175,7 @@ function hostOnClient(from, m) {
     setTimeout(() => { if (S.players[from] && S.npcs) Net.toOne(from, { t: 'vlist', list: Object.values(S.npcs).filter(n => n.transient).map(visPublic) }); }, 600);
     sendStat(np);
     sys(`${np.name}, ${CLASSES[cls].name}, chegou à Cidadela de Nae.`);
+    if (S.coins && Object.keys(S.coins).length) setTimeout(() => Net.toOne(from, { t: 'coins', add: Object.values(S.coins).map(c => ({ ...c, d: 0 })) }), 1200);
     return;
   }
   if (!p) return;
@@ -189,8 +191,8 @@ function hostOnClient(from, m) {
       sendStat(p); break;
     }
     case 'tskill': treeSkill(p, m.b | 0, m); break;
-    case 'draw': bowDraw(p, !!m.on); break;
-    case 'loose': bowLoose(p, m); break;
+    case 'draw': if (p.sheathed) { if (m.on) tell(p, 'Saque o arco primeiro (G).'); break; } bowDraw(p, !!m.on); break;
+    case 'loose': if (p.sheathed) break; bowLoose(p, m); break;
     case 'pullarrow': pullArrow(p); break;
     case 'grab': startGrab(p, m); break;
     case 'estate': estateMsg(p, m); break;
@@ -204,7 +206,7 @@ function hostOnClient(from, m) {
     case 'struggle': if (p.bound) { boundStruggle(p); break; } if (!tiedStruggle(p)) struggle(p); break;
     case 'lastwords': case 'execbail': lawMsg(p, m); break;
     case 'untie': untie(p, m); break;
-    case 'shoot': {
+    case 'shoot': { if (p.sheathed && p.cls === 'archer') break;
       const now = now_(); if (p.cls === 'knight' || p.downed || p.carrying || p.lifted || p.atk || p.casting || p.grabbed || now < p.nextAtk) break;
       const rng = CLASSES[p.cls].range + treeEff(p, 'range'), a = +m.a || 0, ok = q => q && Math.abs((q.z || 0) - (p.z || 0)) < 0.5 && (q.alt || 0) < 1.2 && dist(p.x, p.y, q.x, q.y) <= rng + (MON[q.type].rad || 0);
       let q = S.monsters[m.id]; if (!ok(q)) q = null;
@@ -213,13 +215,14 @@ function hostOnClient(from, m) {
       p.target = q.id; basicAttack(p, q, now); break;
     }
     case 'chat': { const text = String(m.text || '').slice(0, 140).trim(); if (text) Net.toAll({ t: 'chat', id: from, name: p.name, text }); break; }
-    case 'skill': if (!p.downed) useSkill(p, m.i | 0); break;
+    case 'skill': if (p.sheathed && p.cls !== 'mage') { tell(p, 'Saque a arma (G) para usar habilidades.'); break; } if (!p.downed) useSkill(p, m.i | 0); break;
     case 'pot': if (!p.downed) usePot(p, m.k); break;
     case 'npc': npcAction(p, m); break;
-    case 'gather': gather(p, m); break;
+    case 'gather': sheatheToggle(p, true, true); gather(p, m); break;
     case 'gathering': near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: m.a === 'crouch' ? 'gather' : 'atk_slashR', ms: 700 }); break;
     case 'job': jobMsg(p, m); break;
     case 'wv': wvMsg(p, m); break;
+    case 'sheathe': sheatheToggle(p); break;
     case 'menu': p.inMenu = !!m.on; break;
     case 'roompw': if (from === Net.myId) { S.roomPw = String(m.pw || '').trim().toUpperCase().slice(0, 24) || null; tell(p, S.roomPw ? 'Reino trancado: quem chegar agora precisa da senha.' : 'Reino aberto: qualquer um pode entrar.'); Net.toOne(from, { t: 'roompw', on: !!S.roomPw }); } break;
     case 'bank': bankMsg(p, m); break;
@@ -237,7 +240,7 @@ function hostOnClient(from, m) {
       break;
     }
     case 'carry': {
-      if (p.carrying) { dropCarried(p); break; }
+      if (p.carrying) { dropCarried(p); break; } sheatheToggle(p, true, true);
       const t = S.players[m.id];
       if (t && t.downed && !t.carriedBy && !p.downed && dist(p.x, p.y, t.x, t.y) <= 1.8) {
         p.carrying = t.id; t.carriedBy = p.id; t.revive = null;
@@ -320,7 +323,7 @@ function hostOnClient(from, m) {
       Net.toOne(p.id, { t: 'loot', k }); sendStat(p); break;
     }
     case 'cook': cookOrDrink(p, 'cook'); break;
-    case 'drinkw': cookOrDrink(p, 'drink'); break;
+    case 'drinkw': if (isFinite(m.dir)) p.dir = m.dir | 0; if (isFinite(m.fa)) p.fa = +m.fa; cookOrDrink(p, 'drink'); break;
     case 'skin': {
       const c = S.corpses && S.corpses[m.id]; if (!c || c.looted || p.downed || dist(p.x, p.y, c.x, c.y) > 1.9) break;
       lootCorpse(p, c); break;
@@ -336,7 +339,9 @@ function hostOnClient(from, m) {
       Net.toOne(p.id, { t: 'chestopen', id: c.id, gold, items }); sendStat(p);
       break;
     }
-    case 'emote': { const k = ['salute', 'dance', 'point', 'cheer', 'surprise', 'adore', 'anger', 'fear', 'sad'].includes(m.k) ? m.k : null; if (k && !p.downed) near(p.x, p.y, { t: 'emote', id: p.id, k }); break; }
+    case 'emote': { const k = ['salute', 'dance', 'point', 'cheer', 'surprise', 'adore', 'anger', 'fear', 'sad'].includes(m.k) ? m.k : null; if (k && !p.downed) near(p.x, p.y, { t: 'emote', id: p.id, k });
+      if (k === 'adore' && !p.dev && Object.values(S.players).some(w => w.dev && w.skin === 'weaver' && w !== p && dist(w.x, w.y, p.x, p.y) < 6)) { const had = now_() < (p.buffs.weaver || 0); p.buffs.weaver = now_() + 3600000; p.food = Math.max(p.food ?? 100, 80); p.water = Math.max(p.water ?? 100, 80); p.cold = 0; if (!had) tell(p, 'O Tecelão aceita a sua devoção: por 1 hora você não sente fome, sede nem frio.'); sendStat(p); }
+      break; }
     case 'exec': {   // entrega o condenado caído ao carrasco: deita na guilhotina, a lâmina cai e a cabeça rola (morte permanente)
       const v = S.players[p.carrying] || (p.drag && p.drag.k === 'p' && p.drag.mode !== 'grip' ? S.players[p.drag.id] : null); if (!v || !v.downed || STAGE.x < 0 || v.execAt || dist(p.x, p.y, STAGE.x, STAGE.y) > 3.4) break;
       if (!npcAlive('executioner')) { tell(p, 'Não há carrasco para executar ninguém.'); break; }
@@ -520,6 +525,7 @@ function nearFire(p, r = 3.2) {
 function survFactor(p) { return ((p.food ?? 100) < 30 ? 0.6 : 1) * ((p.water ?? 100) < 30 ? 0.7 : 1) * ((p.cold || 0) > 50 ? 0.6 : 1) * (p.infect ? 0.7 : 1); }
 function survivalTick(p, now, dt) {
   if (p.dev || p.downed) return;
+  if (now < ((p.buffs || {}).weaver || 0)) { p.cold = Math.max(0, (p.cold || 0) - dt * 5); return; }   // bênção do Tecelão
   const busy = (p.running && p.walking) || now - p.lastCombat < 4000 ? 1.5 : 1, sick = now < (p.sickUntil || 0);
   p.food = Math.max(0, (p.food ?? 100) - dt * 100 / (SURV.foodMin * 60) * busy);
   p.water = Math.max(0, (p.water ?? 100) - dt * 100 / (SURV.waterMin * 60) * busy * (sick ? 2.5 : 1));
@@ -568,7 +574,7 @@ function cookOrDrink(p, what) {
     if (!p.inv.cookedmeat && Object.keys(p.inv).length >= INV_SLOTS) { tell(p, 'Inventário cheio.'); return; }
     p.inv.cookedmeat = (p.inv.cookedmeat || 0) + n; useGain(p, 'cook', n); tell(p, n + ' carne' + (n > 1 ? 's assadas' : ' assada') + '.'); sendStat(p);
   } else if (what === 'drink') {
-    let ok = false; for (let y = Math.round(p.y) - 2; y <= Math.round(p.y) + 2 && !ok; y++) for (let x = Math.round(p.x) - 2; x <= Math.round(p.x) + 2; x++) { if (!inBounds(x, y)) continue; const i = y * MAP_W + x, g = WORLD.ground[i], o = WORLD.obj[i]; if ((g === T.WATER || g === T.SHALLOW || o === O.WELL || o === O.FOUNTAIN) && dist(x, y, p.x, p.y) < 1.9) { ok = true; break; } }
+    let ok = false; for (let y = Math.round(p.y) - 2; y <= Math.round(p.y) + 2 && !ok; y++) for (let x = Math.round(p.x) - 2; x <= Math.round(p.x) + 2; x++) { if (!inBounds(x, y)) continue; const i = y * MAP_W + x, g = WORLD.ground[i], o = WORLD.obj[i]; if ((g === T.WATER || g === T.SHALLOW || o === O.WELL || o === O.FOUNTAIN) && dist(x, y, p.x, p.y) < (o === O.WELL || o === O.FOUNTAIN ? 2.6 : 1.9)) { ok = true; break; } }
     if (!ok) return; near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'scoop', ms: 1500 }); p.water = 100; if (p.hasSkin) p.pots.water = 5; tell(p, p.hasSkin ? 'Você bebeu e encheu o odre.' : 'Você bebeu até matar a sede.'); sendStat(p);
   }
 }
@@ -853,7 +859,7 @@ function npcAction(p, m) {
     say(part.startsWith('leg') ? 'Perna de pau de carvalho, presa com couro e ferro. Não vai correr, mas anda.' : 'Um gancho de ferro bem preso. Não segura espada, mas fere.');
   } else if (n.id === 'priest' && m.a === 'ritual') {
     if (!(p.lost & 30)) { say('A Aurora vê que você está inteiro.'); return; }
-    if (!pay(RITUAL_PRICE)) return;
+    if (!p.freeLimb) { p.freeLimb = true; say('A primeira vez a Aurora concede de graça. Da próxima, ' + RITUAL_PRICE + ' de ouro para o templo.'); } else if (!pay(RITUAL_PRICE)) return;
     p.lost = 0; p.pro = 0; for (const k of BODY_PARTS) { p.body[k] = 100; p.bleed[k] = 0; } aoe('heal', p.x, p.y, { id: p.id });
     say('Pelo fogo da Aurora, o que foi tirado volta a ser seu. Não desperdice este milagre.');
   } else if (n.id === 'priest' && m.a === 'bless') {
@@ -1070,11 +1076,13 @@ function playerStrike(p, k, a, now, c = 0) {
     else return;
   } else if (p.cst < B.st) { tell(p, 'Sem fôlego.'); return; }
   else { p.cst -= B.st; useGain(p, 'breath', B.st / 10); }
+  if (now < (p.sheT || 0)) return;
+  const fist = p.sheathed && p.cls !== 'mage';
   const M = MELEE[p.cls] || MELEE.knight, rip = now < (p.ripUntil || 0);
-  const WP = p.cls === 'knight' ? WEAPONS[p.wpn || 'sword'] : WEAPONS.sword, ch = isFinite(c) ? clamp(c, 0, 1) : 0;
+  const WP = fist ? FIST : p.cls === 'knight' ? WEAPONS[p.wpn || 'sword'] : WEAPONS.sword, ch = isFinite(c) ? clamp(c, 0, 1) : 0;
   const W = Math.round(B.W * M.spd * WP.spd * (rip ? 0.55 : 1) * (ch > 0.05 ? 0.55 : 1)), R = B.R, C = Math.round(B.C * M.spd * WP.spd);   // o golpe carregado já foi preparado segurando o botão
-  p.atk = { k, t0: now, a: isFinite(a) ? a : 0, W, R, C, reach: B.reach * M.reach * WP.reach, arc: B.arc * WP.arc, rip, c: ch, wdmg: WP.dmg, wpn: p.cls === 'knight' ? (p.wpn || 'sword') : 'other' }; p.parry = null; p.ripUntil = 0; p.lastCombat = now;
-  anim('p', p, 'atk_' + k, p.x + Math.cos(p.atk.a), p.y + Math.sin(p.atk.a), { ms: W + R + C, W, ang: p.atk.a, reach: p.atk.reach, arc: B.arc });
+  p.atk = { k, t0: now, a: isFinite(a) ? a : 0, W, R, C, reach: B.reach * M.reach * WP.reach, arc: B.arc * WP.arc, rip, c: ch, wdmg: WP.dmg, wpn: fist ? 'fist' : p.cls === 'knight' ? (p.wpn || 'sword') : 'other' }; p.parry = null; p.ripUntil = 0; p.lastCombat = now;
+  anim('p', p, fist ? 'punch' : 'atk_' + k, p.x + Math.cos(p.atk.a), p.y + Math.sin(p.atk.a), { ms: W + R + C, W, ang: p.atk.a, reach: p.atk.reach, arc: B.arc });
   sendStat(p);
 }
 // duelo: só vale se os dois ligaram o modo duelo e estão fora da cidade
@@ -1103,6 +1111,7 @@ function pvpHit(p, q, A, now) {
   }
   const B = STRIKES[A.k], M = MELEE[p.cls] || MELEE.knight, { dmg } = roll(p, B.mult * M.dmg * (A.wdmg || 1) * (1 + 0.6 * (A.c || 0)) * (A.rip ? 1.25 : 1));
   const crit = roll(p, 1).crit;
+  if (A.wpn === 'fist') { const d = Math.min(Math.round(dmg), Math.max(0, Math.floor(q.hp) - 1)); if (d > 0) damagePlayer(q, d, { x: p.x, y: p.y, name: p.name }, 0, B.zone); if (q.hp <= 1.5 || A.c >= HEAVY) { q.stunUntil = Math.max(q.stunUntil || 0, now + 1400); knockPlayer(q, { x: p.x, y: p.y }, now); } sendStat(q); return; }
   if (lethalHit(p, q, A, 'p')) return;
   damagePlayer(q, Math.round(dmg * (crit ? 1.6 : 1)), { x: p.x, y: p.y, name: p.name }, 0, B.zone);
   if (crit && A.k !== 'stab' && !q.downed) severPlayer(q, severPart(A.k, q.lost || 0), { x: p.x, y: p.y, name: p.name });
@@ -1111,7 +1120,8 @@ function pvpHit(p, q, A, now) {
 function resolvePlayerStrike(p, A, now) { p._melee = true; try { resolvePlayerStrike0(p, A, now); } finally { p._melee = false; } }
 function resolvePlayerStrike0(p, A, now) {
   { const B0 = STRIKES[A.k]; let n = 0; for (const q of Object.values(S.players)) { if (n >= (B0.multi || 1) || !pvpOk(p, q) || !inArc(p.x, p.y, A.a, q.x, q.y, A.reach, A.arc, 0.3)) continue; pvpHit(p, q, A, now); n++; } if (n) return; }
-  for (const n of Object.values(S.npcs || {})) { if (n.dead || n.onBack || n.carriedBy || !inArc(p.x, p.y, A.a, n.x, n.y, A.reach, A.arc, 0.3)) continue; const B1 = STRIKES[A.k], M1 = MELEE[p.cls] || MELEE.knight; if ((A.c || 0) >= HEAVY && B1.zone === 'head' && Math.random() < 0.85) { npcDamage(n, 9999, p); if (!n.dead) npcDamage(n, 9999, p); near(n.x, n.y, { t: 'blood', x: n.x, y: n.y, n: 14 }); continue; } npcDamage(n, roll(p, B1.mult * M1.dmg * (A.wdmg || 1) * (1 + 0.6 * (A.c || 0))).dmg, p); break; }
+  for (const n of Object.values(S.npcs || {})) { if (n.dead || n.onBack || n.carriedBy || !inArc(p.x, p.y, A.a, n.x, n.y, A.reach, A.arc, 0.3)) continue;
+    if (A.wpn === 'fist') { if (!n.downed) npcDamage(n, rint(3, 7) + (A.c >= HEAVY ? 6 : 0), p); continue; }   /* a soco ninguém morre: caído não toma mais */ const B1 = STRIKES[A.k], M1 = MELEE[p.cls] || MELEE.knight; if ((A.c || 0) >= HEAVY && B1.zone === 'head' && Math.random() < 0.85) { npcDamage(n, 9999, p); if (!n.dead) npcDamage(n, 9999, p); near(n.x, n.y, { t: 'blood', x: n.x, y: n.y, n: 14 }); continue; } npcDamage(n, roll(p, B1.mult * M1.dmg * (A.wdmg || 1) * (1 + 0.6 * (A.c || 0))).dmg, p); break; }
   const B = STRIKES[A.k], M = MELEE[p.cls] || MELEE.knight;
   const targets = Object.values(S.monsters).filter(q => Math.abs((q.z || 0) - (p.z || 0)) < 0.5 && (q.alt || 0) < 1.2 && inArc(p.x, p.y, A.a, q.x, q.y, A.reach, A.arc, MON[q.type].rad || 0.3)).sort((a, b) => dist(a.x, a.y, p.x, p.y) - dist(b.x, b.y, p.x, p.y)).slice(0, B.multi || 1);
   for (const q of targets) {
@@ -1795,6 +1805,7 @@ function guardThink(n, now, dt) {
   }
   n.aggro = null; n.goFetch = null;
   if (n.chaseNpc) { const t = S.npcs[n.chaseNpc]; if (!t || !(t.wantedT > now)) n.chaseNpc = null; else { if (dist(n.x, n.y, t.x, t.y) < 1.3) { n.chaseNpc = null; thiefCaught(t, null); } else npcWalk(n, t.x, t.y, 2.7, dt); return; } }
+  if (guardThreat(n, now, dt)) return;
   if (n.alert && now < n.alert.until) { if (npcWalk(n, n.alert.x, n.alert.y, 2.3, dt)) n.alert = null; return; } else n.alert = null;   // chamado por um morador: corre até lá
   // socorro: jogador caído (não procurado) dentro da cidade, sem ninguém cuidando
   for (const q of Object.values(S.players)) {
@@ -2135,7 +2146,7 @@ function hostTick() {
   const dt = S.lastTick ? Math.min(0.25, (now - S.lastTick) / 1000) : 0.1;
   S.lastTick = now;
   const players = Object.values(S.players);
-  estateTick(now); jobsTick(now); if (now - (S.bankT || 0) > 5000) { S.bankT = now; bankTick(now); }
+  estateTick(now); jobsTick(now); coinTick(now); if (now - (S.bankT || 0) > 5000) { S.bankT = now; bankTick(now); }
 
   if (!S.filled) {
     for (let i = 0; i < 8000 && wildCount() < MAX_WILD; i++) spawnMonster();
@@ -2207,7 +2218,7 @@ function hostTick() {
       if (p.devHidden && p.id !== r.id) continue;
       let fl = (p.walking ? 1 : 0) | (p.downed ? 2 : 0) | (p.carriedBy ? 4 : 0) | (p.carrying ? 8 : 0) | (p.running && p.walking ? 256 : 0) | (p.sit ? 512 : 0) | (p.sit === 'c' ? 1024 : 0) | (p.sleep != null ? 32768 : 0) | (p.drawT ? 65536 : 0) | (p.dragBy ? 131072 : 0) | (p.dragMode === 'foot' ? 262144 : 0) | (p.drag && p.drag.mode === 'arms' ? 524288 : 0) | (p.drag && p.drag.mode === 'foot' ? 1048576 : 0) | (p.drag && p.drag.mode === 'back' ? 2097152 : 0) | (p.drag && p.drag.mode === 'grip' ? 4194304 : 0) | (p.gripBy ? 8388608 : 0) | (p.tied ? 16777216 : 0) | (p.choked ? 33554432 : 0) | (p.choking ? 67108864 : 0) | (p.escortBy || p.surrendered ? 134217728 : 0) | (p.jailUntil > now ? 536870912 : 0) | (p.bound ? 1073741824 : 0) | (p.drag && (p.drag.helper || ((dragTarget(p.drag.k, p.drag.id) || {}).dragBy2)) ? 268435456 : 0) | ((p.fl || 0) << 11) | (p.crouch ? 8192 : 0) | (p.slide ? 16384 : 0);
       for (const b in BUFF_BITS) if (buffOn(p, b)) fl |= BUFF_BITS[b];
-      pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0, (p.surrendered ? 1 : 0) | (p.bound && p.bound.kind === 'rope' ? 2 : 0) | (p.bound && p.bound.kind === 'cuffs' ? 4 : 0) | (p.dragBy && (/^(n:|m:)/.test(String(p.dragBy)) || p.dragMode === 'lead') && !p.downed ? 8 : 0) | (p.pkg ? 16 : 0) | (p.shift ? 32 : 0) | (p.wpn === 'halberd' ? 64 : 0) | ((p.uni || 0) << 7) | (p.inMenu ? 1024 : 0)]);
+      pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0, (p.surrendered ? 1 : 0) | (p.bound && p.bound.kind === 'rope' ? 2 : 0) | (p.bound && p.bound.kind === 'cuffs' ? 4 : 0) | (p.dragBy && (/^(n:|m:)/.test(String(p.dragBy)) || p.dragMode === 'lead') && !p.downed ? 8 : 0) | (p.pkg ? 16 : 0) | (p.shift ? 32 : 0) | (p.wpn === 'halberd' ? 64 : 0) | ((p.uni || 0) << 7) | (p.inMenu ? 1024 : 0) | (p.sheathed ? 2048 : 0)]);
     }
     for (const m of mons) {
       if (Math.abs(m.x - r.x) > VIEW_RADIUS || Math.abs(m.y - r.y) > VIEW_RADIUS) continue;
@@ -2215,7 +2226,7 @@ function hostTick() {
     }
     const ch = []; for (const id in S.chests) { const c = S.chests[id]; if (Math.abs(c.x - r.x) <= VIEW_RADIUS && Math.abs(c.y - r.y) <= VIEW_RADIUS) ch.push([c.id, Math.round(c.x * 100), Math.round(c.y * 100), c.opened.has(r.id) ? 1 : 0, c.who.has(r.id) ? 1 : 0]); }
     const co = []; for (const id in S.corpses || {}) { const c = S.corpses[id]; if (Math.abs(c.x - r.x) <= VIEW_RADIUS && Math.abs(c.y - r.y) <= VIEW_RADIUS) co.push([c.id, MON_TYPES.indexOf(c.type), Math.round(c.x * 100), Math.round(c.y * 100), c.z, c.looted ? 1 : 0, Math.round(c.ix * 10), Math.round(c.iy * 10), c.lost || 0, c.onBack || 0]); }
-    const np = []; for (const n of Object.values(S.npcs || {})) { if (Math.abs(n.x - r.x) > VIEW_RADIUS + 4 || Math.abs(n.y - r.y) > VIEW_RADIUS + 4) continue; np.push([n.id, Math.round(n.x * 100), Math.round(n.y * 100), (n.downed ? 1 : 0) | (n.dead ? 2 : 0) | (n.dragBy && n.dragMode !== 'back' ? 4 : 0) | (n.dragMode === 'foot' ? 8 : 0) | (n.walk ? 32 : 0) | (n.lead && n.lead.phase === 'walk' ? 64 : 0) | (n.crawl ? 128 : 0) | (n.sleeping ? 256 : 0) | (n.job && n.job.st === 'levando' ? 512 : 0) | (n.drunkT > now ? 1024 : 0), n.onBack || 0, n.carrying || 0]); }
+    const np = []; for (const n of Object.values(S.npcs || {})) { if (Math.abs(n.x - r.x) > VIEW_RADIUS + 4 || Math.abs(n.y - r.y) > VIEW_RADIUS + 4) continue; np.push([n.id, Math.round(n.x * 100), Math.round(n.y * 100), (n.downed ? 1 : 0) | (n.dead ? 2 : 0) | (n.dragBy && n.dragMode !== 'back' ? 4 : 0) | (n.dragMode === 'foot' ? 8 : 0) | (n.walk ? 32 : 0) | (n.lead && n.lead.phase === 'walk' ? 64 : 0) | (n.crawl ? 128 : 0) | (n.sleeping ? 256 : 0) | (n.job && n.job.st === 'levando' ? 512 : 0) | (n.drunkT > now ? 1024 : 0) | (n.arrest || n.aggro || n.fight || n.threat || n.chaseNpc || n.goFetch ? 2048 : 0), n.onBack || 0, n.carrying || 0]); }
     Net.toOne(r.id, { t: 's', p: pl, m: ml, ch, co, np, jc: (S.cells || []).map(c => c.open ? 1 : 0) }, true);
   }
 }
@@ -2292,9 +2303,9 @@ function bizLog(B, t) { B.log.unshift({ t, at: Date.now() }); if (B.log.length >
 function canAcquire(p, P, how) {
   if (P.kind === 'house' && tenantsOf(P).length) { if (how !== 'buy') return 'Essa casa tem inquilino: dá para comprar (e receber o aluguel), não para alugar.'; if (bizOf(p).length >= BIZ_MAX) return 'No máximo ' + BIZ_MAX + ' negócios/investimentos por personagem.'; return null; }
   if (P.kind === 'house') { if (rentalOf(p)) return 'Você já tem uma casa. Devolva ou venda antes.'; return null; }
-  if (P.kind === 'bank') { if (how !== 'buy') return 'O banco não se aluga: só se compra.'; if (repOf(p) < (P.repMin || 70)) return 'O Conselho só vende o banco a quem tem reputação ' + (P.repMin || 70) + ' ou mais (a sua: ' + repOf(p) + ').'; if (bizOf(p).length >= BIZ_MAX) return 'Limite de negócios.'; return null; }
+  if (P.kind === 'bank') { if (how !== 'buy') return 'O banco não se aluga: só se compra.'; if (repOf(p) < (P.repMin || 70)) return 'O Conselho só vende o banco a quem tem reputação ' + (P.repMin || 70) + ' ou mais (a sua: ' + repOf(p) + ').'; if (bizOf(p).length >= bizMax(p)) return 'Limite de negócios para a sua reputação.'; return null; }
   if (!isBizProp(P)) return 'Esse ponto tem dono e não está à venda.';
-  if (bizOf(p).length >= BIZ_MAX) return 'No máximo ' + BIZ_MAX + ' negócios por personagem por enquanto.';
+  if (bizOf(p).length >= bizMax(p)) return 'Com a sua reputação (' + repOf(p) + ') você pode ter ' + bizMax(p) + ' negócios. Cada 10 de reputação libera mais um; com 90, sem limite.';
   return null;
 }
 function estateMsg(p, m) {
@@ -2554,7 +2565,7 @@ function resSpot(n, act) {
   return [n.postX, n.postY];
 }
 function residentTick(n, now, dt) {
-  if (now - (n.meetT || 0) > 1000) { n.meetT = now; memMeet(n, now); }
+  if (now - (n.meetT || 0) > 1000) { n.meetT = now; memMeet(n, now); bodyReact(n, now); }
   const hr = resHour(), N = n.need || (n.need = { food: 70 + Math.random() * 30, rest: 90, social: 40 + Math.random() * 40 }), perDay = 24 / (ESTATE_DAY_MS / 1000);
   N.food = Math.max(0, N.food - dt * perDay * 4); N.social = Math.max(0, N.social - dt * perDay * 3); if (!n.sleeping) N.rest = Math.max(0, N.rest - dt * perDay * 5);
   let act = hr >= 22 || hr < 6 ? 'sleep' : N.rest < 12 ? 'sleep' : N.food < 25 ? 'eat' : hr < 7 ? 'home' : hr < 12 ? 'work' : hr < 13 ? 'eat' : hr < 18 ? 'work' : N.social < 75 ? 'social' : 'home';
@@ -2584,8 +2595,8 @@ function residentTick(n, now, dt) {
 //  MEMÓRIA DOS MORADORES — cada NPC com nome tem uma opinião (−100 a +100) sobre cada jogador; muda com o que ele VIU
 //  e com a fofoca da noite (pela metade). Fica só na memória do reino: zera quando um reino novo é criado.
 // ============================================================
-const MEM_DELTA = { buy: 2, gift: 8, rescue: 15, assault_me: -40, assault: -15, murder: -40, jailed: -10, executed: -10, evict: -60, thief: 12 };
-const MEM_TXT = { buy: 'comprou na loja', gift: 'deu um presente', rescue: 'salvou alguém', assault_me: 'me agrediu', assault: 'agrediu alguém', murder: 'matou alguém', jailed: 'foi preso', executed: 'foi levado à guilhotina', evict: 'me despejou', thief: 'pegou um ladrão' };
+const MEM_DELTA = { body: -12, buy: 2, gift: 8, rescue: 15, assault_me: -40, assault: -15, murder: -40, jailed: -10, executed: -10, evict: -60, thief: 12 };
+const MEM_TXT = { body: 'arrastava um corpo pela cidade', buy: 'comprou na loja', gift: 'deu um presente', rescue: 'salvou alguém', assault_me: 'me agrediu', assault: 'agrediu alguém', murder: 'matou alguém', jailed: 'foi preso', executed: 'foi levado à guilhotina', evict: 'me despejou', thief: 'pegou um ladrão' };
 S.op = S.op || {};
 const memKey = p => String(p.name || '').trim().toLowerCase();
 function opOf(n, p) { const o = S.op[n.id] && S.op[n.id][memKey(p)]; return o ? o.v : 0; }
@@ -2601,7 +2612,9 @@ function memAdd(n, p, kind, heard, from) {
 // todo mundo com nome que viu (perto e com linha de visão, ou dentro do mesmo prédio)
 function memEvent(p, x, y, kind, victim) {
   if (!p || p.dev || !S.npcs) return; const bi = WORLD.bld[tileAt(x, y)];
-  for (const n of Object.values(S.npcs)) { if (n.dead || n.sleeping || n === victim) continue; const d = dist(n.x, n.y, x, y); if (d > 9) continue; const nb = WORLD.bld[tileAt(n.x, n.y)]; if (!(nb === bi && bi >= 0) && !sightClear(n.x, n.y, x, y)) continue; memAdd(n, p, kind); }
+  const seen = [];
+  for (const n of Object.values(S.npcs)) { if (n.dead || n.sleeping || n === victim) continue; const d = dist(n.x, n.y, x, y); if (d > 9) continue; const nb = WORLD.bld[tileAt(n.x, n.y)]; if (!(nb === bi && bi >= 0) && !sightClear(n.x, n.y, x, y)) continue; memAdd(n, p, kind); seen.push(n.id); }
+  if ((kind === 'murder' || kind === 'assault') && seen.length) { const W = (S.wit = S.wit || {})[memKey(p)] = (S.wit[memKey(p)] || []).filter(w => now_() - w.t < 1800000); W.push({ kind, t: now_(), vic: victim ? victim.id : null, seen }); }
   if (victim) memAdd(victim, p, kind === 'assault' ? 'assault_me' : kind);
 }
 // fofoca: quem conversa passa adiante a lembrança mais forte que tem (pela metade)
@@ -2685,7 +2698,7 @@ const SHIFT_MS = BIZ_HOUR_MS * 5;   // turno: 5 horas do jogo (2,5 min)
 function shiftMsg(p, m) {
   const now = now_();
   if (m.a === 'start') {
-    const bi = WORLD.bld[tileAt(p.x, p.y)], b = BUILDINGS[bi]; if (bi < 0 || !b || p.shift || p.downed || p.bound) return;
+    const bi = WORLD.bld[tileAt(p.x, p.y)], b = BUILDINGS[bi]; if (bi < 0 || !b || p.shift || p.downed || p.bound) return; sheatheToggle(p, true, true);
     const st = Object.values(S.npcs).find(n => (n.bi === bi || WORLD.bld[tileAt(n.postX, n.postY)] === bi) && n.kind !== 'guard'); const P = PROPS.find(q => q.bi === bi);
     if (!st && !(P && S.estate && S.estate.r[P.id])) { tell(p, 'Aqui não tem trabalho.'); return; }
     const shop = ['shop', 'tavern', 'boutique', 'fruithouse'].includes(b.kind), prof = shop ? 'comerciante' : 'artesao';
@@ -2822,7 +2835,7 @@ const bankProp = () => PROPS.find(P => P.kind === 'bank');
 function bankOwnerRec() { const P = bankProp(); return P && S.estate && S.estate.r[P.id]; }
 const loanMax = p => 100 + repOf(p) * 4;
 function bankView(p) { const A = bankAcc(p), O = bankOwnerRec(); return { t: 'bank', g: Math.floor(A.g), loan: Math.ceil(A.loan), due: A.due ? (A.due * ESTATE_DAY_MS - Date.now()) : 0, max: loanMax(p), rep: repOf(p), owner: O ? O.ownerName : 'a Coroa' }; }
-function nearBanker(p) { return Object.values(S.npcs || {}).some(n => (n.kind === 'banker' || n.kind === 'banker2' || n.kind === 'banker3') && !n.dead && !n.downed && dist(n.x, n.y, p.x, p.y) < 4.5); }
+function nearBanker(p) { return Object.values(S.npcs || {}).some(n => /^banker\d?$/.test(n.kind) && !n.dead && !n.downed && dist(n.x, n.y, p.x, p.y) < 4.5); }
 function bankMsg(p, m) {
   const A = bankAcc(p), q = Math.max(0, Math.floor(+m.q || 0));
   if (m.a !== 'open' && !nearBanker(p)) { tell(p, 'Fale com um dos banqueiros, no Banco de Nae.'); return; }
@@ -2867,6 +2880,7 @@ function wvMsg(p, m) {
   if (m.a === 'snap') { Net.toOne(p.id, wvSnap()); return; }
   if (m.a !== 'act') return;
   const q = m.kind === 'p' ? S.players[m.id] : m.kind === 'n' ? S.npcs && S.npcs[m.id] : null, v = m.v;
+  if (m.op === 'coins') { coinRain(p, clamp(+v || 10, 1, 5000)); return; }
   if (m.op === 'time' || m.op === 'rain') { if (m.op === 'time') WTs().ph = v == null ? null : clamp(+v, 0, 1); else WTs().rain = v == null ? null : clamp(+v, 0, 1); Net.toAll({ t: 'wt', ph: WTs().ph, rain: WTs().rain }); }
   else if (!q) return;
   else if (m.op === 'tp') { p.x = clamp(q.x + 1.2, 1, MAP_W - 2); p.y = clamp(q.y + 0.6, 1, MAP_H - 2); p.z = 0; p.fl = 0; p.fb = -1; Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: 0, fl: 0, fb: -1 }); }
@@ -2876,6 +2890,7 @@ function wvMsg(p, m) {
   }
   else if (m.op === 'jail' && m.kind === 'p') { if (!(q.jailUntil > now_())) { q.sentence = Math.max(30000, +v || 120000); jailPlayer(q, q.sentence); sys(q.name + ' foi levado à cadeia pelo Tecelão.'); } }
   else if (m.op === 'free' && m.kind === 'p') { if (q.jailUntil > now_()) releasePlayer(q, 'O Tecelão abriu a sua cela.'); if (q.condemned) condemn(q, false); q.wanted = 0; q.sentence = 0; q.crimes = []; q.murderer = false; q.bound = null; q.surrendered = false; Net.toAll({ t: 'wanted', id: q.id, ms: 0 }); sendStat(q); }
+  else if (m.op === 'rain') {}
   else if (m.op === 'gold' && m.kind === 'p') { const g = Math.round(+v || 0); q.gold = Math.max(0, q.gold + g); tell(q, g >= 0 ? 'O Tecelão te deu ' + g + ' de ouro.' : 'O Tecelão tirou ' + (-g) + ' de ouro de você.'); sendStat(q); }
   Net.toOne(p.id, wvSnap());
 }
@@ -2978,4 +2993,116 @@ function npcWalk(n, tx, ty, speed, dt) {
     if (n._stuck > 8 && n.legs.length === 1 && dist(n.x, n.y, tx, ty) < 1.25) { n.walk = false; return true; }   // destino exato bloqueado (grade, balcão): chegou perto o bastante
   } else { n._stuck = 0; if (!nearDoor) n.doorWait = 0; }
   n.walk = moved > 0.001; return dist(n.x, n.y, tx, ty) < 0.6;
+}
+
+// ============================================================
+//  GUARDAR A ARMA (G) — leva meio segundo (espada) ou um pouco mais (alabarda, arco, cajado); guardada: soco que não mata
+// ============================================================
+const FIST = { reach: 0.62, dmg: 0.22, spd: 0.8, arc: 0.7 };
+const bizMax = p => { const r = repOf(p); return r >= 90 ? 999 : 3 + Math.floor(r / 10); };
+function sheatheToggle(p, force, quiet) {
+  const now = now_(); if (!p || p.downed || p.bound || p.dev || now < (p.sheT || 0)) return;
+  const want = force != null ? !!force : !p.sheathed; if (want === !!p.sheathed) return;
+  const long = p.cls !== 'knight' || p.wpn === 'halberd', ms = long ? 750 : 500;
+  p.sheT = now + ms; p.atk = null; p.parry = null; if (want && p.drawT) p.drawT = 0;
+  anim('p', p, (want ? 'sheathe' : 'drawwp') + (long ? 'B' : 'H'), p.x, p.y, { ms });
+  setTimeout(() => { if (!S.players[p.id]) return; p.sheathed = want; p.sheT = 0; sendStat(p); }, quiet ? 120 : ms);
+}
+
+// ============================================================
+//  SENTINELAS AMEAÇANDO — sacam a arma e mandam: guardar a arma, sair de lugar proibido, explicar o corpo, ou ficam de olho
+//  (suspeito). Três avisos; desobedeceu, fica procurado por 1 minuto e ela ataca.
+// ============================================================
+const THREAT_LINES = { weapon: ['Guarde essa arma!', 'Estou mandando: guarde a arma!', 'Último aviso! Guarde a arma!'], trespass: ['Você não pode ficar aqui!', 'Saia agora, ou eu te tiro!', 'Último aviso! Fora daqui!'] };
+const bodyOf = q => { if (q.carrying) { const v = S.players[q.carrying]; return v ? { k: 'p', id: v.id, e: v, dead: false } : null; } if (q.drag) { const t = dragTarget(q.drag.k, q.drag.id); if (t && (q.drag.k === 'c' || t.downed || t.dead)) return { k: q.drag.k, id: q.drag.id, e: t, dead: q.drag.k === 'c' || !!t.dead }; } return null; };
+function trespassAt(q) {
+  const bi = WORLD.bld[tileAt(q.x, q.y)], b = BUILDINGS[bi]; if (!b) return false;
+  if (b.kind === 'castle') return true;
+  if (b.kind === 'bank') { const [dx, dy] = doorTile(b); return dist(q.x, q.y, dx, dy) > Math.max(b.w, b.h) - 2.6; }   // perto do cofre
+  return false;
+}
+function threatWhy(q, now) {
+  if (q.dev || q.downed || q.jailUntil > now || q.bound || q.escortBy || q.carriedBy || q.condemned || now < (q.wanted || 0)) return null;
+  if (bodyOf(q) && !(now < (q.bodyOk || 0))) return 'body';
+  if (trespassAt(q)) return 'trespass';
+  if (!q.sheathed && !q.sheT && inSafe(q.x, q.y)) return 'weapon';
+  if (!(now < (q.suspectT || 0)) && repOf(q) < 20) return 'suspect';
+  return null;
+}
+function guardThreat(n, now, dt) {
+  const shout = txt => near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'shout', txt, ms: 1 }, VIEW_RADIUS + 4);
+  if (n.threat) {
+    const T = n.threat, q = S.players[T.id], d = q ? dist(n.x, n.y, q.x, q.y) : 99, why = q && d < 18 ? threatWhy(q, now) : null;
+    if (!why || (T.why !== why && T.why !== 'suspect')) { if (q && T.warn > 0 && d < 12 && T.why !== 'suspect') shout(T.why === 'weapon' ? 'Assim está melhor.' : 'Bom. Ande na linha.'); n.threat = null; return false; }
+    T.why = why; n.face = Math.atan2(q.y - n.y, q.x - n.x);
+    if (d > (why === 'body' ? 1.4 : 2.4)) npcWalk(n, q.x, q.y, why === 'body' ? 2.2 : 1.7, dt); else n.walk = false;
+    if (why === 'body') { if (!T.called) { T.called = 1; shout('Pare aí! O que é isso que você está carregando?'); } if (d < 1.6) { bodyInquiry(n, q, now); n.threat = null; } return true; }
+    if (why === 'suspect') { if (!T.said) { T.said = 1; shout(['Estou de olho em você.', 'Andando na linha, ouviu?', 'Nada de gracinha na minha cidade.'][Math.floor(Math.random() * 3)]); } if (now - T.t0 > 14000) { q.suspectT = now + 180000; n.threat = null; } return true; }
+    if (now >= T.t && d < 10) {
+      if (T.warn >= 3) { q.wanted = Math.max(q.wanted || 0, now + 60000); Net.toAll({ t: 'wanted', id: q.id, ms: q.wanted - now }); tell(q, 'Você desobedeceu a sentinela: procurado por 1 minuto!'); shout('Você pediu por isso!'); n.arrest = q.id; n.aggro = q.id; n.threat = null; return false; }
+      shout(THREAT_LINES[why][T.warn]); T.warn++; T.t = now + 3800; if (T.warn === 1) tell(q, why === 'weapon' ? 'A sentinela manda guardar a arma (G). São três avisos.' : 'A sentinela manda você sair daqui. São três avisos.');
+    }
+    return true;
+  }
+  if (!inSafe(n.x, n.y)) return false;
+  for (const q of Object.values(S.players)) {
+    if (dist(n.x, n.y, q.x, q.y) > 7 || (q.fl || 0) > 0 && (q.fl || 0) !== (n.fl || 0)) continue;
+    const why = threatWhy(q, now); if (!why) continue;
+    if (WORLD.bld[tileAt(q.x, q.y)] !== WORLD.bld[tileAt(n.x, n.y)] && !sightClear(n.x, n.y, q.x, q.y)) continue;
+    if (Object.values(S.npcs).some(o => o !== n && o.threat && o.threat.id === q.id)) continue;   // outra sentinela já está cuidando
+    n.threat = { id: q.id, why, warn: 0, t: now + 700, t0: now }; return true;
+  }
+  return false;
+}
+// interrogatório: as testemunhas decidem. Alguém viu você atacar/matar? Preso. Ninguém viu? Aviso e segue.
+function bodyInquiry(n, q, now) {
+  const B = bodyOf(q), W = ((S.wit || {})[memKey(q)] || []).filter(w => now - w.t < 1800000 && w.seen.some(id => S.npcs[id] && !S.npcs[id].dead));
+  const hit = W.find(w => B && w.vic === B.id) || W.find(w => w.kind === 'murder') || W[0];
+  const say = txt => near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt, ms: 1 }, VIEW_RADIUS + 4);
+  if (hit) {
+    const wn = S.npcs[hit.seen.find(id => S.npcs[id] && !S.npcs[id].dead)], who = wn ? wn.name.split(',')[0] : 'uma testemunha';
+    say(who + ' viu tudo. Você está preso!'); if (q.drag) stopDrag(q); if (q.carrying) dropCarried(q);
+    q.wanted = now + 300000; crimeSentence(q, hit.kind === 'murder' || (B && B.dead) ? 'murder' : 'assault'); Net.toAll({ t: 'wanted', id: q.id, ms: 300000 });
+    tell(q, who + ' contou à sentinela o que você fez. Renda-se (Y) ou lute.'); sys(n.name + ' prendeu ' + q.name + ': ' + who + ' testemunhou.'); n.arrest = q.id; n.aggro = q.id;
+  } else {
+    say(B && B.dead ? 'Ninguém viu nada... Leve esse corpo ao templo. E não me apareça com outro.' : 'Leve-o à Irmã Lúmina, na capela. Rápido.');
+    q.bodyOk = now + 180000; tell(q, 'A sentinela te liberou: ninguém testemunhou nada contra você.');
+  }
+}
+// moradores vendo alguém arrastar/carregar um corpo: desmaiado = oferecem ajuda; morto = espanto, fuga (os corajosos mandam largar),
+// chamam a guarda e ficam com má impressão (que vira fofoca na taverna)
+function bodyReact(n, now) {
+  if (n.dead || n.downed || n.sleeping || n.kind === 'guard' || n.kind === 'captain' || n.fight) return;
+  for (const p of Object.values(S.players)) {
+    if (p.dev) continue; const B = bodyOf(p); if (!B) continue; const d = dist(n.x, n.y, p.x, p.y); if (d > 7) continue;
+    if (WORLD.bld[tileAt(n.x, n.y)] !== WORLD.bld[tileAt(p.x, p.y)] && !sightClear(n.x, n.y, p.x, p.y)) continue;
+    S.bodyT = S.bodyT || {}; const key = n.id + '|' + p.id; if (now - (S.bodyT[key] || 0) < 25000) continue; S.bodyT[key] = now;
+    const sh = (a, txt) => near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a, txt, ms: 1 }, VIEW_RADIUS + 4);
+    if (!B.dead) { sh('talk', ['Ele está bem? A capela fica perto da praça.', 'Precisa de ajuda com ele?', 'Coitado... leve-o à Irmã Lúmina.'][Math.floor(Math.random() * 3)]); continue; }
+    memAdd(n, p, 'body');
+    if (BRAVE.has(n.kind) || BRAVE.has(n.id)) sh('shout', ['Largue esse corpo!', 'O que você fez?!', 'Alguém chame a guarda!'][Math.floor(Math.random() * 3)]);
+    else { sh('shout', ['Um corpo!', 'Socorro! Assassino!', 'Meu Deus... Guardas!'][Math.floor(Math.random() * 3)]); n.flee = { id: p.id, until: now + 7000 }; }
+    const g = Object.values(S.npcs).filter(q => q.kind === 'guard' && !q.dead && !q.downed && !q.lead && !q.carrying).sort((a, b) => dist(a.x, a.y, n.x, n.y) - dist(b.x, b.y, n.x, n.y))[0];
+    if (g && dist(g.x, g.y, n.x, n.y) < 35) g.alert = { x: p.x, y: p.y, until: now + 20000 };
+  }
+}
+
+// ============================================================
+//  CHUVA DE OURO DO TECELÃO — moedas brotam em volta dele; qualquer jogador pega passando por cima; somem em 10 min
+// ============================================================
+const COIN_MS = 600000;
+function coinRain(w, amount) {
+  S.coins = S.coins || {}; const n = clamp(Math.round(amount / 5), 6, 48), add = []; let left = Math.round(amount);
+  for (let k = 0; k < n && left > 0; k++) {
+    const v = k === n - 1 ? left : Math.max(1, Math.round(amount / n * (0.6 + Math.random() * 0.8))); left -= v;
+    let x = w.x, y = w.y; for (let t = 0; t < 12; t++) { const a = Math.random() * Math.PI * 2, r = 1.1 + Math.random() * 2.6; x = w.x + Math.cos(a) * r; y = w.y + Math.sin(a) * r; if (canStand(x, y, 0, 0.15) && WORLD.bld[tileAt(x, y)] === WORLD.bld[tileAt(w.x, w.y)]) break; x = w.x; y = w.y; }
+    const id = 'c' + (S.coinN = (S.coinN || 0) + 1), c = { id, x: +x.toFixed(2), y: +y.toFixed(2), v, t: now_(), d: Math.round(k * 55 + Math.random() * 120) }; S.coins[id] = c; add.push(c);
+  }
+  Net.toAll({ t: 'coins', add, from: w.id }); near(w.x, w.y, { t: 'anim', w: 'p', id: w.id, a: 'cast', ms: 900 });
+}
+function coinTick(now) {
+  const C = S.coins; if (!C) return; const del = [];
+  for (const id in C) { const c = C[id]; if (now - c.t > COIN_MS) { delete C[id]; del.push([id, null]); continue; } if (now - c.t < (c.d || 0) + 650) continue;
+    for (const p of Object.values(S.players)) { if (p.downed || p.carriedBy || (p.fl || 0) > 0 || Math.abs(p.x - c.x) > 0.7 || Math.abs(p.y - c.y) > 0.7 || dist(p.x, p.y, c.x, c.y) > 0.62) continue; p.gold += c.v; delete C[id]; del.push([id, p.id, c.v]); sendStat(p); break; } }
+  if (del.length) Net.toAll({ t: 'coins', del });
 }

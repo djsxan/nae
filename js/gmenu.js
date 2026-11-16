@@ -114,7 +114,7 @@ function pauseNotesRefresh() { if (GM.on && GM.tab === 'notes') gmNotes(); }
 //  PAINEL DO TECELÃO — pessoas, negócios, banco e o mundo, com ações de criador
 // ============================================================
 function gmWvEvent(m) { if (m.t !== 'wv') return false; GM.wv = m; GM.wvT = performance.now(); if (GM.on && GM.tab === 'weaver') gmWeaver(); return true; }
-function wvAct(op, id, kind, v) { Net.send({ t: 'wv', a: 'act', op, id, kind, v }); }
+function wvAct(op, id, kind, v) { if (op === 'coins') GM.lastCoins = v; Net.send({ t: 'wv', a: 'act', op, id, kind, v }); }
 function gmWeaver() {
   const P = gmPane('weaver'); if (!P) return; const D = GM.wv;
   const tabs = { people: 'Pessoas', biz: 'Negócios e banco', world: 'Mundo' };
@@ -169,6 +169,7 @@ function wvWorldHtml(D) {
   const W = D.world, hh = Math.floor(W.hour), mm = Math.round((W.hour - hh) * 60);
   let h = '<div class="hub-top"><div><small>Dia do reino</small><b>' + W.day + '</b></div><div><small>Hora</small><b>' + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0') + '</b></div><div><small>Estação</small><b>' + gmEsc(W.season) + '</b></div><div><small>Clima</small><b>' + (W.rain > 0.3 ? 'chuva' : 'limpo') + '</b></div></div>';
   h += '<div class="gp-sub">Hora e clima do reino (para todos)</div><div class="wv-acts">' + [['Manhã', 0.88], ['Meio-dia', 0.0], ['Tarde', 0.17], ['Noite', 0.5], ['Natural', 'null']].map(([n, v]) => '<button class="est-btn' + ((W.ph === v || (W.ph == null && v === 'null')) ? ' on' : '') + '" data-wa="time|w|0|' + v + '">' + n + '</button>').join('') + '</div><div class="wv-acts">' + [['Sem chuva', 0], ['Chuva', 1], ['Natural', 'null']].map(([n, v]) => '<button class="est-btn' + ((W.rainSet === v || (W.rainSet == null && v === 'null')) ? ' on' : '') + '" data-wa="rain|w|0|' + v + '">' + n + '</button>').join('') + '</div><div class="gp-note">A hora escolhida fica parada até voltar para Natural. Os aluguéis e as semanas continuam contando normalmente.</div>';
+  h += '<div class="gp-sub">Chuva de ouro em volta de você</div><div class="wv-acts">' + [10, 50, 100, 500].map(v => '<button class="est-btn" data-wa="coins|w|0|' + v + '">' + v + ' ouro</button>').join('') + '</div><div class="gp-note">As moedas brotam em volta do Tecelão e qualquer jogador pega passando por cima. Somem em 10 minutos. Fora do menu, a tecla U repete a última chuva.</div>';
   h += '<div class="gp-sub">População</div><div class="wv-kv">' + Object.entries(W.pop).map(([k, v]) => '<span>' + k + ' <b>' + v + '</b></span>').join('') + '</div>';
   h += '<div class="gp-sub">Monstros</div><div class="wv-kv">' + (Object.entries(W.mons).map(([k, v]) => '<span>' + (MON[k] ? MON[k].name : k) + ' <b>' + v + '</b></span>').join('') || '<span>nenhum</span>') + '</div>';
   h += '<div class="gp-sub">Bastiões</div><div class="wv-kv">' + W.bast.map(b => '<span>' + gmEsc(b.name) + ' <b>' + b.n + '</b></span>').join('') + '</div>';
