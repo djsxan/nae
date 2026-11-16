@@ -890,6 +890,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   for (const c of (G.started && G.corpses) || []) { const p = iso(c.x, c.y); const it = { d: c.x + c.y - 0.35, k: 0, corpse: c, sx: p.sx + ox, sy: p.sy + oy - (c.z || 0) * FLOOR_PX }; (c.z ? upper : items).push(it); }
   if (typeof estSignItems === 'function') estSignItems(items, ox, oy);
   for (const c of (G.started && G.chests) || []) { const p = iso(c.x, c.y); items.push({ d: c.x + c.y, k: 0, chest: c, sx: p.sx + ox, sy: p.sy + oy }); }
+  if (G.falls && G.falls.length) { G.falls = G.falls.filter(f => now - f.t0 < (f.tree ? 2800 : 450)); for (const f of G.falls) { const p = iso(f.x, f.y); items.push({ d: f.x + f.y + (f.tree ? 0.6 : 0.01), k: 9, f, sx: p.sx + ox, sy: p.sy + oy }); } }
   for (const id in (G.started && G.coins) || {}) { const c = G.coins[id], p = iso(c.x, c.y); items.push({ d: c.x + c.y - 0.05, k: 8, coin: c, sx: p.sx + ox, sy: p.sy + oy }); }
   for (let y = minY; y <= maxY; y++) for (let x = minX; x <= maxX; x++) {
     const i = y * MAP_W + x, o = WORLD.obj[i], g = WORLD.ground[i];
@@ -919,6 +920,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   for (const id in G.monsters) addEnt(G.monsters[id], 1);
   for (const n of NPCS) addEnt(G.npcs[n.id], 3);
   if (typeof cellDoorItems === 'function') cellDoorItems(items, inB0, now);
+  if (typeof cabinDoorItems === 'function') cabinDoorItems(items, inB0, now);
   for (const id in G.players) { const e = G.players[id]; if (!e.carriedBy && !(e.grab && now < e.grab.until)) addEnt(e, 2); }
   const inB = inB0;
   let inside = null;
@@ -1039,6 +1041,8 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     if (it.k === 6) { drawCellDoor(ctx, it); return; }
     if (it.k === 7) { drawDoorOpen(ctx, it); return; }
     if (it.k === 8) { drawCoin(ctx, it, now); return; }
+    if (it.k === 9) { drawFall(ctx, it, now); return; }
+    if (it.k === 10) { drawCabinDoor(ctx, it); return; }
     if (it.k === 5) { pblit(ctx, slabSprite(Math.floor(hash2(it.x, it.y, 4) * 3)), it.sx, it.sy - FLOOR_PX); return; }
     const e = it.e;
     ctx.imageSmoothingEnabled = false;

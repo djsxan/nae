@@ -24,6 +24,8 @@ const FLAT = new Set([O.FLOWER, O.LILY, O.FLOWERBED, O.BONES, O.RUBBLE, O.IVY, O
 const BEDS = [];
 const KITCHENS = [];
 const CHESTS = [];   // baús dentro das casas: { x, y, bi } (baú seguro de quem aluga)
+const HOTEL_CABS = [];   // cabines da pousada: { k, bi, bedIdx, chest:{x,y}, door:[x,y], di, spot:[x,y], tiles:Set }
+const HOTEL_DOORS = new Map();   // índice do tile da porta → cabine
 const JAILCELLS = [];   // celas da cadeia: { door:[x,y], spot:[x,y], tiles:Set(índice), bi }   // fogões (casas e taverna): { x, y, bi }
 const FRUIT_STOOL = { x: -1, y: -1 };
 const NOTICE = { x: -1, y: -1 };
@@ -190,7 +192,7 @@ function interiorLayout0(b, fl = 0) {
     const tw = o.w || 1, th = o.h || 1;
     for (let a = 0; a < tw; a++) for (let c = 0; c < th; c++) if (!can(i + a, j + c)) return false;
     for (let a = 0; a < tw; a++) for (let c = 0; c < th; c++) taken.add(key(i + a, j + c));
-    F.push({ t, i, j, w: tw, h: th, block: o.block !== false, seat: o.seat, v: o.v || 0 });
+    F.push({ t, i, j, w: tw, h: th, block: o.block !== false, seat: o.seat, v: o.v || 0, cab: o.cab, inner: o.inner, adj: o.adj, wp: o.wp });
     return true;
   };
   let npc = null;
@@ -246,9 +248,18 @@ function interiorLayout0(b, fl = 0) {
   } else if (k === 'tavern') {
     npcAt(1, 0); put('barrel', 0, 0); put('counter', 0, 1, { w: 2 }); put('barrel', 0, 2);   // passagem atrás do balcão pelo lado put('fireplace', w - 2, 0); put('shelf', 3, 0); for (const [i, j, fi, fj] of [[4, 0, 4, 1], [w - 1, 1, w - 2, 1], [w - 1, 2, w - 2, 2]]) if (can(i, j) && can(fi, fj)) { put('stove', i, j); taken.add(key(fi, fj)); break; }
     for (const [ti, tj] of [[5, 2], [1, 3], [5, 4]]) if (put('table', ti, tj)) { put('chair', ti - 1, tj, { seat: 1 }); put('chair', ti + 1, tj, { seat: 5 }); }
-  } else if (k === 'hotel') {   // pousada baixo padrão: 6 cubículos (catre + baú pequeno) no fundo, corredor e balcão da estalajadeira na frente
-    for (let r = 0; r < 6; r++) { put('cot', r * 2, 0, { h: 2 }); put('chest', r * 2 + 1, 0); }
-    put('counter', w - 4, h - 1, { w: 2 }); npcAt(w - 2, h - 1); put('pew', 1, h - 1, { w: 2, seat: 1 });
+  } else if (k === 'hotel' && w >= 15 && h >= 10) {   // 8 cabines com porta (4 no fundo, 4 do outro lado do corredor), balcão da Ilsa no fim do corredor, sala comum na entrada
+    const cabs = [0, 3, 10, 13], posts = [2, 5, 9, 12], wpPost = c => c === 5 ? 'nx' : c === 9 ? 'px' : 'px nx'; let ck = 0;
+    for (const a of cabs) { const q = ck++; put('cot', a, 0, { h: 2, cab: q }); put('chest', a + 1, 0, { cab: q }); put('hpart', a, 2, { v: 0, wp: 'nz' }); put('cabindoor', a + 1, 2, { v: 0, block: false, cab: q, adj: [a + 1, 1], inner: [[a, 0], [a + 1, 0], [a, 1], [a + 1, 1]] }); }
+    for (const c of posts) { put('hpart', c, 0, { v: 1, wp: wpPost(c) }); put('hpart', c, 1, { v: 1, wp: wpPost(c) }); put('hpart', c, 2, { v: 2 }); }
+    for (const a of cabs) { const q = ck++; put('hpart', a, 4, { v: 0, wp: 'pz' }); put('cabindoor', a + 1, 4, { v: 0, block: false, cab: q, adj: [a + 1, 5], inner: [[a, 5], [a + 1, 5], [a, 6], [a + 1, 6]] }); put('cot', a, 5, { h: 2, cab: q }); put('chest', a + 1, 6, { cab: q }); put('hpart', a, 7, { v: 0, wp: 'nz' }); put('hpart', a + 1, 7, { v: 0, wp: 'nz' }); }
+    for (const c of posts) { put('hpart', c, 4, { v: 2 }); put('hpart', c, 5, { v: 1, wp: wpPost(c) }); put('hpart', c, 6, { v: 1, wp: wpPost(c) }); put('hpart', c, 7, { v: 2 }); }
+    put('shelf', 6, 0); npcAt(7, 0); put('fireplace', 8, 0); put('counter', 6, 1, { w: 2 });   // balcão no fim do corredor, lareira atrás
+    put('table', 0, 8, { w: 4 }); put('pew', 0, 9, { w: 4, seat: 3 }); put('table', 11, 8, { w: 4 }); put('pew', 11, 9, { w: 4, seat: 3 });   // sala comum
+    put('barrel', 5, 9); put('barrel', 9, 9); put('rug', 6, 4, { w: 3, h: 4, block: false, v: 9 });
+  } else if (k === 'hotel') {   // (pousada antiga, se o prédio for pequeno)
+    for (let r = 0; r < Math.floor(w / 2); r++) { put('cot', r * 2, 0, { h: 2 }); put('chest', r * 2 + 1, 0); }
+    npcAt(w - 2, h - 1);
   } else if (k === 'bank' && w >= 6 && h >= 10) {   // estilo Gringotes: corredor de mármore com balcões altos dos dois lados, banqueiros atrás, lustres, cofre redondo no fundo
     put('vault', 1, 0, { w: 4 }); put('rails', 0, 0); put('goldsacks', w - 1, 0);
     for (const j of [2, 3, 5, 6, 8, 9]) { put('bankdesk', 1, j, { v: 1 }); put('bankdesk', w - 2, j, { v: 2 }); }   // vãos em 4 e 7 para passar por trás
@@ -845,12 +856,13 @@ function generateWorld() {
     lane(X(40), C + 3, X(34), C + 7);    // pracinha
     lane(X(49), C + 8, X(48), C + 10);   // trilha da horta
   }
-  // pousada atrás das lojas ao lado da taverna (no fim da lista: não muda o número dos prédios salvos)
-  if (!TEST3D) BUILDINGS.push({ x: C - 29, y: C + 15, ...BH('hotel', 12, 4, 4.4, 2.2, 'Pousada do Javali Magro', { floors: 1, door: 'S' }) });
+  // pousada do outro lado da rua, atrás das lojas da taverna, porta para a rua (no fim da lista: não muda o número dos prédios salvos)
+  if (!TEST3D) BUILDINGS.push({ x: C - 22, y: C + 22, ...BH('hotel', 15, 10, 4.4, 2.2, 'Pousada do Javali Magro', { floors: 1, door: 'N' }) });
   BUILDINGS.forEach((b, bi) => {
     for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { bld[idx(x, y)] = bi; obj[idx(x, y)] = O.NONE; ground[idx(x, y)] = T.COBBLE; }
   });
 
+  { const hb = BUILDINGS[BUILDINGS.length - 1]; if (hb && hb.kind === 'hotel') { const [dx, dy] = bLocal(hb, doorCol(hb), bDims(hb)[1] - 1); for (let ox = -1; ox <= 1; ox++) for (let oy = 1; oy <= 2; oy++) { const i = idx(dx + ox, dy - oy); if (bld[i] < 0) obj[i] = O.NONE; } } }
   // ---- interiores ----
   BUILDINGS.forEach((b, bi) => {
     const L = interiorLayout(b);
@@ -992,6 +1004,12 @@ function generateWorld() {
 function placeFurniture(b, bi, f, obj, seats, idx) {
   if (f.t === 'stairup' || f.t === 'stairdown') return;
   if (f.t === 'celldoor') { const [dx, dy] = bLocal(b, f.i, f.j), [sx, sy] = bLocal(b, f.i, f.j - 1), tiles = new Set(); for (let a = f.i - 1; a <= f.i; a++) for (let c = 0; c <= 1; c++) { const [tx, ty] = bLocal(b, a, c); tiles.add(ty * MAP_W + tx); } JAILCELLS.push({ door: [dx, dy], spot: [sx, sy], tiles, bi }); }
+  if (f.cab != null) {   // cabine da pousada
+    const Q = HOTEL_CABS[f.cab] || (HOTEL_CABS[f.cab] = { k: f.cab, bi });
+    if (f.t === 'cot') Q.bedIdx = BEDS.length;
+    if (f.t === 'chest') { const [x, y] = bLocal(b, f.i, f.j); Q.chest = { x, y }; }
+    if (f.t === 'cabindoor') { const [x, y] = bLocal(b, f.i, f.j); Q.door = [x, y]; Q.di = y * MAP_W + x; Q.spot = bLocal(b, f.adj[0], f.adj[1]); Q.tiles = new Set(f.inner.map(([i, j]) => { const [tx, ty] = bLocal(b, i, j); return ty * MAP_W + tx; })); HOTEL_DOORS.set(Q.di, f.cab); }
+  }
   if (f.t === 'cot') { const [px, py] = bLocal(b, f.i, f.j), [fx, fy] = bLocal(b, f.i, f.j + f.h - 1); BEDS.push({ x: (px + fx) / 2, y: (py + fy) / 2, dx: fx - px, dy: fy - py, bi }); }
   if (f.t === 'stove') { const [x, y] = bLocal(b, f.i, f.j); KITCHENS.push({ x, y, bi }); }
   if (f.t === 'chest' && b.kind === 'house' && !b.office) { const [x, y] = bLocal(b, f.i, f.j); CHESTS.push({ x, y, bi }); }
@@ -1090,6 +1108,8 @@ const GOODS = {
 };
 // o que a mercadoria vira quando um jogador compra no balcão
 const GOOD_ITEM = { potion: { pot: 'hp' }, flax: { pot: 'band' }, herb: { loot: 'herb' }, crystal: { loot: 'gem' }, woodgoods: { loot: 'wand' }, paper: { loot: 'map' }, wood: { loot: 'firewood' }, ore: { loot: 'gem' } };
+// item do inventário → mercadoria (para colocar no estoque da loja ou no depósito da oficina)
+const ITEM_GOOD = { log: ['wood', 1], hardwood: ['wood', 2], wand: ['woodgoods', 1], wand_fine: ['woodgoods', 2], wand_arcane: ['woodgoods', 4], gem: ['crystal', 1], herb: ['herb', 1], map: ['paper', 1], flaxraw: ['flax', 1], ore: ['ore', 1] };
 const SHOP_GOODS = { apoth: ['potion', 'herb'], arcane: ['crystal', 'woodgoods'], tailor: ['flax'], scroll: ['paper'] };
 const WORKS = {
   saw: { n: 'Serraria', make: { wood: 2 } }, mine: { n: 'Mina', make: { ore: 2, crystal: 0.2 } }, farm: { n: 'Horta', make: { herb: 2, flax: 1 } },
@@ -1128,6 +1148,9 @@ const PROPS = [], PROPS_BY = {};
       const d = Math.hypot(b.x + b.w / 2 - C, b.y + b.h / 2 - (C - 14)); P.loc = clamp(1.75 - d / 30, 0.55, 1.75); P.locName = P.loc > 1.35 ? 'área nobre' : P.loc > 0.95 ? 'centro' : P.loc > 0.7 ? 'bairro' : 'periferia';
       P.rent = Math.max(3, Math.round(P.rent * P.loc)); P.week = P.rent * 7; P.buy = P.rent * 60; PROPS.push(P); PROPS_BY[P.id] = P; }
   });
+  // todo negócio sem jogador tem um dono NPC (que vende o ponto; não aluga)
+  const OWN = ['Mestre Aurélio Vaz', 'Dona Brígida Sal', 'Seu Custódio Pena', 'Dona Filomena Rocha', 'Mestre Gaspar Lume', 'Dona Henriqueta Mós', 'Seu Inácio Ferraz', 'Dona Joana Trigo', 'Mestre Lauro Brasa', 'Dona Matilde Cera', 'Seu Norberto Funil', 'Dona Odete Lã', 'Mestre Prudêncio Faia', 'Dona Quitéria Junco'];
+  let oi = 0; for (const P of PROPS) if ((P.kind === 'shop' || P.kind === 'workshop') && !P.npc) P.npcOwner = OWN[oi++ % OWN.length]; else if (P.kind === 'hotel') P.npcOwner = 'Dona Ilsa';
 })();
 // ---------- moradores: cada um mora numa casa da cidade ou da vila (as casas com inquilino não ficam para alugar, mas podem ser compradas) ----------
 const RES_HOME = {}, RES_LINES = {

@@ -59,7 +59,7 @@
 <body>
 <div class="wrap">
 <nav class="toc">
-  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.42</small>
+  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.43</small>
   <input id="q" type="search" placeholder="Buscar no guia (ex.: banco, fome, G)" autocomplete="off">
   <div class="links" id="links"></div>
 </nav>
@@ -87,7 +87,7 @@
       <li><b class="t">Guarde a arma na cidade</b>Andar de espada na mão perto das sentinelas dá bronca (três avisos e você fica procurado). Aperte <kbd>G</kbd> para guardar; aperte de novo antes de sair para caçar.</li>
       <li><b class="t">Converse</b>Chegue perto de um morador e aperte <kbd>F</kbd>. Borin, no Empório, compra o que você caça e vende as ferramentas. A Capitã Varn, no quartel, dá contratos de caça.</li>
       <li><b class="t">Ganhe o primeiro ouro</b>No quadro de avisos da praça há bicos rápidos (levar água, carregar caixas, varrer). Ou compre um machado no Empório e corte lenha: aperte <kbd>F</kbd> uma vez perto de uma árvore.</li>
-      <li><b class="t">Arrume onde dormir</b>A Pousada do Javali Magro (atrás das lojas ao lado da taverna) aluga cubículos por 3 de ouro por dia: catre, baú de 4 espaços e você acorda lá. Casa própria é bem mais cara — é a meta seguinte.</li>
+      <li><b class="t">Arrume onde dormir</b>A Pousada do Javali Magro (do outro lado da rua, atrás das lojas da taverna) aluga cabines com porta por 3 de ouro por dia: catre, baú de 4 espaços e você acorda lá. Casa própria é bem mais cara — é a meta seguinte.</li>
       <li><b class="t">Saia para caçar</b>Saque a arma (<kbd>G</kbd>) e saia pelo portão sul. Clique para golpear (segure para carregar), botão direito apara, <kbd>Espaço</kbd> esquiva. Leve pão e bandagens.</li>
       <li><b class="t">Não morra de vez</b>Caído, você tem 30 segundos. Peça para um amigo te reanimar (<kbd>F</kbd> segurado) ou te carregar (<kbd>H</kbd>) até a Irmã Lúmina, na capela. Sozinho e longe? Evite brigas que você não pode vencer.</li>
     </ol>
@@ -141,7 +141,7 @@
       <tr><th>Vocação</th><th>Vida (nv 1)</th><th>Mana</th><th>Arma corpo a corpo</th><th>Aptidão</th></tr>
       <tr><td><b>Cavaleiro</b></td><td>150 (+24/nível)</td><td>30</td><td>Espada e escudo, ou alabarda (<kbd>O</kbd>)</td><td>Pele de Aço: 30% menos dano.</td></tr>
       <tr><td><b>Atirador</b></td><td>105 (+15)</td><td>50</td><td>Adaga; arco à distância (alcance 6)</td><td>Olho de Águia: 20% de crítico (×1,8).</td></tr>
-      <tr><td><b>Mago</b></td><td>90 (+11)</td><td>100</td><td>Cajado; magia à distância (5,5)</td><td>Mente Arcana: mana volta 2× mais rápido.</td></tr>
+      <tr><td><b>Mago</b></td><td>90 (+11)</td><td>100</td><td>Cajado; magia à distância (5,5). Com uma <b>varinha</b> na mochila, magia mais forte e mais mana.</td><td>Mente Arcana: mana volta 2× mais rápido.</td></tr>
     </table>
     <h3>Habilidades</h3>
     <ul>
@@ -183,7 +183,7 @@
     <h3>Monstros</h3>
     <p>Monstro que pegou você para alvo persegue <b>até morrer ou até perder você de vista</b> (uns 5 segundos sem ver). Fugir para a cidade não basta: ele entra atrás — mas as sentinelas saem para brigar com ele.</p>
     <h3>Guardar a arma (<kbd>G</kbd>)</h3>
-    <p>A espada vai para a bainha na cintura; escudo, alabarda, arco e cajado vão para as costas. Leva meio segundo (a espada) ou um pouco mais (o resto). Com a arma guardada:</p>
+    <p>Você entra no reino com a arma guardada (as sentinelas não implicam). A espada vai para a bainha na cintura; escudo, alabarda, arco e cajado vão para as costas. Leva meio segundo (a espada) ou um pouco mais (o resto). Com a arma guardada:</p>
     <ul>
       <li>Cavaleiro e Atirador dão <b>soco</b>: dano baixo, derruba e atordoa, mas <b>nunca mata</b>.</li>
       <li>O Mago continua lançando magias com as mãos.</li>
@@ -247,6 +247,9 @@
     <figure><img src="img/guia/coleta.jpg" alt="Cortando lenha: um toque no F e o personagem trabalha sozinho; lascas voam e a árvore balança." loading="lazy"><figcaption>Cortando lenha: um toque no F e o personagem trabalha sozinho; lascas voam e a árvore balança.</figcaption></figure>
     <ul>
       <li><b>Coleta</b> (aperte <kbd>F</kbd> uma vez perto do recurso, com a ferramenta do Empório; o personagem trabalha até terminar ou até você andar): machado em árvores (toras, às vezes madeira nobre), picareta em pedras (minério, às vezes gema), foice no mato alto (linho, às vezes folha-de-prata). Carvalho e rochas grandes pedem nível 3.</li>
+      <li><b>A árvore cai e a pedra quebra</b>: cada árvore dá 3 golpes (o carvalho, 4), um item por golpe, e no último ela <b>tomba</b> e vira toco — cresce de novo em uns 5 minutos. A pedra também aguenta 3 golpes (a rocha grande, 4), se desfaz e volta em uns 4 minutos.</li>
+      <li><b>Entalhe à mão</b> (Esc → Receitas e ofícios, precisa de um machado): 2 toras = <b>Varinha entalhada</b>; 1 madeira nobre + 1 tora = <b>Varinha de carvalho</b> (Artesão 3); 1 madeira nobre + 1 gema = <b>Varinha arcana</b> (Artesão 5). Sobe o ofício de Artesão.</li>
+      <li><b>Varinha é a arma do mago</b>: ele usa sozinho a melhor que estiver na mochila. Entalhada +10% de dano mágico e +10 de mana; de carvalho +20% e +20; arcana +30% e +35. Para outras vocações, é mercadoria (a Arcanos compra).</li>
       <li><b>Quadro de avisos</b> na praça: bicos (água para a Greta, caixas para o Borin, varrer a praça) e entregas.</li>
       <li><b>Turnos</b>: fale com quem trabalha no negócio (<kbd>F</kbd>) e escolha “Trabalhar um turno aqui”, ou aperte <kbd>F</kbd> numa bancada vazia; dura 2 min e meio. Saia do prédio para parar. Uniforme automático.</li>
       <li><b>Ofícios</b> (nível 1 a 10): Lenhador, Minerador, Herbalista, Artesão, Comerciante, Mensageiro, Biscateiro. Cada nível de coleta deixa o trabalho 6% mais rápido.</li>
@@ -259,21 +262,25 @@
       <li><b>Casa</b>: aluguel cobrado por semana (7 dias do jogo) — sem pagar por 2 dias, perde a casa. Casa sua: porta trancada (só você e autorizados), baú seguro (chegue perto dele e aperte <kbd>F</kbd>), você acorda nela, e dormir na própria cama dá <i>Bem descansado</i>. Casas com morador podem ser compradas, e ele paga aluguel a você.</li>
       <li>Casas ficaram mais caras: morar numa casa é a meta de quem já tem renda. Para começar, use a pousada (abaixo).</li>
       <li><b>Comprar</b> custa 60 dias de aluguel, com imposto pequeno; vende de volta pela metade.</li>
+      <li><b>Lojas e oficinas têm dono</b>: todas as que não são de jogador pertencem a um comerciante (o nome aparece na imobiliária e quando você pergunta ao funcionário). Elas funcionam normalmente e <b>só se compram</b> — não se alugam. Quem já alugava continua com o contrato.</li>
       <li><b>Lojas</b> vendem sozinhas (margem barato, justo ou caro), reabastecem pelo fornecedor ou pelas suas oficinas. <b>Oficinas</b> extraem (serraria, mina, horta) ou transformam (carpintaria, alambique). Mensageiros levam a produção andando — e podem ser assaltados.</li>
       <li>O lucro fica no <b>cofre</b> de cada negócio (vá buscar). Há salários, risco de roubo à noite e melhorias (prateleiras, vitrine, ferramentas, cofre reforçado).</li>
-      <li><b>Quantos negócios</b>: 3 no começo, +1 a cada 10 de reputação; com reputação 90, sem limite. Painel na tecla <kbd>N</kbd>.</li>
+      <li><b>Quantos negócios</b>: sem limite. Painel na tecla <kbd>N</kbd>.</li>
+      <li><b>Colocar do inventário</b>: no painel do negócio, aba Estoque, você guarda o que coletou ou fez. Toras vão para o depósito da oficina (carpintaria transforma em varinhas ou papel); varinhas, gemas, ervas, mapas e linho vão para as prateleiras da loja que vende aquilo.</li>
+      <li><b>Bancada da Arcanos & Varinhas</b>: deixe toras na bancada (até 60 de madeira) e o atendente entalha 1 varinha por hora com 2 de madeira, direto para as prateleiras.</li>
+      <li><b>Contas automáticas</b> (aluguel, imposto, salários, diária da pousada) saem primeiro da sua <b>conta no banco</b>, depois do <b>cofre do negócio</b> (sem negócio, do cofre de qualquer negócio seu) e só então da bolsa. Com dinheiro no banco, as contas são pagas mesmo com você fora do jogo.</li>
       <li>Dá para comprar no balcão da loja de outro jogador — o ouro vai para o cofre dele.</li>
     </ul>
   </section>
 
   <section id="pousada"><h2>Pousada do Javali Magro</h2>
-    <figure><img src="img/guia/pousada.jpg" alt="Os cubículos da pousada: catre, baú pequeno e nada de luxo." loading="lazy"><figcaption>Os cubículos da pousada: catre, baú pequeno e nada de luxo.</figcaption></figure>
-    <p>Atrás das lojas ao lado da taverna, com Dona Ilsa no balcão. É o jeito barato de ter onde dormir antes de comprar ou alugar uma casa.</p>
+    <figure><img src="img/guia/pousada.jpg" alt="As cabines da pousada: cada uma com porta numerada, catre com colcha de retalhos e baú." loading="lazy"><figcaption>As cabines da pousada: cada uma com porta numerada, catre com colcha de retalhos e baú.</figcaption></figure>
+    <p>Do outro lado da rua, atrás das lojas da taverna, com a porta virada para a rua: um prédio de enxaimel com a placa do javali. Na entrada fica a <b>sala comum</b> (mesas compridas e bancos); o corredor leva ao balcão da <b>Dona Ilsa</b>, com a lareira atrás. É o jeito barato de ter onde dormir antes de comprar ou alugar uma casa.</p>
     <table>
       <tr><th>O quê</th><th>Como funciona</th></tr>
-      <tr><td>Diária</td><td><b>3 de ouro por dia</b>, pago na hora, sem caução (1, 3 ou 7 dias). Fale com Dona Ilsa (<kbd>F</kbd>).</td></tr>
-      <tr><td>Cubículo</td><td>6 cubículos. O seu tem um catre (clique nele, de perto, para deitar; dormir dá <i>Bem descansado</i>) e um baú de <b>4 espaços</b> que só você abre (<kbd>F</kbd> perto dele).</td></tr>
-      <tr><td>Acordar</td><td>Sem casa, você acorda no seu cubículo quando entra no reino.</td></tr>
+      <tr><td>Diária</td><td><b>3 de ouro por dia</b>, pago na hora (primeiro da sua conta no banco, depois da bolsa), sem caução (1, 3 ou 7 dias). Fale com Dona Ilsa (<kbd>F</kbd>).</td></tr>
+      <tr><td>Cabine</td><td><b>8 cabines</b> com porta própria e número. <b>Só o hóspede passa pela porta</b> da sua cabine. Dentro: catre (clique nele, de perto, para deitar; dormir dá <i>Bem descansado</i>) e baú de <b>4 espaços</b> que só você abre (<kbd>F</kbd> perto dele).</td></tr>
+      <tr><td>Acordar</td><td>Sem casa, você acorda na sua cabine quando entra no reino.</td></tr>
       <tr><td>Lotação</td><td>De noite chegam viajantes e visitantes que também dormem lá — nem sempre tem vaga.</td></tr>
       <tr><td>Negócio</td><td>A pousada pode ser comprada: as diárias (de jogadores e de viajantes) vão para o cofre do dono.</td></tr>
     </table>
@@ -284,7 +291,7 @@
     <p>Na rua norte, entre a catedral e o cemitério: um corredor de mármore com balcões altos dos dois lados, seis banqueiros e a porta redonda do cofre no fundo. Fale com qualquer banqueiro.</p>
     <table>
       <tr><th>Serviço</th><th>Como funciona</th></tr>
-      <tr><td>Conta</td><td>Depositar e sacar. Rende <b>2% por semana</b>, não é furtado e não cai no chão quando você cai.</td></tr>
+      <tr><td>Conta</td><td>Depositar e sacar. Rende <b>2% por semana</b>, não é furtado e não cai no chão quando você cai. Paga suas contas automáticas primeiro (aluguel, imposto, salários, diária).</td></tr>
       <tr><td>Empréstimo</td><td>Até <b>100 + 4 × reputação</b>. Juros de <b>10% por semana</b>, prazo de 2 semanas. Vencido, é cobrado do seu saldo; se não der, as sentinelas vão atrás.</td></tr>
       <tr><td>Morte</td><td>O saldo de quem morre de vez fica com o <b>dono do banco</b>.</td></tr>
       <tr><td>Comprar o banco</td><td>Só se compra, e o Conselho exige <b>reputação 70</b>. O dono fica com parte dos juros e com as heranças.</td></tr>
@@ -333,6 +340,7 @@
     <ul>
       <li>Quem <b>adorar</b> o Tecelão por perto (<kbd>T</kbd> → Adorar) recebe a <b>Bênção do Tecelão</b>: 1 hora sem fome, sede nem frio.</li>
       <li>Às vezes ele faz chover <b>moedas de fio dourado</b> à sua volta. Quem passar por cima pega; elas somem em 10 minutos.</li>
+      <li>O ouro do Tecelão não acaba: ele pode dar a quantia que quiser a qualquer jogador.</li>
     </ul>
   </section>
 
@@ -348,6 +356,8 @@
     <details class="faq"><summary>Bloqueei e levei o golpe mesmo assim.</summary><p>Zona errada. Golpe de cima pede bloqueio no alto, golpe de baixo embaixo, lateral do lado de onde vem, e a estocada só de lado. Olhe os pontinhos: o aceso é onde você defende.</p></details>
     <details class="faq"><summary>Meu escudo não segura mais nada.</summary><p>Ele rachou. Hrodgar, na forja, conserta por 15 de ouro.</p></details>
     <details class="faq"><summary>Não consigo abrir o baú da casa.</summary><p>Chegue bem perto do baú e aperte <kbd>F</kbd>. Perto do baú, o F abre o baú (mesmo com alguém do lado).</p></details>
+    <details class="faq"><summary>Coletei madeira e não consigo fazer varinha na minha loja.</summary><p>Três jeitos: entalhe à mão (Esc → Receitas e ofícios, com um machado), deixe as toras na bancada da Arcanos & Varinhas (o atendente entalha sozinho) ou leve à sua carpintaria (painel do negócio → Estoque → Colocar do inventário).</p></details>
+    <details class="faq"><summary>Não consigo entrar numa cabine da pousada.</summary><p>Só entra quem alugou aquela cabine. Fale com Dona Ilsa para alugar a sua.</p></details>
     <details class="faq"><summary>Onde fica tal loja?</summary><p>Abra o mapa (<kbd>M</kbd>), clique em <i>Cidade</i> e passe o mouse nos ícones.</p></details>
   </section>
 
@@ -366,7 +376,7 @@
       <dt>Ofício</dt><dd>Habilidade de trabalho (Lenhador, Minerador, Herbalista, Artesão, Comerciante, Mensageiro, Biscateiro), do nível 1 ao 10.</dd>
       <dt>Turno</dt><dd>2 minutos e meio trabalhando num negócio: salário, experiência de ofício e produção maior.</dd>
       <dt>Cofre</dt><dd>Onde fica o lucro de cada negócio. O dono precisa ir buscar.</dd>
-      <dt>Bem descansado</dt><dd>Bônus de 10 minutos por dormir na sua cama (casa ou cubículo da pousada): recupera vida e mana mais rápido.</dd>
+      <dt>Bem descansado</dt><dd>Bônus de 10 minutos por dormir na sua cama (casa ou cabine da pousada): recupera vida e mana mais rápido.</dd>
       <dt>Tecelão</dt><dd>A figura de manto cinza com fios de ouro. Adorá-lo dá uma hora sem fome, sede e frio.</dd>
     </dl>
   </section>

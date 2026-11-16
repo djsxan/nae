@@ -34,7 +34,7 @@ function estStatus(P) {
   if (P.kind === 'house' && tenOf(P).length && !who) return { k: 'npc', t: 'Ocupada · mora ' + tenNames(P) };
   if (P.kind !== 'house' && P.npc) return { k: 'npc', t: 'Ocupado · ' + P.npc };
   if (who) return { k: 'rent', t: (who[0] === '★' ? 'Comprado · ' + who.slice(1) : 'Alugado · ' + who) };
-  return { k: 'free', t: P.kind === 'house' ? 'Aluga-se / vende-se' : 'Vago · à venda' };
+  return { k: 'free', t: P.kind === 'house' ? 'Aluga-se / vende-se' : 'De ' + (P.npcOwner || 'um comerciante') + ' · à venda' };
 }
 const EST_COL = { ten: '#9a6ab8', free: '#7cc35e', rent: '#8a7d6c', mine: '#e8c45a', npc: '#5f84c4', office: '#d8743a', other: '#4a4338' };
 
@@ -87,7 +87,7 @@ function estDetailHtml(P) {
   if (s.k === 'free' && (P.kind === 'house' || isBizP(P))) {
     const block = P.kind === 'house' ? (hasHouse ? 'Você já tem uma casa' : '') : (nBiz >= 3 ? 'Limite de 3 negócios' : '');
     if (P.kind === 'bank') h += '<div class="est-cost">🏛 Só se compra, e o Conselho exige <b>reputação ' + (P.repMin || 70) + '</b> (a sua: ' + (G.me.rep ?? '?') + '). O dono fica com os juros dos empréstimos e com o saldo de quem morre.</div>';
-    h += block ? '<button class="est-btn" disabled>' + block + '</button>' : (P.kind === 'bank' ? '' : '<button class="est-btn" data-rent="' + P.id + '"' + (G.me.gold < cost ? ' disabled' : '') + '>Alugar por ' + cost + '</button>') + '<button class="est-btn" data-buy="' + P.id + '"' + (G.me.gold < P.buy || (P.kind === 'bank' && (G.me.rep || 0) < (P.repMin || 70)) ? ' disabled' : '') + '>Comprar por ' + P.buy + '</button>';
+    h += block ? '<button class="est-btn" disabled>' + block + '</button>' : (P.kind !== 'house' ? '' : '<button class="est-btn" data-rent="' + P.id + '"' + (G.me.gold < cost ? ' disabled' : '') + '>Alugar por ' + cost + '</button>') + '<button class="est-btn" data-buy="' + P.id + '"' + (G.me.gold < P.buy || (P.kind === 'bank' && (G.me.rep || 0) < (P.repMin || 70)) ? ' disabled' : '') + '>Comprar por ' + P.buy + '</button>';
     h += '<button class="est-btn ghost" data-go="' + P.id + '">Mostrar no mapa</button>';
   } else if (s.k === 'mine') { const info = (P.kind === 'house' ? G.est.mine : G.est.biz.find(b => b.pid === P.id)) || {}; if (info.mode !== 'own') h += '<button class="est-btn" data-buy="' + P.id + '"' + (G.me.gold < P.buy - (info.dep || 0) ? ' disabled' : '') + '>Comprar de vez por ' + (P.buy - (info.dep || 0)) + '</button>'; if (P.kind !== 'house') h += '<button class="est-btn" data-manage="' + P.id + '">Abrir a gestão</button>'; }
   else h += '<div class="est-cost">' + s.t + '</div>';
@@ -256,6 +256,9 @@ function bizRender() {
       if (W.recipes) h += '<label class="biz-tg"><input type="checkbox" data-btog="autobuy"' + (B.autobuy ? ' checked' : '') + '> Comprar matéria-prima do fornecedor com o ouro do cofre quando faltar (só se você não tiver a oficina que a produz)</label>';
       h += '<label class="biz-tg"><input type="checkbox" data-btog="sell"' + (B.sell ? ' checked' : '') + '> Vender ao fornecedor o que passar de 50 de cada coisa (70% do preço, vai para o cofre)</label>';
     }
+    { const inv = G.me.inv || {}, W = !shop && WORKS[P.wk], ks = Object.keys(inv).filter(k => inv[k] > 0 && ITEM_GOOD[k] && (shop ? ((SHOP_GOODS[P.shopType] || []).includes(ITEM_GOOD[k][0]) || (P.shopType === 'arcane' && ITEM_GOOD[k][0] === 'wood')) : W && ((W.make && ITEM_GOOD[k][0] in W.make) || (W.recipes && Object.values(W.recipes).some(r => ITEM_GOOD[k][0] in r)) || (W.recipes && ITEM_GOOD[k][0] in W.recipes))));
+      if (shop && P.shopType === 'arcane') h += '<div class="gp-sub">🪚 Bancada de entalhe</div><div class="est-cost">Madeira na bancada: <b>' + Math.floor((B.raw || {}).wood || 0) + '</b> / 60 · o atendente faz 1 varinha por hora com 2 de madeira (vai direto para as prateleiras).</div>';
+      h += '<div class="gp-sub">Colocar do seu inventário' + (m.at ? '' : ' (vá até o negócio)') + '</div>' + (ks.length ? '<div class="biz-put">' + ks.map(k => { const L = LOOT[k], [g, per] = ITEM_GOOD[k]; return '<div class="biz-putr"><span style="color:' + L.color + '">' + L.icon + '</span> ' + L.name + ' <small>×' + inv[k] + ' → ' + (g === 'wood' && shop ? 'bancada' : GOODS[g].n) + (per > 1 ? ' (vale ' + per + ')' : '') + '</small><button class="est-btn" data-bput="' + k + '" data-n="1"' + (m.at ? '' : ' disabled') + '>1</button><button class="est-btn" data-bput="' + k + '" data-n="999"' + (m.at ? '' : ' disabled') + '>Tudo</button></div>'; }).join('') + '</div>' : '<div class="gp-note">Nada no inventário que este negócio use. ' + (shop ? 'Lojas aceitam o que vendem' + (P.shopType === 'arcane' ? ' (e toras para a bancada)' : '') + '.' : 'Oficinas aceitam a matéria-prima e o que produzem (toras na carpintaria, ervas no alambique…).') + '</div>'); }
   } else if (G.biz.tab === 'melhorias') {
     h += '<div class="biz-ups">' + Object.keys(BIZ_UP).filter(k => BIZ_UP[k].for === 'both' || BIZ_UP[k].for === P.kind).map(k => { const U = BIZ_UP[k], lv = B.up[k] || 0, c = U.cost[lv]; return '<div class="biz-up"><b>' + U.n + '</b><small>' + U.d + '</small><div class="biz-lv">' + [0, 1, 2].map(i => '<i class="' + (i < lv ? 'on' : '') + '"></i>').join('') + '</div>' + (lv >= 3 ? '<em>Máximo</em>' : '<button class="est-btn" data-bup="' + k + '"' + (G.me.gold < c ? ' disabled' : '') + '>Nível ' + (lv + 1) + ' · ' + c + '</button>') + '</div>'; }).join('') + '</div><div class="gp-note">As melhorias são pagas da sua bolsa e ficam no ponto enquanto ele for seu.</div>';
   } else {
@@ -265,6 +268,7 @@ function bizRender() {
   const body = document.getElementById('biz-body');
   for (const b of body.querySelectorAll('[data-bcol]')) b.onclick = () => bsend('collect');
   for (const b of body.querySelectorAll('[data-bdep]')) b.onclick = () => bsend('deposit', { q: +b.dataset.bdep });
+  for (const b of body.querySelectorAll('[data-bput]')) b.onclick = () => bsend('put', { k: b.dataset.bput, n: +b.dataset.n });
   for (const b of body.querySelectorAll('[data-bord]')) b.onclick = () => bsend('order', { g: b.dataset.bord, q: +b.dataset.q });
   for (const s of body.querySelectorAll('[data-bmar]')) s.onchange = () => bsend('margin', { g: s.dataset.bmar, v: +s.value });
   for (const s of body.querySelectorAll('[data-brec]')) s.onchange = () => bsend('recipe', { v: s.value });

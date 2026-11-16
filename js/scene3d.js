@@ -190,6 +190,42 @@ function canvasTex(kind) {
   } else if (kind === 'stripes') {
     for (let k = 0; k < 8; k++) { x.fillStyle = k % 2 ? '#f2ead8' : '#a8302a'; x.fillRect(k * 32, 0, 32, S); }
     for (let i = 0; i < S; i += 2) { x.fillStyle = 'rgba(0,0,0,0.05)'; x.fillRect(0, i, S, 1); }
+  } else if (kind === 'oldplank') {
+    // tábuas velhas na horizontal: veios, frestas escuras, nós, pregos e desgaste
+    const rows = 7, rh = S / rows;
+    for (let r = 0; r < rows; r++) {
+      const v = 0.5 + R() * 0.32; x.fillStyle = gray(v); x.fillRect(0, r * rh, S, rh);
+      for (let i = 0; i < 26; i++) { const gy = r * rh + R() * rh; x.strokeStyle = 'rgba(0,0,0,' + (0.07 + R() * 0.12) + ')'; x.lineWidth = 0.5 + R(); x.beginPath(); x.moveTo(0, gy); x.bezierCurveTo(S * 0.3, gy + (R() - 0.5) * 6, S * 0.7, gy + (R() - 0.5) * 6, S, gy + (R() - 0.5) * 3); x.stroke(); }
+      x.fillStyle = 'rgba(20,10,4,0.65)'; x.fillRect(0, r * rh, S, 2); y.fillStyle = gray(0); y.fillRect(0, r * rh, S, 3);
+      const cut = R() * S; x.fillStyle = 'rgba(20,10,4,0.5)'; x.fillRect(cut, r * rh, 2, rh); y.fillRect(cut, r * rh, 2, rh);
+      for (const nx of [cut - 7, cut + 9]) { x.fillStyle = 'rgba(30,26,22,0.9)'; x.beginPath(); x.arc((nx + S) % S, r * rh + rh / 2, 1.6, 0, 7); x.fill(); }
+      if (R() < 0.6) { const kx = R() * S, ky = r * rh + rh / 2; x.fillStyle = 'rgba(40,20,8,0.45)'; x.beginPath(); x.ellipse(kx, ky, 6, 3, 0, 0, 7); x.fill(); x.strokeStyle = 'rgba(40,20,8,0.3)'; x.beginPath(); x.ellipse(kx, ky, 10, 4.5, 0, 0, 7); x.stroke(); }
+    }
+    noiseDots(700, 0.5, 2, 0.08, 0.12);
+  } else if (kind === 'wallpaper') {
+    // papel de parede aconchegante: listras creme e rosa-velho com raminhos, rodapé de madeira
+    x.fillStyle = '#efe2c6'; x.fillRect(0, 0, S, S); y.fillStyle = gray(0.7); y.fillRect(0, 0, S, S);
+    for (let k = 0; k < 8; k++) { x.fillStyle = k % 2 ? 'rgba(168,92,84,0.28)' : 'rgba(120,140,96,0.12)'; x.fillRect(k * 32 + 4, 0, k % 2 ? 10 : 4, S); }
+    for (let r = 0; r < 6; r++) for (let k = 0; k < 4; k++) { const fx = k * 64 + 22 + (r % 2) * 32, fy = r * 44 + 18; x.fillStyle = 'rgba(150,70,64,0.55)'; for (let q = 0; q < 5; q++) { const a = q / 5 * 6.28; x.beginPath(); x.arc(fx + Math.cos(a) * 2.6, fy + Math.sin(a) * 2.6, 1.8, 0, 7); x.fill(); } x.fillStyle = 'rgba(210,170,80,0.8)'; x.beginPath(); x.arc(fx, fy, 1.3, 0, 7); x.fill(); x.strokeStyle = 'rgba(90,120,70,0.5)'; x.lineWidth = 1; x.beginPath(); x.moveTo(fx, fy + 3); x.quadraticCurveTo(fx + 5, fy + 8, fx + 2, fy + 13); x.stroke(); }
+    for (let i = 0; i < S; i += 3) { x.fillStyle = 'rgba(0,0,0,0.025)'; x.fillRect(0, i, S, 1); }
+    noiseDots(400, 0.5, 2, 0.04, 0.06);
+  } else if (kind === 'quilt') {
+    // colcha de retalhos
+    const cols = ['#a8402e', '#d8a848', '#4a6a8a', '#6a8a4a', '#e8dcc0', '#8a4a6a', '#c87a3a'];
+    for (let r = 0; r < 6; r++) for (let k = 0; k < 6; k++) { const px_ = k * S / 6, py = r * S / 6, s6 = S / 6; x.fillStyle = cols[Math.floor(R() * cols.length)]; x.fillRect(px_, py, s6, s6); if (R() < 0.5) { x.fillStyle = 'rgba(255,255,255,0.18)'; for (let d = 4; d < s6; d += 8) x.fillRect(px_, py + d, s6, 2); } x.strokeStyle = 'rgba(40,24,12,0.55)'; x.setLineDash([3, 2]); x.lineWidth = 1; x.strokeRect(px_ + 1.5, py + 1.5, s6 - 3, s6 - 3); x.setLineDash([]); y.fillStyle = gray(0.55 + R() * 0.2); y.fillRect(px_ + 2, py + 2, s6 - 4, s6 - 4); }
+  } else if (kind === 'boarsign') {
+    // placa da pousada: tábua com borda, javali magro pintado e o nome
+    x.fillStyle = '#7a5230'; x.fillRect(0, 0, S, S); for (let i = 0; i < 30; i++) { x.strokeStyle = 'rgba(0,0,0,0.12)'; x.beginPath(); const gy = R() * S; x.moveTo(0, gy); x.lineTo(S, gy + (R() - 0.5) * 8); x.stroke(); }
+    x.strokeStyle = '#3a2412'; x.lineWidth = 10; x.strokeRect(5, 5, S - 10, S - 10);
+    x.fillStyle = '#2a1a10'; x.beginPath(); x.ellipse(128, 120, 62, 30, 0, 0, 7); x.fill();                       // corpo magro
+    x.beginPath(); x.moveTo(184, 108); x.lineTo(226, 120); x.lineTo(222, 134); x.lineTo(182, 136); x.fill();     // focinho
+    x.beginPath(); x.moveTo(176, 96); x.lineTo(186, 76); x.lineTo(192, 100); x.fill();                          // orelha
+    for (const lx of [86, 104, 150, 168]) x.fillRect(lx, 140, 7, 30);                                              // pernas finas
+    x.beginPath(); x.moveTo(66, 112); x.quadraticCurveTo(48, 100, 56, 124); x.lineWidth = 4; x.strokeStyle = '#2a1a10'; x.stroke();   // rabo
+    for (let k = 0; k < 9; k++) { x.beginPath(); x.moveTo(84 + k * 10, 92); x.lineTo(88 + k * 10, 82); x.lineTo(92 + k * 10, 93); x.fill(); }   // cerdas
+    x.fillStyle = '#efe0b8'; x.beginPath(); x.moveTo(214, 126); x.lineTo(232, 116); x.lineTo(218, 132); x.fill();   // presa
+    x.fillStyle = '#e8c872'; x.font = 'bold 30px serif'; x.textAlign = 'center'; x.fillText('POUSADA', 128, 212); x.font = 'italic 19px serif'; x.fillText('do Javali Magro', 128, 236);
+    y.fillStyle = gray(0.6); y.fillRect(0, 0, S, S); y.fillStyle = gray(0.2); y.fillRect(0, 0, S, 12); y.fillRect(0, S - 12, S, 12); y.fillRect(0, 0, 12, S); y.fillRect(S - 12, 0, 12, S);
   } else if (kind === 'iron') {
     noiseDots(1500, 0.5, 3, 0.15, 0.3);
   }
@@ -1083,7 +1119,7 @@ const HVAR = [
   { wall: '#cfc4ae', roof: '#6a5a4a', roofTex: 'slate', trim: '#4a3020' },
   { wall: '#e2cfa8', roof: '#3e4656', roofTex: 'slate', trim: '#5a3a1e' },
 ];
-BSTYLE.hotel = { wall: '#c8b48a', roof: '#6a5a46', tex: 'plaster', roofTex: 'shingle', trim: '#4a3018' };   // pousada simples: reboco gasto e telhado escuro
+BSTYLE.hotel = { wall: '#ebe0c6', roof: '#8a3e28', tex: 'plaster', roofTex: 'shingle', trim: '#3a2212' };   // pousada: enxaimel de reboco claro e vigas escuras, telhado de telha
 BSTYLE.bank = { wall: '#efe9dc', roof: '#4a5262', tex: 'stoneblock', roofTex: 'slate', trim: '#c9a24a' };
 const WSTYLE = {
   saw: { wall: '#8a6a44', roof: '#5a4a3a', tex: 'wood', roofTex: 'shingle', trim: '#3a2410' },
@@ -1248,8 +1284,16 @@ function mBuilding(b, night) {
     for (let k = 0; k <= nX; k++) o.add(beam(k * ww / nX, y0, fz, k * ww / nX, H, fz));
     for (let k = 0; k <= nZ; k++) o.add(beam(fx, y0, k * hh / nZ, fx, H, k * hh / nZ));
     for (let f = 0; f <= floors; f++) { const y = f === floors ? H - 0.05 : Math.max(y0, f * fh); if (y < y0 - 0.01) continue; o.add(beam(0, y, fz, ww, y, fz)); o.add(beam(fx, y, 0, fx, y, hh)); }
-    for (let k = 0; k < nX; k++) if (k % 2 === 0) o.add(beam(k * ww / nX, y0, fz, (k + 1) * ww / nX, Math.min(H, y0 + fh * 0.6), fz));
-    for (let k = 0; k < nZ; k++) if (k % 2 === 1) o.add(beam(fx, y0, (k + 1) * hh / nZ, fx, Math.min(H, y0 + fh * 0.6), k * hh / nZ));
+    if (b.kind === 'hotel') {
+      const bz = -0.025, bx = -0.025;
+      for (const zf of [fz, bz]) for (let k = 0; k < nX; k++) { o.add(beam(k * ww / nX, y0, zf, (k + 1) * ww / nX, H - 0.05, zf)); o.add(beam((k + 1) * ww / nX, y0, zf, k * ww / nX, H - 0.05, zf)); }
+      for (const xf of [fx, bx]) for (let k = 0; k < nZ; k++) { o.add(beam(xf, y0, k * hh / nZ, xf, H - 0.05, (k + 1) * hh / nZ)); o.add(beam(xf, y0, (k + 1) * hh / nZ, xf, H - 0.05, k * hh / nZ)); }
+      for (let k = 0; k <= nX; k++) o.add(beam(k * ww / nX, y0, bz, k * ww / nX, H, bz));
+      for (let k = 0; k <= nZ; k++) o.add(beam(bx, y0, k * hh / nZ, bx, H, k * hh / nZ));
+      for (const y of [y0, H - 0.05]) { o.add(beam(0, y, bz, ww, y, bz)); o.add(beam(bx, y, 0, bx, y, hh)); }
+    }
+    else for (let k = 0; k < nX; k++) if (k % 2 === 0) o.add(beam(k * ww / nX, y0, fz, (k + 1) * ww / nX, Math.min(H, y0 + fh * 0.6), fz));
+    if (b.kind !== 'hotel') for (let k = 0; k < nZ; k++) if (k % 2 === 1) o.add(beam(fx, y0, (k + 1) * hh / nZ, fx, Math.min(H, y0 + fh * 0.6), k * hh / nZ));
   } else if (st.tex === 'brick') {
     // pedras de canto alternadas (cunhais)
     for (const [x, z] of [[w, h], [0, h], [w, 0]]) for (let y = 0; y < H - 0.1; y += 0.36) { const big = Math.round(y / 0.36) % 2; o.add(wbox(big ? 0.36 : 0.22, 0.32, big ? 0.22 : 0.36, x, y + 0.17, z, smat('stoneblock', shadeH(st.wall, 0.06)), 1.4)); }
@@ -1268,7 +1312,7 @@ function mBuilding(b, night) {
     gO.add(mk(new THREE.BoxGeometry(ww, 0.03, 0.03).translate(0, 0, 0.04), trimM));
     gO.add(mk(new THREE.BoxGeometry(ww + 0.16, 0.05, 0.12).translate(0, -wh / 2 - 0.04, 0.04), smat('stoneblock', '#9a948a')));
     if (timber) for (const sgn of [-1, 1]) { const sh = mk(wuv(new THREE.BoxGeometry(ww * 0.52, wh + 0.1, 0.03), 3), shutM); sh.position.set(sgn * (ww * 0.78 + 0.05), 0, 0.05); sh.rotation.y = sgn * 0.25; gO.add(sh); }
-    if (timber && R() < 0.4) { gO.add(mk(new THREE.BoxGeometry(ww + 0.1, 0.1, 0.16).translate(0, -wh / 2 - 0.12, 0.1), trimM)); for (let k = 0; k < 4; k++) gO.add(mk(new THREE.SphereGeometry(0.05, 6, 5).translate(-ww / 2 + 0.06 + k * ww / 3.4, -wh / 2 - 0.03, 0.12), smat(null, ['#c83a3a', '#e8b030', '#e86aa8', '#f2ede0'][k % 4], { rough: 0.6 }))); }
+    if (timber && (b.kind === 'hotel' || R() < 0.4)) { gO.add(mk(new THREE.BoxGeometry(ww + 0.1, 0.1, 0.16).translate(0, -wh / 2 - 0.12, 0.1), trimM)); for (let k = 0; k < 4; k++) gO.add(mk(new THREE.SphereGeometry(0.05, 6, 5).translate(-ww / 2 + 0.06 + k * ww / 3.4, -wh / 2 - 0.03, 0.12), smat(null, ['#c83a3a', '#e8b030', '#e86aa8', '#f2ede0'][k % 4], { rough: 0.6 }))); }
     const jz = y > baseH && baseH ? jet : 0;
     if (face === 'L') gO.position.set(u, y, h + jz + 0.02); else { gO.position.set(w + jz + 0.02, y, u); gO.rotation.y = Math.PI / 2; }
     o.add(gO);
@@ -1380,6 +1424,23 @@ function mBuilding(b, night) {
     const lp = grp(mk(new THREE.BoxGeometry(0.04, 0.04, 0.25).translate(0, 0, 0.12), IRON()), mk(new THREE.BoxGeometry(0.14, 0.2, 0.14).translate(0, -0.12, 0.25), smat(null, '#ffd890', { emissive: '#ffbb60', ei: night ? 1.6 : 0.6 })));
     lp.position.set(doorX - 0.55, 1.15, h + 0.02); lp.scale.setScalar(0.7); o.add(lp);
   }
+  if (b.kind === 'hotel') {
+    const dX = doorCol(b) + 0.5, iron = smat(null, '#2a2622', { metal: 0.8, rough: 0.5 }), sg = grp();
+    sg.add(mk(new THREE.BoxGeometry(0.05, 0.05, 0.75).translate(0, 0, 0.37), iron)); sg.add(mk(new THREE.BoxGeometry(0.04, 0.3, 0.04).rotateX(0.8).translate(0, -0.12, 0.12), iron));
+    for (const z of [0.25, 0.6]) sg.add(mk(new THREE.CylinderGeometry(0.006, 0.006, 0.12, 4).translate(0, -0.06, z), iron));
+    sg.add(mk(new THREE.BoxGeometry(0.03, 0.46, 0.5).translate(0, -0.35, 0.43), [smat('boarsign', '#ffffff', { bump: 0.6 }), smat('boarsign', '#ffffff', { bump: 0.6 }), smat('wood', '#5a3a20'), smat('wood', '#5a3a20'), smat('wood', '#5a3a20'), smat('wood', '#5a3a20')]));
+    sg.position.set(dX + 1.1, 2.15, h + 0.02); o.add(sg);
+    const sg2 = sg.clone(); sg2.rotation.y = -Math.PI / 2; sg2.position.set(-0.02, 2.15, h - 1.4); o.add(sg2);
+    const glassH = night ? smat(null, '#ffd890', { emissive: '#ffb850', ei: 1.6, rough: 0.3 }) : smat(null, '#24323e', { rough: 0.08, metal: 0.4 }), frame = smat('wood', '#3a2212'), shut = smat('wood', '#3e5a3a', { bump: 1 });
+    const flowers = ['#d84a4a', '#f2d24a', '#e88ad0', '#ffffff', '#8a6ad8'];
+    const winH = (x, z, ry) => { const g2 = grp(); g2.add(mk(new THREE.BoxGeometry(0.46, 0.56, 0.03).translate(0, 1.55, 0.02), glassH)); for (const [ww2, hh2, xx, yy] of [[0.54, 0.06, 0, 1.86], [0.54, 0.06, 0, 1.24], [0.06, 0.62, -0.25, 1.55], [0.06, 0.62, 0.25, 1.55], [0.04, 0.56, 0, 1.55]]) g2.add(mk(new THREE.BoxGeometry(ww2, hh2, 0.06).translate(xx, yy, 0.04), frame));
+      for (const s of [-1, 1]) g2.add(mk(new THREE.BoxGeometry(0.24, 0.6, 0.03).translate(s * 0.4, 1.55, 0.04), shut));
+      g2.add(mk(new THREE.BoxGeometry(0.6, 0.12, 0.16).translate(0, 1.16, 0.1), frame)); for (let q = 0; q < 5; q++) g2.add(mk(new THREE.SphereGeometry(0.05, 6, 5).translate(-0.22 + q * 0.11, 1.26, 0.1), smat(null, flowers[(q + Math.round(x * 3 + z)) % 5])));
+      g2.rotation.y = ry; g2.position.set(x, 0, z); o.add(g2); };
+    for (let k = 0; k < Math.floor(w / 1.6); k++) winH((k + 0.5) * w / Math.floor(w / 1.6), -0.02, Math.PI);   // fundos (sul)
+    for (let k = 0; k < Math.floor(h / 1.6); k++) { const z = (k + 0.5) * h / Math.floor(h / 1.6); if (Math.abs(z - (h - 1.4)) > 0.6) winH(-0.02, z, -Math.PI / 2); }   // lado leste
+    for (const sx of [-0.62, 0.62]) { const lp = grp(mk(new THREE.BoxGeometry(0.04, 0.04, 0.22).translate(0, 0, 0.11), iron), mk(new THREE.BoxGeometry(0.14, 0.2, 0.14).translate(0, -0.12, 0.22), smat(null, '#ffd890', { emissive: '#ffbb60', ei: night ? 1.8 : 0.6 }))); lp.position.set(dX + sx, 1.5, h + 0.02); lp.scale.setScalar(0.75); o.add(lp); }
+  }
   if (b.kind === 'boutique') {
     const gold = smat(null, '#d4a94a', { metal: 1, rough: 0.28 }), velvet = smat('cloth', '#6e1424', { bump: 0.5, side: THREE.DoubleSide }), glass = smat(null, '#2a3440', { rough: 0.05, metal: 0.4, emissive: '#5a3a14', ei: night ? 0.9 : 0.25 }), lead = smat(null, '#2a2420', { metal: 0.6 });
     const H0 = bldDims(b).H;
@@ -1433,8 +1494,9 @@ function mBuilding(b, night) {
 function mInterior(b, fl = 0) {
   const [w, h] = bDims(b), { H } = bldDims(b), o = grp(), L = interiorLayout(b, fl), R = rng(b.x * 13 + b.y), nF = floorsOf(b);
   const stoneK = b.kind === 'bank' || b.kind === 'temple' || b.kind === 'castle' || b.kind === 'smith' || b.kind === 'barracks' || b.kind === 'jail' || b.kind === 'boutique' || b.kind === 'manor';
-  const floorM = stoneK ? smat('stoneblock', b.kind === 'castle' ? '#a8a092' : '#8e887c', { bump: 1 }) : smat('wood', b.kind === 'stable' ? '#8a6a3e' : '#7a5232', { bump: 1.2 });
-  const wallM = stoneK ? smat('brick', b.kind === 'castle' ? '#b4ad9c' : '#a29c90', { bump: 1.2 }) : smat('plaster', '#e2d6bc', { bump: 0.7 });
+  const hotelI = b.kind === 'hotel';
+  const floorM = hotelI ? smat('oldplank', '#8a6440', { bump: 1.3 }) : stoneK ? smat('stoneblock', b.kind === 'castle' ? '#a8a092' : '#8e887c', { bump: 1 }) : smat('wood', b.kind === 'stable' ? '#8a6a3e' : '#7a5232', { bump: 1.2 });
+  const wallM = hotelI ? smat('wallpaper', '#ffffff', { bump: 0.5 }) : stoneK ? smat('brick', b.kind === 'castle' ? '#b4ad9c' : '#a29c90', { bump: 1.2 }) : smat('plaster', '#e2d6bc', { bump: 0.7 });
   const trimM = smat('wood', '#4a2f17'), hw = Math.min(H / nF, b.kind === 'castle' || b.kind === 'temple' ? 5 : 2.3), t = 0.16;
   o.add(mk(wuv(new THREE.BoxGeometry(w, 0.06, h).translate(w / 2, 0.03, h / 2), 1), floorM));
   // quais paredes (no quadro local) ficam viradas para a câmera depende do lado da porta
@@ -1516,7 +1578,23 @@ function mInterior(b, fl = 0) {
         for (const y of [0.08, 1.0, H - 0.06]) g.add(mk(new THREE.BoxGeometry(alongX ? 1.0 : 0.05, 0.05, alongX ? 0.05 : 1.0).translate(0, y, 0), iron));
         if (f.t === 'celldoor') { g.add(mk(new THREE.BoxGeometry(0.07, H, 0.07).translate(-0.47, H / 2, 0), iron)); g.add(mk(new THREE.BoxGeometry(0.07, H, 0.07).translate(0.47, H / 2, 0), iron)); g.add(mk(new THREE.BoxGeometry(0.14, 0.18, 0.08).translate(0.32, 1.0, 0.03), smat(null, '#5a4a2a', { metal: 0.7, rough: 0.4 }))); }
         break; }
-      case 'cot': g.add(wbox(0.8, 0.22, f.h - 0.2, 0, 0.11, 0, DW(), 2)); g.add(mk(new THREE.BoxGeometry(0.72, 0.12, f.h - 0.35).translate(0, 0.28, 0), smat('cloth', '#b09a60', { bump: 1.4 }))); g.add(mk(new THREE.BoxGeometry(0.66, 0.05, (f.h - 0.4) * 0.5).translate(0, 0.36, 0.2), smat('cloth', '#6a5a48', { bump: 0.6 }))); break;
+      case 'cot': g.add(wbox(0.8, 0.22, f.h - 0.2, 0, 0.11, 0, DW(), 2)); g.add(mk(new THREE.BoxGeometry(0.72, 0.12, f.h - 0.35).translate(0, 0.28, 0), smat('cloth', '#b09a60', { bump: 1.4 }))); g.add(mk(new THREE.BoxGeometry(0.66, 0.05, (f.h - 0.4) * 0.5).translate(0, 0.36, 0.2), f.cab != null ? smat('quilt', '#ffffff', { bump: 0.7 }) : smat('cloth', '#6a5a48', { bump: 0.6 })));
+        if (f.cab != null) g.add(mk(new THREE.BoxGeometry(0.5, 0.1, 0.26).translate(0, 0.39, -(f.h - 0.2) / 2 + 0.22), smat('cloth', '#f2ead8', { bump: 0.4 })));   // travesseiro
+        break;
+      case 'hpart': {   // divisória de tábuas das cabines (v=0 ao longo de x, 1 ao longo de z, 2 canto); papel de parede do lado de dentro
+        const H = 2.1, plank = smat('oldplank', '#7a5634', { bump: 1.2 }), paper = smat('wallpaper', '#ffffff', { bump: 0.5 }), wp = f.wp || '', post = smat('wood', '#3a2212', { bump: 1 });
+        const face = (k2, d) => (wp.includes(k2) ? paper : plank);
+        if (f.v !== 1) g.add(mk(new THREE.BoxGeometry(1.0, H, 0.1).translate(0, H / 2, 0), [plank, plank, post, post, face('pz'), face('nz')]));
+        if (f.v !== 0) g.add(mk(new THREE.BoxGeometry(0.1, H, 1.0).translate(0, H / 2, 0), [face('px'), face('nx'), post, post, plank, plank]));
+        g.add(mk(new THREE.BoxGeometry(f.v === 1 ? 0.14 : 1.02, 0.07, f.v === 0 ? 0.14 : 1.02).translate(0, H + 0.035, 0), post));   // travessa de cima
+        if (f.v === 2) g.add(mk(new THREE.BoxGeometry(0.16, H + 0.08, 0.16).translate(0, (H + 0.08) / 2, 0), post));
+        break; }
+      case 'cabindoor': {   // batente da porta da cabine (a folha é desenhada à parte e abre quando alguém passa)
+        const H = 2.1, post = smat('wood', '#3a2212', { bump: 1 }), alongX = f.v !== 1;
+        for (const s of [-0.47, 0.47]) g.add(mk(new THREE.BoxGeometry(alongX ? 0.08 : 0.12, H, alongX ? 0.12 : 0.08).translate(alongX ? s : 0, H / 2, alongX ? 0 : s), post));
+        g.add(mk(new THREE.BoxGeometry(alongX ? 1.02 : 0.14, 0.12, alongX ? 0.14 : 1.02).translate(0, H - 0.04, 0), post));
+        g.add(mk(new THREE.BoxGeometry(alongX ? 0.92 : 0.1, 0.03, alongX ? 0.1 : 0.92).translate(0, 0.015, 0), post));
+        break; }
       case 'bucket': g.add(mk(new THREE.CylinderGeometry(0.17, 0.14, 0.3, 12).translate(0.1, 0.15, -0.15), smat('wood', '#5a4028', { bump: 1 }))); g.add(mk(new THREE.TorusGeometry(0.165, 0.012, 5, 14).rotateX(Math.PI / 2).translate(0.1, 0.25, -0.15), smat(null, '#3e3c3a', { metal: 0.8 }))); break;
       case 'stove': {   // fogão a lenha de ferro: corpo escuro, boca com brasa, chapa, panela fumegante e cano
         const iron = smat(null, '#2e2a28', { metal: 0.6, rough: 0.5 }), dz = backZ ? -0.12 : 0, dx = backX ? -0.12 : 0;

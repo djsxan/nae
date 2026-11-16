@@ -116,7 +116,7 @@ function clientOnServer(m) {
       if (m.knock) G.knockUntil = now + m.knock;
       G.cst = m.cst ?? CST_MAX; G.cstMax = m.cstMax || CST_MAX; e.arw = m.arw || []; e.esc = m.esc || 0; e.chk = m.chk || 0; e.bnd = m.bnd || ''; e.bndE = m.bndE || 0; e.jl = m.jl || 0; e.cell = m.cell ?? -1; if (m.tree) e.tree = m.tree; if (m.use) e.use = m.use; if (typeof onProgStat === 'function') onProgStat(); G.stunUntil = now + (m.stun || 0); G.ripUntil = now + (m.rip || 0);
       Object.assign(e, { hp: m.hp, maxHp: m.maxHp, mp: m.mp, maxMp: m.maxMp, lvl: m.lvl, xp: m.xp, gold: m.gold, pots: m.pots, food: m.food, water: m.water, cold: m.cold, infect: m.infect, sick: m.sick, hasSkin: m.hasSkin, body: m.body, bleed: m.bleed, lost: m.lost || 0, pro: m.pro || 0, inv: m.inv || {}, combat: m.combat, quests: m.quests, qdone: m.qdone });
-      setBuffs(e, m.buffs); if (m.wpn) e.wpn = m.wpn; e.shea = !!m.shea; e.shp = m.shp ?? 100; e.freeLimb = !!m.freeLimb; if (m.rep != null) e.rep = m.rep; if (m.feats) e.feats = m.feats; if (m.prof) e.prof = m.prof; if ('job' in m && typeof jobsTracker === 'function') { G.job = m.job; jobsTracker(); }
+      setBuffs(e, m.buffs); if (m.wpn) e.wpn = m.wpn; e.shea = !!m.shea; e.hroom = m.hroom ?? -1; e.shp = m.shp ?? 100; e.freeLimb = !!m.freeLimb; if (m.rep != null) e.rep = m.rep; if (m.feats) e.feats = m.feats; if (m.prof) e.prof = m.prof; if ('job' in m && typeof jobsTracker === 'function') { G.job = m.job; jobsTracker(); }
       G.cdEnd = m.cds.map(r => now + r);
       e.downed = m.downed > 0; e.downUntil = now + m.downed;
       saveChar(); updateHud(); updateQuests(); if (!$('inv').classList.contains('hidden')) updateInv();
@@ -185,7 +185,7 @@ function clientOnServer(m) {
     case 'coins': coinEvent(m, now); break;
     case 'pmap': G.pmap = m.l; break;
     case 'trade': tradeShow(m); break;
-    case 'hotel': G.hotel = m; if (G.dialog && G.dialog.id === 'hotelkeeper') setDialogText(m.room >= 0 ? 'Seu cubículo é o ' + (m.room + 1) + ', por mais ' + m.until + ' dia(s). O baú fica ao lado do catre.' : 'Você não tem cubículo. Vagas agora: ' + m.free + ' de 6.'); if ($('hchest') && !$('hchest').classList.contains('hidden')) hotelChestShow(); break;
+    case 'hotel': G.hotel = m; if (G.dialog && G.dialog.id === 'hotelkeeper') setDialogText(m.room >= 0 ? 'Sua cabine é a ' + (m.room + 1) + ', por mais ' + m.until + ' dia(s). O baú fica ao lado do catre.' : 'Você não tem cabine. Vagas agora: ' + m.free + ' de 6.'); if ($('hchest') && !$('hchest').classList.contains('hidden')) hotelChestShow(); break;
     case 'wt': WT.ph = m.ph ?? null; WT.rain = m.rain ?? null; break;
     case 'denied': askRoomPw(m.why === 'pwbad'); break;
     case 'roompw': G.roomLocked = m.on; pzRoomRefresh(); break;
@@ -240,6 +240,8 @@ function clientOnServer(m) {
       document.body.appendChild(d); break;
     }
     case 'lootgold': showToast('+ ' + m.g + ' de ouro'); break;
+    case 'gstop': G.gath = null; break;
+    case 'tfall': case 'crumble': fallStart(m); break;
     case 'loot': { const it = LOOT[m.k]; if (it) { showToast('+ ' + it.name); G.newLoot = m.k; } break; }
     case 'qprog': { const q = QUESTS.find(x => x.id === m.id); if (q) showToast(`${q.name}: ${m.n}/${q.count}`); break; }
     case 'qdone': { const q = QUESTS.find(x => x.id === m.id); if (q) showBanner('Contrato cumprido', `${q.name} — +${q.xp} xp, +${q.gold} ouro`); break; }
@@ -312,7 +314,7 @@ function monsterNear(x, y, r = 0.5) {
   for (const id in G.monsters) { const m = G.monsters[id]; if (!m.dieAt && dist(m.rx, m.ry, x, y) < r) return true; }
   return false;
 }
-function freeAt(x, y, z) { if (G.dev && G.noclip) return true; if (typeof estLockedFor === 'function' && G.me && estLockedFor(G.me.x, G.me.y, x, y)) return false; if (typeof jailBlock === 'function' && JAILCELLS.length && jailBlock(x, y)) return false; const me = G.me; if (me && me.fl > 0) return canStandFloor(x, y, me.fb, me.fl, 0.22); return canStandZ(x, y, z, 0.22) && (z >= 0.5 || G.slide || !monsterNear(x, y)); }
+function freeAt(x, y, z) { if (G.dev && G.noclip) return true; if (HOTEL_DOORS.size && G.me && !G.dev) { const q = HOTEL_DOORS.get(Math.round(y) * MAP_W + Math.round(x)); if (q != null && G.me.hroom !== q) return false; } if (typeof estLockedFor === 'function' && G.me && estLockedFor(G.me.x, G.me.y, x, y)) return false; if (typeof jailBlock === 'function' && JAILCELLS.length && jailBlock(x, y)) return false; const me = G.me; if (me && me.fl > 0) return canStandFloor(x, y, me.fb, me.fl, 0.22); return canStandZ(x, y, z, 0.22) && (z >= 0.5 || G.slide || !monsterNear(x, y)); }
 
 function myInput() {
   const k = G.keys;
@@ -724,7 +726,7 @@ const NPC_DIALOG = {
   banker: { greet: 'Bem-vindo ao Banco de Nae. Aqui o seu ouro dorme tranquilo atrás de uma porta que nem um dragão abre.', opts: [['Minha conta', { open: 'bank' }], ['Como funciona o banco?', { local: 'Você deposita e o ouro rende 2% por semana. Ninguém rouba, nem quando você cai. Emprestamos também, a 10% por semana, por duas semanas... e quem não paga conhece as sentinelas.' }], ['E se eu morrer?', { local: 'Então, com todo o respeito, o seu saldo fica com o banco. Ouro não tem herdeiro por aqui.' }], ['Posso comprar o banco?', { local: 'Só quem o Conselho respeita: reputação 70 ou mais, e uma fortuna. Fale com Mestre Anselmo, na Imobiliária.' }]] },
   banker2: { greet: 'Caixa aberto! Depósito ou saque?', opts: [['Minha conta', { open: 'bank' }]] },
   banker3: { greet: 'Os números nunca mentem. As pessoas, sim.', opts: [['Minha conta', { open: 'bank' }]] },
-  hotelkeeper: { greet: 'Pousada do Javali Magro! Cama de palha, baú com tranca e silêncio depois das dez. Três de ouro por dia, pago na hora.', opts: [['Alugar um cubículo: 1 dia (3 ouro)', { hotel: 1 }], ['Alugar por 3 dias (9 ouro)', { hotel: 3 }], ['Alugar por 7 dias (21 ouro)', { hotel: 7 }], ['Meu cubículo', { hotel: 'view' }], ['Como funciona?', { local: 'Cada cubículo tem um catre e um baú pequeno, de quatro espaços, que só você abre. Dormindo no seu catre você descansa de verdade, e se não tiver casa acorda aqui. De noite chegam viajantes, então nem sempre tem vaga.' }]] },
+  hotelkeeper: { greet: 'Pousada do Javali Magro! Cama de palha, baú com tranca e silêncio depois das dez. Três de ouro por dia, pago na hora.', opts: [['Alugar uma cabine: 1 dia (3 ouro)', { hotel: 1 }], ['Alugar por 3 dias (9 ouro)', { hotel: 3 }], ['Alugar por 7 dias (21 ouro)', { hotel: 7 }], ['Minha cabine', { hotel: 'view' }], ['Como funciona?', { local: 'Cada cabine tem porta própria, um catre e um baú pequeno, de quatro espaços, que só você abre. Dormindo no seu catre você descansa de verdade, e se não tiver casa acorda aqui. De noite chegam viajantes, então nem sempre tem vaga.' }]] },
   banker4: { greet: 'Assine aqui. E aqui. E aqui também.', opts: [['Minha conta', { open: 'bank' }]] },
   banker5: { greet: 'O tesouro de Nae está em boas mãos. As minhas.', opts: [['Minha conta', { open: 'bank' }]] },
   banker6: { greet: 'Ouro verdadeiro tem um som. O falso, outro. Eu escuto os dois.', opts: [['Minha conta', { open: 'bank' }]] },
@@ -826,7 +828,7 @@ function buildDialogOptions(id) {
     { const ent = G.npcs[id], P0 = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null, playerShop = P0 && G.est && G.est.st && G.est.st[P0.id];
       if ((TRADE_KINDS.has(n.kind) || (ent && ent.trader)) && !playerShop) add(ent && ent.trader ? '🧳 Ver as mercadorias do viajante' : '⚖ Negociar (comprar e vender)', () => { closeDialog(); Net.send({ t: 'trade', a: 'open', npc: id }); }, 'active'); }
     if (typeof shiftHere === 'function' && shiftHere() && !(G.shiftUntil > performance.now())) add('Trabalhar um turno aqui (2 min e meio)', () => { closeDialog(); Net.send({ t: 'shift', a: 'start' }); });
-    for (const [label, act] of def.opts) add(label, () => { const P = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null; if (act.open === 'biz') { if (P && estMine(P.id)) { closeDialog(); bizOpen(P.id); } else setDialogText('Só o dono pode mexer nos livros. ' + (P && G.est.st[P.id] ? 'Este ponto é de ' + G.est.st[P.id].replace('★', '') + '.' : 'Este ponto está à venda: fale com Mestre Anselmo, na Imobiliária.')); } else if (act.open === 'bank') { closeDialog(); bankOpen(); } else if (act.hotel) { if (act.hotel === 'view') Net.send({ t: 'hotel', a: 'view' }); else Net.send({ t: 'hotel', a: 'rent', d: act.hotel }); } else if (act.job) { closeDialog(); Net.send({ t: 'job', a: 'take', type: act.job }); } else if (act.counter) { if (P) counterOpen(P.id); } else if (act.owner) setDialogText(P && G.est.st[P.id] ? 'Trabalho para ' + G.est.st[P.id].replace('★', '') + '. Paga em dia… quase sempre.' : 'Ninguém, por enquanto. A Coroa vende ou aluga o ponto, e eu venho junto!'); else if (act.open === 'estate') { closeDialog(); estToggle(true, 'house'); } else if (act.local) setDialogText(act.local); else Net.send({ t: 'npc', n: id, ...act }); });
+    for (const [label, act] of def.opts) add(label, () => { const P = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null; if (act.open === 'biz') { if (P && estMine(P.id)) { closeDialog(); bizOpen(P.id); } else setDialogText('Só o dono pode mexer nos livros. ' + (P && G.est.st[P.id] ? 'Este ponto é de ' + G.est.st[P.id].replace('★', '') + '.' : 'Este ponto é de ' + ((P && P.npcOwner) || 'um comerciante') + ', que vende por ' + (P ? P.buy : '?') + ' de ouro: fale com Mestre Anselmo, na Imobiliária.')); } else if (act.open === 'bank') { closeDialog(); bankOpen(); } else if (act.hotel) { if (act.hotel === 'view') Net.send({ t: 'hotel', a: 'view' }); else Net.send({ t: 'hotel', a: 'rent', d: act.hotel }); } else if (act.job) { closeDialog(); Net.send({ t: 'job', a: 'take', type: act.job }); } else if (act.counter) { if (P) counterOpen(P.id); } else if (act.owner) setDialogText(P && G.est.st[P.id] ? 'Trabalho para ' + G.est.st[P.id].replace('★', '') + '. Paga em dia… quase sempre.' : (P && P.npcOwner ? 'Trabalho para ' + P.npcOwner + ', que vende o ponto por ' + P.buy + ' de ouro (fale com Mestre Anselmo). E eu venho junto!' : 'Ninguém, por enquanto.')); else if (act.open === 'estate') { closeDialog(); estToggle(true, 'house'); } else if (act.local) setDialogText(act.local); else Net.send({ t: 'npc', n: id, ...act }); });
   }
   if (n.kind !== 'guard' && n.kind !== 'captain' && !String(n.id).startsWith('v_')) { const gk = Object.keys(G.me.inv || {}).find(k => G.me.inv[k] > 0 && (FOOD[k] || ['herb', 'gem', 'wand', 'map'].includes(k))); if (gk) add('Dar ' + (LOOT[gk] ? LOOT[gk].name : gk) + ' de presente', () => Net.send({ t: 'gift', id, k: gk })); }
   add('Até logo', closeDialog, 'ghost');
@@ -1828,6 +1830,51 @@ function drinkTick() {
 }
 
 // lascas de madeira e a árvore balançando; lascas de pedra e poeira; pedaços de mato
+// ---------- portas das cabines da pousada (abrem quando alguém passa) ----------
+G.cabAng = [];
+function cabinDoorItems(items, inB, now) {
+  if (!HOTEL_CABS.length || inB !== HOTEL_CABS[0].bi) return;
+  const dt = Math.min(0.1, (now - (G.cabT || now)) / 1000); G.cabT = now;
+  const ents = [G.me, ...Object.values(G.players || {}), ...Object.values(G.npcs || {})].filter(Boolean);
+  HOTEL_CABS.forEach((Q, i) => { if (!Q.door) return;
+    const open = ents.some(e => dist(e.rx ?? e.x, e.ry ?? e.y, Q.door[0], Q.door[1]) < 0.85) ? 1 : 0; G.cabAng[i] = (G.cabAng[i] || 0) + (open - (G.cabAng[i] || 0)) * Math.min(1, dt * 6);
+    const p = iso(Q.door[0], Q.door[1]); items.push({ d: Q.door[0] + Q.door[1] + 0.05, k: 10, cab: i, sx: p.sx + G.view.ox, sy: p.sy + G.view.oy, inside: true }); });
+}
+function drawCabinDoor(ctx, it) {
+  const Q = HOTEL_CABS[it.cab], a = (G.cabAng[it.cab] || 0) * 1.5;
+  const ax = Q.door[0] - Q.spot[0], ay = Q.door[1] - Q.spot[1], ux = -ay, uy = ax;   // abre para o corredor
+  const hx = Q.door[0] + ux * 0.44, hy = Q.door[1] + uy * 0.44, ex = hx - (Math.cos(a) * ux - Math.sin(a) * ax) * 0.88, ey = hy - (Math.cos(a) * uy - Math.sin(a) * ay) * 0.88;
+  const P0 = (x, y) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy]; }, [x0, y0] = P0(hx, hy), [x1, y1] = P0(ex, ey), H = 1.95 * (typeof HV !== 'undefined' ? HV : 25);
+  ctx.save();
+  ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.lineTo(x1, y1 - H); ctx.lineTo(x0, y0 - H); ctx.closePath();
+  const gr = ctx.createLinearGradient(x0, y0, x1, y1); gr.addColorStop(0, '#5a3a20'); gr.addColorStop(1, '#7a5230'); ctx.fillStyle = gr; ctx.fill(); ctx.strokeStyle = '#2e1c0e'; ctx.lineWidth = 1.2; ctx.stroke();
+  ctx.strokeStyle = 'rgba(30,18,8,0.55)'; ctx.lineWidth = 0.8; for (let k = 1; k < 4; k++) { const t = k / 4; ctx.beginPath(); ctx.moveTo(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t); ctx.lineTo(x0 + (x1 - x0) * t, y0 + (y1 - y0) * t - H); ctx.stroke(); }
+  for (const hh of [0.18, 0.82]) { ctx.strokeStyle = '#2a2622'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x0, y0 - H * hh); ctx.lineTo(x0 + (x1 - x0) * 0.35, y0 + (y1 - y0) * 0.35 - H * hh); ctx.stroke(); }
+  const lx = x0 + (x1 - x0) * 0.84, ly = y0 + (y1 - y0) * 0.84 - H * 0.5; ctx.fillStyle = '#c8a050'; ctx.beginPath(); ctx.arc(lx, ly, 1.8, 0, 7); ctx.fill();
+  const nx = x0 + (x1 - x0) * 0.5, ny = y0 + (y1 - y0) * 0.5 - H * 0.8; ctx.fillStyle = '#d8b868'; ctx.font = 'bold 7px serif'; ctx.textAlign = 'center'; ctx.fillText(String(it.cab + 1), nx, ny);   // número da cabine
+  ctx.restore();
+}
+// ---------- árvore caindo / pedra se desfazendo ----------
+G.falls = [];
+function fallStart(m) {
+  const x = m.i % MAP_W, y = Math.floor(m.i / MAP_W), sp = objSprite(m.o, x, y); if (!sp) return;
+  const a = m.a || 0, q = iso(x + Math.cos(a), y + Math.sin(a)), p = iso(x, y), vx = q.sx - p.sx, vy = q.sy - p.sy, l = Math.hypot(vx, vy) || 1;
+  G.falls.push({ x, y, o: m.o, sp, tree: m.t === 'tfall', vx: vx / l, vy: vy / l, t0: performance.now(), hit: false });
+  if (m.t === 'crumble') { for (let k = 0; k < 18; k++) spawnPart('chip', p.sx + (Math.random() - 0.5) * 22, p.sy - 4 - Math.random() * 14, { color: ['#9a9690', '#c8c4bc', '#6a665e', '#8a7a68'][k % 4] }); for (let k = 0; k < 10; k++) spawnPart('dust', p.sx + (Math.random() - 0.5) * 26, p.sy - 2); }
+  else for (let k = 0; k < 6; k++) spawnPart('chip', p.sx + (Math.random() - 0.5) * 8, p.sy - 14, { color: ['#8a5a2a', '#c89858'][k % 2] });
+}
+function drawFall(ctx, it, now) {
+  const F = it.f, t = now - F.t0, s = F.sp;
+  if (!F.tree) {   // pedra: encolhe e afunda em pedaços
+    const k = Math.min(1, t / 380); ctx.save(); ctx.globalAlpha = 1 - k; ctx.translate(it.sx, it.sy + k * 4); ctx.scale(1 + k * 0.25, 1 - k * 0.8); ctx.drawImage(s.c, -s.ax, -s.ay, s.w, s.h); ctx.restore(); return;
+  }
+  // árvore: tomba acelerando (até 90°), quica de leve, fica deitada e some
+  const T1 = 1100, k = Math.min(1, t / T1); let ph = (Math.PI / 2) * k * k;
+  if (t > T1) { const b = (t - T1) / 260; ph = Math.PI / 2 - (b < 1 ? Math.sin(b * Math.PI) * 0.07 : 0); if (!F.hit) { F.hit = true; const gx = it.sx - G.view.ox + F.vx * s.ay * 0.7, gy = it.sy - G.view.oy + F.vy * s.ay * 0.35; for (let n = 0; n < 14; n++) spawnPart('dust', gx + (Math.random() - 0.5) * s.ay * 0.8, gy + (Math.random() - 0.5) * 10); for (let n = 0; n < 12; n++) spawnPart('chip', gx + (Math.random() - 0.5) * s.ay * 0.6, gy - Math.random() * 10, { color: ['#4a7a32', '#6a9a42', '#8a5a2a'][n % 3] }); G.shake = Math.max(G.shake || 0, 3); } }
+  const fade = t > T1 + 900 ? Math.max(0, 1 - (t - T1 - 900) / 700) : 1;
+  const Ux = F.vx * Math.sin(ph), Uy = -Math.cos(ph) + F.vy * 0.5 * Math.sin(ph);
+  ctx.save(); ctx.globalAlpha = fade; ctx.transform(1, 0, -Ux, -Uy, it.sx, it.sy); ctx.drawImage(s.c, -s.ax, -s.ay, s.w, s.h); ctx.restore();
+}
 function gatherFx(i, tool) {
   const x = i % MAP_W, y = Math.floor(i / MAP_W), p = iso(x, y), col = tool === 'axe' ? ['#8a5a2a', '#c89858', '#6a4020'] : tool === 'pickaxe' ? ['#9a9690', '#c8c4bc', '#6a665e'] : ['#6a9a42', '#9ac060', '#c8b060'];
   const h = tool === 'axe' ? 16 : tool === 'pickaxe' ? 6 : 3;
@@ -1852,7 +1899,7 @@ function giveOpen(pid) {
   let d = $('givep'); if (!d) { d = document.createElement('div'); d.id = 'givep'; d.className = 'gpanel'; document.body.appendChild(d); }
   const items = Object.entries(me.inv || {}).filter(([k, n]) => n > 0 && LOOT[k]);
   d.innerHTML = '<div class="gp-head"><span>Dar para ' + q.name.replace(/</g, '') + '</span><span class="gp-gold"><span class="coin"></span><b>' + me.gold + '</b></span><button class="gp-x" id="gv-x">✕</button></div>' +
-    '<div class="gp-sub">Ouro</div><div class="bk-row"><input id="gv-q" type="number" min="1" max="' + me.gold + '" placeholder="Quantia"><button class="est-btn" id="gv-gold">Dar ouro</button></div>' +
+    '<div class="gp-sub">Ouro</div><div class="bk-row"><input id="gv-q" type="number" min="1" ' + (G.dev ? '' : 'max="' + me.gold + '"') + ' placeholder="Quantia"><button class="est-btn" id="gv-gold">Dar ouro</button></div>' +
     '<div class="gp-sub">Itens</div><div class="gv-items">' + (items.length ? items.map(([k, n]) => '<button class="gv-it" data-k="' + k + '" title="' + LOOT[k].name + ' (clique: 1 · Shift+clique: todos)"><span style="color:' + LOOT[k].color + '">' + LOOT[k].icon + '</span><small>' + n + '</small></button>').join('') : '<div class="gp-note">Mochila vazia.</div>') + '</div>' +
     '<div class="gp-note">Clique num item para dar 1 (Shift+clique dá todos). Chega na hora; os dois recebem o aviso.</div>';
   d.classList.remove('hidden');
@@ -1861,14 +1908,14 @@ function giveOpen(pid) {
   d.querySelectorAll('.gv-it').forEach(b => b.onclick = ev => { const k = b.dataset.k; Net.send({ t: 'pgive', to: pid, k, n: ev.shiftKey ? (me.inv[k] || 1) : 1 }); setTimeout(() => giveOpen(pid), 350); });
 }
 
-// baú do cubículo da pousada (4 espaços): F perto do baú do seu cubículo
+// baú da cabine da pousada (4 espaços): F perto do baú da sua cabine
 function hotelChestNear() { const me = G.me, bi = BUILDINGS.findIndex(b => b.kind === 'hotel'); if (!me || bi < 0 || WORLD.bld[tileAt(me.x, me.y)] !== bi) return false; const b = BUILDINGS[bi], L = interiorLayout(b, 0); return L.F.some(f => { if (f.t !== 'chest') return false; const [x, y] = bLocal(b, f.i, f.j); return dist(me.x, me.y, x, y) < 1.6; }); }
-function hotelChestF() { if (!hotelChestNear()) return false; if (!G.hotel || G.hotel.room < 0) { Net.send({ t: 'hotel', a: 'view' }); showToast('Esse baú é de um hóspede. Alugue um cubículo com Dona Ilsa.'); return true; } hotelChestShow(); return true; }
+function hotelChestF() { if (!hotelChestNear()) return false; if (!G.hotel || G.hotel.room < 0) { Net.send({ t: 'hotel', a: 'view' }); showToast('Esse baú é de um hóspede. Alugue uma cabine com Dona Ilsa.'); return true; } hotelChestShow(); return true; }
 function hotelChestShow() {
   let d = $('hchest'); if (!d) { d = document.createElement('div'); d.id = 'hchest'; d.className = 'gpanel'; document.body.appendChild(d); }
   const H = G.hotel || { items: {} }, inv = Object.entries(G.me.inv || {}).filter(([k, n]) => n > 0 && LOOT[k]), box = Object.entries(H.items || {});
   const cell = (k, n, a) => '<button class="gv-it" data-a="' + a + '" data-k="' + k + '" title="' + LOOT[k].name + '"><span style="color:' + LOOT[k].color + '">' + LOOT[k].icon + '</span><small>' + n + '</small></button>';
-  d.innerHTML = '<div class="gp-head"><span>Baú do cubículo ' + ((H.room ?? -1) + 1) + '</span><button class="gp-x" id="hc-x">✕</button></div><div class="gp-sub">No baú (' + box.length + '/4)</div><div class="gv-items">' + (box.length ? box.map(([k, n]) => cell(k, n, 'take')).join('') : '<div class="gp-note">Vazio.</div>') + '</div><div class="gp-sub">Sua mochila</div><div class="gv-items">' + inv.map(([k, n]) => cell(k, n, 'put')).join('') + '</div><div class="gp-note">Clique para guardar ou tirar 1 (Shift+clique: todos).</div>';
+  d.innerHTML = '<div class="gp-head"><span>Baú da cabine ' + ((H.room ?? -1) + 1) + '</span><button class="gp-x" id="hc-x">✕</button></div><div class="gp-sub">No baú (' + box.length + '/4)</div><div class="gv-items">' + (box.length ? box.map(([k, n]) => cell(k, n, 'take')).join('') : '<div class="gp-note">Vazio.</div>') + '</div><div class="gp-sub">Sua mochila</div><div class="gv-items">' + inv.map(([k, n]) => cell(k, n, 'put')).join('') + '</div><div class="gp-note">Clique para guardar ou tirar 1 (Shift+clique: todos).</div>';
   d.classList.remove('hidden'); d.querySelector('#hc-x').onclick = () => d.classList.add('hidden');
   d.querySelectorAll('[data-a]').forEach(b => b.onclick = ev => { const k = b.dataset.k, a = b.dataset.a, all = a === 'put' ? G.me.inv[k] : (H.items || {})[k]; Net.send({ t: 'hotel', a, k, n: ev.shiftKey ? all : 1 }); });
 }

@@ -65,7 +65,7 @@ function gmShow(tab) {
   else if (tab === 'journal') { if (typeof updateQuests === 'function') updateQuests(); }
   else if (tab === 'map') { if (typeof drawWorldMap === 'function') drawWorldMap(); }
   else if (tab === 'biz') gmBiz();
-  else if (tab === 'craft') gmPane('craft').innerHTML = gmCraftHtml();
+  else if (tab === 'craft') { gmPane('craft').innerHTML = gmCraftHtml(); gmPane('craft').querySelectorAll('[data-carve]').forEach(b => b.onclick = () => { Net.send({ t: 'carve', k: b.dataset.carve }); setTimeout(() => GM.tab === 'craft' && gmShow('craft'), 2800); }); }
   else if (tab === 'notes') gmNotes();
   else if (tab === 'weaver') { gmWeaver(); Net.send({ t: 'wv', a: 'snap' }); }
   const b = $('gm-body'); if (b) b.scrollTop = 0;
@@ -99,6 +99,8 @@ function gmCraftHtml() {
   let h = '<div class="gm-cols"><div>';
   h += '<div class="gp-sub">Cozinha (F perto do fogão ou da fogueira)</div>';
   for (const k in RECIPES) { const R = RECIPES[k]; h += '<div class="gm-rec"><b>' + R.name + '</b><small>' + Object.entries(R.need).map(([g, n]) => n + '× ' + nm(g)).join(' + ') + '</small><em>' + R.desc + '</em></div>'; }
+  h += '<div class="gp-sub">Entalhe à mão (com um machado)</div>';
+  { const inv = (G.me && G.me.inv) || {}, lvA = profLv(P0.artesao); for (const k in CARVE) { const R = CARVE[k], has = Object.entries(R.need).every(([g, n]) => (inv[g] || 0) >= n) && inv.axe > 0, lock = lvA < R.lv; h += '<div class="gm-rec' + (lock ? ' lock' : '') + '"><b>' + LOOT[k].name + '</b><small>' + Object.entries(R.need).map(([g, n]) => n + '× ' + nm(g)).join(' + ') + ' · Artesão ' + R.lv + '</small><em>' + R.desc + ' ' + LOOT[k].desc.split('. ').slice(1).join('. ') + '</em>' + (lock ? '' : '<button class="est-btn" data-carve="' + k + '"' + (has ? '' : ' disabled') + '>Entalhar</button>') + '</div>'; } }
   h += '<div class="gp-sub">Oficinas (produzem sozinhas se você for o dono)</div>';
   for (const k in WORKS) { const W = WORKS[k]; h += '<div class="gm-rec"><b>' + W.n + '</b>' + (W.make ? '<small>Produz ' + Object.entries(W.make).map(([g, n]) => (n < 1 ? 'às vezes ' : n + '× ') + GOODS[g].n).join(', ') + ' por hora</small>' : '') + (W.recipes ? '<small>' + Object.entries(W.recipes).map(([g, rec]) => GOODS[g].n + ' ← ' + Object.entries(rec).map(([a, n]) => n + '× ' + GOODS[a].n).join(' + ')).join('<br>') + '</small>' : '') + '</div>'; }
   h += '</div><div><div class="gp-sub">Coleta (segure F com a ferramenta do Empório)</div>';
@@ -134,7 +136,7 @@ function gmWeaver() {
   P.innerHTML = h;
   P.querySelectorAll('[data-wt]').forEach(b => b.onclick = () => { GM.wvTab = b.dataset.wt; gmWeaver(); });
   P.querySelectorAll('[data-wsel]').forEach(b => b.onclick = () => { GM.wvSel = GM.wvSel === b.dataset.wsel ? null : b.dataset.wsel; gmWeaver(); });
-  P.querySelectorAll('[data-wa]').forEach(b => b.onclick = ev => { ev.stopPropagation(); const [op, kind, id, v] = b.dataset.wa.split('|'); if (op === 'follow') { GM.follow = { kind, id }; showToast('Seguindo. Pare no painel do Tecelão.'); gmWeaver(); return; } if (op === 'gold') { const q = prompt('Quanto ouro dar (negativo tira)?', '100'); if (q == null || !isFinite(+q)) return; wvAct('gold', id, kind, +q); return; } wvAct(op, id, kind, v === undefined ? undefined : (v === 'null' ? null : +v)); });
+  P.querySelectorAll('[data-wa]').forEach(b => b.onclick = ev => { ev.stopPropagation(); const [op, kind, id, v] = b.dataset.wa.split('|'); if (op === 'follow') { GM.follow = { kind, id }; showToast('Seguindo. Pare no painel do Tecelão.'); gmWeaver(); return; } if (op === 'coins' && v === 'ask') { const q = prompt('Quanto ouro na chuva?', '1000'); if (q == null || !(+q > 0)) return; wvAct('coins', id, kind, Math.round(+q)); return; } if (op === 'gold') { const q = prompt('Quanto ouro dar (negativo tira)?', '100'); if (q == null || !isFinite(+q)) return; wvAct('gold', id, kind, +q); return; } wvAct(op, id, kind, v === undefined ? undefined : (v === 'null' ? null : +v)); });
   P.querySelectorAll('[data-wfoll]').forEach(b => b.onclick = () => { GM.follow = null; gmWeaver(); });
   const f = P.querySelector('#wv-filter'); if (f) { f.value = GM.wvFilter || ''; f.oninput = () => { GM.wvFilter = f.value; const pos = f.selectionStart; gmWeaver(); const g = gmPane('weaver').querySelector('#wv-filter'); g.focus(); g.setSelectionRange(pos, pos); }; }
 }
@@ -177,7 +179,7 @@ function wvWorldHtml(D) {
   const W = D.world, hh = Math.floor(W.hour), mm = Math.round((W.hour - hh) * 60);
   let h = '<div class="hub-top"><div><small>Dia do reino</small><b>' + W.day + '</b></div><div><small>Hora</small><b>' + String(hh).padStart(2, '0') + ':' + String(mm).padStart(2, '0') + '</b></div><div><small>Estação</small><b>' + gmEsc(W.season) + '</b></div><div><small>Clima</small><b>' + (W.rain > 0.3 ? 'chuva' : 'limpo') + '</b></div></div>';
   h += '<div class="gp-sub">Hora e clima do reino (para todos)</div><div class="wv-acts">' + [['Manhã', 0.88], ['Meio-dia', 0.0], ['Tarde', 0.17], ['Noite', 0.5], ['Natural', 'null']].map(([n, v]) => '<button class="est-btn' + ((W.ph === v || (W.ph == null && v === 'null')) ? ' on' : '') + '" data-wa="time|w|0|' + v + '">' + n + '</button>').join('') + '</div><div class="wv-acts">' + [['Sem chuva', 0], ['Chuva', 1], ['Natural', 'null']].map(([n, v]) => '<button class="est-btn' + ((W.rainSet === v || (W.rainSet == null && v === 'null')) ? ' on' : '') + '" data-wa="rain|w|0|' + v + '">' + n + '</button>').join('') + '</div><div class="gp-note">A hora escolhida fica parada até voltar para Natural. Os aluguéis e as semanas continuam contando normalmente.</div>';
-  h += '<div class="gp-sub">Chuva de ouro em volta de você</div><div class="wv-acts">' + [10, 50, 100, 500].map(v => '<button class="est-btn" data-wa="coins|w|0|' + v + '">' + v + ' ouro</button>').join('') + '</div><div class="gp-note">As moedas brotam em volta do Tecelão e qualquer jogador pega passando por cima. Somem em 10 minutos. Fora do menu, a tecla U repete a última chuva.</div>';
+  h += '<div class="gp-sub">Chuva de ouro em volta de você</div><div class="wv-acts">' + [10, 50, 100, 500, 1000, 5000, 20000].map(v => '<button class="est-btn" data-wa="coins|w|0|' + v + '">' + v + ' ouro</button>').join('') + '<button class="est-btn" data-wa="coins|w|0|ask">Outro valor…</button></div><div class="gp-note">As moedas brotam em volta do Tecelão e qualquer jogador pega passando por cima. Somem em 10 minutos. Fora do menu, a tecla U repete a última chuva.</div>';
   h += '<div class="gp-sub">População</div><div class="wv-kv">' + Object.entries(W.pop).map(([k, v]) => '<span>' + k + ' <b>' + v + '</b></span>').join('') + '</div>';
   h += '<div class="gp-sub">Monstros</div><div class="wv-kv">' + (Object.entries(W.mons).map(([k, v]) => '<span>' + (MON[k] ? MON[k].name : k) + ' <b>' + v + '</b></span>').join('') || '<span>nenhum</span>') + '</div>';
   h += '<div class="gp-sub">Bastiões</div><div class="wv-kv">' + W.bast.map(b => '<span>' + gmEsc(b.name) + ' <b>' + b.n + '</b></span>').join('') + '</div>';

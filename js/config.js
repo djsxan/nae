@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.42.0';
-const VERSION_NAME = 'Nae · Escudo e Troca';
+const VERSION = 'v1.43.0';
+const VERSION_NAME = 'Nae · Madeira e Cabines';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -163,7 +163,9 @@ const LOOT = {
   ore:      { name: 'Minério',           price: 4,  icon: '🪨', color: '#8a8a90', desc: 'Pedra com metal. Vende no Empório ou vai para a forja.' },
   flaxraw:  { name: 'Linho cru',         price: 3,  icon: '🌾', color: '#d8c890', desc: 'Fibra para tecido e bandagens.' },
   silverleaf: { name: 'Folha-de-prata',  price: 15, icon: '🍃', color: '#c8e0e8', desc: 'Erva rara que brilha ao luar. Boticários pagam bem.' },
-  wand:     { name: 'Varinha entalhada', price: 10, icon: '🪄', color: '#c8a070', desc: 'Feita na Carpintaria da Vila. Magos e colecionadores pagam bem.' },
+  wand:     { name: 'Varinha entalhada', price: 10, icon: '🪄', color: '#c8a070', desc: 'Pinho entalhado. Na mão do mago: +10% de dano mágico e +10 de mana.' },
+  wand_fine: { name: 'Varinha de carvalho', price: 28, icon: '🪄', color: '#8a5a30', desc: 'Madeira nobre de veio fino. Na mão do mago: +20% de dano mágico e +20 de mana.' },
+  wand_arcane: { name: 'Varinha arcana', price: 90, icon: '🪄', color: '#7ad0f0', desc: 'Carvalho com uma gema encravada na ponta. Na mão do mago: +30% de dano mágico e +35 de mana.' },
   map:      { name: 'Mapa da região',    price: 7,  icon: '🗺', color: '#e8d8a8', desc: 'Copiado à mão em Pergaminhos & Mapas. Vale no Empório.' },
   rattail:  { name: 'Rabo de Ratazana', price: 4,   icon: '〰', color: '#c8a090', desc: 'Fino e pelado. Alguém paga por isso.' },
   goo:      { name: 'Gosma Viva',       price: 6,   icon: '●', color: '#6ad84a', desc: 'Ainda se mexe um pouco.' },
@@ -390,7 +392,16 @@ const useLvl = (p, k) => Math.floor(100 * (1 - Math.exp(-((p.use && p.use[k]) ||
 const useBonus = (p, k) => useLvl(p, k) / 100 * USE_MAX_BONUS;
 const MELEE_USE = { knight: 'sword', archer: 'dagger', mage: 'staff' }, RANGED_USE = { knight: 'sword', archer: 'bow', mage: 'magic' };
 const maxHpOf = p => Math.floor(maxHpFor(p.cls, p.lvl) * (1 + treeEff(p, 'hp') + useBonus(p, 'vigor')));
-const maxMpOf = p => Math.floor(maxMpFor(p.cls, p.lvl) * (1 + treeEff(p, 'mp')));
+// varinhas: o mago usa sozinho a melhor que carregar
+const WANDS = { wand_arcane: { dmg: 0.3, mp: 35 }, wand_fine: { dmg: 0.2, mp: 20 }, wand: { dmg: 0.1, mp: 10 } };
+const wandOf = p => p && p.cls === 'mage' && p.inv ? Object.keys(WANDS).find(k => p.inv[k] > 0) || null : null;
+// entalhe à mão (precisa de um machado como faca)
+const CARVE = {
+  wand: { need: { log: 2 }, lv: 1, desc: 'Duas toras de pinho viram uma varinha simples.' },
+  wand_fine: { need: { hardwood: 1, log: 1 }, lv: 3, desc: 'Madeira nobre: varinha melhor.' },
+  wand_arcane: { need: { hardwood: 1, gem: 1 }, lv: 5, desc: 'Carvalho com uma gema na ponta: a melhor.' },
+};
+const maxMpOf = p => Math.floor(maxMpFor(p.cls, p.lvl) * (1 + treeEff(p, 'mp'))) + (wandOf(p) ? WANDS[wandOf(p)].mp : 0);
 const cstMaxOf = p => Math.round(CST_MAX * (1 + treeEff(p, 'cst')));
 
 // arco: tempo de puxar, pegar flecha, soltar; segurar no máximo cansa e treme; velocidades em tiles/s

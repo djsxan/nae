@@ -42,7 +42,8 @@ function jobsTickC(now) {
   const g = G.gath, me = G.me; if (!g || !me) return;
   if (me.walking || me.downed || dist(me.x, me.y, g.x, g.y) > 0.3) { G.gath = null; return; }   // andou: para de trabalhar
   if (now > g.animT) { g.animT = now + 760; Net.send({ t: 'gathering', tool: g.G0.tool, i: g.i }); }
-  if (now - g.t0 >= g.ms) { Net.send({ t: 'gather', i: g.i }); G.gath = null; }
+  if (!gatherOf(WORLD.obj[g.i])) { G.gath = null; return; }   // a árvore caiu / a pedra quebrou
+  if (now - g.t0 >= g.ms) { Net.send({ t: 'gather', i: g.i }); g.t0 = now; g.n = (g.n || 0) + 1; if (g.n >= 8) G.gath = null; }   // continua golpeando até acabar (o servidor manda parar)
 }
 // ---------- desenho: barra de coleta/turno e marcador do trabalho ----------
 function drawJobsOverlay(ctx, now) {
