@@ -57,7 +57,7 @@ function arrowPath(S0) {   // simula até bater em algo; devolve pontos e o que 
   const fa = Math.atan2(vy, vx);
   const tg = [];
   for (const id in G.monsters) { const q = G.monsters[id]; if (q.dieAt || (q.alt || 0) > 1.2) continue; tg.push({ x: q.rx, y: q.ry, r: Math.max(0.3, Math.min(1.6, MON[q.type].rad || 0.35)), H: MON_HT[q.type] || 1.6, base: (q.z || 0) >= 0.5 ? 3.5 : 0, k: 'm' }); }
-  for (const id in G.players) { const q = G.players[id]; if (q === me || !q.visible || q.fl > 0) continue; tg.push({ x: q.rx, y: q.ry, r: 0.32, H: q.downed ? 0.45 : 1.8, base: (q.z || 0) >= 0.5 ? 3.5 : 0, k: 'p', down: q.downed }); }
+  for (const id in G.players) { const q = G.players[id]; if (q === me || !q.visible || (q.fl || 0) !== 0) continue; tg.push({ x: q.rx, y: q.ry, r: 0.32, H: q.downed ? 0.45 : 1.8, base: (q.z || 0) >= 0.5 ? 3.5 : 0, k: 'p', down: q.downed }); }
   for (const id in G.npcs) { const q = G.npcs[id]; if (q.npDead || q.onBackBy) continue; tg.push({ x: q.rx, y: q.ry, r: 0.32, H: q.npDown ? 0.45 : 1.8, base: 0, k: 'n' }); }
   for (let s = 0; s < 200; s++) {
     x += vx * SUB; y += vy * SUB; vz -= BOW.g * SUB; h += vz * SUB; if (s % 2 === 0) pts.push([x, y, h]);

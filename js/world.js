@@ -167,13 +167,21 @@ const doorOf = b => { const [x, y] = doorTile(b), v = DOOR_V[b.door || 'S']; ret
 // escadas: o andar f sobe pela escada STAIR_AT(b, f) e o andar f+1 desce pela mesma (canto do fundo, alternando)
 // escada de 2 tiles encostada na parede: andar par = parede do fundo subindo para a direita; ímpar = parede esquerda subindo para o fundo
 // L = degrau de baixo, U = topo, entry = de onde se entra embaixo, arrive = onde se chega em cima
+// tipos: 'wall' (2 tiles encostada na parede do fundo), 'spiral' (caracol, 1 tile no canto), 'ladder' (escada de mão com alçapão, 1 tile),
+// 'ext' (externa: sobe por fora, pela parede do lado que a câmera vê, até uma porta no andar de cima). trig = onde se pisa lá em cima para descer
+function stairKind(b, f) { return (b.stairs && b.stairs[f]) || 'wall'; }
 function stairSpec(b, f) {
-  const [A] = bDims(b);
+  const [A, D] = bDims(b), k = stairKind(b, f);
+  if (f < 0) { const c = b.cellar; return { kind: 'ladder', one: 1, cellar: 1, L: c, U: c, dv: [0, 0], entry: [c[0], c[1] + 1], arrive: [c[0], c[1] + 1], trig: c }; }   // porão: escada de mão até o alçapão do térreo
+  if (k === 'spiral') { const i = f % 2 === 0 ? A - 1 : 0; return { kind: k, one: 1, L: [i, 0], U: [i, 0], dv: [0, 0], entry: [i, 1], arrive: [i, 1], trig: [i, 0] }; }
+  if (k === 'ladder') { const i = f % 2 === 0 ? A - 2 : 1; return { kind: k, one: 1, L: [i, 0], U: [i, 0], dv: [0, 0], entry: [i, 1], arrive: [i, 1], trig: [i, 0] }; }
+  if (k === 'ext') { const R = b.extSide !== 'L', o = R ? A : -1; return { kind: k, ext: R ? 1 : -1, L: [o, D - 2], U: [o, D - 3], dv: [0, -1], entry: [o, D - 1], arrive: [R ? A - 2 : 1, D - 3], trig: [R ? A - 1 : 0, D - 3] }; }
   // o topo fica a 1 tile da parede: em cima, chega-se no tile em frente aos degraus (na direção da subida)
-  if (f % 2 === 0) return { L: [A - 3, 0], U: [A - 2, 0], dv: [1, 0], entry: [A - 4, 0], arrive: [A - 1, 0] };
-  return { L: [0, 3], U: [0, 2], dv: [0, -1], entry: [0, 4], arrive: [0, 1] };
+  if (f % 2 === 0) return { kind: 'wall', L: [A - 3, 0], U: [A - 2, 0], dv: [1, 0], entry: [A - 4, 0], arrive: [A - 1, 0], trig: [A - 2, 0] };
+  return { kind: 'wall', L: [0, 3], U: [0, 2], dv: [0, -1], entry: [0, 4], arrive: [0, 1], trig: [0, 2] };
 }
 function floorsOf(b) { return b.kind === 'stairtower' ? 1 : (b.floors || 1); }
+function minFl(b) { return b && b.cellar ? -1 : 0; }   // prédio com porão: andar -1
 function interiorLayout0(b, fl = 0) {
   const [w, h] = bDims(b), F = [], taken = new Set(), key = (i, j) => i + ',' + j, dc = doorCol(b);
   const corridor = (i, j) => (fl === 0 && i === dc && j >= h - 2);
@@ -181,8 +189,10 @@ function interiorLayout0(b, fl = 0) {
   // escadas deste andar (subir/descer) + o tile de chegada na frente delas ficam livres
   const stairs = [];
   if (fl < nF - 1) stairs.push(['stairup', stairSpec(b, fl)]);
-  if (fl > 0) stairs.push(['stairdown', stairSpec(b, fl - 1)]);
+  if (fl > minFl(b)) stairs.push(['stairdown', stairSpec(b, fl - 1)]);
   for (const [t, s] of stairs) {
+    if (s.kind === 'ext') { if (t === 'stairdown') { taken.add(key(s.trig[0], s.trig[1])); taken.add(key(s.arrive[0], s.arrive[1])); F.push({ t: 'extdoor', i: s.trig[0], j: s.trig[1], w: 1, h: 1, block: false, ext: s.ext }); } continue; }   // externa: lá embaixo não ocupa nada dentro
+    if (s.one) { taken.add(key(s.L[0], s.L[1])); const e = t === 'stairup' ? s.entry : s.arrive; taken.add(key(e[0], e[1])); F.push({ t: t === 'stairup' ? s.kind : s.kind + 'top', i: s.L[0], j: s.L[1], w: 1, h: 1, block: false }); continue; }   // caracol e escada de mão: 1 tile (pisar nele sobe ou desce)
     for (const p of [s.L, s.U, t === 'stairup' ? s.entry : s.arrive]) taken.add(key(p[0], p[1]));
     F.push({ t, i: Math.min(s.L[0], s.U[0]), j: Math.min(s.L[1], s.U[1]), w: s.dv[0] ? 2 : 1, h: s.dv[1] ? 2 : 1, block: false, dv: s.dv });
     const bp = t === 'stairup' ? s.U : s.L;   // embaixo não se pisa sob o topo; em cima o vão da escada
@@ -199,6 +209,15 @@ function interiorLayout0(b, fl = 0) {
   let npc = null;
   const npcAt = (i, j) => { for (const d of [0, -1, 1, -2, 2]) if (can(i + d, j)) { taken.add(key(i + d, j)); npc = { i: i + d, j }; return; } };
   const k = b.kind;
+  if (fl < 0) {   // porão: o cofre do banco (ouro, barras e baús) ou a adega (barris e caixotes); velas para iluminar
+    if (k === 'bank') { put('goldsacks', 0, 0); put('goldbars', 1, 0); put('chest', 2, 0); put('goldbars', 4, 0); put('goldsacks', 5, 0); put('chest', 6, 0); put('goldsacks', 7, 0); for (let j = 3; j < h - 1; j += 2) { put('chest', 0, j); put('goldbars', w - 1, j); } put('goldsacks', 0, h - 1); put('goldbars', w - 1, h - 1); put('candles', 2, h - 1); put('candles', w - 3, h - 1); put('rug', 2, 4, { w: Math.max(1, w - 4), h: 3, block: false }); }
+    else { for (let i = 0; i < w; i++) put('barrel', i, 0); for (let j = 2; j < h; j++) { put(j % 2 ? 'barrel' : 'crate', 0, j); put(j % 2 ? 'crate' : 'barrel', w - 1, j); } put('table', Math.floor(w / 2), h - 2); put('candles', Math.floor(w / 2) - 1, h - 1); put('hay', w - 2, h - 1); }
+    return { F, npc: null };
+  }
+  if (fl > 0 && k === 'shop' && b.v === 6) {   // observatório da alquimista: telescópio, mapa celeste, orbe e livros
+    put('orb', 0, 0); put('spellbooks', 1, 0); for (const i of [2, 3]) put('shelf', i, 0, { v: 7 }); put('telescope', w - 3, 2); put('starrug', 1, 1, { w: 3, h: 2, block: false }); put('still', 0, h - 1); put('cauldron', 0, 2);
+    return { F, npc: null };
+  }
   if (fl > 0) {
     // andares de cima: quartos, depósitos e aposentos
     if (k === 'castle') { put('bed', 2, 0, { w: 2, h: 2, v: 1 }); put('chest', 4, 0); put('shelf', 5, 0); put('shelf', 6, 0); put('fireplace', w - 3, 0); if (put('table', 6, 4, { w: 2 })) { put('chair', 5, 4); put('chair', 8, 4); } put('banner', 0, 3); put('banner', 0, 6); put('candles', w - 1, 3); put('rug', 4, 3, { w: 4, h: 3, block: false }); }
@@ -353,12 +372,12 @@ function interiorLayout0(b, fl = 0) {
 // layout final: descarta móveis que fechariam algum canto do cômodo (todo tile livre precisa ser alcançável)
 const LAYOUT_MEMO = new Map();
 function interiorLayout(b, fl = 0) {
-  const [w, h] = bDims(b), mk = [b.kind, w, h, b.v || 0, floorsOf(b), fl, b.office || ''].join('|');
+  const [w, h] = bDims(b), mk = [b.kind, w, h, b.v || 0, floorsOf(b), fl, b.office || '', JSON.stringify(b.stairs || 0), b.extSide || '', b.cellar ? b.cellar.join(',') : ''].join('|');
   let L = LAYOUT_MEMO.get(mk); if (L) return L;
   L = interiorLayout0(b, fl);
   const blk = new Uint8Array(w * h), id = (i, j) => j * w + i;
   if (L.npc) blk[id(L.npc.i, L.npc.j)] = 1;
-  const s0 = fl === 0 ? [doorCol(b), h - 1] : stairSpec(b, fl - 1).arrive;
+  const s0 = fl === 0 ? [doorCol(b), h - 1] : fl < 0 ? stairSpec(b, fl).entry : stairSpec(b, fl - 1).arrive;
   // a escada que sobe deste andar não conta como passagem: a chegada lá embaixo precisa de saída sem ser pela escada (senão quem desce fica preso)
   const stc = new Set(); if (fl < floorsOf(b) - 1) { const sp = stairSpec(b, fl); for (const p of [sp.L, sp.U]) stc.add(id(p[0], p[1])); }
   const okAll = () => {
@@ -896,7 +915,7 @@ function generateWorld() {
   BUILDINGS.push(...houses);
   { // escritório do corretor: a casa mais perto da rua nova e do mercado
     let ob = null, bd = 1e9; for (const hb of houses) { const d = Math.hypot(hb.x + hb.w / 2 - (C - 18), hb.y + hb.h / 2 - (C + 13)); if (d < bd) { bd = d; ob = hb; } }
-    if (ob) { delete ob.arch; ob.kind = 'shop'; ob.name = 'Elixires da Lua Prateada'; ob.v = 6; ob.x = C - 22; ob.y = C + 15; ob.door = 'S'; ob.w = 6; ob.h = 4; ob.floors = 1; ob.H = 4.2; ob.RH = 2.2; ob.wall = Math.round(4.2 * 19.6); ob.roof = Math.round(2.2 * 19.6); } }   // loja da alquimista (antiga imobiliária)   // atrás da Alfaiataria, porta para a rua de baixo
+    if (ob) { delete ob.arch; ob.kind = 'shop'; ob.name = 'Elixires da Lua Prateada'; ob.v = 6; ob.x = C - 22; ob.y = C + 15; ob.door = 'S'; ob.w = 6; ob.h = 4; ob.floors = 2; ob.H = 4.2; ob.RH = 2.2; ob.wall = Math.round(4.2 * 19.6); ob.roof = Math.round(2.2 * 19.6); } }   // loja da alquimista (antiga imobiliária)   // atrás da Alfaiataria, porta para a rua de baixo
   { const off = houses.find(q => q.x === C + 18 && q.y === C - 29); if (off) { delete off.arch; Object.assign(off, { office: 'estate', name: 'Imobiliária Chave de Bronze', door: 'S', floors: 2, H: 3.8, RH: 2.0, wall: Math.round(3.8 * 19.6), roof: Math.round(2.0 * 19.6) }); } }   // escritório do Mestre Anselmo (no lugar da Casa 6, porta para o sul)
   { const h18 = houses.find(q => q.x === C + 15 && q.y === C + 23); if (h18) { h18.x = C + 14; h18.y = C - 13; h18.door = 'E'; h18.w = 4; h18.h = 6; h18.noble = 1; } }   // casa nobre, ao lado do castelo
   for (let i = 0; i < bld.length; i++) if (bld[i] === -2) bld[i] = -1;   // marcas temporárias que sobraram (a imobiliária muda de lugar depois de sorteada)
@@ -933,9 +952,16 @@ function generateWorld() {
     { x: C - 72, y: C - 21, ...BH('workshop', 5, 4, 2.6, 2.4, 'Fazenda do Trigo Dourado', { wk: 'wheat', door: 'S', floors: 1 }) },
     { x: C - 65, y: C - 21, ...BH('workshop', 4, 4, 3.6, 2.6, 'Moinho do Vento Leste', { wk: 'mill', door: 'S', floors: 1 }) },
     { x: C + 4, y: C + 21, ...BH('workshop', 5, 4, 2.6, 1.9, 'Padaria da Praça', { wk: 'bakery', door: 'E', dcol: 2, floors: 1 }) });   // porta para a avenida da catedral   // casa nova na rua do banco, alinhada com as lojas   // porta direto na rua principal
+  { const S0 = { 'Empório do Borin': { 0: 'ladder' }, 'Pergaminhos & Mapas': { 0: 'spiral' }, 'Imobiliária Chave de Bronze': { 0: 'ext' }, 'Casa Morvane': { 0: 'spiral', 1: 'ladder' }, 'Elixires da Lua Prateada': { 0: 'spiral' } };   // escadas: o resto usa a de parede
+    for (const b of BUILDINGS) { if (S0[b.name]) b.stairs = S0[b.name]; else if (b.kind === 'manor') b.stairs = { 1: 'ladder' }; }
+    const CEL = { 'Taverna do Javali': [2, 0], 'Banco de Nae': [3, 1] }; for (const b of BUILDINGS) if (CEL[b.name]) b.cellar = CEL[b.name]; }   // porões: adega atrás do balcão da taverna, cofre embaixo do banco   // casarões: o sótão é pelo alçapão
   BUILDINGS.forEach((b, bi) => {
     for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { bld[idx(x, y)] = bi; obj[idx(x, y)] = O.NONE; ground[idx(x, y)] = T.COBBLE; }
   });
+  // escadas externas: o pé e a frente ficam livres; debaixo do patamar de cima não se passa
+  BUILDINGS.forEach(b => { for (let f = 0; f < floorsOf(b) - 1; f++) { if (stairKind(b, f) !== 'ext') continue; const s = stairSpec(b, f);
+    for (const p of [s.entry, s.L]) { const [x, y] = bLocal(b, p[0], p[1]), i = idx(x, y); if (bld[i] < 0) { obj[i] = O.NONE; ground[i] = T.COBBLE; } }
+    { const [x, y] = bLocal(b, s.U[0], s.U[1]), i = idx(x, y); if (bld[i] < 0) { obj[i] = O.PART; ground[i] = T.COBBLE; } } } });
 
   { const hb = BUILDINGS[BUILDINGS.length - 1]; if (hb && hb.kind === 'hotel') { const [dx, dy] = bLocal(hb, doorCol(hb), bDims(hb)[1] - 1); for (let ox = -1; ox <= 1; ox++) for (let oy = 1; oy <= 2; oy++) { const i = idx(dx + ox, dy - oy); if (bld[i] < 0) obj[i] = O.NONE; } } }
   // ---- interiores ----
@@ -1119,7 +1145,7 @@ function generateWorld() {
 
 // mobília -> obstáculos (PART) e assentos, no quadro do mundo
 function placeFurniture(b, bi, f, obj, seats, idx) {
-  if (f.t === 'stairup' || f.t === 'stairdown') return;
+  if (f.t === 'stairup' || f.t === 'stairdown' || f.t === 'spiral' || f.t === 'spiraltop' || f.t === 'ladder' || f.t === 'laddertop' || f.t === 'extdoor') return;
   if (f.t === 'celldoor') { const [dx, dy] = bLocal(b, f.i, f.j), [sx, sy] = bLocal(b, f.i, f.j - 1), tiles = new Set(); for (let a = f.i - 1; a <= f.i; a++) for (let c = 0; c <= 1; c++) { const [tx, ty] = bLocal(b, a, c); tiles.add(ty * MAP_W + tx); } JAILCELLS.push({ door: [dx, dy], spot: [sx, sy], tiles, bi }); }
   if (f.cab != null) {   // cabine da pousada
     const Q = HOTEL_CABS[f.cab] || (HOTEL_CABS[f.cab] = { k: f.cab, bi });
@@ -1371,7 +1397,7 @@ function edgeOk(ax, ay, bx, by) {
 // andares de cima: só dentro do prédio, sem móveis, paredes fechadas (sem porta)
 const FLOOR_BLOCK = new Map();
 function floorBlocked(bi, fl) {
-  const k = bi * 4 + fl; let s = FLOOR_BLOCK.get(k); if (s) return s;
+  const k = bi * 8 + fl + 1; let s = FLOOR_BLOCK.get(k); if (s) return s;
   s = new Set(); const b = BUILDINGS[bi];
   for (const f of interiorLayout(b, fl).F) if (f.block) for (let a = 0; a < f.w; a++) for (let c = 0; c < f.h; c++) { const [x, y] = bLocal(b, f.i + a, f.j + c); s.add(y * MAP_W + x); }
   FLOOR_BLOCK.set(k, s); return s;
@@ -1386,7 +1412,7 @@ function canStandFloor(x, y, bi, fl, r = 0.24) {
 }
 // tile da escada (mundo) e chegada (na frente dela)
 // escada entre o andar f e f+1 em coordenadas do mundo
-function stairWorld(b, f) { const s = stairSpec(b, f), w = p => bLocal(b, p[0], p[1]); return { L: w(s.L), U: w(s.U), entry: w(s.entry), arrive: w(s.arrive) }; }
+function stairWorld(b, f) { const s = stairSpec(b, f), w = p => bLocal(b, p[0], p[1]); return { kind: s.kind, one: s.one, ext: s.ext, L: w(s.L), U: w(s.U), entry: w(s.entry), arrive: w(s.arrive), trig: w(s.trig) }; }
 function stairTile(b, f) { return stairWorld(b, f).L; }
 function stairArrive(b, f, up = true) { const s = stairWorld(b, f); return up ? s.arrive : s.entry; }
 function canStand(x, y, z = 0, r = 0.28) {
@@ -1427,7 +1453,7 @@ function stairH(x, y) {
 }
 // posição livre para quem está na altura z (contínua, 0..1)
 function canStandZ(x, y, z, r = 0.24, fl = 0, fb = -1) {
-  if (fl > 0 && fb >= 0) return canStandFloor(x, y, fb, fl, r);
+  if (fl !== 0 && fb >= 0) return canStandFloor(x, y, fb, fl, r);
   const h0 = stairH(x, y);
   if (h0 >= 0) return Math.abs(h0 - z) <= 0.4; // em cima da rampa só importa a altura
   const L = z >= 0.5 ? 1 : 0;

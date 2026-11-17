@@ -1398,6 +1398,28 @@ function mBakeryFacade(o, b, H, night, trimM) {
   // lampião da porta
   { const lp = grp(mk(new THREE.BoxGeometry(0.04, 0.04, 0.22).translate(0, 0, 0.11), iron), mk(new THREE.BoxGeometry(0.13, 0.19, 0.13).translate(0, -0.11, 0.22), smat(null, '#ffd890', { emissive: '#ffbb60', ei: night ? 1.6 : 0.5 }))); lp.position.set(dX - 0.5, 1.45, h + 0.02); lp.scale.setScalar(0.75); o.add(lp); }
 }
+// escada externa de madeira encostada na parede do lado: degraus, patamar com guarda-corpo, porta no andar de cima e lanterna
+function mExtStair(o, b, s, fh, f, night) {
+  const R = s.ext > 0, x0 = R ? b.w : 0, sg = R ? 1 : -1, D = b.h, y0 = f * fh, wood = smat('wood', '#6a4a2c', { bump: 1.2 }), tread = smat('wood', '#8a6038', { bump: 1 }), post = smat('wood', '#4a3020'), iron = smat(null, '#2a2622', { metal: 0.8, rough: 0.5 });
+  const zBot = D - 0.95, zTop = D - 2.25, n = 9, sw = 0.82, xc = x0 + sg * (sw / 2 + 0.04);
+  for (let k = 0; k < n; k++) { const z = zBot - (k + 0.5) * (zBot - zTop) / n, y = y0 + (k + 1) * fh / n; o.add(wbox(sw, 0.06, (zBot - zTop) / n + 0.03, xc, y, z, tread, 2)); o.add(wbox(sw, y - y0 - 0.03, 0.04, xc, y0 + (y - y0) / 2, z + (zBot - zTop) / n / 2 - 0.02, wood, 2)); }   // degraus e espelhos
+  const xo = x0 + sg * (sw + 0.06);
+  o.add(limb(V3(xo, y0 + 0.05, zBot), V3(xo, y0 + fh, zTop), 0.05, 0.05, wood, 4));   // banzo de fora
+  o.add(limb(V3(xo, y0 + 0.9, zBot), V3(xo, y0 + fh + 0.9, zTop), 0.03, 0.03, post, 4));   // corrimão
+  for (let k = 0; k <= 4; k++) { const t = k / 4, z = zBot + (zTop - zBot) * t, y = y0 + fh * t; o.add(wbox(0.05, 0.9, 0.05, xo, y + 0.45, z, post, 2)); }
+  // patamar sobre pilares, guarda-corpo e porta
+  const zA = zTop, zB = D - 3 + 0.02, pz = (zA + zB) / 2, pd = zA - zB;
+  o.add(wbox(sw + 0.1, 0.08, pd, xc + sg * 0.03, y0 + fh, pz, tread, 2));
+  for (const z of [zA, zB]) { o.add(wbox(0.1, fh, 0.1, xo, y0 + fh / 2, z, post, 1)); o.add(wbox(0.18, 0.06, 0.18, xo, y0 + 0.03, z, smat('stoneblock', '#8e887a'), 1)); }
+  o.add(wbox(0.04, 0.06, pd, xo, y0 + fh + 0.9, pz, post, 2)); o.add(wbox(sw + 0.08, 0.06, 0.04, xc + sg * 0.02, y0 + fh + 0.9, zB, post, 2));
+  for (let k = 0; k <= 3; k++) o.add(wbox(0.04, 0.88, 0.04, xo, y0 + fh + 0.45, zB + k * pd / 3, post, 2)); for (let k = 1; k <= 3; k++) o.add(wbox(0.04, 0.88, 0.04, x0 + sg * k * sw / 4, y0 + fh + 0.45, zB, post, 2));
+  { const gd = grp(), dz = s.trig[1] + 0.5, dw = 0.62, dh = Math.min(1.25, fh - 0.25), dm = smat('wood', '#5a3a20', { bump: 1.4 });
+    gd.add(wbox(dw + 0.12, dh + 0.08, 0.06, 0, dh / 2, 0, smat('wood', '#3a2212'), 1)); gd.add(wbox(dw, dh, 0.04, 0, dh / 2, 0.03, dm, 1));
+    for (const y of [0.22, dh - 0.22]) gd.add(mk(new THREE.BoxGeometry(dw * 0.9, 0.04, 0.02).translate(0, y, 0.06), iron));
+    gd.add(mk(new THREE.SphereGeometry(0.03, 8, 6).translate(dw * 0.3, dh * 0.5, 0.07), smat(null, '#c9a24a', { metal: 1, rough: 0.3 })));
+    gd.rotation.y = R ? Math.PI / 2 : -Math.PI / 2; gd.position.set(x0 + sg * 0.02, y0 + fh + 0.04, dz); o.add(gd);
+    const lp = grp(mk(new THREE.BoxGeometry(0.2, 0.04, 0.04).translate(0.1, 0, 0), iron), mk(new THREE.BoxGeometry(0.13, 0.19, 0.13).translate(0.2, -0.13, 0), smat(null, '#ffd890', { emissive: '#ffbb60', ei: night ? 1.6 : 0.5 }))); lp.rotation.y = R ? 0 : Math.PI; lp.position.set(x0 + sg * 0.02, y0 + fh + dh + 0.12, dz - 0.5); o.add(lp); }
+}
 function mBuildingRot(b, night) { return placeRot(b, mBuilding(localB(b), night)); }
 function mBuilding(b, night) {
   if (b.kind === 'castle') return mCastle(b, night);
@@ -1470,11 +1492,12 @@ function mBuilding(b, night) {
   };
   const doorX = doorCol(b) + 0.5;
   if (b.wk === 'bakery') winAt('X0', h * 0.6, fh * 0.55, false);
+  const extZ = []; for (let f = 0; f < floors - 1; f++) if (stairKind(b, f) === 'ext') { const sp = stairSpec(b, f); if (sp.ext > 0) extZ.push([f + 1, sp.trig[1] + 0.5]); }   // onde fica a porta de cima da escada externa
   if (b.kind !== 'hotel') for (let f = 0; f < floors; f++) {
     const y = f * fh + fh * 0.55;
     const nL = Math.max(1, Math.floor(w / 1.5)), nR = Math.max(1, Math.floor(h / 1.5));
     for (let k = 0; k < nL; k++) { const u = (k + 0.5) * w / nL; if (f === 0 && Math.abs(u - doorX) < 0.8) continue; winAt('L', u, y, f > 0); }
-    for (let k = 0; k < nR; k++) winAt('R', (k + 0.5) * h / nR, y, f > 0);
+    for (let k = 0; k < nR; k++) { const u = (k + 0.5) * h / nR; if (extZ.some(([ef, ez]) => ef === f && Math.abs(u - ez) < 0.8)) continue; winAt('R', u, y, f > 0); }
   }
   // porta em arco
   {
@@ -1653,6 +1676,7 @@ function mBuilding(b, night) {
     for (const sx of [-0.62, 0.62]) { const lp = grp(mk(new THREE.BoxGeometry(0.04, 0.04, 0.2).translate(0, 0, 0.1), bronze), mk(new THREE.BoxGeometry(0.13, 0.19, 0.13).translate(0, -0.11, 0.2), smat(null, '#ffd890', { emissive: '#ffbb60', ei: night ? 1.6 : 0.5 }))); lp.position.set(dX + sx, 1.55, h + 0.02); lp.scale.setScalar(0.7); o.add(lp); }
   }
   if (b.kind === 'tavern' || b.kind === 'shop') { const br = mBarrel(); br.scale.setScalar(0.8); br.position.set(w + 0.32, 0, h * 0.25); o.add(br); }
+  for (let f = 0; f < floors - 1; f++) if (stairKind(b, f) === 'ext') mExtStair(o, b, stairSpec(b, f), fh, f, night);
   if (b.kind === 'bank') {   // pórtico de colunas brancas, frontão com o brasão dourado e escadaria (estilo Gringotts)
     const marble = smat('stoneblock', '#f2ede2', { bump: 0.8 }), gold = smat(null, '#d4a94a', { metal: 1, rough: 0.3 }), n = 6, z0 = h + 0.75, Hc = H - 0.2;
     for (let k = 0; k < 3; k++) o.add(wbox(w + 0.6 - k * 0.2, 0.14, 1.3 - k * 0.32, w / 2, 0.07 + k * 0.14, h + 0.65 - k * 0.16, marble, 1));
@@ -1675,8 +1699,8 @@ function mInterior(b, fl = 0) {
   const [w, h] = bDims(b), { H } = bldDims(b), o = grp(), L = interiorLayout(b, fl), R = rng(b.x * 13 + b.y), nF = floorsOf(b);
   const stoneK = b.kind === 'bank' || b.kind === 'temple' || b.kind === 'castle' || b.kind === 'smith' || b.kind === 'barracks' || b.kind === 'jail' || b.kind === 'boutique' || b.kind === 'manor';
   const hotelI = b.kind === 'hotel';
-  const floorM = b.kind === 'shop' && b.v === 6 ? smat('stoneblock', '#3a3644', { bump: 0.8 }) : hotelI ? smat('oldplank', '#8a6440', { bump: 1.3 }) : b.kind === 'bank' ? smat('marblechk', '#ffffff', { bump: 0.4, rough: 0.35 }) : stoneK ? smat('stoneblock', b.kind === 'castle' ? '#a8a092' : '#8e887c', { bump: 1 }) : smat('wood', b.kind === 'stable' ? '#8a6a3e' : '#7a5232', { bump: 1.2 });
-  const wallM = b.kind === 'shop' && b.v === 6 ? smat('stoneblock', '#4a4458', { bump: 1 }) : hotelI ? smat('wallpaper', '#ffffff', { bump: 0.5 }) : stoneK ? smat('brick', b.kind === 'castle' ? '#b4ad9c' : '#a29c90', { bump: 1.2 }) : smat('plaster', '#e2d6bc', { bump: 0.7 });
+  const floorM = fl < 0 ? smat('stoneblock', '#5e584e', { bump: 1.5 }) : b.kind === 'shop' && b.v === 6 ? smat('stoneblock', '#3a3644', { bump: 0.8 }) : hotelI ? smat('oldplank', '#8a6440', { bump: 1.3 }) : b.kind === 'bank' ? smat('marblechk', '#ffffff', { bump: 0.4, rough: 0.35 }) : stoneK ? smat('stoneblock', b.kind === 'castle' ? '#a8a092' : '#8e887c', { bump: 1 }) : smat('wood', b.kind === 'stable' ? '#8a6a3e' : '#7a5232', { bump: 1.2 });
+  const wallM = fl < 0 ? smat('brick', '#6e675c', { bump: 1.5 }) : b.kind === 'shop' && b.v === 6 ? smat('stoneblock', '#4a4458', { bump: 1 }) : hotelI ? smat('wallpaper', '#ffffff', { bump: 0.5 }) : stoneK ? smat('brick', b.kind === 'castle' ? '#b4ad9c' : '#a29c90', { bump: 1.2 }) : smat('plaster', '#e2d6bc', { bump: 0.7 });
   const trimM = smat('wood', '#4a2f17'), hw = Math.min(H / nF, b.kind === 'castle' || b.kind === 'temple' ? 5 : 2.3), t = 0.16;
   o.add(mk(wuv(new THREE.BoxGeometry(w, 0.06, h).translate(w / 2, 0.03, h / 2), 1), floorM));
   // quais paredes (no quadro local) ficam viradas para a câmera depende do lado da porta
@@ -1688,12 +1712,12 @@ function mInterior(b, fl = 0) {
   if (dx - 0.6 > 0) wallSeg('front', dx - 0.6, t, (dx - 0.6) / 2, h - t / 2);
   if (w - dx - 0.6 > 0) wallSeg('front', w - dx - 0.6, t, (dx + 0.6 + w) / 2, h - t / 2);
   if (!knee.includes('front')) o.add(mk(wuv(new THREE.BoxGeometry(1.2, hw - 1.3, t).translate(dx, 1.3 + (hw - 1.3) / 2, h - t / 2), 0.7), wallM));
-  if (fl > 0 && !knee.includes('front')) o.add(mk(wuv(new THREE.BoxGeometry(1.2, 1.3, t).translate(dx, 0.65, h - t / 2), 0.7), wallM));
+  if (fl !== 0 && !knee.includes('front')) o.add(mk(wuv(new THREE.BoxGeometry(1.2, 1.3, t).translate(dx, 0.65, h - t / 2), 0.7), wallM));
   if (fl > 0) o.add(mk(wuv(new THREE.BoxGeometry(w, 0.18, h).translate(w / 2, -0.09, h / 2), 1), smat('wood', '#4e3420', { bump: 1 })));
   // janelas com luz entrando, só nas paredes inteiras
   // janelas de verdade (moldura, 4 vidros, travessas e parapeito) nas paredes inteiras
   const frameM = smat('wood', '#4a2f17'), glassW = smat(null, '#9fb4c0', { emissive: '#6a7a84', ei: 0.35, rough: 0.15, metal: 0.2 });
-  const win = (x, z, ry) => { const g = grp(), y = Math.min(hw * 0.58, 1.5); g.add(mk(new THREE.BoxGeometry(0.5, 0.66, 0.02).translate(0, y, 0.012), glassW, false)); for (const [ww, hh, xx, yy] of [[0.58, 0.05, 0, y + 0.33], [0.58, 0.05, 0, y - 0.33], [0.05, 0.7, -0.27, y], [0.05, 0.7, 0.27, y], [0.03, 0.66, 0, y], [0.5, 0.03, 0, y]]) g.add(mk(new THREE.BoxGeometry(ww, hh, 0.05).translate(xx, yy, 0.02), frameM)); g.add(mk(new THREE.BoxGeometry(0.66, 0.05, 0.12).translate(0, y - 0.37, 0.05), frameM)); g.rotation.y = ry; g.position.set(x, 0, z); o.add(g); };
+  const win = (x, z, ry) => { if (fl < 0) return; const g = grp(), y = Math.min(hw * 0.58, 1.5); g.add(mk(new THREE.BoxGeometry(0.5, 0.66, 0.02).translate(0, y, 0.012), glassW, false)); for (const [ww, hh, xx, yy] of [[0.58, 0.05, 0, y + 0.33], [0.58, 0.05, 0, y - 0.33], [0.05, 0.7, -0.27, y], [0.05, 0.7, 0.27, y], [0.03, 0.66, 0, y], [0.5, 0.03, 0, y]]) g.add(mk(new THREE.BoxGeometry(ww, hh, 0.05).translate(xx, yy, 0.02), frameM)); g.add(mk(new THREE.BoxGeometry(0.66, 0.05, 0.12).translate(0, y - 0.37, 0.05), frameM)); g.rotation.y = ry; g.position.set(x, 0, z); o.add(g); };
   if (!knee.includes('back') && b.kind !== 'bank') for (let k = 0; k < Math.floor(w / 2); k++) win(1 + k * 2, t + 0.005, 0);
   if (!knee.includes('left')) for (let k = 0; k < Math.floor(h / 2); k++) win(t + 0.005, 1 + k * 2, Math.PI / 2);
   if (!knee.includes('right')) for (let k = 0; k < Math.floor(h / 2); k++) win(w - t - 0.005, 1 + k * 2, -Math.PI / 2);
@@ -1903,6 +1927,56 @@ function mInterior(b, fl = 0) {
         g.add(mk(new THREE.BoxGeometry(ux ? 0.9 : 0.9, 0.04, 0.9).translate(-ux * 0.5, 0.075, -uz * 0.5), smat(null, '#c8a050', { emissive: '#6a4a10', ei: 0.25, transparent: true, opacity: 0.3 }), false));
         break;
       }
+      case 'telescope': {   // telescópio de latão num tripé, apontado para o céu
+        const brass = smat(null, '#c9a24a', { metal: 0.9, rough: 0.28 });
+        for (let k = 0; k < 3; k++) { const a = k / 3 * Math.PI * 2; g.add(limb(V3(Math.cos(a) * 0.32, 0.06, Math.sin(a) * 0.32), V3(0, 0.95, 0), 0.025, 0.02, DW(), 4)); }
+        const tb = grp(mk(new THREE.CylinderGeometry(0.07, 0.1, 1.1, 14), brass), mk(new THREE.CylinderGeometry(0.11, 0.11, 0.06, 14).translate(0, 0.55, 0), brass), mk(new THREE.CircleGeometry(0.1, 14).rotateX(-Math.PI / 2).translate(0, 0.585, 0), smat(null, '#9ab8e8', { emissive: '#3a4a8a', ei: 0.6, rough: 0.05 })));
+        tb.rotation.z = -0.75; tb.rotation.y = 0.6; tb.position.set(0, 1.05, 0); g.add(tb); break;
+      }
+      case 'spiral': {   // caracol: poste central, degraus em leque girando uma volta e um quarto, corrimão em hélice
+        const fh = hw, n = 14, turn = Math.PI * 2.5, a0 = backX ? 0 : Math.PI, st = smat('wood', '#7a5434', { bump: 1.2 }), iron = smat(null, '#2a2622', { metal: 0.8, rough: 0.5 });
+        g.add(mk(new THREE.CylinderGeometry(0.06, 0.07, fh - 0.02, 10).translate(0, (fh - 0.02) / 2, 0), DW()));
+        for (let k = 0; k < n; k++) { const a = a0 + (k + 0.5) / n * turn, y = (k + 1) / n * fh, sp = wbox(0.42, 0.05, 0.2, 0.25, y, 0, st, 2); const st2 = grp(sp); st2.rotation.y = -a; g.add(st2);
+          const px = Math.cos(a) * 0.45, pz = Math.sin(a) * 0.45; if (k % 2 === 0) g.add(mk(new THREE.CylinderGeometry(0.012, 0.012, 0.8, 5).translate(px, y + 0.4, pz), iron)); }
+        for (let k = 0; k < 24; k++) { const a = a0 + k / 24 * turn, a2 = a0 + (k + 1) / 24 * turn, y = k / 24 * fh + 0.8, y2 = (k + 1) / 24 * fh + 0.8; g.add(limb(V3(Math.cos(a) * 0.45, y, Math.sin(a) * 0.45), V3(Math.cos(a2) * 0.45, y2, Math.sin(a2) * 0.45), 0.02, 0.02, iron, 4)); }
+        
+        g.add(mk(new THREE.RingGeometry(0.4, 0.5, 24).rotateX(-Math.PI / 2).translate(0, 0.075, 0), smat(null, '#c8a050', { emissive: '#6a4a10', ei: 0.25, transparent: true, opacity: 0.3, side: THREE.DoubleSide }), false));
+        { const inner = grp(...g.children); inner.scale.set(0.74, 1, 0.74); inner.position.set(backX ? 0.08 : -0.08, 0, backZ ? 0.08 : 0); g.add(inner); }   // longe das paredes do canto
+        break;
+      }
+      case 'spiraltop': {   // vão redondo no piso de cima: o alto do poste, os últimos degraus e grade em volta
+        const iron = smat(null, '#2a2622', { metal: 0.8, rough: 0.5 }), st = smat('wood', '#5a3c22');
+        g.add(mk(new THREE.CircleGeometry(0.46, 24).rotateX(-Math.PI / 2).translate(0, 0.066, 0), smat(null, '#050302', { rough: 1 })));
+        g.add(mk(new THREE.CylinderGeometry(0.06, 0.06, 0.95, 10).translate(0, 0.5, 0), DW()));
+        for (let k = 0; k < 4; k++) { const a = (backX ? 0 : Math.PI) + Math.PI * 2.5 - (k + 0.5) / 14 * Math.PI * 2.5, sp = grp(wbox(0.42, 0.04, 0.2, 0.25, 0.08 - k * 0.002, 0, st, 2)); sp.rotation.y = -a; g.add(sp); }
+        for (let k = 0; k < 18; k++) { const a = k / 18 * Math.PI * 1.6 + (backX ? Math.PI * 0.7 : -Math.PI * 0.3), a2 = (k + 1) / 18 * Math.PI * 1.6 + (backX ? Math.PI * 0.7 : -Math.PI * 0.3); g.add(limb(V3(Math.cos(a) * 0.5, 0.82, Math.sin(a) * 0.5), V3(Math.cos(a2) * 0.5, 0.82, Math.sin(a2) * 0.5), 0.02, 0.02, iron, 4)); if (k % 3 === 0) g.add(mk(new THREE.CylinderGeometry(0.012, 0.012, 0.76, 5).translate(Math.cos(a) * 0.5, 0.45, Math.sin(a) * 0.5), iron)); }
+        g.add(mk(new THREE.RingGeometry(0.46, 0.54, 24).rotateX(-Math.PI / 2).translate(0, 0.075, 0), smat(null, '#c8a050', { emissive: '#6a4a10', ei: 0.25, transparent: true, opacity: 0.3, side: THREE.DoubleSide }), false));
+        { const inner = grp(...g.children); inner.scale.set(0.74, 1, 0.74); inner.position.set(backX ? 0.08 : -0.08, 0, backZ ? 0.08 : 0); g.add(inner); }
+        break;
+      }
+      case 'ladder': {   // escada de mão encostada na parede do fundo, subindo até o alçapão
+        const fh = hw, rail = smat('wood', '#7a5434', { bump: 1 }), top = fh - 0.02;
+        for (const x of [-0.24, 0.24]) g.add(limb(V3(x, 0.05, -0.12), V3(x, top, -0.4), 0.035, 0.03, rail, 5));
+        for (let y = 0.3; y < top - 0.1; y += 0.3) { const z = -0.12 - (y / top) * 0.28; g.add(limb(V3(-0.24, y, z), V3(0.24, y, z), 0.02, 0.02, rail, 4)); }
+        g.add(mk(new THREE.BoxGeometry(0.9, 0.04, 0.9).translate(0, 0.075, 0.1), smat(null, '#c8a050', { emissive: '#6a4a10', ei: 0.25, transparent: true, opacity: 0.3 }), false));
+        break;
+      }
+      case 'laddertop': {   // alçapão aberto no piso de cima: buraco escuro, tampa erguida, pontas da escada aparecendo
+        const rail = smat('wood', '#7a5434', { bump: 1 }), lid = smat('oldplank', '#6a4a2c', { bump: 1.2 }), iron = smat(null, '#2a2622', { metal: 0.8, rough: 0.5 });
+        g.add(mk(new THREE.BoxGeometry(0.78, 0.02, 0.78).translate(0, 0.066, -0.05), smat(null, '#050302', { rough: 1 })));
+        for (const [ww, dd, x, z] of [[0.86, 0.06, 0, 0.36], [0.86, 0.06, 0, -0.46], [0.06, 0.86, -0.42, -0.05], [0.06, 0.86, 0.42, -0.05]]) g.add(wbox(ww, 0.05, dd, x, 0.09, z, DW(), 2));   // moldura
+        const lg = grp(wbox(0.78, 0.05, 0.78, 0, 0, -0.39, lid, 2), wbox(0.7, 0.06, 0.06, 0, 0.04, -0.2, iron, 1), wbox(0.7, 0.06, 0.06, 0, 0.04, -0.6, iron, 1)); lg.rotation.x = 1.4; lg.position.set(0, 0.1, -0.44); g.add(lg);   // tampa aberta encostada
+        for (const x of [-0.24, 0.24]) g.add(limb(V3(x, -0.2, -0.38), V3(x, 0.5, -0.42), 0.035, 0.03, rail, 5));
+        g.add(mk(new THREE.BoxGeometry(0.9, 0.04, 0.9).translate(0, 0.08, 0), smat(null, '#c8a050', { emissive: '#6a4a10', ei: 0.25, transparent: true, opacity: 0.3 }), false));
+        break;
+      }
+      case 'extdoor': {   // porta da escada externa, no andar de cima: soleira, capacho e a luz de fora
+        const sx = f.ext > 0 ? 0.48 : -0.48;
+        g.add(wbox(0.12, 0.05, 0.8, sx, 0.09, 0, smat('stoneblock', '#9a9488'), 1));
+        g.add(mk(new THREE.BoxGeometry(0.5, 0.02, 0.7).translate(sx * 0.45, 0.075, 0), smat('cloth', '#7a3a26', { bump: 0.6 })));
+        g.add(mk(new THREE.BoxGeometry(0.9, 0.04, 0.9).translate(0, 0.08, 0), smat(null, '#c8a050', { emissive: '#6a4a10', ei: 0.25, transparent: true, opacity: 0.3 }), false));
+        break;
+      }
       case 'stairdown': {
         // vão da escada no andar de cima: degraus descendo do topo (U) para baixo (L), corrimão em volta
         const n = 6, [ux, uz] = f.dv, wx = ux ? 0 : -1, wz = ux ? -1 : 0;
@@ -1932,7 +2006,7 @@ function mInterior(b, fl = 0) {
         g.add(mk(new THREE.BoxGeometry(Math.min(3, w - 1.4), 0.015, Math.min(h - 1.4, b.kind === 'castle' ? h - 3 : 2)).translate(0, 0.07, b.kind === 'castle' ? (h - 3) / 2 - 0.5 : 0.5), cloth(b.kind === 'castle' ? '#8a1a1c' : ['#7a3a2a', '#3a4a6a', '#5a6a3a'][f.i % 3]))); break;
     }
     g.position.set(cx, 0, cz); g.userData.furn = 1;
-    { const sx = f.w > 1 || f.h > 1 || f.t === 'rug' || f.t === 'stairup' || f.t === 'stairdown' ? 1 : 0.62; if (f.t === 'stairup' || f.t === 'stairdown') { o.add(g); continue; } if (f.t === 'blk') continue; g.scale.set(sx, 0.55, sx); if (sx < 1) g.position.set(cx + (backX ? -0.15 : 0), 0, cz + (backZ ? -0.15 : 0)); }
+    { const ST = f.t === 'telescope' || f.t === 'stairup' || f.t === 'stairdown' || f.t === 'spiral' || f.t === 'spiraltop' || f.t === 'ladder' || f.t === 'laddertop' || f.t === 'extdoor', sx = f.w > 1 || f.h > 1 || f.t === 'rug' || ST ? 1 : 0.62; if (ST) { o.add(g); continue; } if (f.t === 'blk') continue; g.scale.set(sx, 0.55, sx); if (sx < 1) g.position.set(cx + (backX ? -0.15 : 0), 0, cz + (backZ ? -0.15 : 0)); }
     o.add(g);
   }
   return o;

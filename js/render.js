@@ -906,17 +906,17 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     if ((g === T.GRASS || g === T.FOREST || g === T.SWAMP) && hash2(x, y, 5) < 0.25) visGrass.push({ wx, wy });
     if (WORLD.fl1[i] === 2 && !hideUpper) upper.push({ d: x + y, k: 5, x, y, sx, sy });
   }
-  const myFl = me ? (me.fl || 0) : 0, inB0 = me && (me.z || 0) < 0.5 ? (myFl > 0 ? me.fb : bldAt(me.rx, me.ry)) : -1;
-  const flRaise = (b, f) => f > 0 ? f * (bldDims(b).H / floorsOf(b)) * HV : 0;
+  const myFl = me ? (me.fl || 0) : 0, inB0 = me && (me.z || 0) < 0.5 ? (myFl !== 0 ? me.fb : bldAt(me.rx, me.ry)) : -1;
+  const flRaise = (b, f) => f !== 0 ? f * (bldDims(b).H / floorsOf(b)) * HV : 0;
   const addEnt = (e, kind) => {
     if (!e.visible) return;
     const p = iso(e.rx, e.ry), sx = p.sx + ox, sy = p.sy + oy - (e.z || 0) * FLOOR_PX;
     if (sx < -100 || sx > vw + 100 || sy < -40 || sy > vh + 200) return;
-    const efl = e.fl || 0, ebi = (e.z || 0) < 0.5 ? (efl > 0 ? (e.fb ?? bldAt(e.rx, e.ry)) : bldAt(e.rx, e.ry)) : -1;
-    if (efl > 0 && !(ebi === inB0 && efl === myFl)) return;       // quem está em outro andar não aparece
+    const efl = e.fl || 0, ebi = (e.z || 0) < 0.5 ? (e === G.me && G.climbing ? G.climbing.bi : efl !== 0 ? (e.fb ?? bldAt(e.rx, e.ry)) : bldAt(e.rx, e.ry)) : -1;   // subindo a escada (até a externa, do lado de fora): altura do prédio da escada
+    if (efl !== 0 && !(ebi === inB0 && efl === myFl)) return;       // quem está em outro andar não aparece
     const stH = typeof stageLift === 'function' ? stageLift(e.rx, e.ry) : 0;
     const it = { d: e.exec && e.exec.T ? STAGE.x + STAGE.y - 0.4 : stH ? Math.max(e.rx + e.ry, STAGE.x + STAGE.y + 0.6) : e.rx + e.ry + ((e.sit || (e.custP && e.custP.sit)) ? 0.15 : 0), k: kind, e, sx, sy: sy - stH - (ebi >= 0 ? flRaise(BUILDINGS[ebi], efl) + (e.lift ? e.lift * flRaise(BUILDINGS[ebi], 1) : 0) : 0), tx: e.rx, ty: e.ry };
-    if ((e.z || 0) < 0.5 && inB0 >= 0 && ebi === inB0 && efl === myFl) it.inside = true;
+    if ((e.z || 0) < 0.5 && inB0 >= 0 && ebi === inB0 && efl === myFl) { it.inside = true; e._inC = now; }
     if ((e.alt || 0) > 0.5) sky.push(it); else if ((e.z || 0) >= 0.5) { if (!hideUpper) upper.push(it); } else items.push(it);
   };
   for (const id in G.monsters) addEnt(G.monsters[id], 1);
@@ -1094,18 +1094,22 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   if (typeof drawRadial === 'function') { drawRadial(ctx, now); drawGripBar(ctx, now); }
   if (typeof drawChokeRing === 'function') { drawChokeRing(ctx, now); drawLockpick(ctx); }
   // dentro de uma construção: a cidade escurece e o cômodo aparece cortado, com quem está dentro
+  G.cellarDark = false;
   if (inside) {
-    ctx.fillStyle = 'rgba(8,5,2,0.6)'; ctx.fillRect(-20, -20, vw + 40, vh + 40);
+    const ff = G.flFade && BUILDINGS[G.flFade.b] === inside.b ? G.flFade : null, fk = ff ? Math.min(1, Math.max(0, now - ff.t0) / (ff.dur || 450)) : 1;
+    // debaixo da terra (porão): em volta fica tudo escuro, como no Tibia; ao descer/subir escurece aos poucos
+    const ck = ff ? (ff.to < 0 ? fk : 0) + (ff.from < 0 ? 1 - fk : 0) : (myFl < 0 ? 1 : 0); G.cellarDark = ck > 0.5;
+    ctx.fillStyle = 'rgba(' + Math.round(8 - 6 * ck) + ',' + Math.round(5 - 4 * ck) + ',' + Math.round(2 - 1 * ck) + ',' + (0.6 + 0.4 * ck) + ')'; ctx.fillRect(-20, -20, vw + 40, vh + 40);
     // cada andar tem uma opacidade (o seu = 1, o de baixo = 0.55); ao trocar de andar, mistura as duas situações
-    const A = (st, f) => f === st ? 1 : f === st - 1 ? 0.55 : 0;
-    const ff = G.flFade && BUILDINGS[G.flFade.b] === inside.b ? G.flFade : null, fk = ff ? Math.min(1, (now - ff.t0) / 450) : 1;
+    const A = (st, f) => f === st ? 1 : f === st - 1 && f >= 0 ? 0.55 : 0;   // o porão só aparece quando você está nele
     if (ff && fk >= 1) G.flFade = null;
-    for (let f = 0; f < floorsOf(inside.b); f++) {
+    for (let f = minFl(inside.b); f < floorsOf(inside.b); f++) {
       const a = ff ? A(ff.from, f) * (1 - fk) + A(ff.to, f) * fk : A(myFl, f); if (a < 0.02) continue;
       const s = interiorSprite(inside.b, f) || (f === 0 ? buildingSprite(inside.b, false) : null);
       if (s) pblit(ctx, s, inside.sx, inside.sy - flRaise(inside.b, f), a);
     }
     for (const it of items) if (it.inside) drawItem(it);
+    if (G.cellarDark) { cutL.length = 0; front.length = 0; }   // no porão não se vê os prédios da frente
     if (cutL.length) {   // corte estilo Tibia: os prédios da frente aparecem só até a altura do joelho (paredes baixas), sem esconder o cômodo
       const kh = (typeof HV !== 'undefined' ? HV : 25) * 0.55, done = new Set();
       for (const it of cutL) { const b = it.b, x0 = b.x - 0.5, y0 = b.y - 0.5, x1 = b.x + b.w - 0.5, y1 = b.y + b.h - 0.5;
@@ -1129,8 +1133,8 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   for (const q of PL) { const e = q.e; if (!e._hid || !e._spr || inside) continue; pblit(ctx, tintOf(e._spr, q.me ? '#ffd060' : '#5aa8ff'), e._sx, e._sy, 0.62); }
 
   drawEffects(ctx, ox, oy, now);
-  ambient(visTrees, visFlowers, visGrass, day.night);
-  drawParticles(ctx, ox, oy, now, dt);
+  if (!G.cellarDark) { ambient(visTrees, visFlowers, visGrass, day.night); drawParticles(ctx, ox, oy, now, dt); }   // no porão não chove nem venta
+  if (G.cellarDark) for (let k = labels.length - 1; k >= 0; k--) if (!labels[k].e || labels[k].e._inC !== now) labels.splice(k, 1);   // nomes só de quem está no porão
 
   // luzes das casas à noite: todas as janelas, lanterna na porta e o cômodo onde você está
   if (day.dark > 0.2) for (const b of BUILDINGS) {
@@ -1141,6 +1145,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     const d = doorOf(b), p = iso(d.x, d.y); G.lights.push({ x: p.sx + ox, y: p.sy + oy - 30, r: 64, c: '255,175,90', a: 0.95, flick: 1 });
   }
   if (inside && day.dark > 0.05) { const b = inside.b, c = iso(b.x + b.w / 2 - 0.5, b.y + b.h / 2 - 0.5); G.lights.push({ x: c.sx + ox, y: c.sy + oy - 20, r: Math.max(b.w, b.h) * 22, c: '255,200,140', a: 1 }); }
+  if (G.cellarDark && inside) { const b = inside.b, c = iso(b.x + b.w / 2 - 0.5, b.y + b.h / 2 - 0.5); G.lights = [{ x: c.sx + ox, y: c.sy + oy + (bldDims(b).H / floorsOf(b)) * HV - 20, r: 150, c: '255,180,100', a: 0.9, flick: 1 }]; }   // porão: só a luz das velas
   // 7) iluminação noturna (camada em resolução reduzida = luz suave)
   if (day.dark > 0.01) {
     const lw = Math.ceil(vw / 2), lh = Math.ceil(vh / 2);
@@ -1171,7 +1176,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
 
   // 8) atmosfera e correção de cor (em pixels de tela)
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  drawAtmosphere(ctx, W, H, now, day, cam);
+  if (!G.cellarDark) drawAtmosphere(ctx, W, H, now, day, cam);   // chuva, neve e névoa não entram no porão
   if (day.dusk > 0.01) { ctx.fillStyle = `rgba(255,120,40,${day.dusk * 0.1})`; ctx.fillRect(0, 0, W, H); }
   // fim de tarde dourado: tudo um pouco mais escuro e quente, com brilho no alto da tela
   if (!day.night) { ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = 'rgb(228,206,176)'; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over';

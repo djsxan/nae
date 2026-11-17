@@ -280,16 +280,16 @@ function hostOnClient(from, m) {
       break;
     }
     case 'floor': {
-      const b = BUILDINGS[m.b | 0], to = m.to | 0, fl = p.fl || 0; if (!b || p.downed || p.carriedBy || Math.abs(to - fl) !== 1 || to < 0 || to >= floorsOf(b)) break;
+      const b = BUILDINGS[m.b | 0], to = m.to | 0, fl = p.fl || 0; if (!b || p.downed || p.carriedBy || Math.abs(to - fl) !== 1 || to < minFl(b) || to >= floorsOf(b)) break;
       const sw = stairWorld(b, Math.min(fl, to)); if (dist(p.x, p.y, (sw.L[0] + sw.U[0]) / 2, (sw.L[1] + sw.U[1]) / 2) > 2.2) break;
-      const [ax, ay] = to > fl ? sw.arrive : sw.entry; p.x = ax; p.y = ay; p.fl = to; p.fb = to > 0 ? (m.b | 0) : -1; p.lastMv = now_(); p.sit = null;
+      const [ax, ay] = to > fl ? sw.arrive : sw.entry; p.x = ax; p.y = ay; p.fl = to; p.fb = to !== 0 ? (m.b | 0) : -1; p.lastMv = now_(); p.sit = null;
       if (p.carrying) { const t = S.players[p.carrying]; if (t) { t.x = p.x; t.y = p.y; t.fl = p.fl; t.fb = p.fb; } }
       Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: 0, fl: p.fl, fb: p.fb });
       break;
     }
     case 'lift': {
       const i = m.i | 0, o = WORLD.obj[i], tx = i % MAP_W, ty = Math.floor(i / MAP_W);
-      if (!THROWABLE[o] || p.lifted || p.carrying || p.downed || p.z >= 0.5 || p.fl > 0 || dist(p.x, p.y, tx, ty) > 1.7) break;
+      if (!THROWABLE[o] || p.lifted || p.carrying || p.downed || p.z >= 0.5 || (p.fl || 0) !== 0 || dist(p.x, p.y, tx, ty) > 1.7) break;
       p.lifted = o; setObj(i, O.NONE); (S.objBack = S.objBack || []).push({ i, o, at: now_() + 180000 });
       break;
     }
@@ -561,7 +561,7 @@ function survivalTick(p, now, dt) {
     else if (p.water < 30 && p.inv.tea > 0) { p.autoEatT = now + 4000; p.useT = 0; useItem(p, 'tea'); info(p, 'Você bebeu um chá (estava com sede).'); }
   }
   // frio: à noite, fora da cidade, longe do fogo e fora de casa
-  const night = dayInfo().night, indoor = p.fl > 0 || bldAt(p.x, p.y) >= 0, warm = !night || indoor || nearFire(p) || now < (p.buffs.warm || 0);
+  const night = dayInfo().night, indoor = (p.fl || 0) !== 0 || bldAt(p.x, p.y) >= 0, warm = !night || indoor || nearFire(p) || now < (p.buffs.warm || 0);
   const sk = seasonNow().k, cm = sk === 'winter' ? 1.8 : sk === 'autumn' ? 1.2 : sk === 'summer' ? 0.6 : 1;
   p.cold = clamp((p.cold || 0) + dt * (warm ? -2.5 : inSafe(p.x, p.y) ? (sk === 'winter' ? 0.6 : 0.2) : 100 / (SURV.coldMin * 60) * cm), 0, 100);
   // infecção: ferida grave sem bandagem pode infeccionar; piora com o tempo
@@ -1111,7 +1111,7 @@ function resolveMonStrike(m, A, now) {
 function guardBreak(p, now) { p.parry = null; p.cst = 0; p.stunUntil = now + 950; near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'hurt', ms: 950 }); tell(p, 'Sua guarda quebrou!'); sendStat(p); }
 // golpe do jogador: começa a preparação; o impacto é resolvido no laço principal
 function playerStrike(p, k, a, now, c = 0) {
-  const B = STRIKES[k]; if (!B || k === 'bite' || p.downed || p.carrying || p.lifted || p.casting || now < (p.stunUntil || 0) || now < (p.knockUntil || 0) || p.fl > 0) return;
+  const B = STRIKES[k]; if (!B || k === 'bite' || p.downed || p.carrying || p.lifted || p.casting || now < (p.stunUntil || 0) || now < (p.knockUntil || 0) || (p.fl || 0) !== 0) return;
   if (p.atk) {
     if (!p.atk.done && now < p.atk.t0 + p.atk.W && p.atk.k !== k && p.cst >= FEINT_COST) { p.cst -= FEINT_COST; }   // finta: troca de golpe no meio da preparação
     else return;
@@ -1220,7 +1220,7 @@ function dragonDir(m) { const dx = Math.cos(m.ang), dy = Math.sin(m.ang); return
 const DRG_MS = { bite: 700, breath: 2000, tail: 900, roar: 1300, takeoff: 1100, land: 800 };
 const DRG = { bite: 5.4, tail: 7.2, bMin: 3.6, bMax: 12.5, bLen: 11.5, mouth: 2.8, circR: 8, altAir: 5, altStrafe: 2.4, fly: 7, strafe: 10, altPatrol: 6.5 };
 // o dragão caça qualquer um fora da cidade — inclusive o Tecelão, a não ser que esteja invisível
-const dragonCan = p => p && !p.downed && !p.grabbed && !(p.dev && p.devHidden) && !inSafe(p.x, p.y) && !(p.fl > 0) && now_() >= (p.flungUntil || 0);
+const dragonCan = p => p && !p.downed && !p.grabbed && !(p.dev && p.devHidden) && !inSafe(p.x, p.y) && !((p.fl || 0) !== 0) && now_() >= (p.flungUntil || 0);
 function flyTo(m, x, y, alt, speed, dt) {
   const dx = x - m.x, dy = y - m.y, d = Math.hypot(dx, dy), s = Math.min(d, speed * dt);
   if (d > 0.01) { m.x += dx / d * s; m.y += dy / d * s; const want = Math.atan2(dy, dx); m.ang += Math.max(-dt * 3, Math.min(dt * 3, angDiff(want, m.ang))); }
@@ -1527,7 +1527,7 @@ function arrowTick(now, dt) {
       if (!inBounds(Math.round(A.x), Math.round(A.y)) || now - A.t0 > 5000) { done = true; break; }
       // corpos: jogadores (inclusive aliados) e monstros
       const tgts = [];
-      for (const q of Object.values(S.players)) { if (q.dev || (q.id === A.by && now - A.t0 < 250) || q.fl > 0) continue; tgts.push({ q, k: 'p', r: 0.32, H: q.downed ? 0.45 : 1.8, base: q.z >= 0.5 ? 3.5 : 0 }); }
+      for (const q of Object.values(S.players)) { if (q.dev || (q.id === A.by && now - A.t0 < 250) || (q.fl || 0) !== 0) continue; tgts.push({ q, k: 'p', r: 0.32, H: q.downed ? 0.45 : 1.8, base: q.z >= 0.5 ? 3.5 : 0 }); }
       for (const q of Object.values(S.npcs || {})) { if (q.dead || q.onBack) continue; tgts.push({ q, k: 'n', r: 0.32, H: q.downed ? 0.45 : 1.8, base: 0 }); }
       for (const q of Object.values(S.monsters)) { if ((q.alt || 0) > 1.2) continue; tgts.push({ q, k: 'm', r: Math.max(0.3, Math.min(1.6, MON[q.type].rad || 0.35)), H: MON_HT[q.type] || 1.6, base: (q.z || 0) >= 0.5 ? 3.5 : 0 }); }
       for (const T0 of tgts) {
@@ -2289,7 +2289,7 @@ function hostTick() {
     for (const p of players) {
       if (dist(p.x, p.y, r.x, r.y) > VIEW_RADIUS) continue;
       if (p.devHidden && p.id !== r.id) continue;
-      let fl = (p.walking ? 1 : 0) | (p.downed ? 2 : 0) | (p.carriedBy ? 4 : 0) | (p.carrying ? 8 : 0) | (p.running && p.walking ? 256 : 0) | (p.sit ? 512 : 0) | (p.sit === 'c' ? 1024 : 0) | (p.sleep != null ? 32768 : 0) | (p.drawT ? 65536 : 0) | (p.dragBy ? 131072 : 0) | (p.dragMode === 'foot' ? 262144 : 0) | (p.drag && p.drag.mode === 'arms' ? 524288 : 0) | (p.drag && p.drag.mode === 'foot' ? 1048576 : 0) | (p.drag && p.drag.mode === 'back' ? 2097152 : 0) | (p.drag && p.drag.mode === 'grip' ? 4194304 : 0) | (p.gripBy ? 8388608 : 0) | (p.tied ? 16777216 : 0) | (p.choked ? 33554432 : 0) | (p.choking ? 67108864 : 0) | (p.escortBy || p.surrendered ? 134217728 : 0) | (p.jailUntil > now ? 536870912 : 0) | (p.bound ? 1073741824 : 0) | (p.drag && (p.drag.helper || ((dragTarget(p.drag.k, p.drag.id) || {}).dragBy2)) ? 268435456 : 0) | ((p.fl || 0) << 11) | (p.crouch ? 8192 : 0) | (p.slide ? 16384 : 0);
+      let fl = (p.walking ? 1 : 0) | (p.downed ? 2 : 0) | (p.carriedBy ? 4 : 0) | (p.carrying ? 8 : 0) | (p.running && p.walking ? 256 : 0) | (p.sit ? 512 : 0) | (p.sit === 'c' ? 1024 : 0) | (p.sleep != null ? 32768 : 0) | (p.drawT ? 65536 : 0) | (p.dragBy ? 131072 : 0) | (p.dragMode === 'foot' ? 262144 : 0) | (p.drag && p.drag.mode === 'arms' ? 524288 : 0) | (p.drag && p.drag.mode === 'foot' ? 1048576 : 0) | (p.drag && p.drag.mode === 'back' ? 2097152 : 0) | (p.drag && p.drag.mode === 'grip' ? 4194304 : 0) | (p.gripBy ? 8388608 : 0) | (p.tied ? 16777216 : 0) | (p.choked ? 33554432 : 0) | (p.choking ? 67108864 : 0) | (p.escortBy || p.surrendered ? 134217728 : 0) | (p.jailUntil > now ? 536870912 : 0) | (p.bound ? 1073741824 : 0) | (p.drag && (p.drag.helper || ((dragTarget(p.drag.k, p.drag.id) || {}).dragBy2)) ? 268435456 : 0) | ((((p.fl || 0) + 1) & 3) << 11) | (p.crouch ? 8192 : 0) | (p.slide ? 16384 : 0);
       for (const b in BUFF_BITS) if (buffOn(p, b)) fl |= BUFF_BITS[b];
       pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0, (p.surrendered ? 1 : 0) | (p.bound && p.bound.kind === 'rope' ? 2 : 0) | (p.bound && p.bound.kind === 'cuffs' ? 4 : 0) | (p.dragBy && (/^(n:|m:)/.test(String(p.dragBy)) || p.dragMode === 'lead') && !p.downed ? 8 : 0) | (p.pkg ? 16 : 0) | (p.shift ? 32 : 0) | (p.wpn === 'halberd' ? 64 : 0) | ((p.uni || 0) << 7) | (p.inMenu ? 1024 : 0) | (p.sheathed ? 2048 : 0) | (p.parry ? (PZ.indexOf(p.parry.z) + 1) << 12 : 0) | ((p.shieldHp ?? 100) <= 0 && p.cls === 'knight' ? 32768 : 0)]);
     }
@@ -3393,7 +3393,7 @@ function guardThreat(n, now, dt) {
   }
   if (!inSafe(n.x, n.y)) return false;
   for (const q of Object.values(S.players)) {
-    if (dist(n.x, n.y, q.x, q.y) > 7 || (q.fl || 0) > 0 && (q.fl || 0) !== (n.fl || 0)) continue;
+    if (dist(n.x, n.y, q.x, q.y) > 7 || (q.fl || 0) !== 0 && (q.fl || 0) !== (n.fl || 0)) continue;
     const why = threatWhy(q, now); if (!why) continue;
     if (WORLD.bld[tileAt(q.x, q.y)] !== WORLD.bld[tileAt(n.x, n.y)] && !sightClear(n.x, n.y, q.x, q.y)) continue;
     if (Object.values(S.npcs).some(o => o !== n && o.threat && o.threat.id === q.id)) continue;   // outra sentinela já está cuidando
@@ -3450,7 +3450,7 @@ function coinRain(w, amount) {
 function coinTick(now) {
   const C = S.coins; if (!C) return; const del = [];
   for (const id in C) { const c = C[id]; if (now - c.t > COIN_MS) { delete C[id]; del.push([id, null]); continue; } if (now - c.t < (c.d || 0) + 650) continue;
-    for (const p of Object.values(S.players)) { if (p.downed || p.carriedBy || (p.fl || 0) > 0 || Math.abs(p.x - c.x) > 0.7 || Math.abs(p.y - c.y) > 0.7 || dist(p.x, p.y, c.x, c.y) > 0.62) continue; p.gold += c.v; delete C[id]; del.push([id, p.id, c.v]); sendStat(p); break; } }
+    for (const p of Object.values(S.players)) { if (p.downed || p.carriedBy || (p.fl || 0) !== 0 || Math.abs(p.x - c.x) > 0.7 || Math.abs(p.y - c.y) > 0.7 || dist(p.x, p.y, c.x, c.y) > 0.62) continue; p.gold += c.v; delete C[id]; del.push([id, p.id, c.v]); sendStat(p); break; } }
   if (del.length) Net.toAll({ t: 'coins', del });
 }
 
