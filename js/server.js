@@ -2317,7 +2317,7 @@ function startHostLoop() {
 //  negócios automáticos: oficinas produzem, mensageiros levam até as suas lojas, lojas vendem sozinhas e o lucro
 //  fica no cofre do negócio (vá buscar). Tudo guardado neste reino (no navegador de quem hospeda).
 // ============================================================
-const ESTATE_KEY = 'nae-estate-v1', ESTATE_AUTH_MAX = 6, ESTATE_CHEST_SLOTS = 16, ESTATE_ABANDON_DAYS = 30, BIZ_MAX = 9999, BIZ_OFFLINE_MS = 2 * ESTATE_DAY_MS;
+const ESTATE_KEY = 'nae-estate-v1', ESTATE_AUTH_MAX = 6, ESTATE_CHEST_SLOTS = 48, ESTATE_ABANDON_DAYS = 30, BIZ_MAX = 9999, BIZ_OFFLINE_MS = 2 * ESTATE_DAY_MS;
 const SALARY = { shop: 6, workshop: 8, bank: 30, hotel: 6 }, SAFE_CAP = 500, WS_CAP = 120, SHOP_CAP = 40, THEFT = [0.06, 0.04, 0.02, 0.01];
 const estOwner = p => String(p.name || '').trim().toLowerCase() + '|' + p.cls;
 const estDay = () => Math.floor(Date.now() / ESTATE_DAY_MS);
@@ -3447,11 +3447,11 @@ function coinTick(now) {
 }
 
 // ============================================================
-//  POUSADA DO JAVALI MAGRO — 8 cabines com porta (catre + baú de 4 espaços) a 3 de ouro por dia, pagos na hora, sem caução.
+//  POUSADA DO JAVALI MAGRO — 8 cabines com porta (catre + baú de 12 espaços) a 3 de ouro por dia, pagos na hora, sem caução.
 //  Quem aluga dorme lá (Bem descansado) e acorda lá se não tiver casa. De noite, viajantes também se hospedam.
 //  Pode ser comprada como negócio: as diárias vão para o cofre do dono.
 // ============================================================
-const HOTEL_PRICE = 3, HOTEL_SLOTS = 4;
+const HOTEL_PRICE = 3, HOTEL_SLOTS = 12;
 let HOTEL_R = null;
 function hotelRooms() {
   if (HOTEL_R) return HOTEL_R; const bi = BUILDINGS.findIndex(b => b.kind === 'hotel'); if (bi < 0) return (HOTEL_R = []);
@@ -3473,7 +3473,7 @@ function hotelMsg(p, m) {
     const d = [1, 3, 7].includes(m.d | 0) ? m.d | 0 : 1, cost = HOTEL_PRICE * d; if ((Math.floor((bankLoad().acc[estOwner(p)] || { g: 0 }).g) + p.gold) < cost) { tell(p, 'A diária é ' + HOTEL_PRICE + ' de ouro. Você não tem ' + cost + ' (banco + bolsa).'); return; }
     let k = hotelRoomOf(p); if (k < 0) { k = hotelFree(); if (k < 0) { tell(p, 'Lotado! Todas as cabines estão ocupadas. Volte mais tarde.'); return; } H.rooms[k] = { who: estOwner(p), name: p.name, until: day, items: (H.rooms[k] && H.rooms[k].who === estOwner(p) && H.rooms[k].items) || {} }; }
     debit(estOwner(p), p, cost); H.rooms[k].until = Math.max(H.rooms[k].until, day) + d; hotelPay(cost, p.name); estateSave(); sendStat(p);
-    tell(p, 'A cabine ' + (k + 1) + ' é sua por ' + (H.rooms[k].until - day) + ' dia(s). O catre e o baú (4 espaços) são só seus; você acorda aqui se não tiver casa.'); Net.toOne(p.id, hotelView(p)); return;
+    tell(p, 'A cabine ' + (k + 1) + ' é sua por ' + (H.rooms[k].until - day) + ' dia(s). O catre e o baú (12 espaços) são só seus; você acorda aqui se não tiver casa.'); Net.toOne(p.id, hotelView(p)); return;
   }
   if (m.a === 'view') { Net.toOne(p.id, hotelView(p)); return; }
   const k = hotelRoomOf(p), R = k >= 0 ? hotelRooms()[k] : null; if (!R || !R.chest) { tell(p, 'Esse baú é de outro hóspede.'); return; }

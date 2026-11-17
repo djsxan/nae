@@ -221,6 +221,8 @@ function interiorLayout0(b, fl = 0) {
     put('bed', 0, 0, { h: 2 }); put('stove', 2, 0); taken.add(key(2, 1)); put('jamshelf', 3, 0); put('fruitcrate', 4, 0, { v: 0 });
     put('baskets', 1, 0); put('sorttable', 3, 2, { w: 2 }); put('fruitcrate', 4, 3, { v: 1 }); put('baskets', 0, 3, { v: 1 });
     put('garlic', 1, 1, { block: false }); put('garlic', 4, 1, { block: false, v: 1 }); put('rug', 1, 2, { block: false });
+  } else if (k === 'workshop' && b.wk === 'bakery' && w === 4) {   // padaria: dois fornos no fundo, padeiro atrás do balcão, vitrine de pães, sacos e cestos
+    npcAt(2, 0); put('stove', 0, 0); put('stove', 1, 0); put('shelf', 3, 0); put('counter', 2, 1, { w: 2 }); put('display', 0, 3, { v: 0 }); put('barrel', 3, 3); put('crate', 0, 4); put('rug', 1, 2, { block: false });
   } else if (k === 'workshop') {   // oficina: o artesão no fundo, bancada, caixas e ferramentas do ofício
     npcAt(dc, 0); const wk = b.wk;
     put('table', 0, 1, { w: 2 }); put('crate', w - 1, 0); put('barrel', w - 1, 1); put('shelf', 0, 0);
@@ -257,6 +259,13 @@ function interiorLayout0(b, fl = 0) {
   } else if (k === 'tavern') {
     npcAt(1, 0); put('barrel', 0, 0); put('counter', 0, 1, { w: 2 }); put('barrel', 0, 2);   // passagem atrás do balcão pelo lado put('fireplace', w - 2, 0); put('shelf', 3, 0); for (const [i, j, fi, fj] of [[4, 0, 4, 1], [w - 1, 1, w - 2, 1], [w - 1, 2, w - 2, 2]]) if (can(i, j) && can(fi, fj)) { put('stove', i, j); taken.add(key(fi, fj)); break; }
     for (const [ti, tj] of [[5, 2], [1, 3], [5, 4]]) if (put('table', ti, tj)) { put('chair', ti - 1, tj, { seat: 1 }); put('chair', ti + 1, tj, { seat: 5 }); }
+  } else if (k === 'hotel' && w === 7 && h === 7) {   // 3 cabines (2x2): duas no fundo, uma na frente; balcão da Ilsa junto à entrada, salinha com mesa
+    put('cot', 0, 0, { h: 2, cab: 0 }); put('chest', 1, 0, { cab: 0 }); put('hpart', 0, 2, { v: 0, wp: 'nz' }); put('cabindoor', 1, 2, { v: 0, block: false, cab: 0, adj: [1, 3], inner: [[0, 0], [1, 0], [0, 1], [1, 1]] });
+    put('cot', 3, 0, { h: 2, cab: 1 }); put('chest', 4, 0, { cab: 1 }); put('hpart', 3, 2, { v: 0, wp: 'nz' }); put('cabindoor', 4, 2, { v: 0, block: false, cab: 1, adj: [4, 3], inner: [[3, 0], [4, 0], [3, 1], [4, 1]] });
+    put('hpart', 0, 4, { v: 0, wp: 'pz' }); put('cabindoor', 1, 4, { v: 0, block: false, cab: 2, adj: [1, 3], inner: [[0, 5], [1, 5], [0, 6], [1, 6]] }); put('cot', 0, 5, { h: 2, cab: 2 }); put('chest', 1, 6, { cab: 2 });
+    for (const j of [0, 1]) { put('hpart', 2, j, { v: 1, wp: 'px nx' }); put('hpart', 5, j, { v: 1, wp: 'nx' }); } put('hpart', 2, 2, { v: 2 }); put('hpart', 5, 2, { v: 2 });
+    put('hpart', 2, 4, { v: 2 }); put('hpart', 2, 5, { v: 1, wp: 'nx' }); put('hpart', 2, 6, { v: 1, wp: 'nx' });
+    put('fireplace', 6, 0); npcAt(6, 1); put('counter', 6, 2); put('table', 3, 5, { w: 2 }); put('pew', 3, 6, { w: 2, seat: 3 }); put('barrel', 5, 6); put('rug', 3, 3, { w: 3, h: 2, block: false, v: 9 });
   } else if (k === 'hotel' && w === 9 && h === 8 && b.dcol === 7) {   // 4 cabines compactas (2x2), corredor de 2 tiles, balcão na ponta norte
     let ck = 0;
     for (const a of [0, 3]) { const q = ck++, inn = [[a, 0], [a + 1, 0], [a, 1], [a + 1, 1]]; put('cot', a, 0, { h: 2, cab: q }); put('chest', a + 1, 0, { cab: q }); put('hpart', a, 2, { v: 0, wp: 'nz' }); put('cabindoor', a + 1, 2, { v: 0, block: false, cab: q, adj: [a + 1, 1], inner: inn }); }
@@ -914,7 +923,7 @@ function generateWorld() {
     lane(X(49), C + 8, X(48), C + 10);   // trilha da horta
   }
   // pousada do outro lado da rua, atrás das lojas da taverna, porta para a rua (no fim da lista: não muda o número dos prédios salvos)
-  if (!TEST3D) BUILDINGS.push({ x: C - 20, y: C + 21, ...BH('hotel', 8, 9, 3.0, 1.6, 'Pousada do Javali Magro', { floors: 1, door: 'E', dcol: 7 }) });   // mais curta e mais baixa, longe do estábulo
+  if (!TEST3D) BUILDINGS.push({ x: C - 19, y: C + 22, ...BH('hotel', 7, 7, 2.3, 1.25, 'Pousada do Javali Magro', { floors: 1, door: 'E', dcol: 6 }) });   // 7x7, bem baixa (3 cabines), um passo mais longe da loja de elixir
   if (!TEST3D) BUILDINGS.push({ x: C - 30, y: C - 14, ...BH('house', 5, 4, 3.0, 2.6, '', { door: 'E', v: 2, floors: 1, extra: 1 }) });
   if (!TEST3D) BUILDINGS.push(   // bairro nobre: casarões do lado do castelo (porta para a avenida) e mais um do lado leste
     { x: C + 13, y: C - 21, ...BH('manor', 6, 6, 4.6, 3.0, 'Casa Lorvan', { door: 'E', v: 1 }) },
@@ -923,7 +932,7 @@ function generateWorld() {
   if (!TEST3D) BUILDINGS.push(   // fazenda e moinho na Vila do Oeste; padaria junto à praça do mercado
     { x: C - 72, y: C - 21, ...BH('workshop', 5, 4, 2.6, 2.4, 'Fazenda do Trigo Dourado', { wk: 'wheat', door: 'S', floors: 1 }) },
     { x: C - 65, y: C - 21, ...BH('workshop', 4, 4, 3.6, 2.6, 'Moinho do Vento Leste', { wk: 'mill', door: 'S', floors: 1 }) },
-    { x: C + 4, y: C + 21, ...BH('workshop', 5, 4, 2.8, 2.4, 'Padaria da Praça', { wk: 'bakery', door: 'W', floors: 1 }) });   // casa nova na rua do banco, alinhada com as lojas   // porta direto na rua principal
+    { x: C + 4, y: C + 21, ...BH('workshop', 5, 4, 2.6, 1.9, 'Padaria da Praça', { wk: 'bakery', door: 'E', dcol: 2, floors: 1 }) });   // porta para a avenida da catedral   // casa nova na rua do banco, alinhada com as lojas   // porta direto na rua principal
   BUILDINGS.forEach((b, bi) => {
     for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { bld[idx(x, y)] = bi; obj[idx(x, y)] = O.NONE; ground[idx(x, y)] = T.COBBLE; }
   });
@@ -964,7 +973,8 @@ function generateWorld() {
     { const BIG = new Set([O.TREE, O.PINE, O.OAK, O.BIRCH, O.WILLOW, O.DEADTREE, O.BUSH]); for (let y = C + 17; y <= C + 31; y++) for (let x = C + 2; x <= C + 15; x++) if (BIG.has(obj[idx(x, y)])) obj[idx(x, y)] = O.NONE; }   // sem árvores grandes na frente da catedral e à direita do portão
     for (let y = AY0; y <= AY1; y++) for (let x = AX0; x <= AX1; x++) pave(x, y);
     for (let y = PY0; y <= PY1; y++) for (let x = PX0; x <= PX1; x++) { const i = idx(x, y); if (bld[i] >= 0 || rdir[i]) continue; obj[i] = O.NONE; ground[i] = (x + y) % 3 === 0 ? T.STONE : T.FLOORSTONE; }
-    const side = (y, o) => { for (const x of [AX0, AX1]) { const i = idx(x, y); if (bld[i] < 0 && !rdir[i]) obj[i] = o; } };
+    const bkB = BUILDINGS.find(b => b.wk === 'bakery'), bkY = bkB ? bLocal(bkB, doorCol(bkB), bDims(bkB)[1] - 1)[1] : -1;   // a frente da porta da padaria fica livre
+    const side = (y, o) => { for (const x of [AX0, AX1]) { if (x === AX0 && y === bkY) continue; const i = idx(x, y); if (bld[i] < 0 && !rdir[i]) obj[i] = o; } };
     side(AY0 + 1, O.STATUE); side(AY0 + 4, O.BANNER); side(AY0 + 5, O.FLOWERBED); side(AY0 + 6, O.LAMP); side(AY0 + 7, O.FLOWERBED); side(AY0 + 8, O.STATUE); side(AY0 + 9, O.BANNER); side(AY0 + 10, O.FLOWERBED);
     for (const [x, y, o] of [[C + 6, C + 29, O.STATUE], [C + 9, C + 28, O.LAMP], [C + 9, C + 31, O.LAMP], [C + 4, C + 28, O.FLOWERBED], [C + 4, C + 31, O.FLOWERBED], [C + 13, C + 30, O.FLOWERBED], [C + 7, C + 31, O.BENCH], [C + 5, C + 31, O.BENCH]]) { const i = idx(x, y); if (bld[i] < 0 && !rdir[i]) obj[i] = o; } }
   // quintal da Marta na frente da casa: cerca com portãozinho, duas árvores frutíferas, canteiros e a barraquinha com toldo
