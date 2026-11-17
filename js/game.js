@@ -1289,7 +1289,7 @@ function pzRoomRefresh() {
 //  REINO ÚNICO — todos no mesmo mundo. Quem chega primeiro hospeda; se o anfitrião cair, quem tem o PC mais forte
 //  assume (com a última cópia do mundo) e os outros reconectam sozinhos. Tenta entrar para sempre, sem desistir.
 // ============================================================
-const WN = { tries: 0, lostT: 0, rank: -1, succ: [], busy: false, id: (new URLSearchParams(location.search).get('mundo') || 'WORLD').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16) || 'WORLD' };   // (?mundo=XYZ só para testes)
+const WN = { tries: 0, lostT: 0, rank: -1, succ: [], busy: false, id: (new URLSearchParams(location.search).get('mundo') || ('W' + String(VERSION).replace(/[^0-9]/g, ''))).toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16) || 'WORLD' };   // (?mundo=XYZ só para testes)
 const myHostScore = () => (typeof pcSpecs === 'function' ? pcSpecs().score : 60) + Math.min(60, G.fps || 30);
 function netMsg(t) { let d = $('netbar'); if (!d) { d = document.createElement('div'); d.id = 'netbar'; document.body.appendChild(d); } d.textContent = t; d.classList.toggle('on', !!t); if (!G.started) setStatus(t); }
 function enterWorld() {
