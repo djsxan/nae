@@ -509,6 +509,24 @@ body.nae:not(.nae-ready) #lobby > *:not(#title3d) { visibility: hidden; }
 /* título: Jogar (continuar) × Personagens (criar/escolher) */
 .nae-quick, .nae-toplay { display: none; }
 body.nae[data-tp=play] .scroll > .lobby-grid { display: none !important; }
+/* tela inicial nova: menu Jogar/Guia/Roadmap/Configurações/Sair; Jogar abre heróis (painel lateral) e depois Reinos Online */
+body.nae .nae-logo small { display: block; font: 600 clamp(11px, 1.1vw, 14px) 'Alegreya Sans', sans-serif; letter-spacing: .3em; color: #e6dcc4; text-transform: uppercase; margin-top: 6px; text-shadow: 0 1px 6px #000; }
+body.nae .nae-nav2 button { text-align: left; }
+body.nae #title-menu { transition: opacity .5s, filter .5s; }
+body.nae.nae-playing #title-menu { opacity: .22; filter: blur(2px); pointer-events: none; }
+body.nae .nae-credit { position: fixed; right: 12px; bottom: 8px; font: 500 11px 'Alegreya Sans', sans-serif; color: rgba(230,220,196,.6); text-shadow: 0 1px 4px #000; }
+body.nae[data-tp=heroes] .scroll > .lobby-grid { display: block !important; }
+body.nae[data-tp=heroes] .lobby-grid > section.wide { display: block !important; }
+body.nae[data-tp=heroes] .scroll > #nae-cont { display: flex !important; gap: 12px; align-items: center; margin-top: 14px; }
+body.nae[data-tp=realm] .scroll > #nae-realm { display: block !important; }
+body.nae.tp-open[data-tp=heroes] .scroll, body.nae.tp-open[data-tp=realm] .scroll { animation: naeSide .45s cubic-bezier(.2,.8,.2,1); }
+@keyframes naeSide { from { transform: translateX(40px); opacity: 0; } }
+#nae-cont small { color: #f0b8a0; font-size: 13px; }
+#nae-realm .nae-back { background: none; border: 0; color: #c9b99a; font: 500 14px 'Alegreya Sans', sans-serif; cursor: pointer; padding: 0; margin-bottom: 8px; }
+#nae-realm .nae-realm { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 14px; padding: 14px 16px; border: 1px solid rgba(226,214,188,.22); border-radius: 6px; background: rgba(0,0,0,.35); }
+#nae-realm .nae-realm b { font: 400 24px 'IM Fell English SC', serif; color: #f3e9d2; } #nae-realm .nae-realm small { display: block; color: #c9b99a; font-size: 13px; }
+.nae-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #6fd27a; box-shadow: 0 0 8px #6fd27a; margin-right: 8px; vertical-align: middle; }
+#nae-quitmsg { position: fixed; left: 50%; bottom: 40px; transform: translateX(-50%); z-index: 9800; background: rgba(20,12,8,.92); color: #f4e6cc; border: 1px solid rgba(201,162,74,.5); border-radius: 6px; padding: 8px 14px; font: 500 14px 'Alegreya Sans', sans-serif; }
 body.nae[data-tp=play] .scroll > .nae-quick { display: block; }
 body.nae[data-tp=chars] .scroll > .start { display: none !important; }
 body.nae[data-tp=chars] .lobby-grid > section.wide { display: block !important; }
@@ -643,3 +661,5 @@ body.touch #chat { width: 260px; } body.touch #chat-log { height: 70px; }
 .rep-bi { position: relative; height: 6px; background: rgba(0,0,0,0.35); border-radius: 3px; display: block; }
 .rep-bi::after { content: ''; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: rgba(232,196,90,0.6); }
 .rep-bi em { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
+body.nae.tp-open[data-tp=realm] .scroll { bottom: auto; }
+body.nae[data-tp=heroes] .scroll > #nae-cont { position: sticky; bottom: -26px; margin: 14px -30px -26px; padding: 14px 30px 18px; background: linear-gradient(180deg, rgba(14,10,8,0), rgba(14,10,8,.96) 30%); }

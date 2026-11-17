@@ -3,7 +3,54 @@
 //  e menu minimalista. Os painéis (jogar, personagens, reinos) reaproveitam o lobby.
 // ============================================================
 const TITLE = { on: false };
+// fundo da tela inicial: foto real (Bled, de Dreamy Pixel, CC BY 4.0) com névoa, água, nuvens, raios de luz, pássaros e câmera lenta; a cor segue a hora real
+function titlePhoto() {
+  const cv = document.createElement('canvas'); cv.id = 'title3d'; document.body.insertBefore(cv, document.body.firstChild);
+  const ctx = cv.getContext('2d'), im = new Image(); im.src = 'img/lobby/bled.jpg';
+  const P0 = { water: 0.7, cx: 0.49, cy: 0.38, cw: 0.08, sun: [0.75, 0.42], wins: [[0.468, 0.372], [0.476, 0.375], [0.486, 0.37], [0.497, 0.378], [0.505, 0.381], [0.513, 0.383]] };
+  const GR = { dawn: { mul: [1, 0.9, 0.92], add: [40, 10, 30], glow: 'rgba(255,170,150,', b: 1, night: 0, mist: 1.25 }, day: { mul: [1.04, 1.02, 1], add: [10, 8, 0], glow: 'rgba(255,240,210,', b: 1.08, night: 0, mist: 0.7 },
+    dusk: { mul: [1.06, 0.82, 0.66], add: [34, 4, -6], glow: 'rgba(255,140,70,', b: 0.92, night: 0.2, mist: 0.9 }, night: { mul: [0.32, 0.4, 0.62], add: [0, 6, 22], glow: 'rgba(150,170,255,', b: 0.7, night: 1, mist: 0.8 } };
+  const todNow = () => { const h = new Date().getHours() + new Date().getMinutes() / 60; return h >= 5 && h < 8 ? 'dawn' : h >= 8 && h < 17 ? 'day' : h >= 17 && h < 19.5 ? 'dusk' : 'night'; };
+  const rnd = s => { const x = Math.sin(s * 127.1 + 31.7) * 43758.5453; return x - Math.floor(x); };
+  let graded = null, gk = '', t0 = performance.now(), dpr = 1;
+  const fit = () => { dpr = Math.min(1.25, devicePixelRatio || 1); cv.width = Math.round(innerWidth * dpr); cv.height = Math.round(innerHeight * dpr); cv.style.width = innerWidth + 'px'; cv.style.height = innerHeight + 'px'; }; fit(); addEventListener('resize', fit);
+  const grade = g => { const w = Math.min(2400, im.naturalWidth), h = Math.round(im.naturalHeight * w / im.naturalWidth), c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.drawImage(im, 0, 0, w, h);
+    try { const d = x.getImageData(0, 0, w, h), a = d.data; for (let i = 0; i < a.length; i += 4) { a[i] = Math.min(255, a[i] * g.mul[0] * g.b + g.add[0]); a[i + 1] = Math.min(255, a[i + 1] * g.mul[1] * g.b + g.add[1]); a[i + 2] = Math.min(255, a[i + 2] * g.mul[2] * g.b + g.add[2]); } x.putImageData(d, 0, 0); } catch (e) { }   // arquivo local: sem permissão de ler os pixels, fica a cor original
+    return c; };
+  const frame = now => {
+    if (!TITLE.on) { cv.remove(); return; } requestAnimationFrame(frame);
+    const W = cv.width, H = cv.height, t = now - t0, tk = todNow(), G = GR[tk];
+    if (!im.complete || !im.naturalWidth) { ctx.fillStyle = '#1a1622'; ctx.fillRect(0, 0, W, H); return; }
+    if (gk !== tk) { graded = grade(G); gk = tk; }
+    const iw = graded.width, ih = graded.height, base = Math.max(W / iw, H / ih), z = base * (1.08 + 0.05 * Math.sin(t / 26000)), dw = iw * z, dh = ih * z;
+    const px = (W - dw) / 2 + W * 0.06 + Math.sin(t / 31000) * W * 0.02, py = (H - dh) / 2 + Math.cos(t / 37000) * H * 0.012;   // castelo um pouco à direita (o menu fica à esquerda)
+    ctx.drawImage(graded, px, py, dw, dh);
+    const X = u => px + u * dw, Y = v => py + v * dh, wy = Y(P0.water);
+    for (let y = Math.max(0, wy); y < H; y += 3) { const k = (y - wy) / (H - wy + 1), sh = Math.sin(y * 0.09 / dpr + t / 420) * (1.5 + k * 4) * dpr; ctx.drawImage(cv, 0, y, W, 3, sh, y, W, 3); }
+    ctx.save(); ctx.globalCompositeOperation = 'screen';
+    for (let k = 0; k < 70; k++) { const yy = wy + (H - wy) * rnd(k) ** 1.4, x = (rnd(k + 5) * W + t * (0.006 + rnd(k + 9) * 0.01) * W / 100) % W, l = W * (0.02 + rnd(k + 2) * 0.06) * (0.4 + (yy - wy) / (H - wy)), a = (0.08 + 0.1 * Math.sin(t / 300 + k * 1.7)) * (G.night ? 0.6 : 1); ctx.fillStyle = G.glow + Math.max(0, a) + ')'; ctx.fillRect(x, yy, l, (1.4 + (yy - wy) / (H - wy) * 1.5) * dpr); }
+    ctx.restore();
+    if (G.night) { for (let k = 0; k < 170; k++) { const a = (0.35 + 0.65 * Math.abs(Math.sin(t / 700 + k))) * G.night * rnd(k + 77); ctx.fillStyle = 'rgba(235,240,255,' + a + ')'; ctx.fillRect(rnd(k) * W, rnd(k + 50) * H * 0.4, 1.5 * dpr, 1.5 * dpr); }
+      const mx = W * 0.82, my = H * 0.14, r = H * 0.035, mg = ctx.createRadialGradient(mx, my, r, mx, my, r * 6); mg.addColorStop(0, 'rgba(210,220,255,.35)'); mg.addColorStop(1, 'rgba(210,220,255,0)'); ctx.fillStyle = mg; ctx.fillRect(0, 0, W, H * 0.5); ctx.fillStyle = '#f0f3ff'; ctx.beginPath(); ctx.arc(mx, my, r, 0, 7); ctx.fill(); }
+    if (!G.night || tk === 'dusk') { ctx.save(); ctx.globalCompositeOperation = 'screen'; const sx = X(P0.sun[0]), sy = Y(P0.sun[1]);
+      for (let k = 0; k < 9; k++) { const a = Math.PI * 0.35 + k * 0.17 + Math.sin(t / 5000 + k) * 0.04, a2 = a + 0.06 + 0.04 * rnd(k); ctx.fillStyle = G.glow + (0.03 + 0.02 * Math.sin(t / 1800 + k)) + ')'; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx + Math.cos(a) * W * 1.5, sy + Math.sin(a) * W * 1.5); ctx.lineTo(sx + Math.cos(a2) * W * 1.5, sy + Math.sin(a2) * W * 1.5); ctx.fill(); }
+      const sg = ctx.createRadialGradient(sx, sy, 0, sx, sy, H * 0.55); sg.addColorStop(0, G.glow + '0.25)'); sg.addColorStop(1, G.glow + '0)'); ctx.fillStyle = sg; ctx.fillRect(0, 0, W, H); ctx.restore(); }
+    if (G.night > 0.1) for (let k = 0; k < P0.wins.length; k++) { const wx = X(P0.wins[k][0]), wy2 = Y(P0.wins[k][1]), f = (0.6 + 0.4 * Math.sin(t / 600 + k * 2.3)) * G.night, rr = dw * 0.004;
+      const gw = ctx.createRadialGradient(wx, wy2, 0, wx, wy2, rr * 4); gw.addColorStop(0, 'rgba(255,200,110,' + f + ')'); gw.addColorStop(1, 'rgba(255,160,60,0)'); ctx.fillStyle = gw; ctx.beginPath(); ctx.arc(wx, wy2, rr * 4, 0, 7); ctx.fill(); ctx.fillStyle = 'rgba(255,224,150,' + f + ')'; ctx.fillRect(wx - rr * 0.4, wy2 - rr * 0.6, rr * 0.8, rr * 1.2); }
+    for (let k = 0; k < 7; k++) { const x = ((rnd(k) * 1.5 * W + t * (0.004 + k * 0.0015) * W / 100) % (W * 1.5)) - W * 0.25, y = H * (0.05 + rnd(k + 20) * 0.28), cg = ctx.createRadialGradient(x, y, 0, x, y, W * 0.18); cg.addColorStop(0, G.glow + (0.07 * (1 - G.night * 0.6)) + ')'); cg.addColorStop(1, G.glow + '0)'); ctx.save(); ctx.translate(x, y); ctx.scale(1, 0.18); ctx.translate(-x, -y); ctx.fillStyle = cg; ctx.fillRect(x - W * 0.2, y - W * 0.2, W * 0.4, W * 0.4); ctx.restore(); }
+    for (let L = 0; L < 4; L++) { const yb = wy - H * 0.06 + L * H * 0.05, sp = (0.003 + L * 0.004) * W / 100, a = (0.06 + L * 0.035) * G.mist;
+      for (let k = 0; k < 6; k++) { const x = ((rnd(k + L * 10) * 1.6 * W + t * sp) % (W * 1.6)) - W * 0.3, y = yb + Math.sin(t / 4000 + k + L) * H * 0.01, rw = W * (0.22 + rnd(k + L * 7) * 0.2), rh = H * (0.05 + L * 0.015), mg = ctx.createRadialGradient(x, y, 0, x, y, rw);
+        mg.addColorStop(0, (G.night ? 'rgba(170,185,220,' : 'rgba(246,238,232,') + a + ')'); mg.addColorStop(1, 'rgba(240,235,230,0)'); ctx.save(); ctx.translate(x, y); ctx.scale(1, rh / rw); ctx.translate(-x, -y); ctx.fillStyle = mg; ctx.fillRect(x - rw, y - rw, rw * 2, rw * 2); ctx.restore(); } }
+    const nb = G.night ? 5 : 14; for (let k = 0; k < nb; k++) { const per = 26000 + rnd(k) * 20000, ph = ((t + rnd(k + 3) * per) % per) / per, x = W * (1.1 - ph * 1.25), y = H * (0.18 + rnd(k + 8) * 0.25) + Math.sin(t / 900 + k) * H * 0.015 + (k % 3) * H * 0.012, s = H * (0.008 + rnd(k + 11) * 0.006), f = Math.sin(t / (G.night ? 70 : 130) + k * 2) * s * 0.9;
+      ctx.strokeStyle = 'rgba(20,16,18,.75)'; ctx.lineWidth = Math.max(1, s * 0.22); ctx.beginPath(); ctx.moveTo(x - s, y - f); ctx.quadraticCurveTo(x - s * 0.4, y - s * 0.3, x, y); ctx.quadraticCurveTo(x + s * 0.4, y - s * 0.3, x + s, y - f); ctx.stroke(); }
+    for (let k = 0; k < 26; k++) { const x = (rnd(k + 900) * W + t * (0.01 + rnd(k) * 0.02) * W / 100 + Math.sin(t / 1300 + k) * 20) % W, y = (rnd(k + 950) * H + t * 0.004 * H / 100) % H, a = 0.25 + 0.25 * Math.sin(t / 500 + k); ctx.fillStyle = G.night ? 'rgba(200,255,170,' + a + ')' : 'rgba(255,245,215,' + a * 0.7 + ')'; ctx.beginPath(); ctx.arc(x, y, (G.night ? 1.6 : 1.2) * dpr, 0, 7); ctx.fill(); }
+    const vg = ctx.createRadialGradient(W * 0.55, H * 0.5, H * 0.35, W * 0.55, H * 0.5, W * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.6)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
+    const lg = ctx.createLinearGradient(0, 0, W * 0.5, 0); lg.addColorStop(0, 'rgba(0,0,0,0.6)'); lg.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = lg; ctx.fillRect(0, 0, W * 0.5, H);
+  };
+  TITLE.on = true; requestAnimationFrame(frame);
+}
 function titleScene() {
+  return titlePhoto();
   if (typeof THREE === 'undefined') return;
   const cv = document.createElement('canvas'); cv.id = 'title3d'; document.body.insertBefore(cv, document.body.firstChild);
   let renderer; try { renderer = new THREE.WebGLRenderer({ canvas: cv, antialias: true }); } catch (e) { return; }
@@ -77,7 +124,7 @@ function titleMenu() {
   const lob = document.getElementById('lobby'); if (!lob) return;
   document.body.classList.add('nae');
   const m = document.createElement('div'); m.id = 'title-menu';
-  m.innerHTML = '<div class="nae-logo">NAE</div><nav class="nae-nav">' + [['play', 'Jogar'], ['chars', 'Personagens'], ['realms', 'Reinos online'], ['opts', 'Configurações']].map(([k, n]) => '<button data-p="' + k + '">' + n + '</button>').join('') + '<a class="nae-guide" href="guia.html" target="_blank" rel="noopener">Guia do jogo</a><a class="nae-guide" href="roadmap.html" target="_blank" rel="noopener">Roadmap</a></nav><div class="nae-ver" id="nae-ver"></div>';
+  m.innerHTML = '<div class="nae-logo">NAE</div><nav class="nae-nav nae-nav2">' + [['heroes', 'Jogar'], ['guide', 'Guia do jogo'], ['road', 'Roadmap'], ['opts', 'Configurações'], ['quit', 'Sair']].map(([k, n]) => '<button data-p="' + k + '">' + n + '</button>').join('') + '</nav><div class="nae-credit">Foto: Bled Castle at Sunrise, de Dreamy Pixel (CC BY 4.0)</div><nav class="nae-nav" style="display:none">' + '<a class="nae-guide" href="guia.html" target="_blank" rel="noopener">Guia do jogo</a><a class="nae-guide" href="roadmap.html" target="_blank" rel="noopener">Roadmap</a></nav><div class="nae-ver" id="nae-ver"></div>';
   lob.appendChild(m);
   const v = document.getElementById('version'); if (v) document.getElementById('nae-ver').textContent = v.textContent || (typeof VERSION !== 'undefined' ? VERSION : '');
   const opts = document.createElement('section'); opts.id = 'nae-opts'; opts.className = 'nae-opts';
@@ -116,16 +163,27 @@ function titleMenu() {
   document.body.classList.add('nae-ready');
   const markQ = () => opts.querySelectorAll('[data-q]').forEach(b => b.classList.toggle('on', (typeof SET !== 'undefined' && (SET.quality || 'auto')) === b.dataset.q));
   opts.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { if (typeof SET !== 'undefined') { SET.quality = b.dataset.q; try { saveSettings(); } catch (e) { } } markQ(); }); markQ();
+  // painel de heróis: depois de escolher, "Continuar" leva aos Reinos Online
+  { const sc = lob.querySelector('.scroll'), cont = document.createElement('div'); cont.id = 'nae-cont'; cont.innerHTML = '<button class="btn gold" id="nae-contb">Continuar com este herói ▸</button><small id="nae-cont-st"></small>'; sc.appendChild(cont);
+    const rl = document.createElement('section'); rl.id = 'nae-realm'; rl.innerHTML = '<button class="nae-back" id="nae-rback">← Trocar de herói</button><h2>Reinos Online</h2><p class="hint">Todos jogam no mesmo mundo. Quem chegar primeiro abre o reino; se a conexão falhar, o jogo tenta de novo sozinho.</p><div class="nae-realm"><div><b><span class="nae-dot"></span>Nae</b><small id="nae-rwho"></small></div><button class="btn gold" id="nae-renter">Entrar no reino ▸</button></div>'; sc.appendChild(rl);
+    cont.querySelector('#nae-contb').onclick = () => { const nm = (document.getElementById('name') || {}).value || ''; if (!nm.trim()) { document.getElementById('nae-cont-st').textContent = 'Escolha um herói ou crie um novo (dê um nome).'; return; }
+      const cn = typeof CLASSES !== 'undefined' && CLASSES[chosenClass] ? CLASSES[chosenClass].name : ''; document.getElementById('nae-rwho').textContent = 'Você entra como ' + nm.trim() + (cn ? ', ' + cn : '') + '.'; open('realm'); };
+    rl.querySelector('#nae-rback').onclick = () => open('heroes');
+    rl.querySelector('#nae-renter').onclick = () => { if (typeof devGate === 'function') devGate(enterWorld); }; }
   const open = k => {
+    if (k === 'guide') { window.open('guia.html', '_blank', 'noopener'); return; }
+    if (k === 'road') { window.open('roadmap.html', '_blank', 'noopener'); return; }
+    if (k === 'quit') { window.close(); setTimeout(() => { if (!document.hidden) { const d = document.getElementById('nae-quitmsg') || Object.assign(document.createElement('div'), { id: 'nae-quitmsg' }); d.textContent = 'O navegador não deixou o jogo fechar a aba sozinho. Feche a aba normalmente (Ctrl+W).'; document.body.appendChild(d); setTimeout(() => d.remove(), 4000); } }, 300); return; }
+    document.body.classList.toggle('nae-playing', k === 'heroes' || k === 'realm');
     const same = document.body.dataset.tp === k && document.body.classList.contains('tp-open');
     m.querySelectorAll('button').forEach(b => b.classList.toggle('on', !same && b.dataset.p === k));
     if (same) { document.body.classList.remove('tp-open'); return; }
     document.body.dataset.tp = k; document.body.classList.add('tp-open'); if (k === 'play' && window.naeQuick) window.naeQuick();
-    if (k === 'chars') { const s = document.getElementById('saved'); if (s) s.scrollIntoView({ block: 'center' }); }
+    if (k === 'chars' || k === 'heroes') { const s = document.getElementById('saved'); if (s) s.scrollIntoView({ block: 'center' }); }
     if (k === 'realms' && typeof scanServers === 'function') scanServers();
   };
   m.querySelectorAll('button').forEach(b => b.onclick = () => open(b.dataset.p));
-  document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('tp-open') && !G.started) { document.body.classList.remove('tp-open'); m.querySelectorAll('button').forEach(b => b.classList.remove('on')); } });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.body.classList.contains('tp-open') && !G.started) { document.body.classList.remove('tp-open', 'nae-playing'); m.querySelectorAll('button').forEach(b => b.classList.remove('on')); } });
 }
 (function () {
   const go = () => { document.title = GAME_NAME; titleMenu(); titleScene(); const iv = setInterval(() => { if (typeof G !== 'undefined' && G.started) { TITLE.on = false; document.body.classList.remove('nae', 'tp-open'); clearInterval(iv); } }, 300); };
