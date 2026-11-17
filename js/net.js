@@ -10,6 +10,14 @@ const Net = {
   PREFIX: 'nae-v1-',
   SLOTS: 20, infoFn: null,       // vagas fixas S1..S20: a tela inicial procura reinos abertos nelas
   peer: null, isHost: false, offline: false, myId: null, room: null,
+  // servidores de conexão: STUN do Google e TURN gratuito (Open Relay) para quando a rede bloqueia a conexão direta
+  ICE: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' },
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }] },
+  opts(debug) { return { debug, config: this.ICE }; },
+  // derruba a conexão atual (para tentar de novo ou virar anfitrião)
+  reset() { try { if (this.peer) this.peer.destroy(); } catch (e) { } this.peer = null; this.rel = {}; this.fast = {}; this.hostRel = null; this.hostFast = null; this.isHost = false; },
   rel: {}, fast: {},          // (anfitrião) conexões por jogador
   hostRel: null, hostFast: null,
 
@@ -22,7 +30,7 @@ const Net = {
     this.isHost = true; this.room = room;
     if (typeof Peer === 'undefined') { this.goOffline(); cb(null); return; }
     let opened = false;
-    const peer = new Peer(this.PREFIX + room, { debug: 1 });
+    const peer = new Peer(this.PREFIX + room, this.opts(1));
     this.peer = peer;
     peer.on('open', id => { opened = true; this.myId = id; cb(null); });
     peer.on('connection', conn => {
@@ -45,7 +53,7 @@ const Net = {
   // procura reinos abertos nas vagas fixas (sem servidor de lista)
   scan(cb) {
     if (typeof Peer === 'undefined') { cb([]); return; }
-    const found = [], peer = new Peer({ debug: 0 }); let done = false, left = this.SLOTS;
+    const found = [], peer = new Peer(this.opts(0)); let done = false, left = this.SLOTS;
     const finish = () => { if (done) return; done = true; try { peer.destroy(); } catch (e) { } cb(found.sort((a, b) => a.slot - b.slot)); };
     const tick = () => { if (--left <= 0) finish(); };
     peer.on('open', () => {
@@ -66,7 +74,7 @@ const Net = {
     if (typeof Peer === 'undefined') { cb({ type: 'no-peerjs' }); return; }
     let done = false;
     const finish = err => { if (done) return; done = true; cb(err); };
-    const peer = new Peer({ debug: 1 });
+    const peer = new Peer(this.opts(1));
     this.peer = peer;
     peer.on('open', id => {
       this.myId = id;
@@ -81,9 +89,11 @@ const Net = {
         finish(null);
       });
       rel.on('data', d => this.onServer(d));
-      rel.on('close', () => { if (done && this.onDisconnected) this.onDisconnected(); });
+      rel.on('close', () => { if (done && this.peer === peer && this.onDisconnected) this.onDisconnected(); });
+      rel.on('error', () => { if (done && this.peer === peer && this.onDisconnected) this.onDisconnected(); });
     });
     peer.on('error', err => { if (!done) { peer.destroy(); finish(err); } else console.warn('PeerJS:', err); });
+    peer.on('disconnected', () => { if (!peer.destroyed && done) try { peer.reconnect(); } catch (e) { } });
   },
 
   // jogador -> anfitrião (fast = posição; pode perder/chegar fora de ordem)

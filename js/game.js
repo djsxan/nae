@@ -98,6 +98,7 @@ function clientOnServer(m) {
   if (typeof lawEvent === 'function' && lawEvent(m, now)) return;
   switch (m.t) {
     case 'welcome':
+      if (G.started) { G.players = {}; G.monsters = {}; }   // reconectou (ou trocou de anfitrião): começa a lista do zero
       G.myId = m.you; setTimeout(() => Net.send({ t: 'duel', on: SET.duel ? 1 : 0 }), 500);
       for (const p of m.players) G.players[p.id] = mkEnt({ ...p });
       for (const i in m.objs || {}) WORLD.obj[+i] = m.objs[i];
@@ -195,7 +196,8 @@ function clientOnServer(m) {
     case 'trade': tradeShow(m); break;
     case 'hotel': G.hotel = m; if (G.dialog && G.dialog.id === 'hotelkeeper') setDialogText(m.room >= 0 ? 'Sua cabine é a ' + (m.room + 1) + ', por mais ' + m.until + ' dia(s). O baú fica ao lado do catre.' : 'Você não tem cabine. Vagas agora: ' + m.free + ' de 6.'); if ($('hchest') && !$('hchest').classList.contains('hidden')) hotelChestShow(); break;
     case 'wt': WT.ph = m.ph ?? null; WT.rain = m.rain ?? null; break;
-    case 'denied': askRoomPw(m.why === 'pwbad'); break;
+    case 'denied': if (m.why === 'ver') { if (verNum(m.ver) > verNum(VERSION)) { netMsg('O reino está numa versão mais nova. Atualizando o jogo…'); setTimeout(() => location.replace(location.pathname + '?v=' + Date.now()), 1200); } else { netMsg('O anfitrião está numa versão antiga do jogo. Esperando ele atualizar…'); Net.reset(); setTimeout(worldTry, 8000); } break; } askRoomPw(m.why === 'pwbad'); break;
+    case 'wsnap': if (!Net.isHost) { try { localStorage.setItem('nae-world-estate-v1', JSON.stringify(m.est || {})); localStorage.setItem('nae-world-bank-v1', JSON.stringify(m.bank || {})); } catch (e) { } WN.succ = m.succ || []; } break;   // guarda a cópia do mundo
     case 'roompw': G.roomLocked = m.on; pzRoomRefresh(); break;
     case 'npc': if (G.dialog && G.dialog.id === m.n) { setDialogText(m.text); if (m.n === 'captain') later(50, () => G.dialog && buildDialogOptions('captain')); } break;
     case 'down': { const e = G.players[m.id]; if (e) { e.downed = true; e.downUntil = now + DOWNED_MS; } if (m.id === G.myId) { setTarget(null); G.path = null; } break; }
@@ -566,8 +568,29 @@ function saveChar() {
 const $ = id => document.getElementById(id);
 const canvas = $('game'), ctx = canvas.getContext('2d');
 let W = 0, H = 0, DPR = 1;
+// nota do computador: placa de vídeo, núcleos e memória (o FPS medido entra depois); serve para a qualidade inicial e para escolher o próximo anfitrião
+function pcSpecs() {
+  if (G.pcSpec) return G.pcSpec; let gpu = '';
+  try { const c = document.createElement('canvas'), gl = c.getContext('webgl'); const ext = gl && gl.getExtension('WEBGL_debug_renderer_info'); gpu = ext ? String(gl.getParameter(ext.UNMASKED_RENDERER_WEBGL)) : ''; } catch (e) { }
+  const cores = navigator.hardwareConcurrency || 4, mem = navigator.deviceMemory || 4, g = gpu.toLowerCase();
+  let gs = /rtx|radeon rx|rx \d{4}|arc a|m1|m2|m3|m4|apple gpu/.test(g) ? 3 : /gtx|radeon|nvidia|iris xe/.test(g) ? 2 : /intel|uhd|hd graphics|mali|adreno|swiftshader|llvmpipe/.test(g) ? 1 : 1.5;
+  if (/swiftshader|llvmpipe|basic render/.test(g)) gs = 0.3;
+  const mobile = matchMedia('(pointer: coarse)').matches;
+  return (G.pcSpec = { gpu: gpu.slice(0, 60), cores, mem, score: Math.round((gs * 30 + Math.min(16, cores) * 3 + Math.min(16, mem) * 2) * (mobile ? 0.5 : 1)) });
+}
+function qLevelNow() { if (SET.quality && SET.quality !== 'auto') return QFIXED[SET.quality] ?? 4; if (G.qLevel == null) { const s = pcSpecs().score; G.qLevel = s >= 110 ? 5 : s >= 85 ? 4 : s >= 65 ? 3 : s >= 45 ? 2 : 1; } return G.qLevel; }
+// mede o FPS: abaixo de ~40 por 3 s desce um nível; acima de ~57 por 15 s sobe um (só no automático)
+function qAutoTick(now) {
+  const Q = G.qMon || (G.qMon = { t: now, n: 0, low: 0, high: 0, fps: 60 }); Q.n++;
+  if (now - Q.t < 1000) return; Q.fps = Q.n * 1000 / (now - Q.t); Q.t = now; Q.n = 0; G.fps = Q.fps;
+  if (!G.started || (SET.quality && SET.quality !== 'auto') || document.hidden) return;
+  if (Q.fps < 40) { Q.low++; Q.high = 0; } else if (Q.fps > 57) { Q.high++; Q.low = 0; } else { Q.low = 0; Q.high = 0; }
+  const L = qLevelNow();
+  if (Q.low >= 3 && L > 0) { G.qLevel = L - 1; Q.low = 0; resize(); showToast('Qualidade gráfica: ' + QLEVELS[G.qLevel].n + ' (para rodar liso)'); }
+  else if (Q.high >= 15 && L < 5) { G.qLevel = L + 1; Q.high = 0; resize(); showToast('Qualidade gráfica: ' + QLEVELS[G.qLevel].n); }
+}
 function resize() {
-  DPR = Math.min(SET.quality === 'low' ? 1 : SET.quality === 'med' ? 1.5 : 2, window.devicePixelRatio || 1);
+  DPR = Math.min(QLEVELS[qLevelNow()].dpr, Math.max(0.7, window.devicePixelRatio || 1));
   W = window.innerWidth; H = window.innerHeight;
   canvas.width = W * DPR; canvas.height = H * DPR;
   canvas.style.width = W + 'px'; canvas.style.height = H + 'px';
@@ -1097,7 +1120,7 @@ window.addEventListener('blur', () => G.keys.clear());
 let lastMini = 0, lastHud = 0, lastT = performance.now();
 const lobbyCam = { x: CENTER, y: CENTER, z: 0 };
 function frame() {
-  const now = performance.now(), dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+  const now = performance.now(), dt = Math.min(0.05, (now - lastT) / 1000); lastT = now; qAutoTick(now);
   if (G.timers.length) { const due = G.timers.filter(t => t.at <= now); G.timers = G.timers.filter(t => t.at > now); for (const t of due) t.fn(); }
   R3.budget = G.started ? 3 : 2;
   S3.budget = G.started ? 2 : 5;
@@ -1242,7 +1265,7 @@ function helloMsg() {
   const name = $('name').value.trim() || 'Aventureiro';
   const saved = loadChars()[charKey(name, chosenClass)] || {};
   G.myUid = saved.t ? (saved.uid || '') : (G.myUid && G.myUidFor === charKey(name, chosenClass) ? G.myUid : Math.random().toString(36).slice(2, 10)); G.myUidFor = charKey(name, chosenClass);   // herói novo: código único (não herda nada de um herói antigo com o mesmo nome)
-  return { t: 'hello', uid: G.myUid || undefined, wandInfo: saved.wandInfo, cloak: saved.cloak, pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, freeLimb: saved.freeLimb, shieldHp: saved.shieldHp, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
+  return { t: 'hello', ver: VERSION, uid: G.myUid || undefined, wandInfo: saved.wandInfo, cloak: saved.cloak, pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, freeLimb: saved.freeLimb, shieldHp: saved.shieldHp, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
 }
 // reino trancado: pede a senha e manda o hello de novo pela mesma conexão
 function askRoomPw(bad) {
@@ -1258,8 +1281,50 @@ function pzRoomRefresh() {
   const st = $('pz-rpw-st'); if (st) st.textContent = G.roomLocked ? '🔒 Trancado: quem chegar precisa da senha.' : '🔓 Aberto: qualquer um entra.';
 }
 // botão grande da tela inicial: entra no reino aberto (mesma versão, sem senha); se não houver, abre um com você de anfitrião
+// ============================================================
+//  REINO ÚNICO — todos no mesmo mundo. Quem chega primeiro hospeda; se o anfitrião cair, quem tem o PC mais forte
+//  assume (com a última cópia do mundo) e os outros reconectam sozinhos. Tenta entrar para sempre, sem desistir.
+// ============================================================
+const WN = { tries: 0, lostT: 0, rank: -1, succ: [], busy: false, id: (new URLSearchParams(location.search).get('mundo') || 'WORLD').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16) || 'WORLD' };   // (?mundo=XYZ só para testes)
+const myHostScore = () => (typeof pcSpecs === 'function' ? pcSpecs().score : 60) + Math.min(60, G.fps || 30);
+function netMsg(t) { let d = $('netbar'); if (!d) { d = document.createElement('div'); d.id = 'netbar'; document.body.appendChild(d); } d.textContent = t; d.classList.toggle('on', !!t); if (!G.started) setStatus(t); }
+function enterWorld() {
+  if (!$('name').value.trim()) { setStatus('Crie ou escolha um herói em Personagens.', true); return; }
+  lockLobby(true); WN.tries = 0; WN.rank = -1; worldTry();
+}
+function worldRetry() { const ms = Math.min(15000, 1000 * Math.pow(2, Math.min(4, WN.tries - 1))) + Math.random() * 500; netMsg('Sem conexão com o reino. Tentando de novo em ' + Math.round(ms / 1000) + ' s… (tentativa ' + WN.tries + ')'); setTimeout(worldTry, ms); }
+function worldTry() {
+  if (WN.busy || Net.isHost) return;   // já é o anfitrião (ou já está tentando): não derruba nada WN.busy = true; WN.tries++; netMsg(G.started ? 'Reconectando ao reino… (tentativa ' + WN.tries + ')' : 'Entrando no reino de Nae…' + (WN.tries > 1 ? ' (tentativa ' + WN.tries + ')' : ''));
+  Net.reset(); Net.onServer = m => { WN.lastMsg = Date.now(); clientOnServer(m); }; Net.onDisconnected = worldLost;
+  Net.join(WN.id, err => {
+    WN.busy = false;
+    if (!err) { WN.tries = 0; WN.lastMsg = Date.now(); WN.inWorld = true; netMsg(''); showRoom('Nae'); Net.send(helloMsg()); setTimeout(() => Net.send({ t: 'pcs', s: myHostScore() }), 1500); return; }
+    const mayHost = !G.started || Date.now() - WN.lostT >= WN.rank * 4000;   // na migração, cada um espera a sua vez (o PC mais forte primeiro)
+    if (err.type === 'peer-unavailable' && mayHost) { worldHost(); return; }
+    worldRetry();
+  });
+}
+function worldHost() {
+  WN.busy = true; Net.reset(); Net.onClient = hostOnClient; Net.onServer = clientOnServer; Net.onPeerLeave = hostOnLeave;
+  Net.host(WN.id, err => {
+    WN.busy = false;
+    if (err) { if (err.type === 'unavailable-id') { setTimeout(worldTry, 400 + Math.random() * 600); return; } worldRetry(); return; }   // alguém foi mais rápido: entra no reino dele
+    if (G.started) { S.players = {}; S.monsters = {}; S.filled = false; S.estate = null; S.bank = null; S.npcs = null; S.arrows = []; HOTEL_R = null; G.players = {}; G.monsters = {}; }   // assume com a última cópia do mundo
+    Net.infoFn = () => ({ name: (S.players[Net.myId] || {}).name || 'Nae', n: Object.keys(S.players).length, ver: VERSION, lock: !!S.roomPw });
+    WN.inWorld = true; startHostLoop(); hostTick(); showRoom('Nae'); netMsg(''); Net.send(helloMsg());
+    if (G.started) showToast('O anfitrião saiu: agora o reino roda no seu computador.');
+  });
+}
+// vigia: o aviso de conexão fechada às vezes não chega; se o anfitrião ficar 6 s sem mandar nada, ele caiu
+setInterval(() => { if (WN.inWorld && G.started && !Net.isHost && !WN.busy && WN.lastMsg && Date.now() - WN.lastMsg > 6000 && Date.now() - WN.lostT > 8000) worldLost(); }, 1000);
+function worldLost() {
+  if (Net.isHost || WN.busy || (Date.now() - WN.lostT < 3000)) return; const i = WN.succ.indexOf(Net.myId); WN.rank = i < 0 ? 12 : i; WN.lostT = Date.now(); WN.tries = 0;
+  netMsg('O anfitrião saiu. Reconectando…'); setTimeout(worldTry, 600 + Math.random() * 600);
+}
+function verNum(v) { return String(v || '').replace(/^v/, '').split('.').map(x => +x || 0).reduce((a, x) => a * 1000 + x, 0); }
 function quickEnter(btn) {
   if (!$('name').value.trim()) { setStatus('Crie ou escolha um herói em Personagens.', true); return; }
+  devGate(enterWorld); return;
   const old = btn.textContent; btn.disabled = true; btn.textContent = 'Procurando o reino...';
   const go = list => { btn.disabled = false; btn.textContent = old; const s = (list || []).find(r => !r.lock && (!r.ver || r.ver === VERSION)); if (s) { $('code').value = s.code; devGate(joinRoom); } else devGate(() => createRoom()); };
   const L = typeof LIFE !== 'undefined' && LIFE.lastScan; if (L && Date.now() - L.t < 15000) go(L.list); else Net.scan(list => { if (typeof LIFE !== 'undefined') LIFE.lastScan = { t: Date.now(), list }; go(list); });
@@ -1536,7 +1601,7 @@ function applySettings() {
   canvas.style.filter = SET.bright !== 1 ? 'brightness(' + SET.bright + ')' : '';
   { const c = $('chat'), m = SET.chat || 'fade'; if (c) { c.classList.toggle('fade', m === 'fade'); c.classList.toggle('off', m === 'off'); } for (const b of document.querySelectorAll('#pz-chat button')) b.classList.toggle('on', b.dataset.c === m); }
   { G.intMode = SET.intMode || 'fade'; for (const b of document.querySelectorAll('#pz-int button')) b.classList.toggle('on', b.dataset.i === G.intMode); }
-  if (typeof S3 !== 'undefined' && S3.ok) S3.renderer.shadowMap.enabled = SET.quality !== 'low';
+  if (typeof S3 !== 'undefined' && S3.ok) S3.renderer.shadowMap.enabled = qLevelNow() >= 2;
   for (const b of document.querySelectorAll('#pz-quality button')) b.classList.toggle('on', b.dataset.q === SET.quality);
   $('pz-bright').value = SET.bright; $('pz-bright-v').textContent = Math.round(SET.bright * 100) + '%';
   $('pz-zoom').value = SET.zoom; $('pz-zoom-v').textContent = Math.round(SET.zoom * 100) + '%';
@@ -1562,7 +1627,7 @@ $('btn-menu').addEventListener('click', () => togglePause());
 $('pz-resume').addEventListener('click', () => togglePause(false));
 for (const b of document.querySelectorAll('#pz-quality button')) b.addEventListener('click', () => {
   if (SET.quality === b.dataset.q) return;
-  SET.quality = b.dataset.q; saveSettings(); resize();
+  SET.quality = b.dataset.q; if (SET.quality === 'auto') G.qLevel = null; saveSettings(); resize();
   if (typeof SC3 !== 'undefined') { SC3.clear(); S3.px = 0; }   // refaz o cenário na qualidade nova
   applySettings();
 });

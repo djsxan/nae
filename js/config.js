@@ -3,14 +3,17 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.56.0';
-const VERSION_NAME = 'Nae · Fôlego Longo';
+const VERSION = 'v1.57.0';
+const VERSION_NAME = 'Nae · Um Só Reino';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
 // migração do nome antigo (World of Sxan) para Nae: copia os saves para as chaves novas
 try { for (const [a, b] of [['wos-settings', 'nae-settings'], ['wos-chars-v4', 'nae-chars-v4'], ['sxan_apple', 'nae_apple']]) { const v = localStorage.getItem(a); if (v != null && localStorage.getItem(b) == null) localStorage.setItem(b, v); } for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('wos-fog-')) { const n = 'nae-fog-' + k.slice(8); if (localStorage.getItem(n) == null) localStorage.setItem(n, localStorage.getItem(k)); } } } catch (e) { }
-const SET = (() => { const d = { quality: (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) ? 'low' : 'high', bright: 1, zoom: 1, chat: 'fade', phys: 'ragdoll', tele: 'soft', duel: false, pad: (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) ? 0.75 : 0.5 }; try { return Object.assign(d, JSON.parse(localStorage.getItem('nae-settings') || '{}')); } catch (e) { return d; } })();
+const SET = (() => { const d = { quality: 'auto', bright: 1, zoom: 1, chat: 'fade', phys: 'ragdoll', tele: 'soft', duel: false, pad: (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) ? 0.75 : 0.5 }; try { const S0 = Object.assign(d, JSON.parse(localStorage.getItem('nae-settings') || '{}')); if (!S0.qv) { S0.qv = 1; S0.quality = 'auto'; } return S0; } catch (e) { return d; } })();   /* v1.57: todos passam para a qualidade automática uma vez */
+// níveis de qualidade: resolução e efeitos (o 'auto' escolhe sozinho conforme o FPS)
+const QLEVELS = [{ n: 'Mínima', dpr: 0.7 }, { n: 'Muito baixa', dpr: 0.85 }, { n: 'Baixa', dpr: 1 }, { n: 'Média', dpr: 1.25 }, { n: 'Alta', dpr: 1.5 }, { n: 'Ultra', dpr: 2 }];
+const QFIXED = { low: 2, med: 3, high: 5 };
 function saveSettings() { try { localStorage.setItem('nae-settings', JSON.stringify(SET)); } catch (e) { } }
 const STAIR_N = 5;                 // escadas: 5 tiles de rampa até o alto da muralha
 const SKIN_LVL = [1, 10, 20];      // nível para liberar cada skin (comum, rara, lendária)

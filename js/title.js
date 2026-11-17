@@ -81,7 +81,7 @@ function titleMenu() {
   lob.appendChild(m);
   const v = document.getElementById('version'); if (v) document.getElementById('nae-ver').textContent = v.textContent || (typeof VERSION !== 'undefined' ? VERSION : '');
   const opts = document.createElement('section'); opts.id = 'nae-opts'; opts.className = 'nae-opts';
-  opts.innerHTML = '<h2>Configurações</h2><label>Qualidade gráfica</label><div class="nae-row" id="nae-q"><button data-q="low">Baixa</button><button data-q="med">Média</button><button data-q="high">Alta</button></div><p class="hint">As demais opções ficam no menu de pausa, dentro do jogo (Esc).</p>';
+  opts.innerHTML = '<h2>Configurações</h2><label>Qualidade gráfica</label><div class="nae-row" id="nae-q"><button data-q="auto">Automática</button><button data-q="low">Baixa</button><button data-q="med">Média</button><button data-q="high">Alta</button></div><p class="hint">As demais opções ficam no menu de pausa, dentro do jogo (Esc).</p>';
   lob.querySelector('.scroll').appendChild(opts);
   { // importar herói de um arquivo exportado em outro navegador
     const box = document.createElement('div'); box.className = 'nae-dev';
@@ -114,7 +114,7 @@ function titleMenu() {
     };
   }
   document.body.classList.add('nae-ready');
-  const markQ = () => opts.querySelectorAll('[data-q]').forEach(b => b.classList.toggle('on', (typeof SET !== 'undefined' && (SET.quality || 'high')) === b.dataset.q));
+  const markQ = () => opts.querySelectorAll('[data-q]').forEach(b => b.classList.toggle('on', (typeof SET !== 'undefined' && (SET.quality || 'auto')) === b.dataset.q));
   opts.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { if (typeof SET !== 'undefined') { SET.quality = b.dataset.q; try { saveSettings(); } catch (e) { } } markQ(); }); markQ();
   const open = k => {
     const same = document.body.dataset.tp === k && document.body.classList.contains('tp-open');

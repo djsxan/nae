@@ -604,6 +604,8 @@ body.nae[data-tp=play] .start .start-row, body.nae[data-tp=play] .start h2, body
 #chat.typing #chat-input { display: block; }
 #chat.fade { opacity: 0.18; pointer-events: none; } #chat.fade.awake, #chat.fade.typing { opacity: 1; pointer-events: auto; }
 #chat.off { display: none; }
+#netbar { position: fixed; z-index: 9700; left: 50%; top: 12px; transform: translateX(-50%); background: rgba(20,12,8,.9); color: #f4e6cc; border: 1px solid rgba(201,162,74,.5); border-radius: 6px; padding: 7px 14px; font: 500 14px 'Alegreya', serif; display: none; pointer-events: none; }
+#netbar.on { display: block; }
 #tequip { position: fixed; z-index: 9600; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(420px, calc(100vw - 32px)); }
 #tequip .tq-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 10px 0; }
 #tequip .tq-btns .est-btn { display: flex; flex-direction: column; align-items: flex-start; } #tequip .tq-btns small { opacity: .75; font-size: 11px; } #tequip .est-btn.on { outline: 2px solid #e8c45a; }

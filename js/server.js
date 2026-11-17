@@ -145,6 +145,7 @@ function hostOnClient(from, m) {
   const p = S.players[from];
   if (m.t === 'hello') {
     if (p) return;
+    if (m.ver && m.ver !== VERSION && from !== Net.myId) { Net.toOne(from, { t: 'denied', why: 'ver', ver: VERSION }); return; }
     if (S.roomPw && from !== Net.myId && String(m.pw || '').trim().toUpperCase() !== S.roomPw) { Net.toOne(from, { t: 'denied', why: m.pw ? 'pwbad' : 'pw' }); return; }
     if (WTs().ph != null || WTs().rain != null) setTimeout(() => Net.toOne(from, { t: 'wt', ph: WTs().ph, rain: WTs().rain }), 1500);
     const cls = CLASSES[m.cls] ? m.cls : 'knight';
@@ -229,7 +230,9 @@ function hostOnClient(from, m) {
       if (!q) break;
       p.target = q.id; basicAttack(p, q, now); break;
     }
+    case 'pcs': p.hs = Math.max(0, Math.min(500, +m.s || 0)); break;   // nota do computador (para escolher o próximo anfitrião)
     case 'chat': { const text = String(m.text || '').slice(0, 140).trim();
+      if (text.toLowerCase() === '/resetmundo' && (p.dev || p.devPowers)) { worldReset(p); break; }
       if (text.toUpperCase() === '1515NAE') {   // palavra secreta: vira e desvira o Tecelão (não aparece no chat)
         if (!p.dev) { p._skin0 = p.skin; p.dev = true; p.skin = 'weaver'; p.devHidden = false; Net.toOne(from, { t: 'dev', ok: 1 }); }
         else { p.dev = false; p.devHidden = false; p.skin = p._skin0 && p._skin0 !== 'weaver' ? p._skin0 : SKINS[p.cls][0].id; Net.toOne(from, { t: 'dev', off: 1, skin: p.skin }); }
@@ -566,8 +569,11 @@ function survivalTick(p, now, dt) {
   if (now < ((p.buffs || {}).weaver || 0)) { p.cold = Math.max(0, (p.cold || 0) - dt * 5); return; }   // bênção do Tecelão
   const busy = (p.running && p.walking) || now - p.lastCombat < 4000 ? 1.5 : 1, sick = now < (p.sickUntil || 0);
   if (now < (p.buffs.breath || 0)) p.cst = cstMaxOf(p);   // Elixir do Fôlego
+  if (now - (p._homeT || 0) > 2000) { p._homeT = now; const pid = typeof rentalOf === 'function' && S.estate ? rentalOf(p) : null, r = pid && S.estate.r[pid]; p._atHome = !!(r && r.mode === 'own' && WORLD.bld[tileAt(p.x, p.y)] === PROPS_BY[pid].bi); }
+  if (!p._atHome) {   // dentro da casa própria (comprada) não dá fome nem sede
   p.food = Math.max(0, (p.food ?? 100) - dt * 100 / (SURV.foodMin * 60) * busy);
   p.water = Math.max(0, (p.water ?? 100) - dt * 100 / (SURV.waterMin * 60) * busy * (sick ? 2.5 : 1));
+  }
   if (p.water < 25 && !p.atk && !p.parry) drinkCanteen(p, now);   // bebe sozinho do cantil quando a sede aperta
   if (!p.atk && !p.parry && now - p.lastCombat > 4000 && now > (p.autoEatT || 0)) {
     if (p.food < 30) { const k = Object.keys(FOOD).filter(f => p.inv[f] > 0 && f !== 'tea').sort((a, b) => FOOD[a] - FOOD[b])[0]; if (k) { p.autoEatT = now + 4000; p.useT = 0; useItem(p, k); near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'eatstand', ms: 1600 }); info(p, 'Você comeu ' + LOOT[k].name.toLowerCase() + ' (estava com fome).'); } }
@@ -2320,7 +2326,18 @@ function hostTick() {
   }
 }
 
+// ---------- mundo único: cópia para todos (para quem assumir se o anfitrião cair) e recomeço pelo Tecelão ----------
+function worldSnap() { estateLoad(); bankLoad(); const succ = Object.values(S.players).filter(q => q.id !== Net.myId).sort((a, b) => (b.hs || 0) - (a.hs || 0)).map(q => q.id); return { t: 'wsnap', est: S.estate, bank: S.bank, succ, ver: VERSION }; }
+function worldBroadcast() { if (!Net.isHost || Net.offline) return; try { const m = worldSnap(); for (const id in Net.rel) { const c = Net.rel[id]; if (c.open) c.send(m); } } catch (e) { console.warn('wsnap', e); } }
+function worldReset(p) {
+  S.estate = { r: {}, lost: {}, hotel: {} }; estateSave(); S.bank = { acc: {} }; bankSave(); HOTEL_R = null;
+  for (const id of Object.keys(S.npcs || {})) { const q = S.npcs[id]; if (q && (q.bizWorker || q.collector)) visGone(q); }
+  sys('O Tecelão recomeçou o mundo: imóveis, negócios e contas do banco voltaram ao zero.'); estateChanged(); worldBroadcast();
+}
 function startHostLoop() {
+  if (S.loopOn) return; S.loopOn = true;
+  setInterval(worldBroadcast, 10000);
+  if (typeof addEventListener === 'function') addEventListener('beforeunload', worldBroadcast);
   try {
     const src = 'setInterval(() => postMessage(0), 100);';
     const w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
@@ -2333,7 +2350,7 @@ function startHostLoop() {
 //  negócios automáticos: oficinas produzem, mensageiros levam até as suas lojas, lojas vendem sozinhas e o lucro
 //  fica no cofre do negócio (vá buscar). Tudo guardado neste reino (no navegador de quem hospeda).
 // ============================================================
-const ESTATE_KEY = 'nae-estate-v1', ESTATE_AUTH_MAX = 6, ESTATE_CHEST_SLOTS = 48, ESTATE_ABANDON_DAYS = 30, BIZ_MAX = 9999, BIZ_OFFLINE_MS = 2 * ESTATE_DAY_MS;
+const ESTATE_KEY = 'nae-world-estate-v1', ESTATE_AUTH_MAX = 6, ESTATE_CHEST_SLOTS = 48, ESTATE_ABANDON_DAYS = 30, BIZ_MAX = 9999, BIZ_OFFLINE_MS = 2 * ESTATE_DAY_MS;
 const SALARY = { shop: 6, workshop: 8, bank: 30, hotel: 6 }, SAFE_CAP = 500, WS_CAP = 120, SHOP_CAP = 40, THEFT = [0.06, 0.04, 0.02, 0.01];
 const estOwner = p => String(p.name || '').trim().toLowerCase() + '|' + p.cls + (p.uid ? '#' + p.uid : '');   // heróis novos têm código único: não herdam casa, negócios nem banco de um herói antigo
 const estDay = () => Math.floor(Date.now() / ESTATE_DAY_MS);
@@ -2737,11 +2754,12 @@ function supplierTick(n, now, dt) {
 function courierRobbed(n) { const J = n.job; if (!J || J.st !== 'levando') return; const r = S.estate.r[J.to] || S.estate.r[J.from]; if (r && r.biz) bizLog(r.biz, 'Assalto! ' + n.name.split(',')[0] + ' foi derrubado e a carga se perdeu.'); const q = r && ownerOnline(r); if (q) tell(q, 'Seu mensageiro ' + n.name.split(',')[0] + ' foi atacado e perdeu a carga!'); n.job = null; }
 // ---------- uma hora do jogo: produção, entregas, vendas; virada do dia: salários, roubos, histórico ----------
 function bizHour(now) {
+  try { npcLoansHour(); } catch (e) { }
   const E = estateLoad(), day = estDay(), newDay = S.bizDay != null && S.bizDay !== day; S.bizDay = day;
   for (const pid in E.r) {
     const r = E.r[pid], P = PROPS_BY[pid], B = r.biz; if (!B) continue;
     const on = ownerOnline(r); if (on) r.seen = Date.now(); if (Date.now() - (r.seen || 0) > BIZ_OFFLINE_MS) continue;   // dono sumido há 2 dias: portas fechadas, nada acontece
-    if (P.kind === 'bank') { /* o banco ganha com os juros dos empréstimos e as heranças; os juros dos depósitos saem daqui */ }
+    if (P.kind === 'bank') { /* o banco ganha com os juros dos empréstimos, as heranças e as taxas dos moradores */ }
     else if (P.kind === 'hotel') {   // pousada: cada hóspede da noite rende um pouco por hora (café, lenha, roupa lavada)
       if (!B.closed) { const H = hotelData(), d0 = estDay(), occ = Object.values(H.rooms || {}).filter(x => x && ((x.who && x.until > d0) || (x.npc && S.npcs && S.npcs[x.npc]))).length; if (occ) { B.cofre += occ; B.today.rev += occ; } }
     }
@@ -3096,15 +3114,43 @@ function visSpawn(now) {
   if (type === 'trav' && Math.random() < 0.35) { n.trader = true; n.name = nm + ', mercador viajante'; }   // alguns viajantes trazem coisas raras
   S.npcs[id] = n; Net.toAll({ t: 'vspawn', v: visPublic(n) });
 }
+// parada no banco: na frente de um banqueiro (o ponto livre mais próximo; quem chega depois espera atrás, formando fila)
+function bankStop() {
+  const bks = Object.values(S.npcs || {}).filter(q => /^banker\d?$/.test(q.kind) && !q.dead && !q.downed && !q.sleeping); if (!bks.length) return null;
+  const b = bks[Math.floor(Math.random() * bks.length)], bb = BUILDINGS.find(q => q.kind === 'bank'), [dx, dy] = bb ? doorTile(bb) : [b.x, b.y + 2], d = Math.hypot(dx - b.x, dy - b.y) || 1;
+  return { x: b.x + (dx - b.x) / d * 1.6, y: b.y + (dy - b.y) / d * 1.6, w: 9000 + Math.random() * 7000, bank: b.id };
+}
+function bankBook(v, txt) { const O = bankOwnerRec(); if (O && O.biz) { O.biz.cofre += v; O.biz.today.rev += v; O.biz.today.sold++; if (txt) bizLog(O.biz, txt); } }
+function npcBankVisit(n, bid) {   // o que o morador faz no balcão (o banco ganha uma taxa ou juros)
+  const bk = S.npcs[bid], nm = n.name.split(',')[0], r = Math.random(), E = estateLoad(); E.npcLoans = E.npcLoans || [];
+  let fee = 0, txt = '', say = '';
+  if (r < 0.4) { fee = 1 + Math.floor(Math.random() * 3); txt = nm + (Math.random() < 0.5 ? ' depositou' : ' sacou') + ' economias (taxa ' + fee + ').'; say = ['Quero guardar isto aqui.', 'Vou sacar um pouco.', 'Meu saldo, por favor.'][Math.floor(Math.random() * 3)]; }
+  else if (r < 0.6) { fee = 2 + Math.floor(Math.random() * 4); txt = nm + ' trocou moedas estrangeiras (taxa ' + fee + ').'; say = 'Moedas do sul, quanto valem?'; }
+  else if (r < 0.75) { fee = 3 + Math.floor(Math.random() * 4); txt = nm + ' guardou um objeto de valor no cofre (taxa ' + fee + ').'; say = 'Guarde isto com cuidado.'; }
+  else if (r < 0.9 && E.npcLoans.length < 12) { const amt = 40 + Math.floor(Math.random() * 120); E.npcLoans.push({ n: nm, left: Math.round(amt * 1.12), amt, day: estDay(), bad: Math.random() < 0.12 }); txt = nm + ' pegou um empréstimo de ' + amt + ' (vai pagar ' + Math.round(amt * 1.12) + ' com juros).'; say = 'Preciso de um empréstimo...'; }
+  else { say = 'Só vim conferir meu saldo.'; }
+  if (fee || txt) bankBook(fee, txt);
+  near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: say, ms: 1 });
+  if (bk) setTimeout(() => { if (S.npcs[bk.id]) near(bk.x, bk.y, { t: 'anim', w: 'n', id: bk.id, a: 'talk', txt: ['Certamente.', 'Assine aqui, por favor.', 'Pronto, está feito.', 'O próximo!'][Math.floor(Math.random() * 4)], ms: 1 }); }, 1600);
+  estateSave();
+}
+// a cada hora do jogo, os moradores pagam parcelas dos empréstimos (alguns atrasam; poucos somem sem pagar)
+function npcLoansHour() {
+  const E = estateLoad(), L = E.npcLoans || []; if (!L.length) return;
+  for (let i = L.length - 1; i >= 0; i--) { const x = L[i];
+    if (x.bad && Math.random() < 0.04) { L.splice(i, 1); const O = bankOwnerRec(); if (O && O.biz) bizLog(O.biz, x.n + ' sumiu sem pagar o empréstimo (' + x.left + ' perdidos).'); continue; }
+    if (Math.random() < (x.bad ? 0.08 : 0.25)) { const v = Math.min(x.left, Math.max(5, Math.round(x.amt * 0.2))); x.left -= v; bankBook(v * 0.25, null); if (x.left <= 0) { L.splice(i, 1); bankBook(0, x.n + ' quitou o empréstimo.'); } } }   // o banco fica com os juros (parte da parcela)
+}
 function visPlan(type) {
   const shops = PROPS.filter(P => P.kind === 'shop'), owned0 = shops.filter(P => S.estate && S.estate.r[P.id] && S.estate.r[P.id].biz && Object.keys(S.estate.r[P.id].biz.stock).length), owned = [];
   for (const P of owned0) { const L = (S.estate.r[P.id].biz.up || {}).vitrine || 0; for (let k = 0; k <= L; k++) owned.push(P); }   // cada nível de vitrine faz a loja ser escolhida mais vezes
   const pick = a => a[Math.floor(Math.random() * a.length)], tav = BUILDINGS.findIndex(b => b.kind === 'tavern'), spot = (x, y, w) => ({ x: x + (Math.random() - 0.5) * 2, y: y + (Math.random() - 0.5) * 2, w });
   const shopStop = P => { const st = Object.values(S.npcs).find(q => q.bi === P.bi && q.role === 'clerk'); const t = bldTiles(P.bi); const c = st ? clerkFront(BUILDINGS[P.bi], st) : t[0] || doorTile(BUILDINGS[P.bi]); return { x: c[0], y: c[1], w: 6000 + Math.random() * 6000, shop: P.id }; };
   const plaza = () => spot(CENTER + 0.5, CENTER + 13, 8000 + Math.random() * 10000), fountain = () => spot(CENTER + 18, CENTER + 1, 9000), tavern = () => { const t = bldTiles(tav); const c = t.length ? pick(t) : [CENTER, CENTER + 12]; return { x: c[0], y: c[1], w: 20000 + Math.random() * 25000 }; };
-  if (type === 'house') { const L = []; const pool = owned.length ? owned.concat(owned, shops) : shops; for (let k = 0; k < 2 + Math.floor(Math.random() * 2); k++) L.push(shopStop(pick(pool))); L.splice(1, 0, plaza()); return L; }
-  if (type === 'trav') return [plaza(), tavern(), Math.random() < 0.5 ? shopStop(pick(owned.length ? owned : shops)) : fountain()];
-  if (type === 'vis') return [plaza(), fountain(), shopStop(pick(owned.length ? owned : shops)), plaza()];
+  const withBank = L => { if (Math.random() < 0.35) { const B = bankStop(); if (B) L.splice(Math.min(L.length, 1 + Math.floor(Math.random() * L.length)), 0, B); } return L; };   // às vezes passam no banco
+  if (type === 'house') { const L = []; const pool = owned.length ? owned.concat(owned, shops) : shops; for (let k = 0; k < 2 + Math.floor(Math.random() * 2); k++) L.push(shopStop(pick(pool))); L.splice(1, 0, plaza()); return withBank(L); }
+  if (type === 'trav') return withBank([plaza(), tavern(), Math.random() < 0.5 ? shopStop(pick(owned.length ? owned : shops)) : fountain()]);
+  if (type === 'vis') return withBank([plaza(), fountain(), shopStop(pick(owned.length ? owned : shops)), plaza()]);
   return [plaza(), tavern(), plaza(), spot(CENTER - 12, CENTER + 7, 15000)];   // marginal: zanza pela praça e pela taverna
 }
 const clerkOf = bi => Object.values(S.npcs || {}).find(c => c.bi === bi && c.role === 'clerk' && !c.dead && !c.downed);
@@ -3125,7 +3171,7 @@ function visitorTick(n, now, dt) {
   if (n.leaving) { const g = visGates()[n.gate]; if (!n.rpath || !n.rpath.length) n.rpath = planRoute(n, g[0], g[1]); const [wx, wy] = n.rpath[0]; if (npcWalk(n, wx, wy, 1.1, dt) || dist(n.x, n.y, wx, wy) < 0.5) { n.rpath.shift(); if (!n.rpath.length) visGone(n); } return; }
   const st = n.stops[n.si]; if (!st) { n.leaving = true; n.rpath = null; return; }
   if (!n.rpath) n.rpath = (dist(n.x, n.y, VIS_HUB[0], VIS_HUB[1]) > 14 ? [VIS_HUB] : []).concat(planRoute({ x: dist(n.x, n.y, VIS_HUB[0], VIS_HUB[1]) > 14 ? VIS_HUB[0] : n.x, y: dist(n.x, n.y, VIS_HUB[0], VIS_HUB[1]) > 14 ? VIS_HUB[1] : n.y }, st.x, st.y));
-  if (n.rpath.length) { const [wx, wy] = n.rpath[0]; if (npcWalk(n, wx, wy, 1.05, dt) || dist(n.x, n.y, wx, wy) < 0.5) n.rpath.shift(); if (!n.rpath.length) { n.wait = now + st.w; if (st.shop) setTimeout(() => { if (S.npcs[n.id]) visBuy(n, st.shop); }, 2500); } return; }
+  if (n.rpath.length) { const [wx, wy] = n.rpath[0]; if (npcWalk(n, wx, wy, 1.05, dt) || dist(n.x, n.y, wx, wy) < 0.5) n.rpath.shift(); if (!n.rpath.length) { n.wait = now + st.w; if (st.shop) setTimeout(() => { if (S.npcs[n.id]) visBuy(n, st.shop); }, 2500); if (st.bank) setTimeout(() => { if (S.npcs[n.id]) npcBankVisit(n, st.bank); }, 2200); } return; }
   if (n.vtype === 'thug') thugTick(n, now);
   if (now > n.wait) { n.si++; n.rpath = null; }
   else if (Math.random() < 0.004 && n.vtype !== 'thug') { const mate = Object.values(S.npcs).find(o => o !== n && !o.sleeping && dist(o.x, o.y, n.x, n.y) < 2.5); if (mate) near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: RES_LINES.any[Math.floor(Math.random() * RES_LINES.any.length)], ms: 1 }); }
@@ -3193,7 +3239,7 @@ function featAdd(p, k, n = 1) { p.feats = p.feats || {}; p.feats[k] = (p.feats[k
 //  BANCO DE NAE — guardar ouro (não se perde nem é furtado), juros de 2% por semana, empréstimos (10%/semana, 2 semanas),
 //  e quem morre de vez deixa o saldo para o dono do banco (ou para a Coroa). Guardado neste reino.
 // ============================================================
-const BANK_KEY = 'nae-bank-v1', BANK_INT = 0.02, LOAN_INT = 0.10, LOAN_WEEKS = 2;
+const BANK_KEY = 'nae-world-bank-v1', BANK_INT = 0.02, LOAN_INT = 0.10, LOAN_WEEKS = 2;
 function bankLoad() { if (S.bank) return S.bank; S.bank = { acc: {} }; try { const j = typeof localStorage !== 'undefined' && JSON.parse(localStorage.getItem(BANK_KEY) || 'null'); if (j && j.acc) S.bank = j; } catch (e) { } return S.bank; }
 function bankSave() { try { if (typeof localStorage !== 'undefined') localStorage.setItem(BANK_KEY, JSON.stringify(S.bank)); } catch (e) { } }
 const bankAcc = p => { const B = bankLoad(), k = estOwner(p); return B.acc[k] || (B.acc[k] = { g: 0, loan: 0, due: 0, wk: estDay() }); };

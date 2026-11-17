@@ -1133,7 +1133,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   for (const q of PL) { const e = q.e; if (!e._hid || !e._spr || inside) continue; pblit(ctx, tintOf(e._spr, q.me ? '#ffd060' : '#5aa8ff'), e._sx, e._sy, 0.62); }
 
   drawEffects(ctx, ox, oy, now);
-  if (!G.cellarDark) { ambient(visTrees, visFlowers, visGrass, day.night); drawParticles(ctx, ox, oy, now, dt); }   // no porão não chove nem venta
+  if (!G.cellarDark) { if (typeof qLevelNow !== 'function' || qLevelNow() >= 1) ambient(visTrees, visFlowers, visGrass, day.night); drawParticles(ctx, ox, oy, now, dt); }   // no porão não chove nem venta
   if (G.cellarDark) for (let k = labels.length - 1; k >= 0; k--) if (!labels[k].e || labels[k].e._inC !== now) labels.splice(k, 1);   // nomes só de quem está no porão
 
   // luzes das casas à noite: todas as janelas, lanterna na porta e o cômodo onde você está
@@ -1164,6 +1164,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     }
     ctx.drawImage(lightC, 0, 0, vw, vh);
     ctx.globalCompositeOperation = 'lighter';
+    if (typeof qLevelNow === 'function' && qLevelNow() < 3) G.lights.length = 0;   // brilho colorido das luzes: só do nível Média para cima
     for (const L of G.lights) {
       const r = L.r * 2 * 0.7;
       if (!(r > 0.1) || L.x < -r || L.y < -r || L.x > vw + r || L.y > vh + r) continue;
@@ -1176,7 +1177,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
 
   // 8) atmosfera e correção de cor (em pixels de tela)
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  if (!G.cellarDark) drawAtmosphere(ctx, W, H, now, day, cam);   // chuva, neve e névoa não entram no porão
+  if (!G.cellarDark && (typeof qLevelNow !== 'function' || qLevelNow() >= 2)) drawAtmosphere(ctx, W, H, now, day, cam);   // névoa, chuva e neve: só do nível Baixa para cima   // chuva, neve e névoa não entram no porão
   if (day.dusk > 0.01) { ctx.fillStyle = `rgba(255,120,40,${day.dusk * 0.1})`; ctx.fillRect(0, 0, W, H); }
   // fim de tarde dourado: tudo um pouco mais escuro e quente, com brilho no alto da tela
   if (!day.night) { ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = 'rgb(228,206,176)'; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over';
@@ -1190,7 +1191,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     const v = VIGNETTE.getContext('2d'), g = v.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
     g.addColorStop(0, 'rgba(12,6,2,0)'); g.addColorStop(1, 'rgba(12,6,2,0.7)'); v.fillStyle = g; v.fillRect(0, 0, W, H);
   }
-  ctx.drawImage(VIGNETTE, 0, 0);
+  if (typeof qLevelNow !== 'function' || qLevelNow() >= 1) ctx.drawImage(VIGNETTE, 0, 0);
   return labels;
 }
 let VIGNETTE = null, GOLD = null;
