@@ -84,7 +84,7 @@ function estDetailHtml(P) {
   h += '<div class="est-cost">Localização: <b>' + P.locName + '</b> · Alugar: <b>' + P.week + '</b> ouro/semana (entrada ' + cost + ': 1ª semana + caução) · Comprar: <b>' + estPrice(P) + '</b> ouro (imposto 7/semana; ' + (P.kind === 'house' ? 'vende de volta pela metade' : 'vende de volta pelo que pagou + as melhorias') + ')' + ((G.est.rs || {})[P.id] ? ' · inclui ' + G.est.rs[P.id] + ' de melhorias do dono anterior, que continuam no negócio' : '') + '</div>';
   if (P.kind === 'house' && tenOf(P).length && !G.est.st[P.id]) {   // casa com inquilino: só dá para comprar (e receber o aluguel)
     h += '<div class="est-cost">🏠 Mora aqui: <b>' + tenNames(P) + '</b>. Quem comprar recebe <b>' + P.week + '</b> ouro/semana de aluguel (menos 7 de imposto). Dá para despejar com 1 dia de aviso.</div>';
-    h += G.est.biz.length >= 3 ? '<button class="est-btn" disabled>Limite de 3 negócios/investimentos</button>' : '<button class="est-btn" data-buy="' + P.id + '"' + (myMoney() < P.buy ? ' disabled' : '') + '>Comprar com inquilino por ' + P.buy + '</button>';
+    h += '<button class="est-btn" data-buy="' + P.id + '"' + (myMoney() < P.buy ? ' disabled' : '') + '>Comprar com inquilino por ' + P.buy + '</button>';
     return h + '</div>';
   }
   if (s.k === 'free' && (P.kind === 'house' || isBizP(P))) {
@@ -250,12 +250,12 @@ function bizRender() {
   document.getElementById('biz-gold').textContent = G.me.gold;
   for (const b of el.querySelectorAll('[data-btab]')) b.classList.toggle('on', b.dataset.btab === G.biz.tab);
   const working = G.shiftUntil > performance.now();
-  let h = '<div class="biz-top"><div class="biz-cofre"><small>Conta no banco</small><b>' + Math.floor(B.cofre) + '</b><small>lucro entra aqui</small>' + (m.at ? '<div class="biz-wd"><input id="biz-wdq" type="number" min="1" placeholder="Quantia"><button class="est-btn" data-bcol>Sacar para a bolsa</button></div>' : '<small>para sacar: venha ao negócio ou ao banco</small>') + '</div>' +
+  let h = '<div class="biz-top"><div class="biz-cofre"><small>Conta no banco</small><b>' + Math.floor(B.cofre) + '</b><small>lucro entra aqui · sacar só no banco</small></div>' +
     '<div class="biz-st ' + (B.closed ? 'off' : 'on') + '">' + (B.closed ? '⛔ Parado: falta ouro no banco para o salário' : '✅ Funcionando') + '</div>' +
     '<div class="biz-btns">' + (m.at ? '<button class="est-btn" data-bshift>' + (working ? 'Parar o turno' : 'Trabalhar um turno (1 min 15 s)') + '</button>' : '') + '</div></div>';
   if (G.biz.tab === 'geral' && m.info && m.info.sellv != null) h += '<div class="biz-sell"><button class="est-btn ghost" data-bsell>Vender o negócio por ' + m.info.sellv + '</button><small>' + (m.mode === 'own' ? 'o que você pagou' : 'a caução') + (m.info.upv ? ' + ' + m.info.upv + ' das melhorias (elas ficam no negócio para o próximo dono)' : '') + '</small></div>';
   if (G.biz.tab === 'geral') {
-    { const tax = m.mode === 'own' ? 1 : P.rent, net = d => Math.round(d.rev - d.cost - tax), today = net(B.today), week = [...B.hist, B.today].reduce((a, d) => a + net(d), 0), st = shop ? B.stock : (B.store || {}), idle = Object.keys(st).filter(g => g !== 'serve').reduce((a, g) => a + Math.floor(st[g] || 0), 0);
+    { const tax = m.mode === 'own' ? 1 : P.rent, net = d => Math.round(d.rev + (d.xfer || 0) - d.cost - tax), today = net(B.today), week = [...B.hist, B.today].reduce((a, d) => a + net(d), 0), st = shop ? B.stock : (B.store || {}), idle = Object.keys(st).filter(g => g !== 'serve').reduce((a, g) => a + Math.floor(st[g] || 0), 0);
       const why = []; if ((B.hist.length ? B.hist[B.hist.length - 1].rev : B.today.rev) < (shop ? 6 : 8) + tax) why.push('a receita do dia não cobre salário e imposto');
       if (!shop && idle >= 30 && !B.sell) why.push('a venda ao fornecedor está desligada e o estoque está parado (' + idle + ')');
       if (shop && !stockSum0(B.stock) && !(B.orders || []).length) why.push('as prateleiras estão vazias — ligue a reposição automática');
@@ -347,7 +347,7 @@ function hubRender() {
   const d = document.getElementById('bizhub'); if (!d || d.classList.contains('hidden') || !G.me) return;
   document.getElementById('hub-gold').textContent = G.me.gold;
   const L = G.est.biz || [], totCofre = (G.bankG || 0) + L.reduce((a, b) => a + (b.box || 0), 0), totWeek = L.reduce((a, b) => a + ((b.sum && b.sum.week) || 0), 0);
-  let h = '<div class="hub-top"><div><small>Conta no banco</small><b>' + totCofre + '</b></div><div><small>Lucro da semana</small><b class="' + (totWeek < 0 ? 'neg' : '') + '">' + totWeek + '</b></div><div><small>Negócios</small><b>' + L.length + ' / ' + ((G.me.rep ?? 0) >= 90 ? '∞' : 3 + Math.floor((G.me.rep ?? 0) / 10)) + '</b></div></div>';
+  let h = '<div class="hub-top"><div><small>Conta no banco</small><b>' + totCofre + '</b>' + ((G.me.gold || 0) > 0 ? '<button class="est-btn ghost" data-hdep>Depositar tudo (' + G.me.gold + ')</button>' : '') + '</div><div><small>Lucro da semana</small><b class="' + (totWeek < 0 ? 'neg' : '') + '">' + totWeek + '</b></div><div><small>Negócios</small><b>' + L.length + '</b></div></div>';
   if (!L.length) h += '<div class="gp-note">Você ainda não tem negócios. Fale com Mestre Anselmo na Imobiliária ou procure as placas "À VENDA" (lojas na Rua Nova, oficinas na Vila do Oeste).</div>';
   h += L.map(b => { const P = PROPS_BY[b.pid], S0 = b.sum;
     if (P.kind === 'house') return '<div class="hub-card"><div class="hub-h"><b>🏘 ' + P.name + '</b><span>' + P.district + ' · inquilinos</span></div><div class="hub-row"><span>Caixa de aluguel: <b>' + (b.box || 0) + '</b></span><span>Renda: ' + P.week + '/semana</span></div><div class="hub-act"><button class="est-btn ghost" data-hest="1">Ver no painel de imóveis</button></div></div>';
@@ -358,6 +358,7 @@ function hubRender() {
   const C2 = G.est.cour || []; if (C2.length) h += '<div class="gp-sub">Mensageiros na rua</div>' + C2.map(c => '<div class="est-cost">🏃 ' + c.name + ' · ' + c.st + ' · ' + Object.keys(c.g).map(g => c.g[g] + ' ' + GOODS[g].n).join(', ') + ' → ' + c.to + '</div>').join('');
   document.getElementById('hub-body').innerHTML = h;
   for (const b of d.querySelectorAll('[data-hman]')) b.onclick = () => bizOpen(b.dataset.hman);
+  for (const b of d.querySelectorAll('[data-hdep]')) b.onclick = () => { Net.send({ t: 'bank', a: 'dep', q: G.me.gold }); setTimeout(() => { Net.send({ t: 'estate', a: 'open' }); }, 300); };   // depositar tudo de qualquer lugar
   for (const b of d.querySelectorAll('[data-hest]')) b.onclick = () => { hubToggle(false); estToggle(true, 'mine'); };
 }
 

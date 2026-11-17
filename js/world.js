@@ -1271,8 +1271,8 @@ const WORKS = {
 const MARGIN = [{ n: 'Barato', k: 1.25, p: 0.9 }, { n: 'Justo', k: 1.6, p: 0.7 }, { n: 'Caro', k: 2.1, p: 0.42 }];
 const BIZ_UP = {   // melhorias: custo por nível (até 3)
   shelf: { n: 'Prateleiras e depósito', d: '+40 de estoque por nível', cost: [250, 600, 1200], for: 'shop' },
-  vitrine: { n: 'Vitrine e letreiro', d: '+50% de clientes por nível', cost: [300, 700, 1500], for: 'shop' },
-  tools: { n: 'Ferramentas', d: '+50% de produção por nível', cost: [300, 700, 1500], for: 'workshop' },
+  vitrine: { n: 'Vitrine e letreiro', d: '+60% de clientes por nível e mais moradores passando', cost: [300, 700, 1500], for: 'shop' },
+  tools: { n: 'Ferramentas', d: '+60% de produção por nível (na taverna, +60% de renda; na pedreira, mais cristais)', cost: [300, 700, 1500], for: 'workshop' },
   safe: { n: 'Trancas reforçadas', d: 'menos roubo de mercadoria à noite por nível', cost: [200, 500, 1000], for: 'both' },
 };
 // ---------- mercado imobiliário: imóveis da cidade (casas para alugar; lojas e oficinas por enquanto com donos NPC) ----------

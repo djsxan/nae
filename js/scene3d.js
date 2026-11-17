@@ -1163,7 +1163,7 @@ const WSTYLE = {
 };
 function styleOf(b) {
   if (b.deco === 'arcane') return { wall: '#3a2a20', roof: '#2c2a32', tex: 'oldplank', roofTex: 'slate', trim: '#a8823a' };   // varinhas: madeira quase preta, ouro gasto
-  if (b.deco === 'tailor') return { wall: '#5e2c52', roof: '#33263a', tex: 'oldplank', roofTex: 'slate', trim: '#d4a94a' };   // alfaiataria: roxo-ameixa e dourado
+  if (b.deco === 'tailor') return { wall: '#dccbaa', roof: '#33263a', tex: 'oldplank', roofTex: 'slate', trim: '#d4a94a' };   // alfaiataria: paredes bege, telhado ameixa e dourado
   if (b.kind === 'shop' && b.v === 6) return { wall: '#3e3a52', roof: '#24403e', tex: 'stoneblock', roofTex: 'slate', trim: '#c9a24a' };   // alquimista: pedra escura arroxeada, latão
   if (b.office) return { wall: '#e8e2d2', roof: '#34404e', tex: 'stoneblock', roofTex: 'slate', trim: '#b08a3a' };   // imobiliária: pedra clara e bronze
   if (b.kind === 'workshop') return WSTYLE[b.wk] || WSTYLE.carp;
@@ -1459,7 +1459,7 @@ function mTailorFacade(o, b, H, night, trimM) {
   const w = b.w, h = b.h, dX = doorCol(b) + 0.5, gold = smat(null, '#d4a94a', { metal: 0.9, rough: 0.3 });
   // faixas douradas no topo e no rodapé e pilastras nos cantos
   for (const [ww, dd, x, z] of [[w + 0.08, 0.08, w / 2, h + 0.02], [w + 0.08, 0.08, w / 2, -0.02], [0.08, h + 0.08, w + 0.02, h / 2], [0.08, h + 0.08, -0.02, h / 2]]) { o.add(mk(new THREE.BoxGeometry(ww, 0.12, dd).translate(x, H - 0.12, z), gold)); o.add(mk(new THREE.BoxGeometry(ww, 0.08, dd).translate(x, 0.5, z), gold)); }
-  for (const [x, z] of [[0.04, h + 0.04], [w + 0.04, h + 0.04], [w + 0.04, 0.04], [0.04, 0.04]]) o.add(mk(new THREE.BoxGeometry(0.16, H, 0.16).translate(x, H / 2, z), smat('wood', '#4a2040', { bump: 0.8 })));
+  for (const [x, z] of [[0.04, h + 0.04], [w + 0.04, h + 0.04], [w + 0.04, 0.04], [0.04, 0.04]]) o.add(mk(new THREE.BoxGeometry(0.16, H, 0.16).translate(x, H / 2, z), smat('wood', '#5e2c52', { bump: 0.8 })));   // pilastras ameixa sobre a parede bege
   const mannequin = (x, col, glow) => { const g = grp(); g.add(mk(new THREE.CylinderGeometry(0.02, 0.02, 0.5, 6).translate(x, 0.75, 0.15), gold)); g.add(mk(new THREE.CylinderGeometry(0.11, 0.08, 0.36, 10).translate(x, 1.15, 0.15), smat('cloth', '#e8dcc0')));
     g.add(mk(new THREE.SphereGeometry(0.07, 10, 8).translate(x, 1.4, 0.15), smat(null, '#e8dcc0')));
     g.add(mk(new THREE.ConeGeometry(glow ? 0.26 : 0.2, glow ? 0.85 : 0.75, 14, 1, true).translate(x, glow ? 0.85 : 0.92, 0.15), smat('cloth', col, { side: THREE.DoubleSide, emissive: glow ? '#e8c8f0' : undefined, ei: glow ? (night ? 1.2 : 0.45) : 0 })));

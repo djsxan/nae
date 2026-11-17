@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.55.0';
-const VERSION_NAME = 'Nae · Troca de Endereço';
+const VERSION = 'v1.56.0';
+const VERSION_NAME = 'Nae · Fôlego Longo';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -15,7 +15,7 @@ function saveSettings() { try { localStorage.setItem('nae-settings', JSON.string
 const STAIR_N = 5;                 // escadas: 5 tiles de rampa até o alto da muralha
 const SKIN_LVL = [1, 10, 20];      // nível para liberar cada skin (comum, rara, lendária)
 const RUN_MUL = 1.65;              // correr (SHIFT) multiplica a velocidade
-const STAM_MAX = 200, STAM_DRAIN = 22, STAM_REGEN = 17, STAM_DELAY = 900; // estamina: gasta correndo, volta parado/andando
+const STAM_MAX = 400, STAM_DRAIN = 22, STAM_REGEN = 34, STAM_DELAY = 900; // estamina: gasta correndo, volta parado/andando
 const OUT_OF_COMBAT_MS = 5000;     // sem lutar por 5s = fora de combate (regenera)
 const DOWNED_MS = 30000;           // tempo caído antes de renascer no templo
 const REVIVE_MS = 3000;            // segurar F por 3s para reanimar
@@ -271,7 +271,7 @@ const STRIKES = {
   stab:   { n: 'estocada',  W: 300, R: 120, C: 340, reach: 2.05, arc: 0.24, mult: 0.8,  zone: 'torso', st: 7, bz: 'side' },   // rápida e longa, pouco dano; fura bloqueio alto/baixo
   bite:   { n: 'mordida',   W: 340, R: 120, C: 480, reach: 1.25, arc: 0.6,  mult: 1.0,  zone: 'legs',  st: 0 },
 };
-const PARRY_PERFECT = 300, PARRY_ARC = 1.15, RIPOSTE_MS = 1300, FEINT_COST = 10, CST_MAX = 200, CST_REGEN = 24;
+const PARRY_PERFECT = 300, PARRY_ARC = 1.15, RIPOSTE_MS = 1300, FEINT_COST = 10, CST_MAX = 400, CST_REGEN = 34;
 const DODGE = { dist: 1.4, ms: 230, iframe: 280, cost: 18, cd: 650 }, KICK = { reach: 1.35, arc: 0.6, W: 240, stun: 1000, cost: 12, push: 1.8 };
 // monstros com arma: golpes que usam, chance de bloquear e quanto a preparação é mais lenta (dá tempo de reagir)
 const MON_MELEE = {
@@ -432,7 +432,8 @@ const REP_PERKS = [[30, 'abaixo de 30: tudo 15% mais caro e as sentinelas ficam 
 const repPriceMul = r => r >= 90 ? 0.85 : r >= 75 ? 0.9 : r >= 60 ? 0.95 : r < 30 ? 1.15 : 1;
 const wandBonus = p => { const k = wandOf(p), I = p && p.wandInfo; return k && I && I.k === k ? I : null; };   // madeira e núcleo da varinha que está na mão
 const maxMpOf = p => Math.floor(maxMpFor(p.cls, p.lvl) * (1 + treeEff(p, 'mp'))) + (wandOf(p) ? WANDS[wandOf(p)].mp + ((wandBonus(p) || {}).mp || 0) : 0);
-const cstMaxOf = p => Math.round(CST_MAX * (1 + treeEff(p, 'cst')));
+// estamina única (corrida + combate): 400 + 5 por nível, mais os talentos e o uso de "Corrida"
+const cstMaxOf = p => Math.round((CST_MAX + 5 * Math.max(0, (p.lvl || 1) - 1)) * (1 + treeEff(p, 'cst') + treeEff(p, 'stam') + (p.use ? useBonus(p, 'run') : 0)));
 
 // arco: tempo de puxar, pegar flecha, soltar; segurar no máximo cansa e treme; velocidades em tiles/s
 const BOW = { draw: 1000, nock: 800, loose: 350, holdSway: 2000, holdDrain: 16, maxRange: 18, vMin: 5, vMax: 13, g: 9.8 };

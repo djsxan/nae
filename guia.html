@@ -59,7 +59,7 @@
 <body>
 <div class="wrap">
 <nav class="toc">
-  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.55</small>
+  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.56</small>
   <input id="q" type="search" placeholder="Buscar no guia (ex.: banco, fome, G)" autocomplete="off">
   <div class="links" id="links"></div>
 </nav>
@@ -104,7 +104,7 @@
       <tr><td><kbd>R</kbd> (cavaleiro com escudo)</td><td>Empurrão de escudo: desequilibra quem está na frente.</td></tr>
       <tr><td><kbd>Espaço</kbd></td><td>Esquiva. Amarrado ou agarrado: martele para se soltar. Na gazua: acerte o tempo.</td></tr>
       <tr><td><kbd>X</kbd> / <kbd>Tab</kbd></td><td>Atacar / escolher o alvo mais próximo (arqueiro e mago atiram sozinhos no alvo).</td></tr>
-      <tr><td><kbd>1</kbd>–<kbd>4</kbd> (e <kbd>5</kbd>–<kbd>8</kbd>)</td><td>Habilidades da vocação (e as da árvore de constelações; a 8 é a Restauração do Mago).</td></tr>
+      <tr><td><kbd>1</kbd>–<kbd>4</kbd> (e <kbd>5</kbd>–<kbd>8</kbd>)</td><td>Habilidades da vocação (e as da árvore de constelações; a 8 é a Restauração do Mago). Na árvore (<kbd>K</kbd>), clique numa habilidade já aprendida para <b>equipá-la num espaço da barra (1–4)</b>; clique de novo para tirar.</td></tr>
       <tr><td><kbd>Q</kbd> · <kbd>E</kbd> · <kbd>0</kbd> · <kbd>B</kbd></td><td>Poção de vida · poção de mana · beber do cantil · bandagem.</td></tr>
       <tr><td><kbd>G</kbd></td><td>Guardar / sacar a arma.</td></tr>
       <tr><td><kbd>H</kbd></td><td>Toque: pegar, carregar ou largar (objetos e caídos). Segurar: menu de agarrar (puxar pelos braços/pés, carregar nas costas, mata-leão, amarrar).</td></tr>
@@ -285,12 +285,12 @@
       <li><b>Ofertas</b>: no painel da imobiliária, um negócio de outro jogador tem o botão “Fazer uma oferta ao dono”. O dinheiro fica reservado no banco; o dono aceita, recusa ou faz uma contraproposta (você aceita ou não). Sem resposta em 1 dia do jogo, o dinheiro volta.</li>
       <li><b>Portas abertas</b>: lojas, oficinas, taverna, pousada e banco de jogadores ficam abertos para todo mundo; só as casas são trancadas.</li>
       <li><b>Comprar e melhorar com o banco</b>: comprar imóveis na imobiliária e as melhorias do negócio pagam primeiro com a conta do banco e completam com a bolsa.</li>
-      <li><b>O lucro cai direto na sua conta do banco</b> — vale para lojas, oficinas e fazendas. No painel do negócio, estando lá dentro (ou perto do funcionário), o botão <b>Sacar para a bolsa</b> tira ouro da conta na hora; longe, fale com um banqueiro. Salários, encomendas e reposição saem dela (se faltar, da bolsa). À noite, ladrões podem levar um pouco de <b>mercadoria</b> (nunca o ouro do banco); as <b>trancas reforçadas</b> diminuem isso. Melhorias: prateleiras, vitrine, ferramentas e trancas.</li>
+      <li><b>O lucro cai direto na sua conta do banco</b> — vale para lojas, oficinas e fazendas. O painel do negócio mostra o saldo; <b>sacar só com um banqueiro</b>, no Banco de Nae. <b>Depositar</b> vale de qualquer lugar: no menu de negócios há o botão <b>Depositar tudo</b>. Não há limite de negócios por personagem. O painel conta como lucro o que uma oficina manda para os seus outros negócios (madeira da serraria para a sua loja, por exemplo). Salários, encomendas e reposição saem dela (se faltar, da bolsa). À noite, ladrões podem levar um pouco de <b>mercadoria</b> (nunca o ouro do banco); as <b>trancas reforçadas</b> diminuem isso. Melhorias: prateleiras, vitrine, ferramentas e trancas.</li>
       <li><b>Reposição automática</b> (lojas, aba Estoque): ligada, a loja encomenda do fornecedor o que faltar para <b>encher as prateleiras</b> (dividido entre as mercadorias) sempre que houver dinheiro no banco. Oficinas que transformam já compram sozinhas a matéria-prima que falta (também pelo banco).</li>
       <li><b>Funcionários</b> (aba Funcionários): procure candidatos e contrate até <b>3</b> por negócio (nas oficinas que extraem, até 2 coletores além do da casa). Cada um deixa o negócio <b>40% mais produtivo</b>, e o traço ajuda mais: <i>rápido</i> (+15%), <i>simpático</i> (clientes compram mais) ou <i>honesto</i> (metade do roubo à noite). O salário sai do banco todo dia — sem ouro, ele vai embora. Eles saem de casa de manhã, andam até o negócio, trabalham das 7h às 20h e voltam para casa no fim do dia. Dispense quando quiser.</li>
       <li><b>Quantos negócios</b>: sem limite. Painel na tecla <kbd>N</kbd>.</li>
       <li><b>Colocar do inventário</b>: no painel do negócio, aba Estoque, você guarda o que coletou ou fez. Toras vão para o depósito da oficina (carpintaria transforma em varinhas ou papel); varinhas, gemas, ervas, mapas e linho vão para as prateleiras da loja que vende aquilo.</li>
-      <li><b>Bancada da Arcanos & Varinhas</b>: até 60 de madeira; o atendente entalha 1 varinha por hora com 2 de madeira, direto para as prateleiras. A madeira chega de três jeitos: você deixa toras na bancada, os <b>mensageiros da sua serraria</b> levam (15 por viagem), ou, com a <b>reposição automática</b> ligada e sem serraria própria, o fornecedor traz quando a bancada passa da metade (sai do banco).</li>
+      <li><b>Bancada da Arcanos & Varinhas</b>: até 60 de madeira; o atendente entalha 1 varinha por hora com 2 de madeira, direto para as prateleiras. A madeira chega de três jeitos: você deixa toras na bancada, os <b>mensageiros da sua serraria</b> levam (30 por viagem), ou, com a <b>reposição automática</b> ligada e sem serraria própria, o fornecedor traz quando a bancada passa da metade (sai do banco).</li>
       <li><b>Contas automáticas</b> (aluguel, imposto, salários, diária da pousada) saem da sua <b>conta no banco</b> e só então da bolsa. Com dinheiro no banco, as contas são pagas mesmo com você fora do jogo.</li>
       <li>Dá para comprar no balcão da loja de outro jogador — o ouro vai para a conta do banco dele.</li>
     </ul>
@@ -444,8 +444,8 @@
     <dl class="gl">
       <dt>Anfitrião</dt><dd>Quem abre o reino. O mundo roda no navegador dele; imóveis, negócios e banco ficam salvos lá.</dd>
       <dt>Caído</dt><dd>Sem vida, no chão, por 30 segundos. Pode ser reanimado ou carregado. Se o tempo acabar, morte permanente.</dd>
-      <dt>Estamina</dt><dd>A energia para correr. Volta andando ou parado. Aparece no medalhão do pulmão, abaixo da fome e do frio: o arco esvazia ao correr, os pulmões respiram mais rápido e piscam quando você cansa; cheio, o medalhão fica discreto.</dd>
-      <dt>Fôlego</dt><dd>A barra amarela do combate: cada golpe, aparada e esquiva gasta. Sem fôlego, você não golpeia.</dd>
+      <dt>Estamina</dt><dd>Uma barra só para correr, deslizar, defender e esquivar: <b>400</b> no começo e <b>+5 por nível</b>. Correr gasta 22 por segundo (uns 18 s de corrida), e ela volta depressa parado. Comer devolve um pouco na hora; com fome, sede ou frio, enche mais devagar. Aparece no medalhão do pulmão, abaixo da fome e do frio: o arco esvazia ao correr, os pulmões respiram mais rápido e piscam quando você cansa; cheio, o medalhão fica discreto.</dd>
+      <dt>Fôlego</dt><dd>É a mesma estamina: golpes, defesas e esquivas gastam da barra de correr. Sem fôlego, você não golpeia.</dd>
       <dt>Golpe carregado</dt><dd>Segurar o clique antes de soltar: mais dano e, na cabeça, pode matar na hora.</dd>
       <dt>Defesa perfeita / contra-ataque</dt><dd>Erguer o escudo (botão direito) na direção do inimigo logo antes do golpe: ele cambaleia e abre um golpe mais forte.</dd>
       <dt>Sangramento</dt><dd>Perda de vida contínua por ferida. Para com bandagem, fogo ou a sacerdotisa.</dd>
@@ -461,7 +461,7 @@
   </section>
 
   <div class="empty" id="empty">Nada encontrado para essa busca.</div>
-  <p class="muted" style="margin-top:40px">Guia da versão 1.55 · atualizado a cada versão do jogo. Veja também o <a href="roadmap.html">Roadmap</a>, com a história de todas as versões.</p>
+  <p class="muted" style="margin-top:40px">Guia da versão 1.56 · atualizado a cada versão do jogo. Veja também o <a href="roadmap.html">Roadmap</a>, com a história de todas as versões.</p>
 </main>
 </div>
 <script>

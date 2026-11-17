@@ -116,7 +116,7 @@ function clientOnServer(m) {
       const oldLvl = e.lvl; e.wi = m.wi || null; e.ck = m.ck || 0;
       if (m.slow) G.slowUntil = now + m.slow;
       if (m.knock) G.knockUntil = now + m.knock;
-      G.cst = m.cst ?? CST_MAX; G.cstMax = m.cstMax || CST_MAX; e.arw = m.arw || []; e.esc = m.esc || 0; e.chk = m.chk || 0; e.bnd = m.bnd || ''; e.bndE = m.bndE || 0; e.jl = m.jl || 0; e.cell = m.cell ?? -1; if (m.tree) e.tree = m.tree; if (m.use) e.use = m.use; if (typeof onProgStat === 'function') onProgStat(); G.stunUntil = now + (m.stun || 0); G.ripUntil = now + (m.rip || 0);
+      G.cst = m.cst ?? CST_MAX; G.cstMax = m.cstMax || CST_MAX; if (G.stam == null || Math.abs(G.stam - G.cst) > 25 || G.cst < 1) G.stam = G.cst; /* a estamina segue o servidor (defesa e esquiva também gastam) */ e.arw = m.arw || []; e.esc = m.esc || 0; e.chk = m.chk || 0; e.bnd = m.bnd || ''; e.bndE = m.bndE || 0; e.jl = m.jl || 0; e.cell = m.cell ?? -1; if (m.tree) e.tree = m.tree; if (m.use) e.use = m.use; if (typeof onProgStat === 'function') onProgStat(); G.stunUntil = now + (m.stun || 0); G.ripUntil = now + (m.rip || 0);
       Object.assign(e, { hp: m.hp, maxHp: m.maxHp, mp: m.mp, maxMp: m.maxMp, lvl: m.lvl, xp: m.xp, gold: m.gold, pots: m.pots, food: m.food, water: m.water, cold: m.cold, infect: m.infect, sick: m.sick, hasSkin: m.hasSkin, body: m.body, bleed: m.bleed, lost: m.lost || 0, pro: m.pro || 0, inv: m.inv || {}, combat: m.combat, quests: m.quests, qdone: m.qdone });
       setBuffs(e, m.buffs); if (m.wpn) e.wpn = m.wpn; e.shea = !!m.shea; e.hroom = m.hroom ?? -1; e.shp = m.shp ?? 100; e.freeLimb = !!m.freeLimb; if (m.rep != null) e.rep = m.rep; if (m.feats) e.feats = m.feats; if (m.prof) e.prof = m.prof; if ('job' in m && typeof jobsTracker === 'function') { G.job = m.job; jobsTracker(); }
       G.cdEnd = m.cds.map(r => now + r);
@@ -204,7 +204,7 @@ function clientOnServer(m) {
     case 'carry': { const c = G.players[m.by]; if (c) c.carrying = m.id || null; break; }
     case 'respawned': showBanner('Capela da Aurora', 'Você despertou nas ruínas e perdeu metade da experiência do nível.', true); break;
     case 'chestopen': showBanner('Baú do chefe', '+' + m.gold + ' de ouro, 2 poções e ' + m.items.filter(k => LOOT[k]).map(k => LOOT[k].name).join(', ')); break;
-    case 'dev': G.devAnswered = true; if (m.ok && m.mode === 'normal') { G.devTools = true; showBanner('Modo criador', 'Vocação normal · F2 abre o painel'); buildDevPanel(); $('devpanel').classList.add('hidden'); /* vocação normal: painel fechado até apertar F2 */ } else if (m.ok) { G.dev = true; G.noclip = true; G.me.skin = 'weaver'; showBanner('O Tecelão desperta', 'F2 abre o painel do criador'); buildDevPanel(); } else showToast('Senha do criador incorreta.'); break;
+    case 'dev': G.devAnswered = true; if (m.off) { G.dev = false; G.noclip = false; G.devTools = false; if (G.me) G.me.skin = m.skin || G.me.skin; const dp = $('devpanel'); if (dp) dp.classList.add('hidden'); showBanner('De volta ao herói', 'O Tecelão adormece'); break; } if (m.ok && m.mode === 'normal') { G.devTools = true; showBanner('Modo criador', 'Vocação normal · F2 abre o painel'); buildDevPanel(); $('devpanel').classList.add('hidden'); /* vocação normal: painel fechado até apertar F2 */ } else if (m.ok) { G.dev = true; G.noclip = true; G.me.skin = 'weaver'; showBanner('O Tecelão desperta', 'F2 abre o painel do criador'); buildDevPanel(); } else showToast('Senha do criador incorreta.'); break;
     case 'shake': G.shake = Math.max(G.shake, m.s || 6); break;
     case 'tele': G.teles.push({ ...m, t0: now }); break;
     case 'fires': for (const [x, y, r, ms] of m.l) { const t = Math.round(y) * MAP_W + Math.round(x); G.fires.push({ x, y, r, z: m.z != null ? m.z : (WORLD.ground[t] === T.CLIFF && WORLD.fl1[t] > 0 ? 1 : 0), t0: now + (m.ms || 0), until: now + ms }); } if (!m.nb) G.breaths.push({ t0: now, ms: 650 }); break;
@@ -380,7 +380,7 @@ function updateLocal(now, dt) {
   if (G.push) { const kp = (now - G.push.t0) / 260; if (kp >= 1) G.push = null; else v = G.push.v; }
   const running = !!v && !kneel && !((me.lost || 0) & 24) && !(me.body && Math.max(PART_STATE(me.body.legL), PART_STATE(me.body.legR)) >= 3) && G.keys.has('shift') && !crouchKey && !G.tired && !me.downed && !me.carrying && G.stam > 0;
   if (running) { G.stam = Math.max(0, G.stam - STAM_DRAIN * dt); G.stamT = now; if (G.stam <= 0) G.tired = true; }
-  else if (now - G.stamT > STAM_DELAY) G.stam = Math.min(stamMax(), G.stam + STAM_REGEN * dt * (v ? 0.6 : me.sit ? 2.5 : 1));
+  else if (now - G.stamT > STAM_DELAY) G.stam = Math.min(stamMax(), G.stam + STAM_REGEN * dt * (v ? 0.6 : me.sit ? 2.5 : 1) * ((me.food ?? 100) < 30 ? 0.6 : 1) * ((me.water ?? 100) < 30 ? 0.7 : 1) * ((me.cold || 0) > 50 ? 0.6 : 1));
   revealFog(me.x, me.y);
   if (G.tired && G.stam >= stamMax() * 0.3) G.tired = false;
   me.running = running;
@@ -501,7 +501,26 @@ function setTarget(id) {
   Net.send({ t: 'target', id });
   updateTargetFrame();
 }
+// espaços com habilidade da árvore: salvos por herói neste navegador
+function slotKey() { return 'nae-slots|' + (G.me ? charKey(G.me.name, G.me.cls) : ''); }
+function slotTreeLoad() { try { G.slotTree = JSON.parse(localStorage.getItem(slotKey()) || 'null') || [null, null, null, null]; } catch (e) { G.slotTree = [null, null, null, null]; } G.tcdEnd = G.tcdEnd || [0, 0, 0, 0]; }
+function slotTreeSave() { try { localStorage.setItem(slotKey(), JSON.stringify(G.slotTree)); } catch (e) { } }
+function slotTreeNode(i) { const s = G.slotTree && G.slotTree[i]; if (!s || !G.me) return null; const br = TREE[G.me.cls] && TREE[G.me.cls][s.b], nd = br && br.nodes[s.n === 5 ? 5 : 4]; return nd && nd.id === s.id && G.me.tree && G.me.tree[nd.id] ? { ...s, nd, br } : null; }
+function slotEquip(i, b, n, id) { if (!G.slotTree) slotTreeLoad(); for (let k = 0; k < 4; k++) if (G.slotTree[k] && G.slotTree[k].id === id) G.slotTree[k] = null; G.slotTree[i] = id ? { b, n, id } : null; slotTreeSave(); buildHotbar(); }
+function treeEquipMenu(nd, bi, i) {
+  let d = $('tequip'); if (d) d.remove(); d = document.createElement('div'); d.id = 'tequip'; d.className = 'gpanel';
+  const n = i === 5 ? 5 : 4, cur = (G.slotTree || []).findIndex(s => s && s.id === nd.id);
+  d.innerHTML = '<div class="gp-head"><span>' + nd.name + '</span><button class="gp-x" data-x>✕</button></div><div class="est-cost">' + nd.desc + '<br>Mana ' + nd.mp + ' · Recarga ' + nd.cd / 1000 + 's</div><div class="tq-btns">' +
+    [0, 1, 2, 3].map(k => '<button class="est-btn' + (cur === k ? ' on' : '') + '" data-k="' + k + '">Espaço ' + (k + 1) + '<small>' + (slotTreeNode(k) ? slotTreeNode(k).nd.name : SKILLS[G.me.cls][k].name) + '</small></button>').join('') + '</div>' +
+    (cur >= 0 ? '<button class="est-btn ghost" data-off>Tirar da barra (volta ' + SKILLS[G.me.cls][cur].name + ')</button>' : '');
+  document.body.appendChild(d);
+  d.querySelector('[data-x]').onclick = () => d.remove();
+  d.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { slotEquip(+b.dataset.k, bi, n, nd.id); d.remove(); showToast(nd.name + ' equipada no espaço ' + (+b.dataset.k + 1) + '.'); });
+  const off = d.querySelector('[data-off]'); if (off) off.onclick = () => { G.slotTree[cur] = null; slotTreeSave(); buildHotbar(); d.remove(); };
+}
 function castSkill(i) {
+  { const T = slotTreeNode(i); if (T) { const now = performance.now(); if (now < (G.tcdEnd[i] || 0) || G.me.downed) return; if (G.me.mp < T.nd.mp) { showToast('Mana insuficiente.'); return; }
+    Net.send({ t: 'tskill', b: T.b, n: T.n === 5 ? 5 : undefined, a: G.me.fa ?? 0, id: G.target || 0 }); G.tcdEnd[i] = now + T.nd.cd; const slot = $('slot' + i); slot.classList.remove('pressed'); void slot.offsetWidth; slot.classList.add('pressed'); return; } }
   const me = G.me, sk = SKILLS[me.cls][i], now = performance.now();
   if (!sk || me.downed) return;
   if (now < G.cdEnd[i]) return;
@@ -677,7 +696,7 @@ function updateTargetFrame() {
 }
 function updateSlots(now) {
   for (let i = 0; i < 4; i++) {
-    const left = Math.max(0, G.cdEnd[i] - now), sk = SKILLS[G.me.cls][i], el = $('slot' + i);
+    const T = slotTreeNode(i), left = Math.max(0, T ? (G.tcdEnd[i] || 0) - now : G.cdEnd[i] - now), sk = T ? T.nd : SKILLS[G.me.cls][i], el = $('slot' + i);
     el.style.setProperty('--cd', left > 0 ? (left / sk.cd * 360) + 'deg' : '0deg');
     $('slot' + i + '-t').textContent = left > 0 ? (left / 1000).toFixed(left < 1000 ? 1 : 0) : '';
   }
@@ -1160,15 +1179,17 @@ function setupJoystick() {
 function buildHotbar() {
   const cls = G.me.cls;
   const iconTo = (cv, id) => { const c2 = cv.getContext('2d'); c2.imageSmoothingEnabled = false; c2.clearRect(0, 0, cv.width, cv.height); const ic = iconSprite(id); c2.drawImage(ic.c, 0, 0, ic.w, ic.h, 0, 0, cv.width, cv.height); };
+  if (!G.slotTree) slotTreeLoad();
   SKILLS[cls].forEach((sk, i) => {
-    const el = $('slot' + i);
-    iconTo(el.querySelector('canvas'), sk.id);
-    el.querySelector('.cost').textContent = sk.mp;
-    el.dataset.tip = `${sk.name}\n${sk.desc}\nMana ${sk.mp} · Recarga ${sk.cd / 1000}s${sk.cast ? ` · Conjuração ${sk.cast / 1000}s` : ''}${sk.range ? ` · Alcance ${sk.range}` : ''}`;
+    const el = $('slot' + i), T = slotTreeNode(i);
+    if (T) { const cv = el.querySelector('canvas'), c2 = cv.getContext('2d'); c2.clearRect(0, 0, cv.width, cv.height); c2.fillStyle = '#2a1e3a'; c2.beginPath(); c2.arc(cv.width / 2, cv.height / 2, cv.width / 2, 0, 7); c2.fill(); c2.font = Math.round(cv.width * 0.62) + 'px serif'; c2.textAlign = 'center'; c2.textBaseline = 'middle'; c2.fillText(T.br.icon || '✦', cv.width / 2, cv.height / 2 + 1);
+      el.querySelector('.cost').textContent = T.nd.mp; el.dataset.tip = T.nd.name + ' (árvore)\n' + T.nd.desc + '\nMana ' + T.nd.mp + ' · Recarga ' + T.nd.cd / 1000 + 's'; el.classList.add('tree-slot'); }
+    else { iconTo(el.querySelector('canvas'), sk.id); el.querySelector('.cost').textContent = sk.mp; el.classList.remove('tree-slot');
+      el.dataset.tip = `${sk.name}\n${sk.desc}\nMana ${sk.mp} · Recarga ${sk.cd / 1000}s${sk.cast ? ` · Conjuração ${sk.cast / 1000}s` : ''}${sk.range ? ` · Alcance ${sk.range}` : ''}`; }
     el.onclick = () => castSkill(i);
   });
   iconTo($('pot-hp').querySelector('canvas'), 'hp'); iconTo($('pot-mp').querySelector('canvas'), 'mp');
-  if (typeof medalize === 'function') { SKILLS[cls].forEach((sk, i) => medalize($('slot' + i), sk.id)); medalize($('pot-hp'), 'hp'); medalize($('pot-mp'), 'mp'); medalize($('pot-band'), 'band'); if (!$('btn-attack').querySelector('.medal')) $('btn-attack').insertAdjacentHTML('beforeend', medalSVG('attack')); }
+  if (typeof medalize === 'function') { SKILLS[cls].forEach((sk, i) => { const T = slotTreeNode(i); medalize($('slot' + i), T ? 'tree|' + T.nd.id + '|' + (T.br.icon || '✦') : sk.id); }); medalize($('pot-hp'), 'hp'); medalize($('pot-mp'), 'mp'); medalize($('pot-band'), 'band'); if (!$('btn-attack').querySelector('.medal')) $('btn-attack').insertAdjacentHTML('beforeend', medalSVG('attack')); }
   if ($('pot-band')) $('pot-band').onclick = () => Net.send({ t: 'band' });
   $('pot-hp').onclick = () => drinkPot('hp'); $('pot-mp').onclick = () => drinkPot('mp');
   const p = CLASSES[cls].passive;

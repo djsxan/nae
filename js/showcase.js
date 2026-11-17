@@ -74,7 +74,7 @@ function medalSVG(id) {
 function medalize(el, id) {
   if (!el) return; const cv = el.querySelector('canvas'); if (cv) cv.style.display = 'none';
   let m = el.querySelector('.medal-wrap'); if (!m) { m = document.createElement('div'); m.className = 'medal-wrap'; el.insertBefore(m, el.firstChild); }
-  if (m.dataset.id !== id) { m.dataset.id = id; m.innerHTML = medalSVG(id); }
+  if (m.dataset.id !== id) { m.dataset.id = id; m.innerHTML = String(id).startsWith('tree|') ? '<svg viewBox="0 0 64 64" class="medal"><circle cx="32" cy="32" r="30" fill="#2a1e3a" stroke="#c8a8f0" stroke-width="3"/><circle cx="32" cy="32" r="24" fill="#3e2a5a"/><text x="32" y="42" text-anchor="middle" font-size="28">' + String(id).split('|')[2] + '</text></svg>' : medalSVG(id); }   // habilidade da árvore equipada
 }
 
 // ---------- sobrevivência em dois medalhões ao lado do chat: fome + sede (dois arcos) e frio (termômetro) ----------

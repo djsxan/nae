@@ -2,7 +2,7 @@
 //  PROGRESSÃO — painel da árvore de talentos (K), habilidades 5/6/7,
 //  progressão por uso na pausa e efeitos das zonas (estandarte, armadilha, santuário)
 // ============================================================
-function stamMax() { const me = G.me; return me ? Math.round(STAM_MAX * (1 + treeEff(me, 'stam') + useBonus(me, 'run'))) : STAM_MAX; }
+function stamMax() { const me = G.me; return me ? cstMaxOf(me) : STAM_MAX; }   // a mesma barra do servidor (corrida + combate)
 function speedMul() {
   const me = G.me; if (!me) return 1;
   const legs = (me.arw || []).filter(p => p === 'legL' || p === 'legR').length;
@@ -44,9 +44,9 @@ function updateTree() {
       else g.appendChild(svgEl('circle', { r: R * 0.55, class: 'tr-core' }));
       for (let k = 0; k < nd.max && !nd.skill; k++) { const a = -Math.PI / 2 + (k - (nd.max - 1) / 2) * 0.55; g.appendChild(svgEl('circle', { cx: Math.cos(a) * (R + 6), cy: Math.sin(a) * (R + 6), r: 2, class: 'tr-rank' + (k < r ? ' on' : '') })); }
       const lb = svgEl('text', { y: R + 18, class: 'tr-name' }); lb.textContent = nd.name; g.appendChild(lb);
-      const tip = nd.desc + (nd.skill ? ' · Mana ' + nd.mp + ' · Recarga ' + nd.cd / 1000 + 's · Tecla ' + (nd.key || 5 + bi) : ' · ' + r + '/' + nd.max) + (!unlocked ? ' · Precisa de ' + TREE_REQ[i] + ' pontos em ' + b.name + '.' : can ? ' · Clique para aprender.' : '');
+      const tip = nd.desc + (nd.skill ? ' · Mana ' + nd.mp + ' · Recarga ' + nd.cd / 1000 + 's · Tecla ' + (nd.key || 5 + bi) + (r ? ' · Clique para equipar num espaço da barra (1–4).' : '') : ' · ' + r + '/' + nd.max) + (!unlocked ? ' · Precisa de ' + TREE_REQ[i] + ' pontos em ' + b.name + '.' : can ? ' · Clique para aprender.' : '');
       g.addEventListener('mouseenter', () => { $('tree-info').innerHTML = '<b>' + nd.name + '</b> — ' + tip; });
-      g.addEventListener('click', () => { if (can) Net.send({ t: 'tlearn', id: nd.id }); else if (!unlocked) showToast('Gaste ' + TREE_REQ[i] + ' pontos em ' + b.name + ' para liberar.'); else if (!free) showToast('Sem pontos livres: suba de nível.'); });
+      g.addEventListener('click', () => { if (nd.skill && r && typeof treeEquipMenu === 'function') { treeEquipMenu(nd, bi, i); return; } if (can) Net.send({ t: 'tlearn', id: nd.id }); else if (!unlocked) showToast('Gaste ' + TREE_REQ[i] + ' pontos em ' + b.name + ' para liberar.'); else if (!free) showToast('Sem pontos livres: suba de nível.'); });
       svg.appendChild(g);
     });
   });
