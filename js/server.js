@@ -2336,7 +2336,7 @@ const estTen = () => { const E = estateLoad(); return { gone: E.gone || {}, evic
 function recsOf(p) { const E = estateLoad(), k = estOwner(p); return Object.keys(E.r).filter(pid => E.r[pid].owner === k); }
 function rentalOf(p) { return recsOf(p).find(pid => PROPS_BY[pid].kind === 'house' && !tenantsOf(PROPS_BY[pid]).length) || null; }
 function bizOf(p) { return recsOf(p).filter(pid => PROPS_BY[pid].kind !== 'house' || tenantsOf(PROPS_BY[pid]).length); }
-function bizSummary(r, P) { if (!r.biz) return null; const B = r.biz, st = P.kind === 'shop' ? B.stock : B.store, n = Object.values(st).reduce((a, b) => a + b, 0); return { closed: !!B.closed, n: Math.floor(n), cap: P.kind === 'shop' ? shopCap(B) : WS_CAP, rev: Math.round(B.today.rev), week: B.hist.reduce((a, d) => a + d.rev - d.cost, 0) + Math.round(B.today.rev - B.today.cost), orders: (B.orders || []).reduce((a, o) => a + o.q, 0), full: B.cofre >= safeCap(B) }; }
+function bizSummary(r, P) { if (!r.biz) return null; const B = r.biz, st = P.kind === 'shop' ? B.stock : B.store, n = Object.values(st).reduce((a, b) => a + b, 0); return { closed: !!B.closed, n: Math.floor(n), cap: P.kind === 'shop' ? shopCap(B) : WS_CAP, rev: Math.round(B.today.rev), week: B.hist.reduce((a, d) => a + d.rev - d.cost, 0) + Math.round(B.today.rev - B.today.cost), orders: (B.orders || []).reduce((a, o) => a + (o.raw ? 0 : o.q), 0) }; }
 function recInfo(pid) { const r = S.estate.r[pid], P = PROPS_BY[pid]; return { pid, sum: bizSummary(r, P), ten: tenantsOf(P), ev: ((S.estate.evict || {})[pid] || {}).day || 0, mode: r.mode || 'rent', paid: r.paid, day: estDay(), next: (r.paid + RENT_DAYS) * ESTATE_DAY_MS - Date.now(), due: (r.mode === 'own' ? 1 : P.rent) * RENT_DAYS, box: r.box || 0, evict: r.evict || 0, auth: r.auth, dep: r.dep, chest: P.kind === 'house' ? r.chest : undefined, cofre: r.biz ? Math.floor(r.biz.cofre) : undefined }; }
 function estateMine(p) { const h = rentalOf(p); return h ? recInfo(h) : null; }
 function estateSend(p) { Net.toOne(p.id, { t: 'estate', st: estatePublic(), L: S.estateL || {}, ten: estTen(), mine: estateMine(p), biz: bizOf(p).map(recInfo), cour: courierJobs(estOwner(p)), bank: Math.floor(bankAcc(p).g) }); }
@@ -2608,9 +2608,10 @@ function bizMsg(p, m) {
       const cost = U.cost[lv]; if (!debit(r.owner, p, cost)) { tell(p, 'Você precisa de ' + cost + ' de ouro (banco + bolsa).'); return; }
       B.up[k] = lv + 1; bizLog(B, U.n + ' nível ' + (lv + 1) + ' (' + cost + ' ouro).'); sendStat(p); break;
     }
-    case 'collect': {
-      if (!atBiz(p, P)) { tell(p, 'O cofre só abre com você no negócio.'); return; }
-      tell(p, 'O lucro já entra direto na sua conta do banco. Para sacar, fale com um banqueiro.'); break;
+    case 'collect': {   // o cofre do negócio é a sua conta do banco: dá para sacar para a bolsa estando no negócio
+      if (!atBiz(p, P)) { tell(p, 'Para sacar pelo cofre, venha até o negócio (ou fale com um banqueiro).'); return; }
+      const v = Math.min(m.q > 0 ? Math.floor(m.q) : Infinity, Math.floor(B.cofre)); if (!(v > 0)) { tell(p, 'Sua conta no banco está vazia.'); return; }
+      B.cofre -= v; p.gold += v; tell(p, 'Você sacou ' + v + ' de ouro da sua conta do banco (pelo cofre de ' + P.name + ').'); sendStat(p); break;
     }
     case 'deposit': {
       const g = clamp(m.q | 0, 1, 100000); if (p.gold < g) return; p.gold -= g; B.cofre += g; if (B.closed) { B.closed = false; bizLog(B, 'Conta abastecida: o negócio voltou a funcionar.'); } tell(p, 'Depositado no banco: ' + g + ' de ouro.'); sendStat(p); break;

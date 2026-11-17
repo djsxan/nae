@@ -3,7 +3,7 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.52.1';
+const VERSION = 'v1.52.2';
 const VERSION_NAME = 'Nae · Degraus e Porões';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)

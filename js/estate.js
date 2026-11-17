@@ -249,7 +249,7 @@ function bizRender() {
   document.getElementById('biz-gold').textContent = G.me.gold;
   for (const b of el.querySelectorAll('[data-btab]')) b.classList.toggle('on', b.dataset.btab === G.biz.tab);
   const working = G.shiftUntil > performance.now();
-  let h = '<div class="biz-top"><div class="biz-cofre"><small>Conta no banco</small><b>' + Math.floor(B.cofre) + '</b><small>lucro entra aqui</small></div>' +
+  let h = '<div class="biz-top"><div class="biz-cofre"><small>Conta no banco</small><b>' + Math.floor(B.cofre) + '</b><small>lucro entra aqui</small>' + (m.at ? '<div class="biz-wd"><input id="biz-wdq" type="number" min="1" placeholder="Quantia"><button class="est-btn" data-bcol>Sacar para a bolsa</button></div>' : '<small>para sacar: venha ao negócio ou ao banco</small>') + '</div>' +
     '<div class="biz-st ' + (B.closed ? 'off' : 'on') + '">' + (B.closed ? '⛔ Parado: falta ouro no banco para o salário' : '✅ Funcionando') + '</div>' +
     '<div class="biz-btns">' + (m.at ? '<button class="est-btn" data-bshift>' + (working ? 'Parar o turno' : 'Trabalhar um turno (1 min 15 s)') + '</button>' : '') + '</div></div>';
   if (G.biz.tab === 'geral') {
@@ -298,7 +298,7 @@ function bizRender() {
   }
   document.getElementById('biz-body').innerHTML = h;
   const body = document.getElementById('biz-body');
-  for (const b of body.querySelectorAll('[data-bcol]')) b.onclick = () => bsend('collect');
+  for (const b of el.querySelectorAll('[data-bcol]')) b.onclick = () => { const q = +((document.getElementById('biz-wdq') || {}).value || 0); bsend('collect', { q: q > 0 ? q : 0 }); };
   for (const b of body.querySelectorAll('[data-bshift]')) b.onclick = () => { if (G.shiftUntil > performance.now()) Net.send({ t: 'shift', a: 'stop' }); else Net.send({ t: 'shift', a: 'start' }); bizClose(); };
   for (const b of body.querySelectorAll('[data-bdep]')) b.onclick = () => bsend('deposit', { q: +b.dataset.bdep });
   for (const b of body.querySelectorAll('[data-bput]')) b.onclick = () => bsend('put', { k: b.dataset.bput, n: +b.dataset.n });
@@ -343,14 +343,14 @@ function hubToggle(on) {
 function hubRender() {
   const d = document.getElementById('bizhub'); if (!d || d.classList.contains('hidden') || !G.me) return;
   document.getElementById('hub-gold').textContent = G.me.gold;
-  const L = G.est.biz || [], totCofre = L.reduce((a, b) => a + (b.cofre || b.box || 0), 0), totWeek = L.reduce((a, b) => a + ((b.sum && b.sum.week) || 0), 0);
-  let h = '<div class="hub-top"><div><small>Nos cofres</small><b>' + totCofre + '</b></div><div><small>Lucro da semana</small><b class="' + (totWeek < 0 ? 'neg' : '') + '">' + totWeek + '</b></div><div><small>Negócios</small><b>' + L.length + ' / ' + ((G.me.rep ?? 0) >= 90 ? '∞' : 3 + Math.floor((G.me.rep ?? 0) / 10)) + '</b></div></div>';
+  const L = G.est.biz || [], totCofre = (G.bankG || 0) + L.reduce((a, b) => a + (b.box || 0), 0), totWeek = L.reduce((a, b) => a + ((b.sum && b.sum.week) || 0), 0);
+  let h = '<div class="hub-top"><div><small>Conta no banco</small><b>' + totCofre + '</b></div><div><small>Lucro da semana</small><b class="' + (totWeek < 0 ? 'neg' : '') + '">' + totWeek + '</b></div><div><small>Negócios</small><b>' + L.length + ' / ' + ((G.me.rep ?? 0) >= 90 ? '∞' : 3 + Math.floor((G.me.rep ?? 0) / 10)) + '</b></div></div>';
   if (!L.length) h += '<div class="gp-note">Você ainda não tem negócios. Fale com Mestre Anselmo na Imobiliária ou procure as placas "À VENDA" (lojas na Rua Nova, oficinas na Vila do Oeste).</div>';
   h += L.map(b => { const P = PROPS_BY[b.pid], S0 = b.sum;
     if (P.kind === 'house') return '<div class="hub-card"><div class="hub-h"><b>🏘 ' + P.name + '</b><span>' + P.district + ' · inquilinos</span></div><div class="hub-row"><span>Caixa de aluguel: <b>' + (b.box || 0) + '</b></span><span>Renda: ' + P.week + '/semana</span></div><div class="hub-act"><button class="est-btn ghost" data-hest="1">Ver no painel de imóveis</button></div></div>';
-    const alerts = []; if (S0) { if (S0.closed) alerts.push('⛔ parado: sem ouro p/ salário'); if (S0.full) alerts.push('💰 cofre cheio: venha buscar'); if (P.kind === 'shop' && S0.n === 0 && !S0.orders) alerts.push('📦 sem estoque'); }
+    const alerts = []; if (S0) { if (S0.closed) alerts.push('⛔ parado: sem ouro p/ salário'); if (P.kind === 'shop' && S0.n === 0 && !S0.orders) alerts.push('📦 sem estoque'); }
     return '<div class="hub-card' + (alerts.length ? ' warn' : '') + '"><div class="hub-h"><b>' + (P.kind === 'shop' ? '🛒 ' : '⚒ ') + P.name + '</b><span>' + P.district + ' · ' + (b.mode === 'own' ? 'comprado' : 'alugado') + '</span></div>' +
-      '<div class="hub-row"><span>Cofre <b>' + (b.cofre || 0) + '</b></span><span>' + (P.kind === 'shop' ? 'Prateleiras' : 'Depósito') + ' <b>' + (S0 ? S0.n + '/' + S0.cap : '?') + '</b></span><span>Hoje <b>' + (S0 ? S0.rev : 0) + '</b></span><span>Semana <b>' + (S0 ? S0.week : 0) + '</b></span>' + (S0 && S0.orders ? '<span>🚚 ' + S0.orders + ' a caminho</span>' : '') + '</div>' +
+      '<div class="hub-row"><span>' + (P.kind === 'shop' ? 'Prateleiras' : 'Depósito') + ' <b>' + (S0 ? S0.n + '/' + S0.cap : '?') + '</b></span><span>Hoje <b>' + (S0 ? S0.rev : 0) + '</b></span><span>Semana <b>' + (S0 ? S0.week : 0) + '</b></span>' + (S0 && S0.orders ? '<span>🚚 ' + S0.orders + ' a caminho</span>' : '') + '</div>' +
       (alerts.length ? '<div class="hub-alert">' + alerts.join(' · ') + '</div>' : '') + '<div class="hub-act"><button class="est-btn" data-hman="' + b.pid + '">Gerenciar</button></div></div>'; }).join('');
   const C2 = G.est.cour || []; if (C2.length) h += '<div class="gp-sub">Mensageiros na rua</div>' + C2.map(c => '<div class="est-cost">🏃 ' + c.name + ' · ' + c.st + ' · ' + Object.keys(c.g).map(g => c.g[g] + ' ' + GOODS[g].n).join(', ') + ' → ' + c.to + '</div>').join('');
   document.getElementById('hub-body').innerHTML = h;
