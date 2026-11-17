@@ -1044,7 +1044,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     if (it.k === 6) { drawCellDoor(ctx, it); return; }
     if (it.k === 7) { drawDoorOpen(ctx, it); return; }
     if (it.k === 8) { drawCoin(ctx, it, now); return; }
-    if (it.k === 9) { drawFall(ctx, it, now); return; }
+    if (it.k === 9) { drawObjFall(ctx, it, now); return; }
     if (it.k === 10) { drawCabinDoor(ctx, it); return; }
     if (it.k === 5) { pblit(ctx, slabSprite(Math.floor(hash2(it.x, it.y, 4) * 3)), it.sx, it.sy - FLOOR_PX); return; }
     const e = it.e;

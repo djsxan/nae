@@ -1902,7 +1902,7 @@ function fallStart(m) {
   if (m.t === 'crumble') { for (let k = 0; k < 18; k++) spawnPart('chip', p.sx + (Math.random() - 0.5) * 22, p.sy - 4 - Math.random() * 14, { color: ['#9a9690', '#c8c4bc', '#6a665e', '#8a7a68'][k % 4] }); for (let k = 0; k < 10; k++) spawnPart('dust', p.sx + (Math.random() - 0.5) * 26, p.sy - 2); }
   else for (let k = 0; k < 6; k++) spawnPart('chip', p.sx + (Math.random() - 0.5) * 8, p.sy - 14, { color: ['#8a5a2a', '#c89858'][k % 2] });
 }
-function drawFall(ctx, it, now) {
+function drawObjFall(ctx, it, now) {
   const F = it.f, t = now - F.t0, s = F.sp;
   if (!F.tree) {   // pedra: encolhe e afunda em pedaços
     const k = Math.min(1, t / 380); ctx.save(); ctx.globalAlpha = 1 - k; ctx.translate(it.sx, it.sy + k * 4); ctx.scale(1 + k * 0.25, 1 - k * 0.8); ctx.drawImage(s.c, -s.ax, -s.ay, s.w, s.h); ctx.restore(); return;
