@@ -146,7 +146,7 @@ function hostOnClient(from, m) {
     const si = SKINS[cls].findIndex(s => s.id === m.skin), skin = si >= 0 && lvl >= SKIN_LVL[si] ? m.skin : SKINS[cls][0].id;
     const s = townSpot();
     const np = {
-      id: from, name: String(m.name || 'Aventureiro').slice(0, 16), cls, skin,
+      id: from, name: String(m.name || 'Aventureiro').slice(0, 16), cls, skin, uid: /^[a-z0-9]{4,12}$/.test(m.uid || '') ? m.uid : '',
       color: /^#[0-9a-f]{6}$/i.test(m.color) ? m.color : '#8b2e2e',
       x: s.x, y: s.y, z: 0, lvl, xp: clamp(m.xp | 0, 0, need(lvl) - 1), gold: clamp(m.gold | 0, 0, 1e7),
       pots: { hp: clamp((m.pots && m.pots.hp) | 0, 0, 999), mp: clamp((m.pots && m.pots.mp) | 0, 0, 999), band: clamp((m.pots && m.pots.band) | 0, 0, 999) },
@@ -326,7 +326,7 @@ function hostOnClient(from, m) {
     case 'atk': playerStrike(p, m.k, +m.a, now_(), +m.c); break;
     case 'wpn': if (p.cls === 'knight' && !p.atk && !p.downed) { p.wpn = p.wpn === 'halberd' ? 'sword' : 'halberd'; tell(p, (p.wpn === 'halberd' ? 'Você empunha a alabarda (alcance longo, duas mãos).' : 'Você volta para espada e escudo.')); anim('p', p, 'nock', p.x, p.y, { ms: 500 }); sendStat(p); } break;
     case 'parry': if (m.on) { if (p.atk && !p.atk.done && p.cst >= FEINT_COST) { p.cst -= FEINT_COST; p.atk = null; } if (PZ.includes(m.z)) p.pz = m.z; if (!p.atk && !p.downed && now_() >= (p.stunUntil || 0)) p.parry = { t0: now_(), a: +m.a || 0, z: p.pz || 'top' }; } else p.parry = null; break;
-    case 'parrya': if (PZ.includes(m.z)) { p.pz = m.z; if (p.parry && p.parry.z !== m.z) { p.parry.z = m.z; p.parry.t0 = now_(); } } if (p.parry && isFinite(+m.a)) p.parry.a = +m.a; break;
+    case 'parrya': if (p.parry && isFinite(+m.a)) p.parry.a = +m.a; break;   // virar o escudo não reinicia o tempo da defesa perfeita
     case 'sbash': shieldBash(p, +m.a || 0, now_()); break;
     case 'dodge': { const now = now_(); const lg = (p.lost || 0) & ~(p.pro || 0) & 24; if (lg || now < (p.knockUntil || 0) || p.downed || now < (p.dodgeCd || 0) || p.cst < DODGE.cost * Math.max(0.4, 1 - treeEff(p, 'dodgeCost') - useBonus(p, 'dodge')) || now < (p.stunUntil || 0)) break; p.cst -= DODGE.cost * Math.max(0.4, 1 - treeEff(p, 'dodgeCost') - useBonus(p, 'dodge')); useGain(p, 'dodge', 1); p.dodgeCd = now + DODGE.cd; p.dodgeUntil = now + DODGE.iframe; p.dodgeAllow = now + DODGE.ms + 400; p.parry = null; if (p.atk && !p.atk.done) p.atk = null; near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'dash', ms: DODGE.ms + 120 }); sendStat(p);
       if (p.burnUntil > now) { p.burnUntil -= 3000; if (p.burnUntil <= now + 400) extinguish(p, 'Você rola no chão e apaga o fogo.'); else near(p.x, p.y, { t: 'burn', id: p.id, ms: p.burnUntil - now }); }
@@ -2319,7 +2319,7 @@ function startHostLoop() {
 // ============================================================
 const ESTATE_KEY = 'nae-estate-v1', ESTATE_AUTH_MAX = 6, ESTATE_CHEST_SLOTS = 48, ESTATE_ABANDON_DAYS = 30, BIZ_MAX = 9999, BIZ_OFFLINE_MS = 2 * ESTATE_DAY_MS;
 const SALARY = { shop: 6, workshop: 8, bank: 30, hotel: 6 }, SAFE_CAP = 500, WS_CAP = 120, SHOP_CAP = 40, THEFT = [0.06, 0.04, 0.02, 0.01];
-const estOwner = p => String(p.name || '').trim().toLowerCase() + '|' + p.cls;
+const estOwner = p => String(p.name || '').trim().toLowerCase() + '|' + p.cls + (p.uid ? '#' + p.uid : '');   // heróis novos têm código único: não herdam casa, negócios nem banco de um herói antigo
 const estDay = () => Math.floor(Date.now() / ESTATE_DAY_MS);
 const isBizProp = P => P && (P.kind === 'shop' || P.kind === 'workshop' || P.kind === 'bank' || P.kind === 'hotel') && P.npc !== 'a Guarda' && !(P.kind === 'workshop' && P.npc && !P.wk);
 function estateLoad() {
@@ -2337,9 +2337,9 @@ function recsOf(p) { const E = estateLoad(), k = estOwner(p); return Object.keys
 function rentalOf(p) { return recsOf(p).find(pid => PROPS_BY[pid].kind === 'house' && !tenantsOf(PROPS_BY[pid]).length) || null; }
 function bizOf(p) { return recsOf(p).filter(pid => PROPS_BY[pid].kind !== 'house' || tenantsOf(PROPS_BY[pid]).length); }
 function bizSummary(r, P) { if (!r.biz) return null; const B = r.biz, st = P.kind === 'shop' ? B.stock : B.store, n = Object.values(st).reduce((a, b) => a + b, 0); return { closed: !!B.closed, n: Math.floor(n), cap: P.kind === 'shop' ? shopCap(B) : WS_CAP, rev: Math.round(B.today.rev), week: B.hist.reduce((a, d) => a + d.rev - d.cost, 0) + Math.round(B.today.rev - B.today.cost), orders: (B.orders || []).reduce((a, o) => a + (o.raw ? 0 : o.q), 0) }; }
-function recInfo(pid) { const r = S.estate.r[pid], P = PROPS_BY[pid]; return { pid, sum: bizSummary(r, P), ten: tenantsOf(P), ev: ((S.estate.evict || {})[pid] || {}).day || 0, mode: r.mode || 'rent', paid: r.paid, day: estDay(), next: (r.paid + RENT_DAYS) * ESTATE_DAY_MS - Date.now(), due: (r.mode === 'own' ? 1 : P.rent) * RENT_DAYS, box: r.box || 0, evict: r.evict || 0, auth: r.auth, dep: r.dep, chest: P.kind === 'house' ? r.chest : undefined, cofre: r.biz ? Math.floor(r.biz.cofre) : undefined }; }
+function recInfo(pid) { const r = S.estate.r[pid], P = PROPS_BY[pid]; return { pid, sum: bizSummary(r, P), ten: tenantsOf(P), ev: ((S.estate.evict || {})[pid] || {}).day || 0, mode: r.mode || 'rent', paid: r.paid, day: estDay(), next: (r.paid + RENT_DAYS) * ESTATE_DAY_MS - Date.now(), due: (r.mode === 'own' ? 1 : P.rent) * RENT_DAYS, box: r.box || 0, evict: r.evict || 0, auth: r.auth, dep: r.dep, chest: P.kind === 'house' ? r.chest : undefined, cofre: r.biz ? Math.floor(r.biz.cofre) : undefined, sellv: r.biz ? bizSellValue(r, P) : undefined, upv: r.biz ? upInvest(r.biz) : undefined }; }
 function estateMine(p) { const h = rentalOf(p); return h ? recInfo(h) : null; }
-function estateSend(p) { Net.toOne(p.id, { t: 'estate', st: estatePublic(), L: S.estateL || {}, ten: estTen(), mine: estateMine(p), biz: bizOf(p).map(recInfo), cour: courierJobs(estOwner(p)), bank: Math.floor(bankAcc(p).g) }); }
+function estateSend(p) { Net.toOne(p.id, { t: 'estate', rs: Object.fromEntries(Object.entries(estateLoad().resale || {}).map(([k, v]) => [k, v.extra || 0])), st: estatePublic(), L: S.estateL || {}, ten: estTen(), mine: estateMine(p), biz: bizOf(p).map(recInfo), cour: courierJobs(estOwner(p)), bank: Math.floor(bankAcc(p).g) }); }
 function estateChanged() { S.estateL = estateLocks(); estateSave(); Net.toAll({ t: 'estate', st: estatePublic(), L: S.estateL, ten: estTen() }); for (const q of Object.values(S.players)) { if (q.estOpen) estateSend(q); if (q.bizOpen) bizSend(q); } }
 function estChestSpot(P) { return CHESTS.find(c => c.bi === P.bi) || BEDS.find(b => b.bi === P.bi) || null; }
 function estHomeSpot(P) {   // tile livre dentro da casa mais perto da cama (ou do baú)
@@ -2353,6 +2353,14 @@ function estGive(p, items) {   // devolve itens; o que não cabe fica guardado n
   return left;
 }
 function ownerOnline(r) { return Object.values(S.players).find(o => estOwner(o) === r.owner) || null; }
+// vende o negócio de volta à cidade pelo que foi investido; as melhorias ficam no imóvel e quem comprar depois paga por elas
+function bizSellBack(p, pid) {
+  const E = estateLoad(), r = E.r[pid], PP = PROPS_BY[pid]; if (!r || !r.biz || r.owner !== estOwner(p)) return;
+  const v = bizSellValue(r, PP), ex = upInvest(r.biz);
+  if (ex > 0) { E.resale = E.resale || {}; E.resale[pid] = { up: { ...r.biz.up }, extra: ex }; }
+  if (E.offers && E.offers[pid]) offerClose(PP, false, 'O dono vendeu ' + PP.name + ' à cidade. Sua oferta foi cancelada e o dinheiro voltou para o banco.');
+  estateEnd(pid, 'Você vendeu ' + PP.name + ' por ' + v + ' de ouro (' + (r.mode === 'own' ? 'o que pagou' : 'a caução') + (ex ? ' + ' + ex + ' das melhorias, que ficam no negócio para o próximo dono' : '') + ').', v);
+}
 function estateEnd(pid, why, refund = 0) {
   const E = estateLoad(), r = E.r[pid]; if (!r) return; delete E.r[pid];
   const q = ownerOnline(r), gold = refund + (r.biz && !r.biz._vc ? Math.floor(r.biz.cofre) : 0);   // o lucro já está no banco
@@ -2486,6 +2494,11 @@ const canPay = (p, amt) => Math.floor((bankLoad().acc[estOwner(p)] || { g: 0 }).
 const payCity = (p, amt) => !!debit(estOwner(p), p, amt);
 // preço de compra de um imóvel: negócio de NPC custa 50% a mais (o NPC continua trabalhando); Honrado paga 10% menos
 const buyPrice = (P, p) => Math.round(P.buy * (P.npc ? 1.5 : 1) * (p && repOf(p) >= 75 ? 0.9 : 1));
+// quanto já foi gasto em melhorias neste negócio (soma dos níveis comprados)
+const upInvest = B => { let t = 0; for (const k in (B && B.up) || {}) { const U = BIZ_UP[k]; if (U) for (let i = 0; i < Math.min(3, B.up[k] | 0); i++) t += U.cost[i]; } return t; };
+const resaleExtra = pid => { const R = (estateLoad().resale || {})[pid]; return R ? R.extra || 0 : 0; };
+// valor de venda: o que pagou (ou a caução, se alugado) + as melhorias
+const bizSellValue = (r, P) => (r.mode === 'own' ? (r.price != null ? r.price : buyPrice(P)) : (r.dep || 0)) + upInvest(r.biz);
 function bizLog(B, t) { B.log.unshift({ t, at: Date.now() }); if (B.log.length > 12) B.log.length = 12; }
 function canAcquire(p, P, how) {
   if (P.kind === 'house' && tenantsOf(P).length) { if (how !== 'buy') return 'Essa casa tem inquilino: dá para comprar (e receber o aluguel), não para alugar.'; if (bizOf(p).length >= BIZ_MAX) return 'No máximo ' + BIZ_MAX + ' negócios/investimentos por personagem.'; return null; }
@@ -2506,11 +2519,13 @@ function estateMsg(p, m) {
       if (E.r[P.id] && !(mine && m.a === 'buy' && E.r[P.id].mode !== 'own')) { tell(p, 'Esse imóvel já tem dono.'); return; }
       if (!nearBroker(p) && !nearPropDoor(p, P)) { tell(p, 'O contrato se fecha com o corretor, na Imobiliária, ou na porta do imóvel.'); return; }
       if (!mine) { const why = canAcquire(p, P, m.a); if (why) { tell(p, why); return; } }
-      const cost = m.a === 'buy' ? buyPrice(P, p) - (mine ? E.r[P.id].dep || 0 : 0) : P.rent * (RENT_DAYS + 2);   // 1ª semana + caução de 2 dias
+      const RS = !mine && P.kind !== 'house' ? (E.resale || {})[P.id] : null;   // melhorias deixadas pelo dono anterior: quem compra paga por elas também
+      const cost = m.a === 'buy' ? buyPrice(P, p) + (RS ? RS.extra || 0 : 0) - (mine ? E.r[P.id].dep || 0 : 0) : P.rent * (RENT_DAYS + 2);   // 1ª semana + caução de 2 dias
       if (!debit(estOwner(p), p, cost)) { tell(p, 'Você precisa de ' + cost + ' de ouro (banco + bolsa).'); return; }   // paga com o banco e completa com a bolsa
-      if (mine) { const r = E.r[P.id]; r.mode = 'own'; r.dep = 0; r.paid = estDay(); tell(p, 'Escritura assinada: ' + P.name + ' agora é sua para sempre (imposto de 1 ouro por dia).'); }
-      else { E.r[P.id] = { owner: estOwner(p), ownerName: p.name, mode: m.a === 'buy' ? 'own' : 'rent', paid: estDay(), auth: [], chest: {}, dep: m.a === 'buy' ? 0 : P.rent * 2, since: Date.now(), seen: Date.now() };
-        if (P.kind !== 'house') { E.r[P.id].biz = bizInit(P); bizLinkBank(E.r[P.id]); bizLog(E.r[P.id].biz, 'O lucro cai direto na sua conta do banco, e os salários e a reposição saem dela. Mantenha ouro no banco.'); }
+      if (mine) { const r = E.r[P.id]; r.mode = 'own'; r.price = cost + (r.dep || 0); r.dep = 0; r.paid = estDay(); tell(p, 'Escritura assinada: ' + P.name + ' agora é sua para sempre (imposto de 1 ouro por dia).'); }
+      else { E.r[P.id] = { owner: estOwner(p), ownerName: p.name, mode: m.a === 'buy' ? 'own' : 'rent', paid: estDay(), auth: [], chest: {}, dep: m.a === 'buy' ? 0 : P.rent * 2, since: Date.now(), seen: Date.now(), price: m.a === 'buy' ? cost - (RS ? RS.extra || 0 : 0) : undefined };   // as melhorias contam à parte (upInvest)
+        if (P.kind !== 'house') { E.r[P.id].biz = bizInit(P); bizLinkBank(E.r[P.id]); bizLog(E.r[P.id].biz, 'O lucro cai direto na sua conta do banco, e os salários e a reposição saem dela. Mantenha ouro no banco.');
+          if (RS) { const B = E.r[P.id].biz; B.up = Object.assign(B.up || {}, RS.up || {}); delete E.resale[P.id]; bizLog(B, 'As melhorias do dono anterior continuam aqui (' + Object.keys(RS.up || {}).filter(k => RS.up[k] > 0 && BIZ_UP[k]).map(k => BIZ_UP[k].n + ' ' + RS.up[k]).join(', ') + ').'); } }
         tell(p, (m.a === 'buy' ? 'Escritura assinada! ' + P.name + ' é sua (imposto de 7 ouro por semana).' : 'Contrato assinado! ' + P.name + ' (' + P.district + '). Aluguel: ' + P.week + ' de ouro por semana, debitado sozinho.') + (P.kind !== 'house' ? ' Abra a gestão para abastecer e melhorar.' : '')); }
       sendStat(p); estateChanged(); return;
     }
@@ -2535,6 +2550,7 @@ function estateMsg(p, m) {
     }
     case 'leave': {   // devolver (alugado) ou vender de volta à Coroa pela metade (comprado)
       const pid = m.pid && E.r[m.pid] && E.r[m.pid].owner === estOwner(p) ? m.pid : rentalOf(p); if (!pid) return; const r = E.r[pid], PP = PROPS_BY[pid];
+      if (r.biz) { bizSellBack(p, pid); return; }   // negócio: devolve tudo o que foi investido
       const refund = r.mode === 'own' ? Math.floor(PP.buy / 2) : (r.dep || 0);
       estateEnd(pid, (r.mode === 'own' ? 'Você vendeu ' + PP.name + ' de volta à Coroa por ' + refund + ' de ouro.' : 'Você devolveu a chave de ' + PP.name + '. A caução de ' + refund + ' de ouro voltou.') + (r.biz ? ' O cofre foi para a sua bolsa.' : ' O baú foi para a sua mochila.'), refund); return;
     }
@@ -2603,6 +2619,7 @@ function bizMsg(p, m) {
     case 'recipe': { const W = WORKS[P.wk]; if (!W || !W.recipes || !W.recipes[m.v]) return; B.recipe = m.v; break; }
     case 'keep': { if (P.kind !== 'workshop') return; B.keep = m.v == null || m.v === '' ? null : clamp(m.v | 0, 0, 100); break; }
     case 'toggle': { if (P.kind !== 'workshop' || !['autobuy', 'sell'].includes(m.k)) return; B[m.k] = !B[m.k]; break; }
+    case 'sell': { bizSellBack(p, pid); return; }   // vender pelo menu de gestão
     case 'up': {
       const k = String(m.k), U = BIZ_UP[k]; if (!U || (U.for !== 'both' && U.for !== P.kind)) return; const lv = B.up[k] || 0; if (lv >= 3) return;
       const cost = U.cost[lv]; if (!debit(r.owner, p, cost)) { tell(p, 'Você precisa de ' + cost + ' de ouro (banco + bolsa).'); return; }
@@ -3619,7 +3636,7 @@ function reqZone(k, ax, ay, aa, def) {
 }
 function blockEval(def, k, ax, ay, aa, now, W) {
   if (!def.parry || Math.abs(angDiff(def.parry.a, Math.atan2(ay - def.y, ax - def.x))) > PARRY_ARC) return null;
-  const need = reqZone(k, ax, ay, aa, def), okZ = !need || need.includes(def.parry.z), shield = hasShield(def);
+  const okZ = true, shield = hasShield(def);   // só a direção importa: o escudo aponta para o mouse (sem as zonas alto/esquerda/direita/baixo)
   const perfect = okZ && now - def.parry.t0 <= PARRY_PERFECT + (W || 400) * 0.25 + treeEff(def, 'parry') + useLvl(def, 'parry') * 0.6 + (k === 'over' ? 80 : 0);
   return { okZ, shield, perfect };
 }

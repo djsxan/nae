@@ -312,7 +312,7 @@ function heroPoseFor(e, now) {
   if (!P.act && typeof bowPose === 'function') { const bp = bowPose(e, now); if (bp) P.act = bp; }
   if (!e.isNpc) { P.lost = e.lost || 0; P.pro = e.pro || 0; }
   if (e.knockUntil && now < e.knockUntil && now >= e.knockUntil - 650) P.act = { k: 'getup', f: Math.min(11, Math.floor((1 - (e.knockUntil - now) / 650) * 12)) };
-  if (!P.act && (e === G.me ? G.parrying : e.parrying)) { const z = e === G.me ? (G.pz || 'top') : ['top', 'top', 'L', 'R', 'low'][((e.stb || 0) >> 12) & 7] || 'top'; P.act = { k: 'blk_' + z, f: 6 }; P.run = 0; }
+  if (!P.act && (e === G.me ? G.parrying : e.parrying)) { P.act = { k: 'blk_front', f: 6 }; P.run = 0; }
   if (!e.isNpc && e.cls === 'knight' && (e === G.me ? (G.me.shp ?? 100) <= 0 : (e.stb & 32768))) P.shb = 1;
   if (!P.act && (e === G.me ? performance.now() < (G.stunUntil || 0) : e.stunned)) P.act = { k: 'hurt', f: 5 };
   if (e.cast && e.cast.end > now) P.act = { k: 'cast', f: Math.floor(now / 70) % 12 };

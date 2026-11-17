@@ -18,7 +18,7 @@ function estateEvent(m) {
   if (m.t !== 'estate') return false;
   if (m.st) G.est.st = m.st; if (m.L) G.est.L = m.L;
   if ('mine' in m) { G.est.mine = m.mine; G.est.mineT = performance.now(); }
-  if (m.biz) G.est.biz = m.biz; if (m.ten) G.est.ten = m.ten; if (m.cour) G.est.cour = m.cour; if (m.bank != null) G.bankG = m.bank;
+  if (m.rs) G.est.rs = m.rs; if (m.biz) G.est.biz = m.biz; if (m.ten) G.est.ten = m.ten; if (m.cour) G.est.cour = m.cour; if (m.bank != null) G.bankG = m.bank;
   if (typeof hubRender === 'function') hubRender();
   if (estOpen()) estRender();
   return true;
@@ -26,7 +26,7 @@ function estateEvent(m) {
 const estOpen = () => { const el = document.getElementById('estate'); return el && !el.classList.contains('hidden'); };
 const estMine = pid => (G.est.mine && G.est.mine.pid === pid) || G.est.biz.some(b => b.pid === pid);
 const isBizP = P => P && P.kind !== 'house' && P.npc !== 'a Guarda' && !(P.kind === 'workshop' && P.npc && !P.wk);
-const estPrice = P => Math.round(P.buy * (P.npc ? 1.5 : 1) * ((G.me && G.me.rep) >= 75 ? 0.9 : 1));
+const estPrice = P => Math.round(P.buy * (P.npc ? 1.5 : 1) * ((G.me && G.me.rep) >= 75 ? 0.9 : 1)) + ((G.est.rs || {})[P.id] || 0);   // + melhorias deixadas pelo dono anterior
 const tenOf = P => (P && P.tenants && P.tenants.length && !(G.est.ten && G.est.ten.gone && G.est.ten.gone[P.id])) ? P.tenants : [];
 const tenNames = P => tenOf(P).map(id => (NPCS.find(n => n.id === id) || { name: id }).name.split(',')[0]).join(' e ');
 const myMoney = () => (G.me ? G.me.gold : 0) + (G.bankG || 0);   // bolsa + conta do banco (compras e melhorias usam os dois)
@@ -80,7 +80,7 @@ function estDetailHtml(P) {
   let h = '<div class="est-det"><div class="est-dh"><b>' + P.name + '</b><span>' + P.district + ' · ' + P.area + ' m² de chão · ' + P.floors + (P.floors > 1 ? ' andares' : ' andar') + '</span></div>';
   if (P.kind === 'house') h += '<ul class="est-perks">' + EST_PERKS.map(t => '<li>' + t + '</li>').join('') + '</ul>';
   else if (isBizP(P)) h += '<div class="est-cost">' + (P.kind === 'shop' ? '🛒 ' + (SHOP_LABEL[P.shopType] || '') : '⚒ ' + (WK_LABEL[P.wk] || '')) + ' · funcionário incluso (salário ' + (P.kind === 'shop' ? 6 : 8) + ' ouro/dia, pago do cofre)</div>';
-  h += '<div class="est-cost">Localização: <b>' + P.locName + '</b> · Alugar: <b>' + P.week + '</b> ouro/semana (entrada ' + cost + ': 1ª semana + caução) · Comprar: <b>' + P.buy + '</b> ouro (imposto 7/semana; vende de volta pela metade)</div>';
+  h += '<div class="est-cost">Localização: <b>' + P.locName + '</b> · Alugar: <b>' + P.week + '</b> ouro/semana (entrada ' + cost + ': 1ª semana + caução) · Comprar: <b>' + estPrice(P) + '</b> ouro (imposto 7/semana; ' + (P.kind === 'house' ? 'vende de volta pela metade' : 'vende de volta pelo que pagou + as melhorias') + ')' + ((G.est.rs || {})[P.id] ? ' · inclui ' + G.est.rs[P.id] + ' de melhorias do dono anterior, que continuam no negócio' : '') + '</div>';
   if (P.kind === 'house' && tenOf(P).length && !G.est.st[P.id]) {   // casa com inquilino: só dá para comprar (e receber o aluguel)
     h += '<div class="est-cost">🏠 Mora aqui: <b>' + tenNames(P) + '</b>. Quem comprar recebe <b>' + P.week + '</b> ouro/semana de aluguel (menos 7 de imposto). Dá para despejar com 1 dia de aviso.</div>';
     h += G.est.biz.length >= 3 ? '<button class="est-btn" disabled>Limite de 3 negócios/investimentos</button>' : '<button class="est-btn" data-buy="' + P.id + '"' + (myMoney() < P.buy ? ' disabled' : '') + '>Comprar com inquilino por ' + P.buy + '</button>';
@@ -109,7 +109,7 @@ function estMineHtml() {
   }
   if (G.est.biz.length) h += '<div class="gp-sub">Negócios e investimentos</div>' + G.est.biz.map(b => { const P = PROPS_BY[b.pid], own = b.mode === 'own';
     if (P.kind === 'house') return '<div class="est-row biz"><i style="background:' + EST_COL.mine + '"></i><div><b>🏘 ' + P.name + '</b><small>' + P.district + ' · inquilinos: ' + tenNames(P) + ' · renda ' + P.week + '/semana · caixa ' + (b.box || 0) + (b.ev ? ' · <b style="color:#ff9a8a">despejo em andamento</b>' : '') + '</small></div><div class="est-r">' + (b.box ? '<button class="est-btn" data-tcol="' + b.pid + '">Receber ' + b.box + '</button>' : '') + (b.ev ? '' : '<button class="est-btn ghost" data-evict="' + b.pid + '">Despejar</button>') + '<button class="est-btn ghost" data-leave="' + b.pid + '" data-own="1">Vender</button></div></div>';
-    return '<div class="est-row biz"><i style="background:' + EST_COL.mine + '"></i><div><b>' + (P.kind === 'shop' ? '🛒 ' : '⚒ ') + P.name + '</b><small>' + P.district + ' · ' + (own ? 'comprado' : 'alugado ' + P.week + '/semana') + ' · cofre ' + (b.cofre || 0) + '</small></div><div class="est-r"><button class="est-btn" data-manage="' + b.pid + '">Gestão</button><button class="est-btn ghost" data-leave="' + b.pid + '" data-own="' + (own ? 1 : 0) + '">' + (own ? 'Vender' : 'Devolver') + '</button></div></div>'; }).join('');
+    return '<div class="est-row biz"><i style="background:' + EST_COL.mine + '"></i><div><b>' + (P.kind === 'shop' ? '🛒 ' : '⚒ ') + P.name + '</b><small>' + P.district + ' · ' + (own ? 'comprado' : 'alugado ' + P.week + '/semana') + ' · vale ' + (b.sellv || 0) + '</small></div><div class="est-r"><button class="est-btn" data-manage="' + b.pid + '">Gestão</button><button class="est-btn ghost" data-leave="' + b.pid + '" data-own="' + (own ? 1 : 0) + '">' + (own ? 'Vender' : 'Devolver') + '</button></div></div>'; }).join('');
   else h += '<div class="gp-note">Nenhum negócio ainda: veja as abas Lojas e Oficinas.</div>';
   return h;
 }
@@ -136,7 +136,7 @@ function estWire() {
   for (const b of root.querySelectorAll('[data-take]')) b.onclick = ev => Net.send({ t: 'estate', a: 'take', k: b.dataset.take, q: ev.shiftKey ? 999 : 1 });
   for (const b of root.querySelectorAll('[data-put]')) b.onclick = ev => Net.send({ t: 'estate', a: 'put', k: b.dataset.put, q: ev.shiftKey ? 999 : 1 });
   const add = root.querySelector('#est-add'); if (add) add.onclick = () => { const v = root.querySelector('#est-name').value.trim(); if (v) Net.send({ t: 'estate', a: 'auth', name: v, pid: add.dataset.apid }); };
-  for (const b of root.querySelectorAll('[data-leave]')) b.onclick = ev => { ev.stopPropagation(); const P = PROPS_BY[b.dataset.leave], own = b.dataset.own === '1'; gameAsk(own ? 'Vender ' + P.name + ' de volta à Coroa por ' + Math.floor(P.buy / 2) + ' de ouro?' : 'Devolver ' + P.name + '? A caução volta' + (P.kind === 'house' ? ' e o baú vai para a mochila.' : ' (o estoque fica).'), { yes: own ? 'Vender' : 'Devolver' }).then(ok => { if (ok) Net.send({ t: 'estate', a: 'leave', pid: b.dataset.leave }); }); };
+  for (const b of root.querySelectorAll('[data-leave]')) b.onclick = ev => { ev.stopPropagation(); const P = PROPS_BY[b.dataset.leave], own = b.dataset.own === '1', BI = P.kind !== 'house' ? (G.est.biz || []).find(q => q.pid === P.id) : null; gameAsk(BI && BI.sellv != null ? 'Vender ' + P.name + ' por ' + BI.sellv + ' de ouro? (' + (own ? 'o que você pagou' : 'a caução') + (BI.upv ? ' + ' + BI.upv + ' das melhorias, que ficam no negócio para o próximo dono' : '') + ')' : own ? 'Vender ' + P.name + ' de volta à Coroa por ' + Math.floor(P.buy / 2) + ' de ouro?' : 'Devolver ' + P.name + '? A caução volta' + (P.kind === 'house' ? ' e o baú vai para a mochila.' : ' (o estoque fica).'), { yes: own ? 'Vender' : 'Devolver' }).then(ok => { if (ok) Net.send({ t: 'estate', a: 'leave', pid: b.dataset.leave }); }); };
 }
 // ---------- mapa da cidade (isométrico, igual à câmera do jogo) ----------
 function estBounds() {
@@ -181,7 +181,7 @@ function estNearSign() { const me = G.me; if (!me) return null; let best = null,
 function estatePrompt() {
   if (estInHome()) return 'F: abrir o baú · L: seus imóveis';
   const b = estInBiz(); if (b) return 'F: gestão de ' + PROPS_BY[b.pid].name;
-  const P = estNearSign(); if (P) return 'F: ' + (P.kind === 'house' ? 'Aluga-se' : 'À venda') + ' — ' + P.name + ' (' + (P.kind === 'house' ? P.week + ' ouro/semana · compra ' + P.buy : P.buy + ' de ouro' + (P.npcOwner ? ', de ' + P.npcOwner : '')) + ')';
+  const P = estNearSign(); if (P) return 'F: ' + (P.kind === 'house' ? 'Aluga-se' : 'À venda') + ' — ' + P.name + ' (' + (P.kind === 'house' ? P.week + ' ouro/semana · compra ' + P.buy : estPrice(P) + ' de ouro' + (P.npcOwner ? ', de ' + P.npcOwner : '')) + ')';
   return '';
 }
 function estateF() {
@@ -252,6 +252,7 @@ function bizRender() {
   let h = '<div class="biz-top"><div class="biz-cofre"><small>Conta no banco</small><b>' + Math.floor(B.cofre) + '</b><small>lucro entra aqui</small>' + (m.at ? '<div class="biz-wd"><input id="biz-wdq" type="number" min="1" placeholder="Quantia"><button class="est-btn" data-bcol>Sacar para a bolsa</button></div>' : '<small>para sacar: venha ao negócio ou ao banco</small>') + '</div>' +
     '<div class="biz-st ' + (B.closed ? 'off' : 'on') + '">' + (B.closed ? '⛔ Parado: falta ouro no banco para o salário' : '✅ Funcionando') + '</div>' +
     '<div class="biz-btns">' + (m.at ? '<button class="est-btn" data-bshift>' + (working ? 'Parar o turno' : 'Trabalhar um turno (1 min 15 s)') + '</button>' : '') + '</div></div>';
+  if (G.biz.tab === 'geral' && m.info && m.info.sellv != null) h += '<div class="biz-sell"><button class="est-btn ghost" data-bsell>Vender o negócio por ' + m.info.sellv + '</button><small>' + (m.mode === 'own' ? 'o que você pagou' : 'a caução') + (m.info.upv ? ' + ' + m.info.upv + ' das melhorias (elas ficam no negócio para o próximo dono)' : '') + '</small></div>';
   if (G.biz.tab === 'geral') {
     { const tax = m.mode === 'own' ? 1 : P.rent, net = d => Math.round(d.rev - d.cost - tax), today = net(B.today), week = [...B.hist, B.today].reduce((a, d) => a + net(d), 0), st = shop ? B.stock : (B.store || {}), idle = Object.keys(st).filter(g => g !== 'serve').reduce((a, g) => a + Math.floor(st[g] || 0), 0);
       const why = []; if ((B.hist.length ? B.hist[B.hist.length - 1].rev : B.today.rev) < (shop ? 6 : 8) + tax) why.push('a receita do dia não cobre salário e imposto');
@@ -298,6 +299,7 @@ function bizRender() {
   }
   document.getElementById('biz-body').innerHTML = h;
   const body = document.getElementById('biz-body');
+  for (const b of el.querySelectorAll('[data-bsell]')) b.onclick = () => { const P = PROPS_BY[G.biz.pid]; gameAsk('Vender ' + P.name + ' por ' + m.info.sellv + ' de ouro? Você deixa de ser o dono; as melhorias ficam no negócio.', { yes: 'Vender' }).then(ok => { if (ok) { bsend('sell'); bizClose(); } }); };
   for (const b of el.querySelectorAll('[data-bcol]')) b.onclick = () => { const q = +((document.getElementById('biz-wdq') || {}).value || 0); bsend('collect', { q: q > 0 ? q : 0 }); };
   for (const b of body.querySelectorAll('[data-bshift]')) b.onclick = () => { if (G.shiftUntil > performance.now()) Net.send({ t: 'shift', a: 'stop' }); else Net.send({ t: 'shift', a: 'start' }); bizClose(); };
   for (const b of body.querySelectorAll('[data-bdep]')) b.onclick = () => bsend('deposit', { q: +b.dataset.bdep });

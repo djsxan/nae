@@ -452,11 +452,11 @@ function updateLocal(now, dt) {
   }
   const stF = (me.crouch ? 1 : 0) | (me.slide ? 2 : 0);
   if (G.mouseS) G.mouseW = screenToWorld(G.mouseS[0], G.mouseS[1]);   // o cursor parado continua apontando para o mesmo lugar da TELA quando a câmera anda
-  if (combatFacing() && G.mouseW) { let a = Math.atan2(G.mouseW.y - me.y, G.mouseW.x - me.x);
+  if ((combatFacing() || G.parrying) && G.mouseW) { let a = Math.atan2(G.mouseW.y - me.y, G.mouseW.x - me.x);
     { let best = null, bd = 3.4; for (const id in G.monsters) { const q = G.monsters[id]; if (q.dieAt || !q.visible || Math.abs((q.z || 0) - (me.z || 0)) > 0.5) continue; const d = dist(q.rx, q.ry, me.x, me.y), aq = Math.atan2(q.ry - me.y, q.rx - me.x); let df = Math.abs(aq - a) % (Math.PI * 2); if (df > Math.PI) df = Math.PI * 2 - df; if (d < bd && df < 0.95) { bd = d; best = aq; } }
       for (const id in G.players) { const q = G.players[id]; if (id === G.myId || !q.visible || q.downed || q.isNpc) continue; const d = dist(q.rx, q.ry, me.x, me.y), aq = Math.atan2(q.ry - me.y, q.rx - me.x); let df = Math.abs(aq - a) % (Math.PI * 2); if (df > Math.PI) df = Math.PI * 2 - df; if (d < bd && df < 0.95) { bd = d; best = aq; } }
       if (best != null) a = best; }   /* assistência de mira: o inimigo perto, na direção do cursor */
-    me.fa = a; me.dir = dirFromVec(Math.cos(a), Math.sin(a), me.dir); if (G.parrying && now - (G.parryAT || 0) > 150) { G.parryAT = now; Net.send({ t: 'parrya', a }); } }
+    me.fa = a; me.dir = dirFromVec(Math.cos(a), Math.sin(a), me.dir); if (G.parrying && now - (G.parryAT || 0) > 70) { G.parryAT = now; Net.send({ t: 'parrya', a }); } }
   if (now - me.sendT > 100 && (moved || me.walking !== me.sentWalk || stF !== me.sentSt || me.dir !== me.sentDir)) { me.sentDir = me.dir;
     me.sendT = now; me.sentWalk = me.walking; me.sentSt = stF;
     Net.send({ t: 'mv', x: Math.round(me.x * 100) / 100, y: Math.round(me.y * 100) / 100, z: Math.round(me.z * 100) / 100, d: me.dir, w: me.walking ? 1 : 0, r: running ? 1 : 0, c: me.crouch ? 1 : 0, sl: me.slide ? 1 : 0, ti: G.tired || (G.stam ?? STAM_MAX) < stamMax() * 0.3 ? 1 : 0 }, true);
@@ -533,7 +533,7 @@ function saveChar() {
   const me = G.me;
   try {
     const all = loadChars();
-    all[charKey(me.name, me.cls)] = { name: me.name, cls: me.cls, skin: me.skin, color: me.color, lvl: me.lvl, xp: me.xp, gold: me.gold, pots: me.pots, food: me.food, water: me.water, infect: me.infect, hasSkin: me.hasSkin, tree: me.tree, prof: me.prof, feats: me.feats, freeLimb: me.freeLimb, shieldHp: me.shp, use: me.use, jailLeft: me.jl || 0, body: me.body, bleed: me.bleed, lost: (me.lost || 0) & 30, pro: me.pro || 0, inv: me.inv, quests: me.quests, qdone: me.qdone, t: Date.now() };
+    all[charKey(me.name, me.cls)] = { uid: G.myUid || undefined, name: me.name, cls: me.cls, skin: me.skin, color: me.color, lvl: me.lvl, xp: me.xp, gold: me.gold, pots: me.pots, food: me.food, water: me.water, infect: me.infect, hasSkin: me.hasSkin, tree: me.tree, prof: me.prof, feats: me.feats, freeLimb: me.freeLimb, shieldHp: me.shp, use: me.use, jailLeft: me.jl || 0, body: me.body, bleed: me.bleed, lost: (me.lost || 0) & 30, pro: me.pro || 0, inv: me.inv, quests: me.quests, qdone: me.qdone, t: Date.now() };
     localStorage.setItem(SAVE_KEY, JSON.stringify(all));
   } catch (e) { }
 }
@@ -917,7 +917,7 @@ canvas.addEventListener('mousedown', e => {
   if (inCombatZone() && !((G.dev || G.devTools) && G.devPlace) && !interactHere(e)) {
     const me = G.me;
     if (e.button === 3 || e.button === 4) { e.preventDefault(); strike('under'); return; }
-    if (e.button === 2) { G.parrying = true; G.pzMv = { x: e.clientX, y: e.clientY, t: performance.now() }; Net.send({ t: 'parry', on: 1, a: me.fa ?? 0, z: G.pz || 'top' }); return; }
+    if (e.button === 2) { G.parrying = true; G.parryT0 = performance.now(); const w = screenToWorld(e.clientX, e.clientY), a = Math.atan2(w.y - me.y, w.x - me.x); me.fa = a; Net.send({ t: 'parry', on: 1, a }); return; }
     if (e.button === 0) G.mouse0 = true;
     if (e.button === 0 && me.dragMode === 'grip') { Net.send({ t: 'choke', on: 1 }); G.choking = true; return; }
     if (e.button === 0 && me.cls === 'archer' && !me.shea) { const mon = monsterUnderMouse(e.clientX, e.clientY); if (mon) setTarget(mon.id); bowPress(); return; }   // arco: segurar puxa
@@ -1212,7 +1212,8 @@ function lockLobby(b) { for (const el of document.querySelectorAll('#lobby butto
 function helloMsg() {
   const name = $('name').value.trim() || 'Aventureiro';
   const saved = loadChars()[charKey(name, chosenClass)] || {};
-  return { t: 'hello', pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, freeLimb: saved.freeLimb, shieldHp: saved.shieldHp, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
+  G.myUid = saved.t ? (saved.uid || '') : (G.myUid && G.myUidFor === charKey(name, chosenClass) ? G.myUid : Math.random().toString(36).slice(2, 10)); G.myUidFor = charKey(name, chosenClass);   // herói novo: código único (não herda nada de um herói antigo com o mesmo nome)
+  return { t: 'hello', uid: G.myUid || undefined, pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, freeLimb: saved.freeLimb, shieldHp: saved.shieldHp, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
 }
 // reino trancado: pede a senha e manda o hello de novo pela mesma conexão
 function askRoomPw(bad) {
@@ -1342,22 +1343,8 @@ function buildLobby() {
     b.onclick = () => { chosenColor = col; for (const el of sw.children) el.classList.toggle('sel', el === b); };
     sw.appendChild(b);
   }
-  const chars = Object.values(loadChars()).sort((a, b) => (b.t || 0) - (a.t || 0)).slice(0, 4);
-  const sv = $('saved');
-  for (const ch of chars) {
-    if (!CLASSES[ch.cls]) continue;
-    const b = document.createElement('button'); b.className = 'saved-char';
-    b.textContent = `${ch.name} · ${CLASSES[ch.cls].name} nv. ${ch.lvl}`;
-    b.onclick = () => {
-      $('name').value = ch.name; if (ch.skin) chosenSkin[ch.cls] = ch.skin; chosenColor = ch.color || chosenColor;
-      for (const el of $('swatches').children) el.classList.toggle('sel', el.dataset.col === chosenColor);
-      selectClass(ch.cls);
-      document.querySelectorAll('.class-card').forEach(card => { if (card.dataset.cls === ch.cls) card.querySelectorAll('.skin').forEach((el, i) => el.classList.toggle('sel', SKINS[ch.cls][i].id === chosenSkin[ch.cls])); });
-      refreshSkinLocks();
-    };
-    sv.appendChild(b);
-  }
-  if (!chars.length) sv.classList.add('hidden');
+  renderSavedChars();
+  const chars = Object.values(loadChars()).sort((a, b) => (b.t || 0) - (a.t || 0));
   $('name').addEventListener('input', () => { updateSavedInfo(); refreshSkinLocks(); });
   refreshSkinLocks();
   const urlCode = new URLSearchParams(location.search).get('sala');
@@ -1369,13 +1356,42 @@ function buildLobby() {
   $('code').addEventListener('keydown', e => { if (e.key === 'Enter') devGate(joinRoom); });
   $('btn-copy').onclick = () => { const link = location.origin + location.pathname + '?sala=' + Net.room; navigator.clipboard.writeText(link).then(() => showToast('Convite copiado. Mande para seus amigos.'), () => showToast(link)); };
   $('btn-help').onclick = () => $('help').classList.toggle('hidden');
-  if (chars[0]) $('name').value = chars[0].name;
+  if (chars[0]) pickChar(chars[0]);   // abre com o último herói (nome, classe e cor)
   updateSavedInfo();
 }
 function selectClass(cls) {
   chosenClass = cls;
   for (const el of document.querySelectorAll('.class-card')) el.classList.toggle('sel', el.dataset.cls === cls);
   updateSavedInfo();
+}
+// lista de heróis salvos: todos, com escolher, apagar (confirma na própria linha) e "Novo personagem"
+function pickChar(ch) {
+  $('name').value = ch.name; if (ch.skin) chosenSkin[ch.cls] = ch.skin; chosenColor = ch.color || chosenColor;
+  for (const el of $('swatches').children) el.classList.toggle('sel', el.dataset.col === chosenColor);
+  selectClass(ch.cls);
+  document.querySelectorAll('.class-card').forEach(card => { if (card.dataset.cls === ch.cls) card.querySelectorAll('.skin').forEach((el, i) => el.classList.toggle('sel', SKINS[ch.cls][i].id === chosenSkin[ch.cls])); });
+  refreshSkinLocks(); updateSavedInfo(); if (window.naeQuick) window.naeQuick();
+}
+function renderSavedChars() {
+  const sv = $('saved'); if (!sv) return; sv.innerHTML = ''; sv.classList.remove('hidden');
+  const nb = document.createElement('button'); nb.className = 'saved-new'; nb.textContent = '＋ Novo personagem';
+  nb.onclick = () => { $('name').value = ''; chosenColor = HERALDRY[0]; for (const el of $('swatches').children) el.classList.toggle('sel', el.dataset.col === chosenColor); selectClass('knight'); refreshSkinLocks(); updateSavedInfo(); if (window.naeQuick) window.naeQuick(); $('name').focus(); };
+  sv.appendChild(nb);
+  const all = loadChars(), list = Object.entries(all).filter(([, ch]) => CLASSES[ch.cls]).sort((a, b) => (b[1].t || 0) - (a[1].t || 0));
+  for (const [key, ch] of list) {
+    const row = document.createElement('div'); row.className = 'saved-row';
+    const b = document.createElement('button'); b.className = 'saved-char'; b.textContent = `${ch.name} · ${CLASSES[ch.cls].name} nv. ${ch.lvl || 1}`; b.onclick = () => pickChar(ch);
+    const del = document.createElement('button'); del.className = 'saved-del'; del.title = 'Apagar este herói'; del.textContent = '🗑';
+    del.onclick = () => {
+      row.innerHTML = ''; const q = document.createElement('span'); q.className = 'saved-ask'; q.textContent = 'Apagar ' + ch.name + ' para sempre?';
+      const yes = document.createElement('button'); yes.className = 'saved-del yes'; yes.textContent = 'Apagar';
+      const no = document.createElement('button'); no.className = 'saved-del'; no.textContent = 'Cancelar';
+      yes.onclick = () => { const A = loadChars(); delete A[key]; try { localStorage.setItem(SAVE_KEY, JSON.stringify(A)); } catch (e) { } if ($('name').value.trim().toLowerCase() === ch.name.trim().toLowerCase()) $('name').value = ''; renderSavedChars(); updateSavedInfo(); if (window.naeQuick) window.naeQuick(); };
+      no.onclick = () => renderSavedChars();
+      row.append(q, yes, no);
+    };
+    row.append(b, del); sv.appendChild(row);
+  }
 }
 function updateSavedInfo() {
   const name = $('name').value.trim(), s = name && loadChars()[charKey(name, chosenClass)];
@@ -2008,6 +2024,7 @@ function tradeShow(m) {
 // ---------- bloqueio direcional: segurando o botão direito, um peteleco do mouse escolhe alto / esquerda / direita / baixo ----------
 G.pz = 'top';
 window.addEventListener('mousemove', e => {
+  return;   // (antigo: peteleco do mouse escolhia a zona; agora o escudo só aponta para o mouse)
   if (!G.parrying || !G.me) return; const M = G.pzMv || (G.pzMv = { x: e.clientX, y: e.clientY, t: performance.now() }), now = performance.now();
   if (now - M.t > 450) { M.x = e.clientX; M.y = e.clientY; M.t = now; return; }
   const dx = e.clientX - M.x, dy = e.clientY - M.y; if (Math.hypot(dx, dy) < 26) return;
@@ -2030,10 +2047,16 @@ function drawBlockHud(ctx, now) {
   drawTradeFx(ctx, now);
   if (G.tradeAt) { const tp = $('tradep'); if (!tp || tp.classList.contains('hidden')) { G.tradeAt = null; G.trade = null; } else if (dist(G.me.x, G.me.y, G.tradeAt.x, G.tradeAt.y) > 4) { tp.classList.add('hidden'); G.tradeAt = null; G.trade = null; } }   // longe do vendedor: fecha a troca
   const me = G.me; if (!me || !G.parrying) return; const ox = G.view.ox, oy = G.view.oy, P = iso(me.rx, me.ry), cx = P.sx + ox, cy = P.sy + oy - 26, f = me.fa ?? 0;
-  const side = s => { const a = f + (s === 'L' ? Math.PI / 2 : -Math.PI / 2), q = iso(me.rx + Math.cos(a), me.ry + Math.sin(a)); const vx = q.sx - P.sx, vy = q.sy - P.sy, l = Math.hypot(vx, vy) || 1; return [cx + vx / l * 20, cy + vy / l * 9]; };
-  const spots = { top: [cx, cy - 26], low: [cx, cy + 26], L: side('L'), R: side('R') }, sh = me.cls === 'knight' && (me.shp ?? 100) > 0 && me.wpn !== 'halberd' && !me.shea;
+  const sh = me.cls === 'knight' && (me.shp ?? 100) > 0 && me.wpn !== 'halberd' && !me.shea;
+  // arco no chão na direção do escudo; nos primeiros instantes (janela da defesa perfeita) ele brilha forte
+  { const k = Math.max(0, 1 - (now - (G.parryT0 || 0)) / (PARRY_PERFECT + 120)), gx = P.sx + ox, gy = P.sy + oy, pts = [];
+    for (let i = 0; i <= 16; i++) { const a = f - PARRY_ARC + i / 16 * PARRY_ARC * 2, q = iso(me.rx + Math.cos(a) * 1.05, me.ry + Math.sin(a) * 1.05); pts.push([q.sx + ox, q.sy + oy]); }
+    ctx.save(); ctx.beginPath(); ctx.moveTo(gx, gy); for (const [x, y] of pts) ctx.lineTo(x, y); ctx.closePath();
+    const col = sh ? '240,200,110' : '220,225,235'; ctx.fillStyle = 'rgba(' + col + ',' + (0.24 + 0.36 * k) + ')'; ctx.fill();
+    ctx.beginPath(); pts.forEach(([x, y], i) => i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.lineCap = 'round'; ctx.lineWidth = 4.4 + 2.4 * k; ctx.strokeStyle = 'rgba(40,24,8,0.6)'; ctx.stroke();   // contorno escuro (aparece no chão claro)
+    ctx.lineWidth = 2.2 + 2.4 * k; ctx.strokeStyle = 'rgba(' + (sh ? '255,214,120' : '235,240,250') + ',' + (0.85 + 0.15 * k) + ')'; ctx.stroke(); ctx.restore(); }
   ctx.save();
-  for (const z of ['top', 'L', 'R', 'low']) { const [x, y] = spots[z], on = G.pz === z; ctx.beginPath(); ctx.arc(x, y, on ? 5.5 : 3.5, 0, 7); ctx.fillStyle = on ? (sh ? 'rgba(240,210,120,0.95)' : 'rgba(220,220,230,0.9)') : 'rgba(30,24,16,0.45)'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = on ? 'rgba(80,50,10,0.9)' : 'rgba(240,226,190,0.5)'; ctx.stroke(); }
+  if (false) for (const z of ['top', 'L', 'R', 'low']) { const [x, y] = spots[z], on = G.pz === z; ctx.beginPath(); ctx.arc(x, y, on ? 5.5 : 3.5, 0, 7); ctx.fillStyle = on ? (sh ? 'rgba(240,210,120,0.95)' : 'rgba(220,220,230,0.9)') : 'rgba(30,24,16,0.45)'; ctx.fill(); ctx.lineWidth = 1; ctx.strokeStyle = on ? 'rgba(80,50,10,0.9)' : 'rgba(240,226,190,0.5)'; ctx.stroke(); }
   if (sh) { const hp = me.shp ?? 100; ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(cx - 14, cy + 34, 28, 3); ctx.fillStyle = hp > 50 ? '#c8a050' : hp > 20 ? '#d8803a' : '#d84a3a'; ctx.fillRect(cx - 14, cy + 34, 28 * hp / 100, 3); }
   ctx.restore();
 }

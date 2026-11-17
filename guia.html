@@ -59,7 +59,7 @@
 <body>
 <div class="wrap">
 <nav class="toc">
-  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.52</small>
+  <a class="brand" href="./">NAE</a><small>Guia do aventureiro · v1.53</small>
   <input id="q" type="search" placeholder="Buscar no guia (ex.: banco, fome, G)" autocomplete="off">
   <div class="links" id="links"></div>
 </nav>
@@ -70,7 +70,7 @@
   <a class="play" href="./">Jogar agora ▸</a> <a class="play" href="roadmap.html" style="background:none;color:var(--gold2);border-color:var(--line)">Roadmap</a>
 
   <section id="comecar"><h2>Começando</h2>
-    <p>Na tela inicial, abra <b>Personagens</b> para criar seu herói: escolha nome, vocação (Cavaleiro, Atirador ou Mago) e cor. Depois, em <b>Jogar</b>, aperte <b>Entrar no reino</b>: se já existe um reino aberto (de um amigo, sem senha), você entra nele; se não, abre um com você de anfitrião.</p>
+    <p>Na tela inicial, abra <b>Personagens</b>: lá ficam <b>todos os seus heróis</b>. <b>＋ Novo personagem</b> abre o formulário limpo (nome, vocação — Cavaleiro, Atirador ou Mago — e cor); a 🗑 ao lado de cada herói apaga (pede confirmação). Um herói novo começa do zero: não herda casa, negócios, banco nem fama de um herói antigo, mesmo com o mesmo nome. Depois, em <b>Jogar</b>, aperte <b>Entrar no reino</b>: se já existe um reino aberto (de um amigo, sem senha), você entra nele; se não, abre um com você de anfitrião.</p>
     <ul>
       <li><b>Anfitrião</b>: quem abre o reino. O mundo roda no navegador dele, que precisa ficar aberto. Ele pode trancar o reino com senha no menu (Esc → Configurações → Senha do reino).</li>
       <li><b>Reinos online</b>: lista os reinos abertos e aceita um código de sala para entrar num específico.</li>
@@ -88,7 +88,7 @@
       <li><b class="t">Converse</b>Chegue perto de um morador e aperte <kbd>F</kbd>. Borin, no Empório, compra o que você caça e vende as ferramentas. A Capitã Varn, no quartel, dá contratos de caça.</li>
       <li><b class="t">Ganhe o primeiro ouro</b>No quadro de avisos da praça há bicos rápidos (levar água, carregar caixas, varrer). Ou compre um machado no Empório e corte lenha: aperte <kbd>F</kbd> uma vez perto de uma árvore.</li>
       <li><b class="t">Arrume onde dormir</b>A Pousada do Javali Magro (no bairro sudoeste, ao lado do estábulo) aluga cabines com porta por 3 de ouro por dia: catre, baú de 12 espaços e você acorda lá. Casa própria é bem mais cara — é a meta seguinte.</li>
-      <li><b class="t">Saia para caçar</b>Saque a arma (<kbd>G</kbd>) e saia pelo portão sul. Clique para golpear (segure para carregar), botão direito apara, <kbd>Espaço</kbd> esquiva. Leve pão e bandagens.</li>
+      <li><b class="t">Saia para caçar</b>Saque a arma (<kbd>G</kbd>) e saia pelo portão sul. Clique para golpear (segure para carregar), botão direito ergue o escudo para o mouse, <kbd>Espaço</kbd> esquiva. Leve pão e bandagens.</li>
       <li><b class="t">Não morra de vez</b>Caído, você tem 30 segundos. Peça para um amigo te reanimar (<kbd>F</kbd> segurado) ou te carregar (<kbd>H</kbd>) até a Irmã Lúmina, na capela. Sozinho e longe? Evite brigas que você não pode vencer.</li>
     </ol>
   </section>
@@ -99,7 +99,7 @@
       <tr><td><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> / setas / clique no chão</td><td>Andar (no celular, o joystick). <kbd>Shift</kbd> corre (gasta estamina).</td></tr>
       <tr><td>Clique esquerdo</td><td>Golpe lateral. Segure para carregar o golpe: aparece o arco no chão e a parte do corpo que vai acertar.</td></tr>
       <tr><td>Roda ↑ / ↓ · <kbd>Z</kbd></td><td>Golpe de cima (cabeça) · estocada · golpe de baixo (pernas).</td></tr>
-      <tr><td>Botão direito (segurar)</td><td>Bloquear. Segurando, um movimento rápido do mouse escolhe a zona: para cima (alto), para os lados (esquerda/direita) ou para baixo. No tempo certo vira contra-ataque.</td></tr>
+      <tr><td>Botão direito (segurar)</td><td>Erguer o escudo (ou a guarda) na direção do mouse. Erguido logo antes do golpe: defesa perfeita e contra-ataque.</td></tr>
       <tr><td><kbd>R</kbd> (cavaleiro com escudo)</td><td>Empurrão de escudo: desequilibra quem está na frente.</td></tr>
       <tr><td><kbd>Espaço</kbd></td><td>Esquiva. Amarrado ou agarrado: martele para se soltar. Na gazua: acerte o tempo.</td></tr>
       <tr><td><kbd>X</kbd> / <kbd>Tab</kbd></td><td>Atacar / escolher o alvo mais próximo (arqueiro e mago atiram sozinhos no alvo).</td></tr>
@@ -172,11 +172,12 @@
       <li><b>Arco</b>: mira em arco com a trajetória exata e o ponto de queda (mostra a parte do corpo). Flechas fazem dano triplo e ficam cravadas (<kbd>F</kbd> para arrancar).</li>
       <li><b>Aviso dos golpes inimigos</b>: um arco no chão mostra o golpe que vem (Discreto, Forte ou Desligado nas configurações).</li>
     </ul>
-    <h3>Bloqueio direcional e escudo</h3>
-    <p>Segure o botão direito: aparecem quatro pontinhos em volta do personagem (alto, esquerda, direita, baixo). Um movimento rápido do mouse para um lado escolhe a zona — o ponto aceso é onde você está defendendo.</p>
+    <h3>Defesa e escudo</h3>
+    <p>Segure o botão direito: o personagem ergue o escudo (ou a guarda) <b>na direção do mouse</b> e um arco dourado no chão mostra o que está protegido. Basta mirar no inimigo.</p>
     <ul>
-      <li><b>Zona certa</b>: o golpe é defendido. Gasta um pouco de fôlego (com escudo, bem menos).</li>
-      <li><b>Zona errada</b>: com escudo, ainda segura uma parte (você leva 75% do dano); sem escudo, leva o golpe inteiro.</li>
+      <li><b>Tempo certo</b>: erga o escudo logo antes do golpe chegar (≈0,3 s, o arco brilha forte nesse instante). É a <b>defesa perfeita</b>: o inimigo cambaleia, você não gasta fôlego e ganha um contra-ataque mais forte.</li>
+      <li><b>Fora do tempo</b>: com o escudo já erguido, o golpe que vem pela frente é defendido gastando fôlego (com escudo, bem menos). Sem fôlego, a guarda quebra.</li>
+      <li><b>De lado ou pelas costas</b>: fora do arco, você leva o golpe inteiro. Vire o escudo para quem ataca.</li>
       <li><b>Sem escudo</b> (alabarda, adaga, cajado), um golpe <b>carregado</b> defendido fora do tempo quebra a guarda.</li>
       <li><b>O escudo segura flechas</b> que vêm pela frente (bloqueando no alto ou dos lados).</li>
       <li><b>Empurrão de escudo</b> (<kbd>R</kbd>): curto, gasta 25 de fôlego, atordoa por um instante e empurra monstros pequenos. Espera 2,5 s para repetir.</li>
@@ -268,7 +269,8 @@
       <li>Fale com <b>Mestre Anselmo</b> na Imobiliária Chave de Bronze ou procure as placas “Aluga-se” e “À venda” pregadas ao lado da porta dos imóveis livres. O preço depende do lugar (perto do castelo é caro, a vila é barata).</li>
       <li><b>Casa</b>: aluguel cobrado por semana (7 dias do jogo) — sem pagar por 2 dias, perde a casa. Casa sua: porta trancada (só você e autorizados), baú seguro de <b>48 espaços</b> (chegue perto dele e aperte <kbd>F</kbd>), você acorda nela, e dormir na própria cama dá <i>Bem descansado</i>. Casas com morador podem ser compradas, e ele paga aluguel a você.</li>
       <li>Casas ficaram mais caras: morar numa casa é a meta de quem já tem renda. Para começar, use a pousada (abaixo).</li>
-      <li><b>Comprar</b> custa 60 dias de aluguel, com imposto pequeno; vende de volta pela metade.</li>
+      <li><b>Comprar</b> custa 60 dias de aluguel, com imposto pequeno; casa vende de volta pela metade.</li>
+      <li><b>Vender um negócio</b> (no menu de gestão, aba Visão geral, ou no painel de imóveis): você recebe <b>tudo o que investiu</b> — o que pagou (ou a caução, se alugado) mais tudo o que gastou em melhorias. As melhorias <b>ficam no negócio</b>: quem comprar depois paga o preço normal mais o valor delas e já começa com tudo melhorado.</li>
       <li><b>Lojas e oficinas têm dono</b>: todas as que não são de jogador pertencem a um comerciante (o nome aparece na imobiliária e quando você pergunta ao funcionário). Elas funcionam normalmente e <b>só se compram</b> — não se alugam. Quem já alugava continua com o contrato. A compra pede confirmação numa janela do jogo.</li>
       <li><b>Forja do Hrodgar</b> (comprável): transforma 1 madeira + 2 minério em ferramentas. As ferramentas vão para o balcão do Hrodgar (machado, picareta, foice), e o que ele vende — e os consertos, afiações e próteses que faz — rende para você. Ligue uma serraria e uma mina suas: os mensageiros levam a madeira e o minério.</li>
       <li><b>Coletores</b> (serraria, mina e horta): toda oficina que extrai tem um <b>coletor da casa</b>, e o dono pode contratar <b>mais 2</b> na aba Funcionários. De dia (7h às 19h) eles saem com a ferramenta, cortam árvores, quebram pedras ou colhem o mato perto da oficina — a árvore cai e a pedra quebra de verdade —, voltam carregando (com a caixinha sobre a cabeça) e enchem o depósito. É daí que vem a produção dessas oficinas; ferramentas melhores deixam o trabalho mais rápido. O mensageiro continua levando a produção para os seus outros negócios.</li>
@@ -431,7 +433,7 @@
       <dt>Estamina</dt><dd>A energia para correr. Volta andando ou parado.</dd>
       <dt>Fôlego</dt><dd>A barra amarela do combate: cada golpe, aparada e esquiva gasta. Sem fôlego, você não golpeia.</dd>
       <dt>Golpe carregado</dt><dd>Segurar o clique antes de soltar: mais dano e, na cabeça, pode matar na hora.</dd>
-      <dt>Aparar / contra-ataque</dt><dd>Botão direito no tempo certo bloqueia e abre um golpe mais forte.</dd>
+      <dt>Defesa perfeita / contra-ataque</dt><dd>Erguer o escudo (botão direito) na direção do inimigo logo antes do golpe: ele cambaleia e abre um golpe mais forte.</dd>
       <dt>Sangramento</dt><dd>Perda de vida contínua por ferida. Para com bandagem, fogo ou a sacerdotisa.</dd>
       <dt>Procurado</dt><dd>Visto cometendo crime na cidade: as sentinelas perseguem por 5 minutos (1 minuto se for só desobediência).</dd>
       <dt>Reputação</dt><dd>De 0 a 100: o que a cidade pensa de você. Libera empréstimos, negócios e a compra do banco.</dd>
@@ -445,7 +447,7 @@
   </section>
 
   <div class="empty" id="empty">Nada encontrado para essa busca.</div>
-  <p class="muted" style="margin-top:40px">Guia da versão 1.52.2 · atualizado a cada versão do jogo. Veja também o <a href="roadmap.html">Roadmap</a>, com a história de todas as versões.</p>
+  <p class="muted" style="margin-top:40px">Guia da versão 1.53 · atualizado a cada versão do jogo. Veja também o <a href="roadmap.html">Roadmap</a>, com a história de todas as versões.</p>
 </main>
 </div>
 <script>
