@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.60.0';
-const VERSION_NAME = 'Nae · Canecas e Brindes';
+const VERSION = 'v1.61.0';
+const VERSION_NAME = 'Nae · Ronco do Dragão';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -201,7 +201,8 @@ const LOOT = {
   cookedmeat: { name: 'Carne Assada',   price: 12,  icon: '◖', color: '#a8582a', desc: 'Carne de caça assada no fogo. Alimenta bem. Clique para comer.' },
   stew:     { name: 'Ensopado', price: 18, icon: '♨', color: '#b8743a', desc: 'Ensopado quente de carne e ervas. Sacia, mata a sede e cura um pouco. Clique para comer.' },
   pie:      { name: 'Torta de Frutas', price: 14, icon: '◒', color: '#c8603a', desc: 'Torta doce de frutas silvestres e maçã. Clique para comer.' },
-  ale:      { name: 'Caneca de cerveja', price: 3, icon: '🍺', color: '#d8a040', desc: 'Cerveja da Taverna do Javali, espumando. Mata a sede e dá fôlego; três seguidas deixam tonto. Clique para beber.' },
+  firemead: { name: 'Hidromel de Fogo', price: 12, icon: '🔥', color: '#e86a20', desc: 'O hidromel do Ronco do Dragão: arde na garganta e solta uma faísca pela boca. Nada de frio por 5 minutos. Dois seguidos deixam tonto. Clique para beber.' },
+  ale:      { name: 'Caneca de cerveja', price: 3, icon: '🍺', color: '#d8a040', desc: 'Cerveja do Ronco do Dragão, espumando. Mata a sede e dá fôlego; três seguidas deixam tonto. Clique para beber.' },
   tea:      { name: 'Chá de Ervas', price: 8, icon: '☕', color: '#8aa84a', desc: 'Mata a sede e baixa a febre. Clique para beber.' },
   rope:     { name: 'Corda', price: 15, icon: '➰', color: '#c8a870', desc: 'Para amarrar as mãos de alguém caído, rendido ou preso no mata-leão (H → Amarrar).' },
   lockpick: { name: 'Gazua', price: 40, icon: '⚷', color: '#9aa0a6', desc: 'Abre algemas (F perto de alguém algemado). Usar na cidade é crime.' },
@@ -302,7 +303,7 @@ const RECIPES = {
 };
 const KNOCK_MS = 1700, PROSTH_PRICE = 30, RITUAL_PRICE = 120;
 const STRIKE_PART = { head: ['head', 'head', 'torso', 'armA'], legs: ['legL', 'legR', 'legL', 'torso'], torso: ['torso', 'torso', 'armA', 'armB'] };
-const BUFF_NAMES = { tipsy: 'Tonto (cerveja)', breath: 'Elixir do Fôlego', warm: 'Elixir da Brasa', weaver: 'Bênção do Tecelão', warcry: 'Grito de Guerra', wall: 'Muralha de Ferro', agile: 'Passo Ágil', bless: 'Bênção da Aurora', mead: 'Hidromel', whet: 'Lâmina Afiada', rested: 'Bem descansado' };
+const BUFF_NAMES = { luck: 'Sorte do Dragão', tipsy: 'Tonto (cerveja)', breath: 'Elixir do Fôlego', warm: 'Elixir da Brasa', weaver: 'Bênção do Tecelão', warcry: 'Grito de Guerra', wall: 'Muralha de Ferro', agile: 'Passo Ágil', bless: 'Bênção da Aurora', mead: 'Hidromel', whet: 'Lâmina Afiada', rested: 'Bem descansado' };
 const BUFF_BITS = { wall: 16, agile: 32, bless: 64, warcry: 128 };
 
 const need = l => Math.floor(20 * Math.pow(l, 1.75));

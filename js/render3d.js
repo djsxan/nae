@@ -186,7 +186,11 @@ function buildHead(head, L, S, skinM, accM, trimM) {
     cap.rotation.x = -0.42;   // inclina para trás: a franja sobe acima dos olhos e a nuca fica coberta
     if (L.hairStyle === 'long') { const back = mesh(capG(0.09 * S, 0.22 * S), hairM, 0, -0.12 * S, -0.05 * S); back.scale.set(1.1, 1, 0.6); head.add(back); }
   }
-  if (L.beard) { const b = mesh(coneG(0.075 * S, 0.16 * S, 12), mat(hx(L.beard), 'hair'), 0, -0.12 * S, 0.05 * S); b.rotation.x = Math.PI; head.add(b); }
+  if (L.beard && !L.braids) { const b = mesh(coneG(0.075 * S, 0.16 * S, 12), mat(hx(L.beard), 'hair'), 0, -0.12 * S, 0.05 * S); b.rotation.x = Math.PI; head.add(b); }
+  if (L.braids) {   /* barba cheia com duas tranças e argolas de ouro */
+    const hm = mat(hx(L.beard), 'hair'), gold = mat('#d4a94a', 'metal'); const b = mesh(coneG(0.1 * S, 0.2 * S, 12), hm, 0, -0.12 * S, 0.055 * S); b.rotation.x = Math.PI; b.scale.set(1.1, 1, 0.8); head.add(b);
+    for (const sx of [-1, 1]) { for (let k = 0; k < 4; k++) head.add(mesh(sphG(0.026 * S), hm, sx * 0.045 * S, (-0.2 - k * 0.045) * S, 0.07 * S)); head.add(mesh(cylG(0.024 * S, 0.024 * S, 0.02 * S, 8), gold, sx * 0.045 * S, -0.39 * S, 0.07 * S)); }
+    head.add(mesh(capG(0.03 * S, 0.06 * S), hm, 0, -0.03 * S, 0.1 * S).rotateZ(Math.PI / 2)); }   /* bigode */
   if (L.scar) head.add(mesh(boxG(0.006 * S, 0.05 * S, 0.006 * S), mat('#9a5444', 'skin'), 0.05 * S, 0.0, 0.098 * S));
   const H = hx(L.headTone);
   if (helm) {
@@ -459,6 +463,7 @@ function npcSprite3D(kind, P) {
   return cache3('n3|' + kind + '|' + pose3Key(P), () => {
     const L = lookFor('npc:' + kind, NPC_LOOKS[kind]);
     const R = rigFor('npc:' + kind, L, NPC_SCALE[kind] ? { scale: NPC_SCALE[kind] } : undefined);
+    if (L.braids && !R._stocky) { R._stocky = 1; R.root.scale.set(1.28, 1, 1.22); }   /* anão: baixo e largo */
     const Q = buildPose(NPC_CLS[kind] || 'knight', P);
     applyPose(R, Q, P, 0);
     return shoot3D(R, P.dir | 0, P.down ? -Math.PI / 2 : 0);
@@ -764,4 +769,4 @@ function sheathProps(R, P) {
   if (R.shield) { R.shield.position.set(-0.02, -0.02, -0.21); R.shield.rotation.set(0.08, Math.PI, 0); }
 }
 
-const NPC_SCALE = { banker: 0.84, banker2: 0.82, banker3: 0.84, banker4: 0.82, banker5: 0.8, banker6: 0.84 };   // banqueiros sérios e baixinhos
+const NPC_SCALE = { innkeeper: 0.74, tavmaid: 0.94, banker: 0.84, banker2: 0.82, banker3: 0.84, banker4: 0.82, banker5: 0.8, banker6: 0.84 };   // banqueiros sérios e baixinhos

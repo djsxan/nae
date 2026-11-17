@@ -102,7 +102,7 @@ const BUILDINGS = TEST3D ? [] : [
   { x: C + 9, y: C + 8, ...BH('temple', 8, 9, 4.4, 1.6, 'Catedral da Aurora', { floors: 1, door: 'S', gen: { x: C - 21, y: C - 30, w: 8, h: 9, door: 'W' } }) },   // ao lado da praça do mercado, porta para o sul
   { x: C - 30, y: C - 1, ...BH('shop', 5, 5, 4.0, 2.8, 'Empório do Borin') },
   { x: C - 22, y: C - 1, ...BH('smith', 5, 5, 2.6, 2.6, 'Forja de Hrodgar') },
-  { x: C - 15, y: C + 10, ...BH('tavern', 6, 7, 3.6, 3.0, 'Taverna do Javali', { door: 'E', floors: 2 }) },   // taverna-celeiro: térreo e mezanino   // de frente para a praça do mercado (só térreo)
+  { x: C - 15, y: C + 10, ...BH('tavern', 6, 7, 3.6, 3.0, 'Ronco do Dragão', { door: 'E', floors: 2 }) },   // taverna: térreo e mezanino   // de frente para a praça do mercado (só térreo)
   { x: C - 19, y: C + 24, ...BH('barracks', 8, 5, 4.0, 2.6, 'Quartel da Guarda', { door: 'E', gen: { x: C + 5, y: C + 22, w: 8, h: 5, door: 'S' } }) },   // no antigo lugar da pousada, porta para o leste
   { x: C - 7, y: C + 22, ...BH('stable', 5, 4, 2.6, 2.4, 'Estábulo', { floors: 1, gen: { x: C - 28, y: C + 24, w: 5, h: 4, door: 'S' } }) },   // no antigo lugar do quartel, junto ao portão sul
   { x: C - 29, y: C + 10, ...BH('shop', 5, 5, 2.4, 2.2, 'Boticário de Elva', { v: 1, door: 'N', floors: 1 }) },
@@ -125,7 +125,7 @@ const DOOR_V = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] };
 // jeito de andar de cada tipo de NPC: idoso (curvado, devagar), nobre (empertigado, mãos para trás), apressado, pesado (trabalhador), leve, sereno (mãos juntas)
 const NPC_GAIT = { v_elderm: 'old', v_elderf: 'old', jailer: 'old', noble: 'noble', noble2: 'noble', v_noblef: 'noble', v_noblem: 'noble', banker: 'noble', broker: 'noble', tailor: 'noble', banker2: 'light', banker3: 'calm',
   courier1: 'hurry', courier2: 'hurry', courier3: 'hurry', v_thug1: 'hurry', v_thug2: 'hurry', supplier: 'hurry', v_trav1: 'hurry', smith: 'heavy', st_saw: 'heavy', st_mine: 'heavy', st_carp: 'heavy', merchant: 'heavy', executioner: 'heavy', v_peasm: 'heavy',
-  v_house1: 'light', v_house2: 'light', v_house3: 'light', v_house4: 'light', innkeeper: 'light', fruit: 'light', v_peasf: 'light', st_apoth: 'light', st_tailor: 'light', v_vis1: 'light', v_vis2: 'light', priest: 'calm', v_monk: 'calm', gardener: 'normal' };
+  v_house1: 'light', v_house2: 'light', v_house3: 'light', v_house4: 'light', innkeeper: 'heavy', tavmaid: 'hurry', fruit: 'light', v_peasf: 'light', st_apoth: 'light', st_tailor: 'light', v_vis1: 'light', v_vis2: 'light', priest: 'calm', v_monk: 'calm', gardener: 'normal' };
 const GAIT_SPD = { old: 0.62, noble: 0.85, hurry: 1.28, heavy: 0.95, light: 1.0, calm: 0.8, normal: 1, drunk: 0.75 };
 const GAIT_CAD = { old: 14, noble: 10, hurry: 8.6, heavy: 8.8, light: 10.8, calm: 10.4, normal: 9.5, drunk: 10 };
 const DOOR_ROT = { S: 0, N: Math.PI, E: Math.PI / 2, W: -Math.PI / 2 };
@@ -288,7 +288,7 @@ function interiorLayout0(b, fl = 0) {
     for (let j = 0; j < 3; j++) put('rack', w - 1, j);
     put('trough', 0, 2, { w: 2 });
   } else if (k === 'tavern' && w === 7 && h === 6) {   // taverna-celeiro: barris com torneiras e balcão, lareira enorme na parede da direita, palco do bardo, lustre de roda, mesas e bancos
-    npcAt(1, 0); put('taps', 0, 0); put('bar', 0, 1, { w: 2 }); put('bottles', 6, 0);
+    npcAt(1, 0); put('taps', 0, 0); put('bar', 0, 1, { w: 2 }); put('bottles', 6, 0); put('champs', 6, 1, { block: false });
     put('hearth', w - 1, 2, { h: 2 }); put('stage', w - 2, h - 1, { w: 2, block: false }); put('wheel', 3, 2, { block: false }); put('beamlamp', 5, 1, { block: false });
     if (put('table', 2, 2)) { put('chair', 2, 3, { seat: 3 }); }
     if (put('table', 1, 4)) { put('chair', 0, 4, { seat: 1 }); put('chair', 2, 4, { seat: 5 }); }
@@ -419,7 +419,8 @@ const BLD_BY = k => BUILDINGS.find(b => b.kind === k);
 const NPCS = TEST3D ? [] : [
   { id: 'priest', name: 'Irmã Lúmina', kind: 'priest', ...npcIn(BUILDINGS[0]) },
   { id: 'merchant', name: 'Borin, o Mercador', kind: 'merchant', ...npcIn(BUILDINGS[1]) },
-  { id: 'innkeeper', name: 'Greta, a Taverneira', kind: 'innkeeper', ...npcIn(BUILDINGS[3]) },
+  { id: 'innkeeper', name: 'Brom Barbarruiva, o Taverneiro', kind: 'innkeeper', ...npcIn(BUILDINGS[3]) },
+  { id: 'tavmaid', name: 'Lina Pé-Ligeiro, a Ajudante', kind: 'tavmaid', ...(([x, y]) => ({ x, y }))(bLocal(BUILDINGS[3], 2, 1)) },   // fica na ponta do balcão
   { id: 'smith', name: 'Hrodgar, o Ferreiro', kind: 'smith', ...npcIn(BUILDINGS[2]) },
   { id: 'captain', name: 'Capitã Mirela Varn', kind: 'captain', ...npcIn(BUILDINGS[4]) },
   { id: 'guard1', name: 'Sentinela Aldric', kind: 'guard', x: C - 0.7, y: C + 30.6 },
@@ -974,7 +975,7 @@ function generateWorld() {
     { x: C + 4, y: C + 21, ...BH('workshop', 5, 4, 2.6, 1.9, 'Padaria da Praça', { wk: 'bakery', door: 'E', dcol: 2, floors: 1 }) });   // porta para a avenida da catedral   // casa nova na rua do banco, alinhada com as lojas   // porta direto na rua principal
   { const S0 = { 'Empório do Borin': { 0: 'ladder' }, 'Pergaminhos & Mapas': { 0: 'spiral' }, 'Imobiliária Chave de Bronze': { 0: 'ext' }, 'Casa Morvane': { 0: 'spiral', 1: 'ladder' }, 'Elixires da Lua Prateada': { 0: 'spiral' } };   // escadas: o resto usa a de parede
     for (const b of BUILDINGS) { if (S0[b.name]) b.stairs = S0[b.name]; else if (b.kind === 'manor') b.stairs = { 1: 'ladder' }; }
-    const CEL = { 'Taverna do Javali': [2, 0], 'Banco de Nae': [3, 1] }; for (const b of BUILDINGS) if (CEL[b.name]) b.cellar = CEL[b.name]; }   // porões: adega atrás do balcão da taverna, cofre embaixo do banco   // casarões: o sótão é pelo alçapão
+    const CEL = { 'Ronco do Dragão': [2, 0], 'Banco de Nae': [3, 1] }; for (const b of BUILDINGS) if (CEL[b.name]) b.cellar = CEL[b.name]; }   // porões: adega atrás do balcão da taverna, cofre embaixo do banco   // casarões: o sótão é pelo alçapão
   BUILDINGS.forEach((b, bi) => {
     for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { bld[idx(x, y)] = bi; obj[idx(x, y)] = O.NONE; ground[idx(x, y)] = T.COBBLE; }
   });
@@ -1307,7 +1308,7 @@ const PROPS = [], PROPS_BY = {};
     let P = null;
     if (b.kind === 'house') n++;   // conta o escritório também: os números das outras casas não mudam
     if (b.kind === 'house' && !b.office) { P = { ...base, id: 'h' + bi, kind: 'house', name: 'Casa ' + n, rent: (4 + Math.round(area * 0.3) + (fl - 1) * 4) * 2 }; }   // casas 2x mais caras: a pousada é o começo
-    else if (b.kind === 'tavern') P = { ...base, id: 's' + bi, kind: 'workshop', wk: 'tavern', name: b.name, npcOwner: 'Greta', rent: 20 + Math.round(area * 0.8) };
+    else if (b.kind === 'tavern') P = { ...base, id: 's' + bi, kind: 'workshop', wk: 'tavern', name: b.name, npcOwner: 'Brom', rent: 20 + Math.round(area * 0.8) };
     else if (b.kind === 'smith') P = { ...base, id: 'w' + bi, kind: 'workshop', wk: 'forge', name: b.name, npcOwner: 'Hrodgar', rent: 16 + Math.round(area * 0.7) };
     else if (b.kind === 'shop' || b.kind === 'boutique') P = { ...base, id: 's' + bi, kind: 'shop', shopType: b.shopType, name: b.name || 'Loja', npc: b.shopType ? null : ownerOf(b), rent: 20 + Math.round(area * 0.8) + (fl - 1) * 6 };
     else if (b.kind === 'bank') P = { ...base, id: 'b' + bi, kind: 'bank', name: b.name, rent: 450, repMin: 70 };

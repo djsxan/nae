@@ -492,7 +492,7 @@ function hitMonster(p, m, mult, delay = 0) {
 
 function lootCorpse(p, c, auto) {
   c.looted = true; useGain(p, 'skin', 1);
-  if (c.gold) { const g = Math.round(c.gold * (1 + useBonus(p, 'skin'))); p.gold += g; Net.toOne(p.id, { t: 'lootgold', g }); }
+  if (c.gold) { const g = Math.round(c.gold * (1 + useBonus(p, 'skin')) * (now_() < ((p.buffs || {}).luck || 0) ? 1.15 : 1)); p.gold += g; Net.toOne(p.id, { t: 'lootgold', g }); }
   for (const k of c.items) { if (!p.inv[k] && Object.keys(p.inv).length >= INV_SLOTS) { tell(p, 'Inventário cheio.'); c.looted = false; c.gold = 0; c.items = c.items.slice(c.items.indexOf(k)); break; } p.inv[k] = Math.min(999, (p.inv[k] || 0) + 1); Net.toOne(p.id, { t: 'loot', k }); }
   if (c.looted) c.items = [];
   if (!auto && !c.gold && !c.items.length && c.looted) tell(p, 'Nada de útil aqui.');
@@ -613,9 +613,9 @@ function useItem(p, k) {
   else if (k === 'elixir_warm') { take(); p.buffs.warm = now + 600000; p.cold = 0; tell(p, 'Um calor de brasa corre nas veias: nada de frio por 10 minutos.'); }
   else if (k === 'elixir_swift') { take(); p.buffs.agile = now + 45000; tell(p, 'As pernas ficam leves: passos ligeiros por 45 segundos.'); }
   else if (k === 'ointment') { take(); p.infect = 0; p.infT = 0; tell(p, 'O unguento arde, mas a febre baixa.'); }
-  else if (k === 'ale') { take(); p.water = Math.min(100, (p.water ?? 100) + 20); p.cst = Math.min(cstMaxOf(p), (p.cst ?? 0) + 60); p.aleT = (p.aleT || []).filter(t => now - t < 360000); p.aleT.push(now);
-    near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'drinkb', ms: 1600 });
-    if (p.aleT.length >= 3) { p.buffs.tipsy = now + 120000; tell(p, 'Hic! A cerveja subiu: você está tonto por uns minutos.'); } else tell(p, ['Gelada e espumante!', 'Desce bem.', 'Ahh, que cerveja!'][p.aleT.length - 1] || 'Desce bem.'); }
+  else if (k === 'ale') { take(); p.water = Math.min(100, (p.water ?? 100) + 20); p.cst = Math.min(cstMaxOf(p), (p.cst ?? 0) + 60);
+    if (!aleDrink(p, now, 1)) tell(p, ['Gelada e espumante!', 'Desce bem.', 'Ahh, que cerveja!'][Math.min(2, p.aleT.length - 1)]); }
+  else if (k === 'firemead') { take(); fireMead(p, now); }
   else if (k === 'tea') { take(); p.water = Math.min(100, (p.water ?? 100) + 35); p.infect = Math.max(0, (p.infect || 0) - 1); tell(p, 'O chá quente acalma e mata a sede.'); }
   else if (k === 'herb') { take(); useGain(p, 'aid', 1); p.infect = Math.max(0, (p.infect || 0) - 1); p.infT = 0; for (const b of BODY_PARTS) if (p.bleed[b] > 0 && p.bleed[b] <= 0.6) p.bleed[b] = 0; tell(p, 'A erva amarga acalma a febre e estanca os cortes leves.'); }
   else if (k === 'firewood') {
@@ -933,14 +933,35 @@ function npcAction(p, m) {
     p.infect = 0; p.infT = 0; p.cold = 0;
     aoe('heal', p.x, p.y, { id: p.id });
     say('Que a Aurora guarde seus passos. Suas feridas estão fechadas, e a bênção reduz o dano que você recebe por algum tempo.');
-  } else if (n.id === 'innkeeper' && m.a === 'mead') {
-    if (!pay(15)) return;
-    p.buffs.mead = now + 180000;
-    say('Hidromel da casa. Aquece o sangue: +10% de dano e recuperação mais rápida por 3 minutos.');
+  } else if (n.id === 'innkeeper' && (m.a === 'mead' || m.a === 'firemead')) {
+    if (!pay(12)) return; fireMead(p, now);
+    say('Hidromel de Fogo! Feito com pimenta das montanhas, igual ao que o dragão bebeu. Segura a faísca!');
   } else if (n.id === 'innkeeper' && m.a === 'stew') {
     if (!pay(10)) return;
     p.hp = p.maxHp; p.mp = p.maxMp; p.food = 100; p.water = 100; p.cold = 0;
-    say('Ensopado de javali, como minha mãe fazia. Coma com calma.');
+    say('Ensopado da casa, receita da minha avó anã. Coma com calma.');
+  } else if (n.id === 'innkeeper' && m.a === 'tonel') {
+    if (tonelBusy(p.id)) { say('Você já está num desafio! Beba!'); return; } if (!pay(10)) return; tonelStart(p, null, 0, true);
+    say('Cinco canecas, uma a cada rodada. Se ficar de pé até a quinta, leva 40 de ouro e o nome no quadro. Se cair... eu conto para todo mundo.');
+  } else if (n.id === 'innkeeper' && m.a === 'toneln') {
+    const bet = [20, 50].includes(m.bet) ? m.bet : 20, tav = TAV_BI();
+    const opp = Object.values(S.npcs).filter(q => q.transient && !q.bard && !q.dead && !q.downed && WORLD.bld[tileAt(q.x, q.y)] === tav && !(q.drunkT > now) && !tonelBusy(q.id)).sort((a, b) => dist(a.x, a.y, p.x, p.y) - dist(b.x, b.y, p.x, p.y))[0];
+    if (!opp) { say('Não tem freguês sóbrio o bastante para te encarar agora. Volte à noite, quando a casa enche.'); return; }
+    if (tonelBusy(p.id)) { say('Você já está num desafio! Beba!'); return; } if (!pay(bet)) return; tonelStart(p, { k: 'n', id: opp.id }, bet, false);
+    say(opp.name.split(',')[0] + ' aceitou! Aposta de ' + bet + ' de ouro. Quem cair primeiro perde.');
+  } else if (n.id === 'innkeeper' && m.a === 'tonelp') {
+    const q = S.players[m.who], bet = [20, 50].includes(m.bet) ? m.bet : 20;
+    if (!q || q === p || dist(q.x, q.y, p.x, p.y) > 6) { say('Essa pessoa não está aqui.'); return; } if (!canPay(p, bet)) { say('Você não tem ' + bet + ' de ouro para apostar.'); return; }
+    S.tonelInv = S.tonelInv || {}; S.tonelInv[q.id] = { from: p.id, bet, until: now + 60000 }; Net.toOne(q.id, { t: 'tonelinv', from: p.id, name: p.name, bet });
+    tell(q, '🍺 ' + p.name + ' te desafiou para o Tonel (aposta de ' + bet + ' de ouro). Fale com o Brom para aceitar.'); say('Desafio mandado para ' + q.name + '. Se aceitar, começamos.');
+  } else if (n.id === 'innkeeper' && m.a === 'tonelok') {
+    const I = S.tonelInv && S.tonelInv[p.id], A = I && S.players[I.from]; if (!I || now > I.until || !A) { say('Esse desafio já esfriou.'); return; } delete S.tonelInv[p.id];
+    if (tonelBusy(p.id) || tonelBusy(A.id)) { say('Um de vocês já está num desafio.'); return; } if (!canPay(p, I.bet) || !canPay(A, I.bet)) { say('Alguém aqui não tem o ouro da aposta.'); return; }
+    payCity(p, I.bet); payCity(A, I.bet); sendStat(p); sendStat(A); tonelStart(A, { k: 'p', id: p.id }, I.bet, false); say('Apostado! Sentem-se e bebam.');
+  } else if (n.id === 'innkeeper' && m.a === 'champs') {
+    const T = (S.estate && S.estate.tonel) || []; say(T.length ? 'Campeões do Tonel: ' + T.map((e, i) => (i + 1) + '. ' + e.n + ' (' + e.r + ' canecas)').join(' · ') : 'O quadro ainda está vazio. Quer ser o primeiro?');
+  } else if (n.id === 'innkeeper' && m.a === 'legend') {
+    say('Faz muitos invernos, um dragão verde desceu sobre Nae. Em vez de fogo, sentiu o cheiro do nosso tonel de hidromel... bebeu tudo, deitou no telhado e dormiu. Ronca até hoje, juro pela minha barba! Venha ouvir o bardo cantar a lenda inteira à noite: dizem que dá sorte.');
   } else if (n.id === 'innkeeper' && m.a === 'rumor') {
     say(pick(RUMORS));
   } else if (n.id === 'smith' && m.a === 'whet') {
@@ -1911,7 +1932,7 @@ function weaverFollow(n, now, dt) {
   return true;
 }
 function npcTick(now, dt) {
-  initNpcs(); tavernTick(now); collectorSync(now);
+  initNpcs(); tavernTick(now); collectorSync(now); try { tonelTick(now); } catch (e) { console.warn('tonel', e); }
   if (now - (S.dispT || 0) > 3000) { S.dispT = now; try { dispatchCouriers(); } catch (e) { console.warn('entregas', e); } }   // mensageiros saem assim que ficam livres
   if (now - (S.visT || 0) > 1500) { S.visT = now; const night = typeof dayInfoS === 'function' ? dayInfoS().night : false, want = night ? 5 : 15, have = Object.values(S.npcs).filter(n => n.transient && !n.bizWorker && !n.bard && !n.collector).length; if (have < want && Math.random() < 0.5 && Object.keys(S.players).length) visSpawn(now); for (const n of Object.values(S.npcs)) if (n.transient && (n.dead || now - n.born > 600000) && !n.dragBy) visGone(n); }
   for (const n of Object.values(S.npcs)) {
@@ -1931,7 +1952,7 @@ function npcTick(now, dt) {
     if (n.gripBy && !n.downed) { const g = S.players[n.gripBy]; if (!g || !g.drag || g.drag.id !== n.id || now > n.escAt) { n.gripBy = null; n.dragBy = null; if (g && g.drag && g.drag.id === n.id) stopDrag(g, n.name + ' se soltou!'); } continue; }
     if (n.dragBy) continue;
     if (n.kind === 'guard') { guardThink(n, now, dt); continue; }
-    if (n.id === 'innkeeper' && gretaServe(n, now, dt)) continue;
+    if (n.id === 'tavmaid' && gretaServe(n, now, dt)) continue;   /* Lina leva canecas às mesas */
     if (n.role && n.home != null && !(n.role === 'courier' && n.job)) { residentTick(n, now, dt); continue; }
     if (n.role === 'courier') { courierTick(n, now, dt); continue; }
     if (n.role === 'supplier') { supplierTick(n, now, dt); continue; }
@@ -2543,7 +2564,7 @@ function collectorTick(n, now, dt) {
   const t = collFind(n, P, tool); if (!t) { if (n.carry > 0) { n.cst = 'back'; n.job = { st: 'levando' }; } else n.wt = now + 8000; return; }
   n.ci = t.i; n.sp = t.sp; S.collRes[t.i] = n.id; n.cst = 'walk';
 }
-// negócio de jogador onde um NPC trabalha (forja do Hrodgar, taverna da Greta…): o dinheiro do balcão vai para o dono
+// negócio de jogador onde um NPC trabalha (forja do Hrodgar, taverna do Brom…): o dinheiro do balcão vai para o dono
 function npcBiz(n) { if (!n || !S.estate) return null; const bi = n.bi != null ? n.bi : WORLD.bld[tileAt(n.postX ?? n.x, n.postY ?? n.y)]; if (bi == null || bi < 0) return null; const P = PROPS.find(q => q.bi === bi), r = P && S.estate.r[P.id]; return r && r.biz ? r : null; }
 const SELL_K = 0.85;
 function recipeGain(rk) { const W = Object.values(WORKS).find(w => w.recipes && w.recipes[rk]); if (!W) return 0; const rec = W.recipes[rk]; let c = 0; for (const g in rec) c += GOODS[g].p * 1.2 * rec[g]; return (rk === 'serve' ? 5 : GOODS[rk].p * SELL_K) - c; }
@@ -2931,18 +2952,73 @@ function resSpot(n, act) {
   if (act === 'social') { if (village) { const a = (h % 12) / 12 * Math.PI * 2; return [sq[0] + Math.cos(a) * 1.8, sq[1] + Math.sin(a) * 1.4]; } const t = bldTiles(tav); return t.length && h % 3 ? t[(h >> 2) % t.length] : [CENTER + (h % 5) - 2, CENTER + 12 + (h % 3)]; }
   return [n.postX, n.postY];
 }
-const TAV_LINES = ['Saúde!', 'À nossa!', 'Mais uma rodada!', 'Seis! Ganhei de novo!', 'Esses dados estão viciados...', 'Sua vez de jogar.', 'Truco!', 'Ninguém blefa como eu.', 'Essa cerveja da Greta é a melhor de Nae.', 'Dobro ou nada?', 'Hahaha! Essa é boa!', 'Pago a próxima.'];
-// Greta leva canecas às mesas de vez em quando
+const TAV_LINES = ['Saúde!', 'À nossa!', 'Mais uma rodada!', 'Seis! Ganhei de novo!', 'Esses dados estão viciados...', 'Sua vez de jogar.', 'Truco!', 'Ninguém blefa como eu.', 'Essa cerveja do Brom é a melhor de Nae.', 'Dobro ou nada?', 'Hahaha! Essa é boa!', 'Pago a próxima.'];
+// ---------- bebida: cada gole conta; 3 em 6 minutos deixam tonto ----------
+function aleDrink(p, now, units) {
+  p.aleT = (p.aleT || []).filter(t => now - t < 360000); for (let k = 0; k < units; k++) p.aleT.push(now);
+  near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'drinkb', ms: 1600 });
+  if (p.aleT.length >= 3) { const had = (p.buffs.tipsy || 0) > now; p.buffs.tipsy = Math.max(p.buffs.tipsy || 0, now + 120000); if (!had) tell(p, 'Hic! A bebida subiu: você está tonto por uns minutos.'); return true; }
+  return false;
+}
+function fireMead(p, now) {   // Hidromel de Fogo: faísca pela boca, nada de frio por 5 min, vale por duas canecas
+  p.buffs.warm = Math.max(p.buffs.warm || 0, now + 300000); p.cold = 0; p.water = Math.min(100, (p.water ?? 100) + 10);
+  const tipsy = aleDrink(p, now, 2), da = (p.dir | 0) * Math.PI / 4, d = [Math.cos(da) + Math.sin(da) / 2, Math.cos(da) - Math.sin(da) / 2];
+  setTimeout(() => { if (S.players[p.id]) aoe('breath', p.x, p.y, { x2: p.x + d[0] * 1.6, y2: p.y + d[1] * 1.6 }); }, 1300);
+  if (!tipsy) tell(p, 'Arde! Uma faísca escapa da sua boca. Nada de frio por 5 minutos.'); else tell(p, 'Arde! Uma faísca escapa da sua boca... e o mundo começa a girar.');
+  sendStat(p);
+}
+// ---------- Desafio do Tonel: uma rodada a cada 4 s servida pelo Brom; quem cair primeiro perde ----------
+const TONEL_MS = 4000;
+function tonelTol(x, isNpc) { return isNpc ? (x.tonTol ?? (x.tonTol = Math.random() * 0.3)) : Math.min(0.35, (x.lvl || 1) / 120) + ((x.food ?? 100) > 60 ? 0.08 : 0); }
+function tonelBusy(id) { return (S.tonel || []).some(M => !M.done && (M.a === id || (M.o && M.o.id === id))); }
+function tonelStart(p, o, bet, solo) {
+  const now = now_(); S.tonel = S.tonel || []; const M = { a: p.id, o, bet, solo: !!solo, r: 0, next: now + 2500 }; S.tonel.push(M);
+  const brom = S.npcs && S.npcs.innkeeper, oname = solo ? 'Brom' : o.k === 'p' ? (S.players[o.id] || {}).name : (S.npcs[o.id] || {}).name.split(',')[0];
+  if (brom) near(brom.x, brom.y, { t: 'anim', w: 'n', id: 'innkeeper', a: 'talk', txt: solo ? 'Cinco canecas, ' + p.name + '! Sem cair!' : 'Desafio do Tonel: ' + p.name + ' contra ' + oname + '!', ms: 1 });
+  sys('🍺 Desafio do Tonel no Ronco do Dragão: ' + p.name + (solo ? ' tenta aguentar 5 canecas.' : ' contra ' + oname + (bet ? ' (aposta de ' + bet + ' de ouro).' : '.')));
+}
+function tonelPassOut(x, isNpc, now) {
+  if (isNpc) { x.drunkT = now + 180000; near(x.x, x.y, { t: 'anim', w: 'n', id: x.id, a: 'talk', txt: 'Hic... zzz... *caiu da cadeira*', ms: 1 }); return; }
+  x.knockUntil = now + 7000; x.stunUntil = now + 7000; x.buffs.tipsy = Math.max(x.buffs.tipsy || 0, now + 180000);
+  near(x.x, x.y, { t: 'knock', k: 'p', id: x.id, ax: x.x - 0.5, ay: x.y - 0.5, ms: 7000 }); tell(x, 'O mundo gira... você desaba no chão da taverna.'); sendStat(x);
+}
+function tonelBoard(name, r) { const E = S.estate; if (!E) return; E.tonel = (E.tonel || []).concat([{ n: name, r, d: estDay() }]).sort((a, b) => b.r - a.r || b.d - a.d).slice(0, 8); estateSave(); }
+function tonelTick(now) {
+  const L = S.tonel; if (!L || !L.length) return; const tav = TAV_BI(), brom = S.npcs && S.npcs.innkeeper;
+  for (const M of L) {
+    if (M.done || now < M.next) continue; M.next = now + TONEL_MS; M.r++;
+    const A = S.players[M.a], O = M.solo ? null : M.o.k === 'p' ? S.players[M.o.id] : S.npcs && S.npcs[M.o.id];
+    const inT = x => x && !x.downed && !x.dead && WORLD.bld[tileAt(x.x, x.y)] === tav;
+    if (!inT(A)) { M.done = true; if (O && M.o.k === 'p') { O.gold += M.bet * 2; tell(O, (A ? A.name : 'O adversário') + ' fugiu do Tonel: o pote de ' + M.bet * 2 + ' de ouro é seu.'); sendStat(O); } continue; }
+    if (!M.solo && !inT(O)) { M.done = true; A.gold += M.bet * 2; tell(A, 'Seu adversário saiu da taverna: o pote de ' + M.bet * 2 + ' de ouro é seu.'); sendStat(A); continue; }
+    if (brom) near(brom.x, brom.y, { t: 'anim', w: 'n', id: 'innkeeper', a: 'talk', txt: 'Rodada ' + M.r + '!', ms: 1 });
+    aleDrink(A, now, 1); if (O) { if (M.o.k === 'p') aleDrink(O, now, 1); else near(O.x, O.y, { t: 'anim', w: 'n', id: O.id, a: 'talk', txt: '🍺 *gole*', ms: 1 }); }
+    const fall = (x, npc) => Math.random() < Math.max(0, M.r - 2) * 0.09 * (1 - tonelTol(x, npc));
+    let fa = fall(A, false), fo = O ? fall(O, M.o.k === 'n') : false;
+    if (M.solo) {
+      if (fa) { M.done = true; tonelPassOut(A, false, now); sys('🍺 ' + A.name + ' caiu na rodada ' + M.r + ' do Desafio do Tonel. O Brom ri alto.'); }
+      else if (M.r >= 5) { M.done = true; A.gold += 40; tonelBoard(A.name, 5); tell(A, 'Cinco canecas e de pé! Prêmio de 40 de ouro e seu nome no quadro de campeões.'); sys('🏆 ' + A.name + ' venceu o Desafio do Tonel no Ronco do Dragão!'); if (brom) near(brom.x, brom.y, { t: 'anim', w: 'n', id: 'innkeeper', a: 'talk', txt: 'Esse aí tem estômago de dragão!', ms: 1 }); sendStat(A); }
+      continue;
+    }
+    if (fa && fo) { if (Math.random() < 0.5) fa = false; else fo = false; }
+    const end = (W, Lo, loNpc) => { M.done = true; tonelPassOut(Lo, loNpc, now); const wn = W.name.split(',')[0], ln = Lo.name.split(',')[0]; if (W === A || M.o.k === 'p') { W.gold += M.bet * 2; tonelBoard(W.name, M.r); tell(W, 'Você venceu o Tonel na rodada ' + M.r + '! +' + M.bet * 2 + ' de ouro.'); sendStat(W); } sys('🏆 ' + wn + ' venceu ' + ln + ' no Desafio do Tonel (rodada ' + M.r + ').'); };
+    if (fa) end(O, A, false); else if (fo) end(A, O, M.o.k === 'n');
+    else if (M.r >= 12) { M.done = true; A.gold += M.bet; if (M.o.k === 'p') { O.gold += M.bet; sendStat(O); } sendStat(A); sys('🍺 Doze rodadas e ninguém caiu: empate no Tonel! Cada um leva a aposta de volta.'); }
+  }
+  S.tonel = L.filter(M => !M.done);
+}
+// Lina leva canecas às mesas de vez em quando
 function gretaServe(n, now, dt) {
   const tav = TAV_BI(), hr0 = resHour(); if (hr0 < 7 || hr0 >= 23 || n.sleeping || WORLD.bld[tileAt(n.postX, n.postY)] !== tav) return false;
   if (n.serve) { const t = S.npcs[n.serve.id]; if (!t || !t.sitting) { n.serve = null; n.serveBack = true; return true; }
-    if (npcWalk(n, t.x + n.serve.ox, t.y + n.serve.oy, 1.1, dt) || dist(n.x, n.y, t.x, t.y) < 1.3) { near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: ['Aqui está!', 'Mais uma, saindo!', 'Cuidado que está cheia!', 'Essa é por conta da casa... brincadeira!'][Math.floor(Math.random() * 4)], ms: 1 }); setTimeout(() => { if (S.npcs[t.id]) near(t.x, t.y, { t: 'anim', w: 'n', id: t.id, a: 'talk', txt: ['Obrigado, Greta!', 'Saúde!', 'Você é um anjo.', 'Põe na conta!'][Math.floor(Math.random() * 4)], ms: 1 }); }, 1500); n.serve = null; n.serveBack = true; n.nextServe = now + 18000 + Math.random() * 25000; }
+    if (npcWalk(n, t.x + n.serve.ox, t.y + n.serve.oy, 1.1, dt) || dist(n.x, n.y, t.x, t.y) < 1.3) { near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: ['Aqui está!', 'Mais uma, saindo!', 'Cuidado que está cheia!', 'Essa é por conta da casa... brincadeira!'][Math.floor(Math.random() * 4)], ms: 1 }); setTimeout(() => { if (S.npcs[t.id]) near(t.x, t.y, { t: 'anim', w: 'n', id: t.id, a: 'talk', txt: ['Obrigado, Lina!', 'Saúde!', 'Você é um anjo.', 'Põe na conta!'][Math.floor(Math.random() * 4)], ms: 1 }); }, 1500); n.serve = null; n.serveBack = true; n.nextServe = now + 18000 + Math.random() * 25000; }
     return true; }
   if (n.serveBack) { if (npcWalk(n, n.postX, n.postY, 1.1, dt)) { n.serveBack = false; n.x = n.postX; n.y = n.postY; } return true; }
   if (now > (n.nextServe || 0)) { n.nextServe = now + 15000 + Math.random() * 20000; const pts = Object.values(S.npcs).filter(q => q.sitting && WORLD.bld[tileAt(q.x, q.y)] === tav); if (pts.length) { const t = pts[Math.floor(Math.random() * pts.length)], a = Math.random() * Math.PI * 2; n.serve = { id: t.id, ox: Math.cos(a) * 0.9, oy: Math.sin(a) * 0.9 }; return true; } }
   return false;
 }
 // bardo: toca na taverna à noite (19h às 23h); quem está em pé dança, os sentados aplaudem
+const LEGEND = ['♪ Escutem a lenda do Ronco do Dragão... ♪', '♪ Desceu do norte, verde como o musgo, faminto de fogo... ♪', '♪ Mas sentiu o cheiro do tonel de hidromel e bebeu até a última gota! ♪', '♪ Deitou no nosso telhado e dormiu, e ronca até hoje... ♪', '♪ Quem ouve o ronco inteiro leva a sorte do dragão! ♪'];
 const BARD_LINES = ['♪ Lá vem o javali, magro de dar dó... ♪', '♪ Ó Nae, cidade das torres... ♪', '♪ Bebe, bebe, que a noite é longa! ♪', '♪ O dragão voou e o rei correu... ♪', '♪ Tralalá, tralalá! ♪'];
 function tavernTick(now) {
   if (now - (S.tavT || 0) < 2000) return; S.tavT = now; const tav = TAV_BI(); if (tav < 0) return; const hr = resHour(), night = hr >= 19 && hr < 23;
@@ -2951,7 +3027,9 @@ function tavernTick(now) {
     { const tb = BUILDINGS[tav], st = interiorLayout(tb, 0).F.find(f => f.t === 'stage'); if (st) { const [sx, sy] = bLocal(tb, st.i + st.w - 1, st.j); x = sx; y = sy; } }   // no palco
     bard = { id: 'bard', kind: 'v_trav3', name: 'Filipe, o Bardo', transient: true, bard: true, bi: tav, x, y, z: 0, postX: x, postY: y, hp: 60, maxHp: 60, downed: null, dead: false, nextSong: 0 }; S.npcs.bard = bard; Net.toAll({ t: 'vspawn', v: visPublic(bard) }); }
   if (!night && bard) { visGone(bard); return; }
-  if (bard && !bard.dead && !bard.downed && now > bard.nextSong) { bard.nextSong = now + 7000 + Math.random() * 5000; near(bard.x, bard.y, { t: 'anim', w: 'n', id: bard.id, a: 'talk', txt: BARD_LINES[Math.floor(Math.random() * BARD_LINES.length)], ms: 1 });
+  if (bard && !bard.dead && !bard.downed && now > bard.nextSong) { bard.nextSong = now + 7000 + Math.random() * 5000; bard.song = (bard.song || 0) + 1; const li = bard.song % 8;   /* 5 versos da lenda, depois 3 músicas */
+    near(bard.x, bard.y, { t: 'anim', w: 'n', id: bard.id, a: 'talk', txt: li < 5 ? LEGEND[li] : BARD_LINES[Math.floor(Math.random() * BARD_LINES.length)], ms: 1 });
+    if (li < 5) for (const p of Object.values(S.players)) { if (WORLD.bld[tileAt(p.x, p.y)] !== tav) continue; p.legN = li === 0 ? 1 : p.legN === li ? li + 1 : 0; if (p.legN === 5) { p.legN = 0; p.buffs.luck = now_() + 600000; tell(p, '🐉 Você ouviu a lenda inteira: a sorte do dragão te acompanha por 10 minutos (+15% de ouro dos monstros).'); sendStat(p); } }
     const inside = Object.values(S.npcs).filter(q => q !== bard && !q.dead && !q.sleeping && q.kind !== 'innkeeper' && WORLD.bld[tileAt(q.x, q.y)] === tav);
     for (const q of inside) { const r = Math.random(); if (!q.sitting && !q.walk && r < 0.35) near(q.x, q.y, { t: 'anim', w: 'n', id: q.id, a: 'dance', ms: 3200 }); else if (q.sitting && r < 0.25) near(q.x, q.y, { t: 'anim', w: 'n', id: q.id, a: 'talk', txt: ['👏', 'Bravo!', 'Toca outra!', 'Essa é das boas!'][Math.floor(Math.random() * 4)], ms: 1 }); }
     for (const p of Object.values(S.players)) if (WORLD.bld[tileAt(p.x, p.y)] === tav && now - (p.danceHintT || 0) > 600000) { p.danceHintT = now; tell(p, '🎵 O bardo está tocando! Aperte T e escolha Dançar (ou Brindar 🍻 com quem está perto).'); } }   /* dica de dança, uma vez a cada 10 min */
@@ -3087,7 +3165,7 @@ function jobSpots() {
 }
 function jobOffer(type, p) {
   const sp = jobSpots(), lv = k => profLv((p.prof || {})[k]);
-  if (type === 'water') return { type, title: 'Água para a taverna', giver: 'Greta', prof: 'biscateiro', pay: 10 + lv('biscateiro'), xp: 14, carry: 1, steps: [0, 1, 2].flatMap(() => [{ x: sp.well[0], y: sp.well[1], k: 'pick', t: 'Encher o balde no poço' }, { x: sp.tav[0], y: sp.tav[1], k: 'drop', t: 'Levar à porta da taverna' }]) };
+  if (type === 'water') return { type, title: 'Água para a taverna', giver: 'Brom', prof: 'biscateiro', pay: 10 + lv('biscateiro'), xp: 14, carry: 1, steps: [0, 1, 2].flatMap(() => [{ x: sp.well[0], y: sp.well[1], k: 'pick', t: 'Encher o balde no poço' }, { x: sp.tav[0], y: sp.tav[1], k: 'drop', t: 'Levar à porta da taverna' }]) };
   if (type === 'crates') return { type, title: 'Caixas para o Empório', giver: 'Borin', prof: 'biscateiro', pay: 12 + lv('biscateiro'), xp: 16, carry: 1, steps: [0, 1, 2].flatMap(() => [{ x: sp.crates[0], y: sp.crates[1], k: 'pick', t: 'Pegar uma caixa no armazém (junto à muralha)' }, { x: sp.emp[0], y: sp.emp[1], k: 'drop', t: 'Levar à porta do Empório' }]) };
   if (type === 'sweep') return { type, title: 'Varrer a praça do chafariz', giver: 'Tobias', prof: 'biscateiro', pay: 9 + lv('biscateiro'), xp: 12, steps: sp.sweep.map(([x, y]) => ({ x, y, k: 'sweep', t: 'Varrer este canto da praça' })) };
   if (type === 'delivery') {   // de um prédio com gente para outro; mais longe = paga mais (nível alto libera as longas)
@@ -3699,7 +3777,7 @@ function guardFightMonster(n, now, dt) {
 const FOODS = ['bread', 'cookedmeat', 'ointment', 'firewood', 'berries', 'herb', 'apple', 'stew', 'pie', 'tea', 'venison', 'pork'];
 const TRADE = {
   merchant: { sell: { bread: 20, ointment: 6, firewood: 15, rope: 6, lockpick: 4, axe: 3, pickaxe: 3, sickle: 3, pot_hp: 10, pot_mp: 8, pot_band: 15 }, buys: 'all' },
-  innkeeper: { sell: { ale: 30, bread: 15, cookedmeat: 10, stew: 6, pie: 4, tea: 8 }, buys: ['venison', 'pork', 'berries', 'apple', 'herb', 'cookedmeat'] },
+  innkeeper: { sell: { ale: 30, firemead: 12, bread: 15, cookedmeat: 10, stew: 6, pie: 4, tea: 8 }, buys: ['venison', 'pork', 'berries', 'apple', 'herb', 'cookedmeat'] },
   fruit: { sell: { apple: 20, berries: 20 }, buys: ['apple', 'berries', 'herb'] },
   smith: { sell: { axe: 4, pickaxe: 4, sickle: 4, lockpick: 3 }, buys: ['ore', 'gem', 'hardwood', 'log'] },
   st_apoth: { sell: { pot_hp: 8, pot_band: 12, herb: 12, ointment: 5, tea: 6 }, buys: ['herb', 'silverleaf', 'flaxraw'] },

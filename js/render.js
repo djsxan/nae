@@ -77,7 +77,7 @@ function drawParticles(ctx, ox, oy, now, dt) {
     if (p.kind === 'blood' || p.kind === 'shard' || p.kind === 'chip') p.vy += 0.00012 * ART * dt;
     const x = Math.round(p.x + ox), y = Math.round(p.y + oy);
     switch (p.kind) {
-      case 'smoke': softDab(ctx, x + Math.sin(age / 500 + p.seed) * 4, y, 5 + t * 14, '#8a8a8a', 0.4 * (1 - t)); break;
+      case 'smoke': softDab(ctx, x + Math.sin(age / 500 + p.seed) * 4, y, 5 + t * 14, p.color || '#8a8a8a', 0.4 * (1 - t)); break;
       case 'ember': ctx.fillStyle = `rgba(255,${150 + Math.round(p.seed * 9 % 80)},60,${1 - t})`; ctx.fillRect(x, y, 1, 1); G.lights.push({ x, y, r: 6, c: '255,150,60', a: 0.5 * (1 - t) }); break;
       case 'leaf': ctx.fillStyle = p.color; ctx.globalAlpha = t > 0.8 ? (1 - t) * 5 : 1; ctx.fillRect(x + Math.round(Math.sin(age / 400 + p.seed) * 4), y, 2, 1); ctx.globalAlpha = 1; break;
       case 'butterfly': {
@@ -181,6 +181,12 @@ function drawEffects1(ctx, ox, oy, now) {
           if (tk > 0.95) spawnPart('dust', tx - ox, ty - oy);
         }
         break;
+      case 'breath': {   // labareda curta saindo da boca (Hidromel de Fogo)
+        const b = tileW1(e.x2, e.y2), bx = b.x + ox, by = b.y + oy - 22, k = Math.min(1, t * 2.2), fade = 1 - t;
+        for (let q = 0; q < 6; q++) { const f = (q + 1) / 6 * k, px = cx + (bx - cx) * f + Math.sin(q * 3 + e.seed) * 2, py = cy - 22 + (by - cy + 22) * f - f * 6; glowDot(ctx, px, py, 2 + f * 7, 'rgba(255,' + (220 - q * 20) + ',120,' + fade + ')', 'rgba(255,90,20,0)'); }
+        if (!e.sp) { e.sp = 1; for (let q = 0; q < 8; q++) spawnPart('ember', b.x + (Math.random() - 0.5) * 8, b.y - 22); }
+        G.lights.push({ x: (cx + bx) / 2, y: cy - 22, r: 40 * fade + 10, c: '255,140,50', a: 0.9 }); break;
+      }
       case 'bigboom': {   // clarão, bola de fogo crescendo, onda de choque no chão, fumaça subindo e brasas voando
         const k = easeOut(Math.min(1, t * 1.6)), fade = 1 - t;
         if (t < 0.18) { ctx.fillStyle = 'rgba(255,245,220,' + (0.5 * (1 - t / 0.18)) + ')'; ctx.fillRect(-2000, -2000, 6000, 6000); }   // clarão
@@ -1074,7 +1080,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       const s = it.sp, kp = s.c.width / s.w, sx0 = (s.ax + it.col * 32) * kp, x0 = Math.max(0, sx0), x1 = Math.min(s.c.width, sx0 + 32.6 * kp);
       if (x1 > x0) { if (it.al) ctx.globalAlpha = it.al; ctx.drawImage(s.c, x0, 0, x1 - x0, s.c.height, it.sx - s.ax + x0 / kp, it.sy - s.ay, (x1 - x0) / kp, s.h); ctx.globalAlpha = 1; }
       if (!it.first) return;
-      if ((it.b.kind === 'tavern' || it.b.kind === 'house' || it.b.kind === 'smith' || it.b.wk === 'bakery') && Math.random() < (it.b.kind !== 'house' ? 0.14 : 0.05)) { const p = iso(it.b.x - 0.5 + it.b.w * 0.3, it.b.y - 0.5 + it.b.h * 0.35); spawnPart('smoke', p.sx, p.sy - (bldTopArt(it.b) * 0.9 + 30)); }
+      if ((it.b.kind === 'tavern' || it.b.kind === 'house' || it.b.kind === 'smith' || it.b.wk === 'bakery') && Math.random() < (it.b.kind !== 'house' ? 0.14 : 0.05)) { const p = iso(it.b.x - 0.5 + it.b.w * 0.3, it.b.y - 0.5 + it.b.h * 0.35); spawnPart('smoke', p.sx, p.sy - (bldTopArt(it.b) * 0.9 + 30), it.b.kind === 'tavern' && typeof dayInfo === 'function' && dayInfo().night ? { color: '#5ad86a' } : undefined); }
       if (it.b.kind === 'smith') { const p = iso(it.b.x - 0.5 + it.b.w * 0.5, it.b.y - 0.5 + it.b.h); G.lights.push({ x: p.sx + ox, y: p.sy + oy - 16, r: 62, c: '255,130,50', a: 1, flick: 1 }); if (Math.random() < 0.1) spawnPart('ember', p.sx, p.sy - 20); }
       return;
     }
@@ -1180,6 +1186,15 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     const col = b.kind === 'temple' ? '190,210,255' : '255,190,100';
     for (const [wx, wy, wz] of buildingWindows(b)) { const p = iso(wx, wy); G.lights.push({ x: p.sx + ox, y: p.sy + oy - wz, r: 34, c: col, a: 0.9 }); }
     const d = doorOf(b), p = iso(d.x, d.y); G.lights.push({ x: p.sx + ox, y: p.sy + oy - 30, r: 64, c: '255,175,90', a: 0.95, flick: 1 });
+    if (b.kind === 'tavern') {   /* Ronco do Dragão: vitrais acesos nas faixas e manchas de luz colorida no chão da rua */
+      const cxw = b.x + b.w / 2 - 0.5, cyw = b.y + b.h / 2 - 0.5, ddx = d.x - cxw, ddy = d.y - cyw, nx = Math.abs(ddx) > Math.abs(ddy) ? Math.sign(ddx) : 0, ny = nx ? 0 : Math.sign(ddy), tx = -ny, ty = nx, L = nx ? b.h : b.w;
+      const fx = nx ? cxw + nx * b.w / 2 : d.x, fy = ny ? cyw + ny * b.h / 2 : d.y, cols = ['255,190,90', '120,230,120', '255,110,90', '255,190,90', '120,160,255'];
+      for (let k = 0; k < 5; k++) { const u = (k - 2) * L / 5.2, wx = nx ? fx : cxw + tx * u, wy = ny ? fy : cyw + ty * u, q = iso(wx + nx * 0.05, wy + ny * 0.05), atDoor = Math.hypot(wx - (d.x - nx * 1.3), wy - (d.y - ny * 1.3)) < 0.75;
+        if (!atDoor) G.lights.push({ x: q.sx + ox, y: q.sy + oy - 26, r: 36, c: '255,200,120', a: 1 });
+        G.lights.push({ x: q.sx + ox, y: q.sy + oy - 62, r: 34, c: '255,200,120', a: 0.9 });
+        const g2 = iso(wx + nx * 1.1, wy + ny * 1.1); if (!atDoor) G.lights.push({ x: g2.sx + ox, y: g2.sy + oy, r: 48, c: cols[k], a: 1 }); }
+      for (const sd of [1, -1]) for (let k = 0; k < 3; k++) { const L2 = nx ? b.w : b.h, u = (k - 1) * L2 / 3.4, wx = nx ? cxw + nx * u : cxw + tx * sd * (b.w / 2 + 1.0), wy = ny ? cyw + ny * u : cyw + ty * sd * (b.h / 2 + 1.0), g3 = iso(wx, wy); G.lights.push({ x: g3.sx + ox, y: g3.sy + oy, r: 44, c: cols[(k * 2 + (sd > 0 ? 1 : 0)) % 5], a: 0.9 }); }
+    }
   }
   if (inside && day.dark > 0.05) { const b = inside.b, c = iso(b.x + b.w / 2 - 0.5, b.y + b.h / 2 - 0.5); G.lights.push({ x: c.sx + ox, y: c.sy + oy - 20, r: Math.max(b.w, b.h) * 22, c: '255,200,140', a: 1 }); }
   if (G.cellarDark && inside) { const b = inside.b, c = iso(b.x + b.w / 2 - 0.5, b.y + b.h / 2 - 0.5); G.lights = [{ x: c.sx + ox, y: c.sy + oy + (bldDims(b).H / floorsOf(b)) * HV - 20, r: 150, c: '255,180,100', a: 0.9, flick: 1 }]; }   // porão: só a luz das velas
