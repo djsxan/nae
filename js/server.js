@@ -461,7 +461,8 @@ function roll(p, mult = 1, tgt = null) {
   if (p.body) dmg *= ((p.lost || 0) & LOST.armA) ? (((p.pro || 0) & LOST.armA) ? 0.6 : 0.3) : ARM_DMG[PART_STATE(p.body.armA)];   // braço da arma ferido / perdido (gancho ajuda)
   dmg *= p._aimMul || 1;
   if (buffOn(p, 'whet')) dmg *= 1.15;
-  if (!p._melee && wandOf(p)) dmg *= 1 + WANDS[wandOf(p)].dmg + ((wandBonus(p) || {}).dmg || 0);   // varinha do mago (+ madeira e núcleo)
+  if (!p._melee && wandOf(p)) dmg *= 1 + WANDS[wandOf(p)].dmg + ((wandBonus(p) || {}).dmg || 0);
+  if (!p._melee && p.cls === 'mage' && !p.sheathed) dmg *= 1.5;   // cajado na mão (sacado com G): magia +50%   // varinha do mago (+ madeira e núcleo)
   dmg *= 1 + treeEff(p, 'dmg') + (p._el === 'fire' ? treeEff(p, 'fire') : p._el === 'ice' ? treeEff(p, 'ice') : 0) + useBonus(p, p._melee ? MELEE_USE[p.cls] : RANGED_USE[p.cls]);
   if (tgt && MON[tgt.type] && MON[tgt.type].beh) dmg *= 1 + treeEff(p, 'beast');
   if (buffOn(p, 'banner')) dmg *= 1.15;
@@ -844,7 +845,7 @@ function execSkill(p, i, m) {
     }
     case 'rain': anim('p', p, 'rain', tx, ty, shout); aoe('rain', tx, ty); for (const q of monstersNear(tx, ty, 1.6)) hitMonster(p, q, 1.3, 650); break;
     case 'agile': anim('p', p, 'dash', tx, ty, shout); aoe('agile', p.x, p.y, { id: p.id }); p.buffs.agile = now + 6000; break;
-    case 'fireball': { const d = flight(p.x, p.y, m.x, m.y) + 100; anim('p', p, 'fireball', tx, ty, { ...shout, proj: 'fire', d }); hitMonster(p, m, 2.6, d); aoe('boom', tx, ty, { d }); break; }
+    case 'fireball': { const d = flight(p.x, p.y, m.x, m.y) + 100; anim('p', p, 'fireball', tx, ty, { ...shout, proj: 'fire', d }); hitMonster(p, m, 2.6, d); setTimeout(() => fireballBoom(p, tx, ty, m.id), d); break; }
     case 'nova': anim('p', p, 'nova', tx, ty, shout); aoe('nova', p.x, p.y); for (const q of monstersNear(p.x, p.y, 2.5)) { q.slowUntil = now + 4000 * (1 + treeEff(p, 'slowDur')); hitMonster(p, q, 1.4, 200); } break;
     case 'heal':
       anim('p', p, 'heal', tx, ty, shout);
@@ -1905,6 +1906,7 @@ function weaverFollow(n, now, dt) {
 }
 function npcTick(now, dt) {
   initNpcs(); tavernTick(now); collectorSync(now);
+  if (now - (S.dispT || 0) > 3000) { S.dispT = now; try { dispatchCouriers(); } catch (e) { console.warn('entregas', e); } }   // mensageiros saem assim que ficam livres
   if (now - (S.visT || 0) > 1500) { S.visT = now; const night = typeof dayInfoS === 'function' ? dayInfoS().night : false, want = night ? 5 : 15, have = Object.values(S.npcs).filter(n => n.transient && !n.bizWorker && !n.bard && !n.collector).length; if (have < want && Math.random() < 0.5 && Object.keys(S.players).length) visSpawn(now); for (const n of Object.values(S.npcs)) if (n.transient && (n.dead || now - n.born > 600000) && !n.dragBy) visGone(n); }
   for (const n of Object.values(S.npcs)) {
     if (n.dead) continue;
@@ -2207,10 +2209,23 @@ function treeSkill(p, b, msg) {
   }
   p.mp -= nd.mp; p.tcd[b] = now + nd.cd; p.lastCombat = now; if (p.cls === 'mage') useGain(p, 'magic', 2); sendStat(p);
 }
+// explosão da Bola de Fogo: dano em volta (cheio perto, menos longe), empurra monstros e jogadores (o próprio mago também) e deixa o chão em chamas
+const BOOM_R = 2.1;
+function fireballBoom(p, x, y, skipId) {
+  if (!S.players[p.id]) return; const now = now_();
+  aoe('boom', x, y, { big: 1 }); near(x, y, { t: 'shake', s: 6 }, 14);
+  for (const q of Object.values(S.monsters)) { if (q.id === skipId || q.dead) continue; const d = dist(q.x, q.y, x, y); if (d > BOOM_R + (MON[q.type].rad || 0.3) * 0.5) continue;
+    const f = 1 - Math.min(1, d / BOOM_R) * 0.6; p._el = 'fire'; hitMonster(p, q, 1.5 * f, 0); p._el = null; if (S.monsters[q.id] && !MON[q.type].big) knockMon(q, { x, y }, now); }
+  for (const q of Object.values(S.players)) { if (q.downed || q.dev || (q.fl || 0) !== (p.fl || 0) || Math.abs((q.z || 0) - (p.z || 0)) > 0.5) continue; const d = dist(q.x, q.y, x, y); if (d > BOOM_R) continue;
+    const f = 1 - d / BOOM_R * 0.6, raw = Math.round((p.lvl * 2.2 + 12) * f * (q === p ? 0.6 : 1)); if (q !== p && inSafe(q.x, q.y)) witnessCrime(p, p.x, p.y);
+    damagePlayer(q, raw, { x, y, name: p.name }, 0, 'torso'); if (S.players[q.id] && !q.downed) { const a = Math.atan2(q.y - y, q.x - x) || 0; Net.toOne(q.id, { t: 'push', a, d: 1.2 * f + 0.4 }); } sendStat(q); }
+  const z = addZone(p, 'burn', x, y, 0, 3000); z.t = now + 300;
+}
 function addZone(p, k, x, y, a, ms) {
   const z = { k, x, y, a, by: p.id, until: now_() + ms, t: 0 }; (S.zones = S.zones || []).push(z);
   near(x, y, { t: 'zone', k, x, y, a, ms, z: p.z || 0 });
   if (k === 'firewall') { const l = []; for (let s = -2; s <= 2.01; s += 0.5) l.push([x - Math.sin(a) * s, y + Math.cos(a) * s, 1.1, ms]); near(x, y, { t: 'fires', l, nb: 1 }); }
+  if (k === 'burn') { const l = []; for (let k2 = 0; k2 < 9; k2++) { const an = k2 / 9 * Math.PI * 2 + Math.random(), r = k2 ? 0.5 + Math.random() * 1.1 : 0; l.push([x + Math.cos(an) * r, y + Math.sin(an) * r, 0.6 + Math.random() * 0.4, ms]); } near(x, y, { t: 'fires', l, nb: 1 }); }   // chão em chamas
   return z;
 }
 function removeZone(z) { S.zones = (S.zones || []).filter(q => q !== z); near(z.x, z.y, { t: 'zoneoff', k: z.k, x: z.x, y: z.y }); }
@@ -2222,6 +2237,8 @@ function zoneTick(now) {
     if (now < z.t) continue;
     if (z.k === 'trap') { z.t = now + 100; const q = Object.values(S.monsters).find(o => (o.alt || 0) < 1 && dist(o.x, o.y, z.x, z.y) < 0.75 + (MON[o.type].rad || 0.3) * 0.5); if (q) { hitMonster(p, q, 1.5, 0); if (S.monsters[q.id]) { q.stunUntil = Math.max(q.stunUntil, now + 3000); q.atk = null; } removeZone(z); } continue; }
     if (z.k === 'firewall') { z.t = now + 500; for (const q of Object.values(S.monsters)) { const ax = q.x - z.x, ay = q.y - z.y; if (Math.abs(-ax * Math.sin(z.a) + ay * Math.cos(z.a)) < 2.6 && Math.abs(ax * Math.cos(z.a) + ay * Math.sin(z.a)) < 0.9) { p._el = 'fire'; hitMonster(p, q, 0.6, 0); p._el = null; } } continue; }
+    if (z.k === 'burn') { z.t = now + 600; for (const q of Object.values(S.monsters)) if (!q.dead && dist(q.x, q.y, z.x, z.y) < 1.4) { p._el = 'fire'; hitMonster(p, q, 0.25, 0); p._el = null; }
+      for (const q of Object.values(S.players)) if (!q.downed && !q.dev && dist(q.x, q.y, z.x, z.y) < 1.1 && (q.fl || 0) === 0) { damagePlayer(q, Math.max(1, Math.round(p.lvl * 0.4 + 2)), { x: z.x, y: z.y, name: p.name }, 0, 'legL'); sendStat(q); } }
     if (z.k === 'banner' || z.k === 'sanct') {
       z.t = now + 1000; const r = z.k === 'banner' ? 4.5 : 4;
       for (const q of Object.values(S.players)) { if (q.downed || dist(q.x, q.y, z.x, z.y) > r) continue; q.buffs[z.k] = now + 1500; const h = Math.round(q.maxHp * (z.k === 'sanct' ? 0.03 * (1 + treeEff(p, 'holy')) : 0.015)); if (q.hp < q.maxHp) { q.hp = Math.min(q.maxHp, q.hp + h); sendStat(q); } }
@@ -2720,14 +2737,36 @@ function bizNeeds(owner) {   // o que cada negócio do dono precisa receber
 }
 function ownMaker(owner, g) { for (const pid in S.estate.r) { const r = S.estate.r[pid], P = PROPS_BY[pid]; if (r.owner === owner && r.biz && P.kind === 'workshop' && WORKS[P.wk] && WORKS[P.wk].make && WORKS[P.wk].make[g]) return true; } return false; }   // tem oficina própria que extrai isso? então espera o mensageiro
 function dispatchCouriers() {
-  const E = S.estate, free = Object.values(S.npcs || {}).filter(n => n.role === 'courier' && !n.job && !n.dead && !n.downed && !n.sleeping && (n.act === 'work' || n.act == null)); if (!free.length) return;
-  for (const pid in E.r) {
-    if (!free.length) return; const r = E.r[pid], P = PROPS_BY[pid]; if (!r.biz || P.kind !== 'workshop') continue; const B = r.biz;
-    if (Object.values(S.npcs).some(n => n.job && n.job.from === pid)) continue;
-    for (const need of bizNeeds(r.owner)) { if (need.pid === pid) continue; if (Object.values(S.npcs).some(n => n.job && n.job.to === need.pid)) continue; const have = Math.floor(B.store[need.g] || 0); if (have < 1) continue;
-      const q = Math.min(have, need.room, 30), n = free.shift(), wp = routeBetween(P, PROPS_BY[need.pid]);
-      n.job = { owner: r.owner, from: pid, to: need.pid, goods: { [need.g]: q }, raw: need.raw ? 1 : 0, wp: [[n.x, n.y], ...wp], i: 1, st: 'indo buscar', back: [] };
-      break; }
+  const E = S.estate; if (!E || !S.npcs) return; const now = Date.now();
+  const busy = Object.values(S.npcs).filter(n => n.role === 'courier' && n.job), pair = new Set(busy.map(n => n.job.from + '>' + n.job.to + (n.job.raw ? 'r' : '')));
+  const free = Object.values(S.npcs).filter(n => n.role === 'courier' && !n.job && !n.dead && !n.downed && !n.sleeping && (n.act === 'work' || n.act == null));
+  // pedidos de todos os donos, com a fonte (oficina do mesmo dono que tem a mercadoria)
+  const owners = new Set(Object.values(E.r).filter(r => r.biz).map(r => r.owner)), cands = [];
+  for (const ow of owners) for (const need of bizNeeds(ow)) {
+    const DB = E.r[need.pid] && E.r[need.pid].biz; if (!DB) continue; DB.wait = DB.wait || {}; const wk = need.g + (need.raw ? 'r' : '');
+    let best = null; for (const sp in E.r) { const r = E.r[sp], SP = PROPS_BY[sp]; if (sp === need.pid || r.owner !== ow || !r.biz || !SP || SP.kind !== 'workshop') continue; const have = Math.floor(r.biz.store[need.g] || 0); if (have >= 1 && (!best || have > best.have)) best = { sp, have }; }
+    if (!best) { delete DB.wait[wk]; continue; } if (!DB.wait[wk]) DB.wait[wk] = now;
+    if (!pair.has(best.sp + '>' + need.pid + (need.raw ? 'r' : ''))) cands.push({ ...need, owner: ow, from: best.sp, since: DB.wait[wk] });
+  }
+  cands.sort((x, y) => x.since - y.since);   // quem espera há mais tempo primeiro
+  for (const c of cands) {
+    if (!free.length) break; const key = c.from + '>' + c.pid + (c.raw ? 'r' : ''); if (pair.has(key)) continue;
+    const SB = E.r[c.from].biz, goods = {}; let tot = 0;
+    for (const o of cands) if (o.from === c.from && o.pid === c.pid && !!o.raw === !!c.raw && tot < 60) { const q = Math.min(Math.floor(SB.store[o.g] || 0), o.room, 60 - tot); if (q > 0) { goods[o.g] = (goods[o.g] || 0) + q; tot += q; } }   // leva tudo o que esse destino precisa dessa oficina
+    if (!tot) continue;
+    const n = free.sort((a, b) => dist(a.x, a.y, BUILDINGS[PROPS_BY[c.from].bi].x, BUILDINGS[PROPS_BY[c.from].bi].y) - dist(b.x, b.y, BUILDINGS[PROPS_BY[c.from].bi].x, BUILDINGS[PROPS_BY[c.from].bi].y)).shift();   // o mensageiro mais perto da oficina
+    n.job = { owner: c.owner, from: c.from, to: c.pid, goods, raw: c.raw ? 1 : 0, wp: [[n.x, n.y], ...routeBetween(PROPS_BY[c.from], PROPS_BY[c.pid])], i: 1, st: 'indo buscar', back: [] }; pair.add(key);
+  }
+}
+// carroça de reserva: quem espera há mais de 3 horas do jogo recebe direto da oficina do mesmo dono (sem depender dos mensageiros)
+function cartReserve() {
+  const E = S.estate; if (!E) return; const now = Date.now(), owners = new Set(Object.values(E.r).filter(r => r.biz).map(r => r.owner));
+  for (const ow of owners) for (const need of bizNeeds(ow)) {
+    const DR = E.r[need.pid], DB = DR && DR.biz; if (!DB || !DB.wait) continue; const wk = need.g + (need.raw ? 'r' : ''); if (!DB.wait[wk] || now - DB.wait[wk] < BIZ_HOUR_MS * 3) continue;
+    for (const sp in E.r) { const r = E.r[sp], SP = PROPS_BY[sp]; if (sp === need.pid || r.owner !== ow || !r.biz || !SP || SP.kind !== 'workshop') continue; const q = Math.min(Math.floor(r.biz.store[need.g] || 0), need.room, 30); if (q < 1) continue;
+      r.biz.store[need.g] -= q; r.biz.today.xfer = (r.biz.today.xfer || 0) + q * GOODS[need.g].p * SELL_K;
+      const tgt = need.raw ? (DB.raw = DB.raw || {}) : PROPS_BY[need.pid].kind === 'shop' ? DB.stock : DB.store; tgt[need.g] = (tgt[need.g] || 0) + q; delete DB.wait[wk];
+      bizLog(DB, 'A carroça da vila trouxe ' + q + ' ' + GOODS[need.g].n + ' de ' + SP.name + ' (os mensageiros estavam ocupados).'); break; }
   }
 }
 function courierTick(n, now, dt) {
@@ -2740,7 +2779,7 @@ function courierTick(n, now, dt) {
     }
     J.i++;
     if (J.i >= J.wp.length) {
-      if (J.st === 'levando') { const r = E.r[J.to]; if (r && r.biz) { const B = r.biz, tgt = J.raw ? (B.raw = B.raw || {}) : PROPS_BY[J.to].kind === 'shop' ? B.stock : B.store; let txt = []; for (const g in J.goods) { tgt[g] = (tgt[g] || 0) + J.goods[g]; txt.push(J.goods[g] + ' ' + GOODS[g].n); } bizLog(B, n.name.split(',')[0] + ' entregou ' + txt.join(', ') + (J.raw ? ' para a bancada' : '') + '.'); near(n.x, n.y, { t: 'tfx', k: 'ok', id: n.id }); } J.st = 'voltando'; J.wp = [...J.wp.slice().reverse().slice(1), [n.postX, n.postY]]; J.i = 0; estateSave(); }
+      if (J.st === 'levando') { const r = E.r[J.to]; if (r && r.biz) { const B = r.biz, tgt = J.raw ? (B.raw = B.raw || {}) : PROPS_BY[J.to].kind === 'shop' ? B.stock : B.store; let txt = []; for (const g in J.goods) { tgt[g] = (tgt[g] || 0) + J.goods[g]; txt.push(J.goods[g] + ' ' + GOODS[g].n); if (B.wait) delete B.wait[g + (J.raw ? 'r' : '')]; } bizLog(B, n.name.split(',')[0] + ' entregou ' + txt.join(', ') + (J.raw ? ' para a bancada' : '') + '.'); near(n.x, n.y, { t: 'tfx', k: 'ok', id: n.id }); } J.st = 'voltando'; J.wp = [...J.wp.slice().reverse().slice(1), [n.postX, n.postY]]; J.i = 0; estateSave(); }
       else n.job = null;
     }
   }
@@ -2813,7 +2852,7 @@ function bizHour(now) {
     }
   }
   for (const pid in E.r) if (E.r[pid].biz && (E.r[pid].biz.staff || []).length || Object.values(S.npcs || {}).some(n => n.bizWorker === pid)) staffSync(pid, E.r[pid]);
-  dispatchCouriers(); estateSave();
+  try { cartReserve(); } catch (e) { console.warn('carroça', e); } estateSave();
   for (const q of Object.values(S.players)) if (q.bizOpen) bizSend(q);
 }
 // débito diário + descanso em casa (roda a cada ~2 s); uma vez por hora do jogo, os negócios

@@ -1253,6 +1253,7 @@ if (!TEST3D) {
   const sq = { x: CENTER - 32 - 37, y: CENTER + 4 };   // pracinha da vila do oeste (x0 - 37)
   NPCS.push({ id: 'supplier', kind: 'supplier', role: 'supplier', name: 'Jonas, o Entregador do Fornecedor', x: C + 3.6, y: C + 27 });   // espera as encomendas perto do portão principal
   [['courier1', 'Pip, o Mensageiro', -1.2, 0], ['courier2', 'Lia Ventura, a Mensageira', 1.2, -0.6], ['courier3', 'Tomé Passolargo, o Carroceiro', 1.6, 1.6]].forEach(([id, name, dx, dy]) => NPCS.push({ id, kind: id, role: 'courier', name, x: sq.x + dx, y: sq.y + dy }));
+  [['courier4', 'courier1', 'Bento Pé-Ligeiro, o Mensageiro', -1.6, 1.4], ['courier5', 'courier2', 'Clara do Moinho, a Mensageira', 2.4, -0.2], ['courier6', 'courier3', 'Ruy Carreteiro, o Carroceiro', -2.2, -1.0]].forEach(([id, kind, name, dx, dy]) => NPCS.push({ id, kind, role: 'courier', name, x: sq.x + dx, y: sq.y + dy }));   // mais mensageiros
 }
 // ---------- economia dos negócios: mercadorias, o que cada loja vende e o que cada oficina faz ----------
 const GOODS = {

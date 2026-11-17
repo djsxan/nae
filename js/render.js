@@ -181,6 +181,23 @@ function drawEffects1(ctx, ox, oy, now) {
           if (tk > 0.95) spawnPart('dust', tx - ox, ty - oy);
         }
         break;
+      case 'bigboom': {   // clarão, bola de fogo crescendo, onda de choque no chão, fumaça subindo e brasas voando
+        const k = easeOut(Math.min(1, t * 1.6)), fade = 1 - t;
+        if (t < 0.18) { ctx.fillStyle = 'rgba(255,245,220,' + (0.5 * (1 - t / 0.18)) + ')'; ctx.fillRect(-2000, -2000, 6000, 6000); }   // clarão
+        ctx.strokeStyle = 'rgba(255,200,140,' + (0.8 * fade) + ')'; ctx.lineWidth = 2.5 * fade + 0.5; ctx.beginPath(); ctx.ellipse(cx, cy, 8 + easeOut(t) * 70, (8 + easeOut(t) * 70) / 2, 0, 0, 7); ctx.stroke();   // onda no chão
+        ctx.fillStyle = 'rgba(40,20,10,' + (0.35 * fade) + ')'; ctx.beginPath(); ctx.ellipse(cx, cy, 12 + k * 40, 6 + k * 20, 0, 0, 7); ctx.fill();   // chão chamuscado
+        { const fb = Math.max(0, 1 - t * 1.4), R0 = 6 + k * 22;   // bola de fogo sólida (aparece de dia também)
+          for (let q = 0; q < 9; q++) { const a = q / 9 * Math.PI * 2 + e.seed + t * 2, rr = R0 * 0.55, px2 = cx + Math.cos(a) * rr, py2 = cy - 12 - k * 10 + Math.sin(a) * rr * 0.7; ctx.fillStyle = 'rgba(' + (q % 2 ? '255,120,30,' : '255,170,50,') + (0.85 * fb) + ')'; ctx.beginPath(); ctx.arc(px2, py2, R0 * 0.55, 0, 7); ctx.fill(); }
+          ctx.fillStyle = 'rgba(255,215,110,' + (0.95 * fb) + ')'; ctx.beginPath(); ctx.arc(cx, cy - 12 - k * 10, R0 * 0.7, 0, 7); ctx.fill();
+          ctx.fillStyle = 'rgba(255,250,225,' + fb + ')'; ctx.beginPath(); ctx.arc(cx, cy - 12 - k * 10, R0 * 0.38, 0, 7); ctx.fill(); }
+        glowDot(ctx, cx, cy - 10 - k * 8, 8 + k * 30, 'rgba(255,240,200,' + fade + ')', 'rgba(255,90,20,0)');
+        glowDot(ctx, cx, cy - 12 - k * 10, 5 + k * 18, 'rgba(255,255,240,' + (fade * 0.9) + ')', 'rgba(255,170,60,0)');
+        for (let q = 0; q < 7; q++) { const a = q / 7 * Math.PI * 2 + e.seed, rr = k * 26, sx = cx + Math.cos(a) * rr, sy = cy - 10 + Math.sin(a) * rr * 0.5 - t * 18; glowDot(ctx, sx, sy, 5 + k * 9, 'rgba(255,' + (150 + q * 10) + ',60,' + (fade * 0.8) + ')', 'rgba(200,60,20,0)'); }
+        if (t > 0.25) for (let q = 0; q < 5; q++) { const sy = cy - 20 - (t - 0.25) * 70 - q * 6, sx = cx + Math.sin(q * 2 + e.seed) * 10; ctx.fillStyle = 'rgba(60,50,45,' + (0.35 * fade) + ')'; ctx.beginPath(); ctx.arc(sx, sy, 6 + (t - 0.25) * 22, 0, 7); ctx.fill(); }   // fumaça
+        if (!e.sp) { e.sp = 1; for (let q = 0; q < 34; q++) spawnPart(q % 3 ? 'spark' : 'ember', c.x + (Math.random() - 0.5) * 10, c.y - 10, { color: 'rgba(255,' + (140 + Math.floor(Math.random() * 90)) + ',60,A)' }); for (let q = 0; q < 10; q++) spawnPart('dust', c.x + (Math.random() - 0.5) * 30, c.y); }
+        G.lights.push({ x: cx, y: cy - 10, r: 140 * fade + 20, c: '255,140,50', a: 1 });
+        break;
+      }
       case 'boom': {
         const r = 5 + easeOut(t) * 17;
         glowDot(ctx, cx, cy - 7, r, `rgba(255,250,230,${1 - t})`, 'rgba(230,70,30,0)');
@@ -236,7 +253,26 @@ function drawMagicCircle(ctx, cx2, cy2, now, el, prog) {
   ctx.restore();
   for (let i = l0; i < G.lights.length; i++) { G.lights[i].x *= ART; G.lights[i].y *= ART; }
 }
+// fogo: dois anéis de runas girando em sentidos opostos, pentagrama que vai se desenhando, brilho no chão e brasas subindo
+function drawFireCircle(ctx, cx, cy, now, prog) {
+  const R1 = 16, R2 = 12.5, glow = 0.35 + prog * 0.55;
+  ctx.save(); ctx.translate(cx, cy);
+  const gr = ctx.createRadialGradient(0, 0, 2, 0, 0, R1 * 1.6); gr.addColorStop(0, 'rgba(255,170,60,' + (0.35 * glow) + ')'); gr.addColorStop(1, 'rgba(255,90,20,0)'); ctx.fillStyle = gr; ctx.save(); ctx.scale(1, 0.5); ctx.beginPath(); ctx.arc(0, 0, R1 * 1.6, 0, 7); ctx.fill(); ctx.restore();
+  ctx.scale(1, 0.5); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+  const ring = (r, w, a) => { ctx.strokeStyle = 'rgba(255,190,90,' + a + ')'; ctx.lineWidth = w; ctx.beginPath(); ctx.arc(0, 0, r, 0, 7); ctx.stroke(); };
+  ring(R1 + 1.2, 0.6, 0.7 * glow); ring(R1 - 1.2, 0.5, 0.6 * glow); ring(R2 - 2, 0.6, 0.7 * glow);
+  const runes = (r, n, rot, a) => { ctx.save(); ctx.rotate(rot); ctx.strokeStyle = 'rgba(255,220,140,' + a + ')'; ctx.lineWidth = 0.55; for (let k = 0; k < n; k++) { ctx.save(); ctx.rotate(k / n * Math.PI * 2); ctx.translate(r, 0); ctx.beginPath(); const t = (k * 7) % 4; if (t === 0) { ctx.moveTo(-0.8, -1); ctx.lineTo(0.8, 0); ctx.lineTo(-0.8, 1); } else if (t === 1) { ctx.moveTo(0, -1.1); ctx.lineTo(0, 1.1); ctx.moveTo(-0.8, -0.4); ctx.lineTo(0.8, 0.4); } else if (t === 2) { ctx.arc(0, 0, 0.8, 0.3, 5.2); } else { ctx.moveTo(-0.8, 1); ctx.lineTo(0, -1); ctx.lineTo(0.8, 1); ctx.moveTo(-0.4, 0.2); ctx.lineTo(0.4, 0.2); } ctx.stroke(); ctx.restore(); } ctx.restore(); };
+  runes(R1, 16, now / 1400, 0.85 * glow); runes(R2 + 0.2, 12, -now / 1000, 0.75 * glow);
+  // pentagrama se desenhando conforme a conjuração avança
+  const pts = []; for (let k = 0; k < 5; k++) { const a = -Math.PI / 2 + k * 4 * Math.PI / 5 + now / 2600; pts.push([Math.cos(a) * (R2 - 2), Math.sin(a) * (R2 - 2)]); }
+  const segs = Math.min(5, prog * 5.4); ctx.strokeStyle = 'rgba(255,230,160,' + (0.9 * glow) + ')'; ctx.lineWidth = 0.9; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let k = 1; k <= Math.ceil(segs); k++) { const A = pts[(k - 1) % 5], B = pts[k % 5], f = Math.min(1, segs - (k - 1)); ctx.lineTo(A[0] + (B[0] - A[0]) * f, A[1] + (B[1] - A[1]) * f); } ctx.stroke();
+  ctx.restore();
+  if (Math.random() < 0.35 + prog * 0.4) { const a = Math.random() * Math.PI * 2, rr = Math.random() * R1; spawnPart('ember', (cx + Math.cos(a) * rr) * ART - G.view.ox, (cy + Math.sin(a) * rr * 0.5) * ART - G.view.oy); }   // brasas subindo
+  G.lights.push({ x: cx, y: cy - 3, r: 34 + prog * 14, c: '255,150,60', a: 0.6 + prog * 0.4 });
+}
 function drawMagicCircle1(ctx, cx, cy, now, el, prog) {
+  if (el === 'fire') return drawFireCircle(ctx, cx, cy, now, prog);
   const col = { fire: '250,150,70', ice: '130,210,250', holy: '240,215,110', wind: '120,220,170', phys: '230,230,230' }[el] || '196,181,253';
   ctx.save(); ctx.translate(cx, cy); ctx.scale(1, 0.5);
   ctx.strokeStyle = `rgba(${col},0.9)`; ctx.lineWidth = 1;
@@ -315,7 +351,7 @@ function heroPoseFor(e, now) {
   if (!P.act && (e === G.me ? G.parrying : e.parrying)) { P.act = { k: 'blk_front', f: 6 }; P.run = 0; }
   if (!e.isNpc && e.cls === 'knight' && (e === G.me ? (G.me.shp ?? 100) <= 0 : (e.stb & 32768))) P.shb = 1;
   if (!P.act && (e === G.me ? performance.now() < (G.stunUntil || 0) : e.stunned)) P.act = { k: 'hurt', f: 5 };
-  if (e.cast && e.cast.end > now) P.act = { k: 'cast', f: Math.floor(now / 70) % 12 };
+  if (e.cast && e.cast.end > now) P.act = { k: e.cast.el === 'fire' && e.cls === 'mage' ? 'castup' : 'cast', f: Math.floor(now / 70) % 12 };
   if (!P.act && e.emote && !e.walking) { const ms = ACT_MS[e.emote.k], t = (now - e.emote.t0) / ms; if (e.emote.k === 'dance') P.act = { k: 'dance', f: Math.floor(t * 12) % 12 }; else if (e.emote.k === 'adore') P.act = { k: 'adore', f: t < 0.8 ? Math.floor(t * 12) : 9 }; else if (t < 1) P.act = { k: e.emote.k + (e.cls === 'knight' && ACTS[e.emote.k + '_k'] ? '_k' : ''), f: Math.min(11, Math.floor(t * 12)) }; else e.emote = null; }
   else if (e.walking && e.emote) e.emote = null;
   if (e.sit && !P.act) { P.sit = e.sit.chair ? 'c' : 'g'; P.walk = -1; e._sseed = e._sseed ?? Math.random() * 20000; const sv = Math.floor((now + e._sseed) / 6500) % 3; if (sv) P.sv = sv; return P; }

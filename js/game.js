@@ -115,6 +115,7 @@ function clientOnServer(m) {
     case 'pstat': {
       const e = G.me; if (!e || m.id !== G.myId) break;
       const oldLvl = e.lvl; e.wi = m.wi || null; e.ck = m.ck || 0;
+      { const sig = JSON.stringify(m.tree || {}); if (sig !== G._treeSig) { G._treeSig = sig; setTimeout(() => { if (G.started && typeof buildHotbar === 'function') buildHotbar(); }, 0); } }   // a árvore chegou (entrada/reconexão): mostra as habilidades equipadas
       if (m.slow) G.slowUntil = now + m.slow;
       if (m.knock) G.knockUntil = now + m.knock;
       G.cst = m.cst ?? CST_MAX; G.cstMax = m.cstMax || CST_MAX; if (G.stam == null || Math.abs(G.stam - G.cst) > 25 || G.cst < 1) G.stam = G.cst; /* a estamina segue o servidor (defesa e esquiva também gastam) */ e.arw = m.arw || []; e.esc = m.esc || 0; e.chk = m.chk || 0; e.bnd = m.bnd || ''; e.bndE = m.bndE || 0; e.jl = m.jl || 0; e.cell = m.cell ?? -1; if (m.tree) e.tree = m.tree; if (m.use) e.use = m.use; if (typeof onProgStat === 'function') onProgStat(); G.stunUntil = now + (m.stun || 0); G.ripUntil = now + (m.rip || 0);
@@ -172,6 +173,7 @@ function clientOnServer(m) {
       break;
     }
     case 'aoe':
+      if (m.a === 'boom' && m.big) { G.effects.push({ a: 'bigboom', x: m.x, y: m.y, t0: now, dur: 1100, seed: Math.floor(Math.random() * 1000) }); break; }   // explosão da Bola de Fogo
       G.effects.push({ a: m.a, x: m.x, y: m.y, x2: m.x2, y2: m.y2, k: m.k, id: m.id, t0: now + (m.d || 0), dur: { whirl: 520, warcry: 800, wall: 600, agile: 600, potion: 500, pierce: 500, rain: 900, boom: 500, nova: 700, heal: 1000, lvlup: 1600, meteor: 1600 }[m.a] || 600, seed: Math.floor(Math.random() * 1000) });
 
       break;
@@ -505,7 +507,9 @@ function setTarget(id) {
 }
 // espaços com habilidade da árvore: salvos por herói neste navegador
 function slotKey() { return 'nae-slots|' + (G.me ? charKey(G.me.name, G.me.cls) : ''); }
-function slotTreeLoad() { try { G.slotTree = JSON.parse(localStorage.getItem(slotKey()) || 'null') || [null, null, null, null]; } catch (e) { G.slotTree = [null, null, null, null]; } G.tcdEnd = G.tcdEnd || [0, 0, 0, 0]; }
+function slotTreeLoad() { try { G.slotTree = JSON.parse(localStorage.getItem(slotKey()) || 'null'); } catch (e) { G.slotTree = null; }
+  if (!G.slotTree && G.me) { const sv = loadChars()[charKey(G.me.name, G.me.cls)]; if (sv && Array.isArray(sv.slots)) G.slotTree = sv.slots; }   // reserva: espaços guardados junto com o herói
+  G.slotTree = G.slotTree || [null, null, null, null]; G.tcdEnd = G.tcdEnd || [0, 0, 0, 0]; }
 function slotTreeSave() { try { localStorage.setItem(slotKey(), JSON.stringify(G.slotTree)); } catch (e) { } }
 function slotTreeNode(i) { const s = G.slotTree && G.slotTree[i]; if (!s || !G.me) return null; const br = TREE[G.me.cls] && TREE[G.me.cls][s.b], nd = br && br.nodes[s.n === 5 ? 5 : 4]; return nd && nd.id === s.id && G.me.tree && G.me.tree[nd.id] ? { ...s, nd, br } : null; }
 function slotEquip(i, b, n, id) { if (!G.slotTree) slotTreeLoad(); for (let k = 0; k < 4; k++) if (G.slotTree[k] && G.slotTree[k].id === id) G.slotTree[k] = null; G.slotTree[i] = id ? { b, n, id } : null; slotTreeSave(); buildHotbar(); }
@@ -557,7 +561,7 @@ function saveChar() {
   const me = G.me;
   try {
     const all = loadChars();
-    all[charKey(me.name, me.cls)] = { uid: G.myUid || undefined, wandInfo: me.wi || undefined, cloak: me.ck || 0, name: me.name, cls: me.cls, skin: me.skin, color: me.color, lvl: me.lvl, xp: me.xp, gold: me.gold, pots: me.pots, food: me.food, water: me.water, infect: me.infect, hasSkin: me.hasSkin, tree: me.tree, prof: me.prof, feats: me.feats, freeLimb: me.freeLimb, shieldHp: me.shp, use: me.use, jailLeft: me.jl || 0, body: me.body, bleed: me.bleed, lost: (me.lost || 0) & 30, pro: me.pro || 0, inv: me.inv, quests: me.quests, qdone: me.qdone, t: Date.now() };
+    all[charKey(me.name, me.cls)] = { slots: G.slotTree || undefined, uid: G.myUid || undefined, wandInfo: me.wi || undefined, cloak: me.ck || 0, name: me.name, cls: me.cls, skin: me.skin, color: me.color, lvl: me.lvl, xp: me.xp, gold: me.gold, pots: me.pots, food: me.food, water: me.water, infect: me.infect, hasSkin: me.hasSkin, tree: me.tree, prof: me.prof, feats: me.feats, freeLimb: me.freeLimb, shieldHp: me.shp, use: me.use, jailLeft: me.jl || 0, body: me.body, bleed: me.bleed, lost: (me.lost || 0) & 30, pro: me.pro || 0, inv: me.inv, quests: me.quests, qdone: me.qdone, t: Date.now() };
     localStorage.setItem(SAVE_KEY, JSON.stringify(all));
   } catch (e) { }
 }
@@ -1304,7 +1308,12 @@ function worldTry() {
     worldRetry();
   });
 }
+// versão publicada no site (lida do index.html): quem estiver com uma versão velha atualiza antes de virar anfitrião, e todos conferem a cada 3 min
+function liveVersion(cb) { if (location.protocol === 'file:') { cb(null); return; } fetch('index.html?nv=' + Date.now(), { cache: 'no-store' }).then(r => r.text()).then(t => { const m = new RegExp('[?]v=([0-9]+[.][0-9]+[.][0-9]+)').exec(t); cb(m ? 'v' + m[1] : null); }).catch(() => cb(null)); }
+function updateNow(v) { netMsg('Nova versão do jogo (' + v + '). Atualizando…'); if (Net.isHost && typeof worldBroadcast === 'function') worldBroadcast(); try { if (typeof saveChar === 'function' && G.me) saveChar(); } catch (e) { } setTimeout(() => location.replace(location.pathname + '?v=' + Date.now()), 1500); }
+setInterval(() => liveVersion(v => { if (v && verNum(v) > verNum(VERSION)) updateNow(v); }), 180000);
 function worldHost() {
+  if (!WN.verOk) { WN.busy = true; liveVersion(v => { WN.busy = false; WN.verOk = true; if (v && verNum(v) > verNum(VERSION)) { updateNow(v); return; } worldHost(); }); return; }
   WN.busy = true; Net.reset(); Net.onClient = hostOnClient; Net.onServer = clientOnServer; Net.onPeerLeave = hostOnLeave;
   Net.host(WN.id, err => {
     WN.busy = false;
