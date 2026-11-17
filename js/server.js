@@ -2351,7 +2351,7 @@ function startHostLoop() {
 //  fica no cofre do negócio (vá buscar). Tudo guardado neste reino (no navegador de quem hospeda).
 // ============================================================
 const ESTATE_KEY = 'nae-world-estate-v1', ESTATE_AUTH_MAX = 6, ESTATE_CHEST_SLOTS = 48, ESTATE_ABANDON_DAYS = 30, BIZ_MAX = 9999, BIZ_OFFLINE_MS = 2 * ESTATE_DAY_MS;
-const SALARY = { shop: 6, workshop: 8, bank: 30, hotel: 6 }, SAFE_CAP = 500, WS_CAP = 120, SHOP_CAP = 40, THEFT = [0.06, 0.04, 0.02, 0.01];
+const SALARY = { shop: 6, workshop: 8, bank: 30, hotel: 6 }, SAFE_CAP = 500, WS_CAP = 400, SHOP_CAP = 120, THEFT = [0.06, 0.04, 0.02, 0.01];
 const estOwner = p => String(p.name || '').trim().toLowerCase() + '|' + p.cls + (p.uid ? '#' + p.uid : '');   // heróis novos têm código único: não herdam casa, negócios nem banco de um herói antigo
 const estDay = () => Math.floor(Date.now() / ESTATE_DAY_MS);
 const isBizProp = P => P && (P.kind === 'shop' || P.kind === 'workshop' || P.kind === 'bank' || P.kind === 'hotel') && P.npc !== 'a Guarda' && !(P.kind === 'workshop' && P.npc && !P.wk);
@@ -2613,7 +2613,7 @@ function estateMsg(p, m) {
   }
 }
 // ---------- gestão de um negócio (menu) ----------
-const shopCap = B => SHOP_CAP + 40 * (B.up.shelf || 0), safeCap = B => SAFE_CAP * (1 + (B.up.safe || 0)), stockSum = o => Object.values(o).reduce((a, b) => a + b, 0);
+const shopCap = B => SHOP_CAP + 80 * (B.up.shelf || 0), safeCap = B => SAFE_CAP * (1 + (B.up.safe || 0)), stockSum = o => Object.values(o).reduce((a, b) => a + b, 0);
 function atBiz(p, P) { if (WORLD.bld[tileAt(p.x, p.y)] === P.bi) return true; const st = S.npcs && Object.values(S.npcs).find(n => n.bi === P.bi && n.role); return !!st && dist(p.x, p.y, st.x, st.y) < 4; }
 function bizSend(p) { const pid = p.bizOpen, r = pid && S.estate && S.estate.r[pid]; if (!r || r.owner !== estOwner(p) || !r.biz) { Net.toOne(p.id, { t: 'biz', pid, none: 1 }); return; } Net.toOne(p.id, { t: 'biz', pid, b: { ...r.biz, cofre: Math.floor(r.biz.cofre) }, staffTr: STAFF_TR, mode: r.mode || 'rent', at: atBiz(p, PROPS_BY[pid]), info: recInfo(pid), cour: courierJobs(r.owner) }); }
 function bizMsg(p, m) {
@@ -2641,6 +2641,13 @@ function bizMsg(p, m) {
       }
       if (!put) { tell(p, 'Este negócio não usa ' + LOOT[k].name.toLowerCase() + '.'); return; }
       p.inv[k] -= put; if (!p.inv[k]) delete p.inv[k]; sendStat(p); break;
+    }
+    case 'takeg': {   // pegar mercadoria do depósito (oficina) ou das prateleiras (loja) para a mochila
+      if (!atBiz(p, P)) { tell(p, 'Para pegar do depósito, venha até o negócio.'); return; }
+      const g = String(m.g), it = GOOD_TAKE[g], st = P.kind === 'shop' ? B.stock : B.store; if (!it || !st) { tell(p, 'Isso não dá para levar na mochila.'); return; }
+      let n = Math.min(clamp(m.n | 0, 1, 99), Math.floor(st[g] || 0)); if (n <= 0) return;
+      if (it === 'pot_hp') p.pots.hp = (p.pots.hp || 0) + n; else { if (!p.inv[it] && Object.keys(p.inv).length >= INV_SLOTS) { tell(p, 'Sua mochila está cheia.'); return; } p.inv[it] = (p.inv[it] || 0) + n; }
+      st[g] -= n; if (st[g] <= 0) delete st[g]; bizLog(B, p.name + ' pegou ' + n + ' ' + GOODS[g].n + (P.kind === 'shop' ? ' das prateleiras.' : ' do depósito.')); tell(p, 'Você pegou ' + n + ' ' + GOODS[g].n + '.'); sendStat(p); break;
     }
     case 'rs': { if (P.kind !== 'shop') return; const g = String(m.g); if (!(SHOP_GOODS[P.shopType] || []).includes(g)) return; B.rs = B.rs || {}; const mn = clamp(m.mn | 0, 0, 200), mx = clamp(m.mx | 0, mn + 1, 300); B.rs[g] = [mn, mx]; break; }
     case 'rson': { B.rsOn = !B.rsOn; bizLog(B, B.rsOn ? 'Reposição automática ligada (paga pelo banco).' : 'Reposição automática desligada.'); break; }
@@ -2699,16 +2706,19 @@ function routeBetween(A, B) {   // pontos de passagem curtos (o pathfinding não
   out.push(b); const tb = BUILDINGS[B.bi], st = S.npcs && Object.values(S.npcs).find(n => n.bi === B.bi && n.role && n.role !== 'courier'); out.push(doorTile(tb)); if (st) out.push(clerkFront(tb, st)); return out;   /* na frente da balconista, do lado da porta */
 }
 function courierJobs(owner) { return Object.values(S.npcs || {}).filter(n => n.role === 'courier' && n.job && n.job.owner === owner).map(n => ({ name: n.name.split(',')[0], g: n.job.goods, to: PROPS_BY[n.job.to].name, st: n.job.st })); }
-const BENCH_CAP = 60;   // madeira que cabe na bancada de entalhe
+const BENCH_CAP = 150;
+// mercadoria → item da mochila (o que dá para pegar dos depósitos)
+const GOOD_TAKE = { wood: 'log', ore: 'ore', crystal: 'gem', herb: 'herb', flax: 'flaxraw', woodgoods: 'wand', wheat: 'wheat', fruit: 'apple', loaves: 'bread', pies: 'pie', paper: 'map', potion: 'pot_hp' };   // madeira que cabe na bancada de entalhe
 function bizNeeds(owner) {   // o que cada negócio do dono precisa receber
   const E = S.estate, out = [];
   for (const pid in E.r) { const r = E.r[pid]; if (r.owner !== owner || !r.biz) continue; const P = PROPS_BY[pid], B = r.biz;
     if (P.kind === 'shop') { const room = shopCap(B) - stockSum(B.stock); for (const g of SHOP_GOODS[P.shopType] || []) if (room > 0) out.push({ pid, g, room });
       if (P.shopType === 'arcane') { const rr = BENCH_CAP - Math.floor((B.raw || {}).wood || 0); if (rr >= 4) out.push({ pid, g: 'wood', room: rr, raw: 1 }); } }   // madeira para a bancada de entalhe
-    else { const W = WORKS[P.wk]; if (W.recipes && B.recipe) for (const g in W.recipes[B.recipe]) { const room = WS_CAP - stockSum(B.store); if (room > 0) out.push({ pid, g, room: Math.min(room, 20) }); } } }
+    else { const W = WORKS[P.wk]; if (W && W.recipes && B.recipe) { const want = new Set(Object.keys(W.recipes[B.recipe])); for (const r0 in W.recipes) for (const g in W.recipes[r0]) want.add(g);   // ingredientes de todas as receitas (a padaria também recebe frutas)
+      for (const g of want) { const room = WS_CAP - stockSum(B.store), mine = Math.floor(B.store[g] || 0); if (room > 0 && mine < WS_CAP / 3) out.push({ pid, g, room: Math.min(room, WS_CAP / 3 - mine, 40) }); } } } }
   return out.sort((x, y) => (PROPS_BY[x.pid].kind === 'workshop' ? 0 : 1) - (PROPS_BY[y.pid].kind === 'workshop' ? 0 : 1));   // oficinas que transformam primeiro
 }
-function ownMaker(owner, g) { for (const pid in S.estate.r) { const r = S.estate.r[pid], P = PROPS_BY[pid]; if (r.owner === owner && r.biz && P.kind === 'workshop' && WORKS[P.wk].make && WORKS[P.wk].make[g]) return true; } return false; }   // tem oficina própria que extrai isso? então espera o mensageiro
+function ownMaker(owner, g) { for (const pid in S.estate.r) { const r = S.estate.r[pid], P = PROPS_BY[pid]; if (r.owner === owner && r.biz && P.kind === 'workshop' && WORKS[P.wk] && WORKS[P.wk].make && WORKS[P.wk].make[g]) return true; } return false; }   // tem oficina própria que extrai isso? então espera o mensageiro
 function dispatchCouriers() {
   const E = S.estate, free = Object.values(S.npcs || {}).filter(n => n.role === 'courier' && !n.job && !n.dead && !n.downed && !n.sleeping && (n.act === 'work' || n.act == null)); if (!free.length) return;
   for (const pid in E.r) {
@@ -2781,7 +2791,7 @@ function bizHour(now) {
           const price = GOODS[g].p * M.k; B.stock[g]--; if (!B.stock[g]) delete B.stock[g]; B.cofre += price; B.today.rev += price; B.today.sold++; B.fullWarn = 0; saleFx(clerkOf(P.bi), null); }
       }
     } else {
-      const sk = seasonNow().k, W = WORKS[P.wk], k = (workerAt(P.bi) ? 1.5 : 1) * ownerWorkMul(r, P) / (ownerWorkMul(r, P) > 1 ? 1.5 : 1) * staffMul(B) * (1 + 0.6 * (B.up.tools || 0)) * (P.wk === 'farm' ? (sk === 'winter' ? 0.4 : sk === 'summer' ? 1.25 : 1) : 1);
+      const sk = seasonNow().k, W = WORKS[P.wk] || {}, k = (workerAt(P.bi) ? 1.5 : 1) * ownerWorkMul(r, P) / (ownerWorkMul(r, P) > 1 ? 1.5 : 1) * staffMul(B) * (1 + 0.6 * (B.up.tools || 0)) * (P.wk === 'farm' ? (sk === 'winter' ? 0.4 : sk === 'summer' ? 1.25 : 1) : 1);
       if (!B.closed) {
         if (W.make && !COLL_TOOL[P.wk]) for (const g in W.make) { B.frac[g] = (B.frac[g] || 0) + W.make[g] * k; const q = Math.floor(B.frac[g]); B.frac[g] -= q; if (stockSum(B.store) + q <= WS_CAP) B.store[g] = (B.store[g] || 0) + q; }
         if (W.recipes && B.recipe) { const rec = W.recipes[B.recipe]; B.frac._b = (B.frac._b || 0) + k; let nb = Math.floor(B.frac._b); B.frac._b -= nb;

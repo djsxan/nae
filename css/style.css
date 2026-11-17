@@ -663,3 +663,4 @@ body.touch #chat { width: 260px; } body.touch #chat-log { height: 70px; }
 .rep-bi em { position: absolute; top: 0; bottom: 0; border-radius: 3px; }
 body.nae.tp-open[data-tp=realm] .scroll { bottom: auto; }
 body.nae[data-tp=heroes] .scroll > #nae-cont { position: sticky; bottom: -26px; margin: 14px -30px -26px; padding: 14px 30px 18px; background: linear-gradient(180deg, rgba(14,10,8,0), rgba(14,10,8,.96) 30%); }
+.est-btn.mini { padding: 2px 7px; font-size: 11px; margin-left: 4px; }

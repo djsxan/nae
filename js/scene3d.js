@@ -2142,7 +2142,7 @@ function mInterior(b, fl = 0) {
         g.add(mk(new THREE.BoxGeometry(Math.min(3, w - 1.4), 0.015, Math.min(h - 1.4, b.kind === 'castle' ? h - 3 : 2)).translate(0, 0.07, b.kind === 'castle' ? (h - 3) / 2 - 0.5 : 0.5), cloth(b.kind === 'castle' ? '#8a1a1c' : ['#7a3a2a', '#3a4a6a', '#5a6a3a'][f.i % 3]))); break;
     }
     g.position.set(cx, 0, cz); g.userData.furn = 1;
-    { const ST = f.t === 'wandwall' || f.t === 'libladder' || f.t === 'wandcounter' || f.t === 'carvebench' || f.t === 'fabricwall' || f.t === 'fitstool' || f.t === 'gown' || f.t === 'mannequin2' || f.t === 'sewtable' || f.t === 'telescope' || f.t === 'stairup' || f.t === 'stairdown' || f.t === 'spiral' || f.t === 'spiraltop' || f.t === 'ladder' || f.t === 'laddertop' || f.t === 'extdoor', sx = f.w > 1 || f.h > 1 || f.t === 'rug' || ST ? 1 : 0.62; if (ST) { o.add(g); continue; } if (f.t === 'blk') continue; g.scale.set(sx, 0.55, sx); if (sx < 1) g.position.set(cx + (backX ? -0.15 : 0), 0, cz + (backZ ? -0.15 : 0)); }
+    { const ST = f.t === 'wandwall' || f.t === 'libladder' || f.t === 'wandcounter' || f.t === 'carvebench' || f.t === 'fabricwall' || f.t === 'fitstool' || f.t === 'gown' || f.t === 'mannequin2' || f.t === 'sewtable' || f.t === 'telescope' || f.t === 'stairup' || f.t === 'stairdown' || f.t === 'spiral' || f.t === 'spiraltop' || f.t === 'ladder' || f.t === 'laddertop' || f.t === 'extdoor', sx = f.w > 1 || f.h > 1 || f.t === 'rug' || ST ? 1 : 0.84; if (ST) { o.add(g); continue; } if (f.t === 'blk') continue; g.scale.set(sx, sx < 1 ? 0.68 : 0.55, sx); if (sx < 1) g.position.set(cx + (backX ? -0.06 : 0), 0, cz + (backZ ? -0.06 : 0)); }   /* móveis de 1 tile quase do tamanho do tile: o bloqueio bate com o que se vê */
     o.add(g);
   }
   return o;

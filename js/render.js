@@ -1402,8 +1402,8 @@ function drawCoinFx(ctx, now) {
   if (G.payFx && G.me) {   // salário do turno: sobe devagar em cima do personagem, com uma moeda girando
     const F = G.payFx, t = now - F.t0, D = 2600; if (t > D) G.payFx = null; else { const k = t / D, p = iso(G.me.rx, G.me.ry), x = p.sx + ox, y = p.sy + oy - 78 - Math.sqrt(k) * 30, a = k < 0.12 ? k / 0.12 : k > 0.7 ? 1 - (k - 0.7) / 0.3 : 1, sc = k < 0.12 ? 0.6 + 0.4 * (k / 0.12) + 0.15 * Math.sin(k / 0.12 * Math.PI) : 1;
       ctx.save(); ctx.globalAlpha = a; ctx.translate(x, y); ctx.scale(sc, sc);
-      ctx.font = '700 15px "Cinzel", serif'; const tw = ctx.measureText('+' + F.v + ' ouro').width, cx0 = 4 - tw / 2 - 11, w = Math.abs(Math.cos(t / 160)) * 5 + 1; ctx.fillStyle = '#e8c45a'; ctx.strokeStyle = '#7a5a12'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(cx0, -5, w, 5.5, 0, 0, 7); ctx.fill(); ctx.stroke();
-      pxText(ctx, '+' + F.v + ' ouro', 4, 0, '#ffe08a', 15, '"Cinzel", serif', '700'); if (F.own) pxText(ctx, 'rendeu no seu negócio', 4, 14, '#e8d8b0', 9, '"Cinzel", serif', '400');
+      ctx.font = '700 10px "Cinzel", serif'; const tw = ctx.measureText('+' + F.v + ' ouro').width, cx0 = 4 - tw / 2 - 8, w = Math.abs(Math.cos(t / 160)) * 3.5 + 0.8; ctx.fillStyle = '#e8c45a'; ctx.strokeStyle = '#7a5a12'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(cx0, -3.5, w, 4, 0, 0, 7); ctx.fill(); ctx.stroke();
+      pxText(ctx, '+' + F.v + ' ouro', 4, 0, '#ffe08a', 10, '"Cinzel", serif', '700'); if (F.own) pxText(ctx, 'rendeu no seu negócio', 4, 10, '#e8d8b0', 7, '"Cinzel", serif', '400');
       ctx.restore(); } }
   if (G.coinSum && now - G.coinSumT < 1600 && G.me) { const p = iso(G.me.rx, G.me.ry), k = (now - G.coinSumT) / 1600; ctx.save(); ctx.globalAlpha = 1 - k; pxText(ctx, '+' + G.coinSum + ' ouro', p.sx + ox, p.sy + oy - 70 - k * 14, '#ffe08a', 13, '"Cinzel", serif', '700'); ctx.restore(); } else if (G.coinSum && now - G.coinSumT >= 1600) G.coinSum = 0;
 }
