@@ -102,7 +102,7 @@ const BUILDINGS = TEST3D ? [] : [
   { x: C + 9, y: C + 8, ...BH('temple', 8, 9, 4.4, 1.6, 'Catedral da Aurora', { floors: 1, door: 'S', gen: { x: C - 21, y: C - 30, w: 8, h: 9, door: 'W' } }) },   // ao lado da praça do mercado, porta para o sul
   { x: C - 30, y: C - 1, ...BH('shop', 5, 5, 4.0, 2.8, 'Empório do Borin') },
   { x: C - 22, y: C - 1, ...BH('smith', 5, 5, 2.6, 2.6, 'Forja de Hrodgar') },
-  { x: C - 15, y: C + 10, ...BH('tavern', 6, 7, 3.0, 2.8, 'Taverna do Javali', { door: 'E', floors: 1 }) },   // de frente para a praça do mercado (só térreo)
+  { x: C - 15, y: C + 10, ...BH('tavern', 6, 7, 3.6, 3.0, 'Taverna do Javali', { door: 'E', floors: 2 }) },   // taverna-celeiro: térreo e mezanino   // de frente para a praça do mercado (só térreo)
   { x: C - 19, y: C + 24, ...BH('barracks', 8, 5, 4.0, 2.6, 'Quartel da Guarda', { door: 'E', gen: { x: C + 5, y: C + 22, w: 8, h: 5, door: 'S' } }) },   // no antigo lugar da pousada, porta para o leste
   { x: C - 7, y: C + 22, ...BH('stable', 5, 4, 2.6, 2.4, 'Estábulo', { floors: 1, gen: { x: C - 28, y: C + 24, w: 5, h: 4, door: 'S' } }) },   // no antigo lugar do quartel, junto ao portão sul
   { x: C - 29, y: C + 10, ...BH('shop', 5, 5, 2.4, 2.2, 'Boticário de Elva', { v: 1, door: 'N', floors: 1 }) },
@@ -221,6 +221,9 @@ function interiorLayout0(b, fl = 0) {
   if (fl > 0) {
     // andares de cima: quartos, depósitos e aposentos
     if (k === 'castle') { put('bed', 2, 0, { w: 2, h: 2, v: 1 }); put('chest', 4, 0); put('shelf', 5, 0); put('shelf', 6, 0); put('fireplace', w - 3, 0); if (put('table', 6, 4, { w: 2 })) { put('chair', 5, 4); put('chair', 8, 4); } put('banner', 0, 3); put('banner', 0, 6); put('candles', w - 1, 3); put('rug', 4, 3, { w: 4, h: 3, block: false }); }
+    else if (k === 'tavern' && fl === 1) {   // mezanino: mesas com bancos, barris, corrimão de madeira no lado aberto
+      put('mezzrail', 0, h - 1, { w: w, block: false }); put('wheel', 3, 2, { block: false });
+      put('table', 1, 1, { w: 2 }); put('pew', 1, 2, { w: 2, seat: 3 }); put('table', 4, 3, { w: 2 }); put('pew', 4, 4, { w: 2, seat: 3 }); put('crate', 0, 3); put('barrel', 0, 4); }
     else if (k === 'tavern') { for (const i of [1, 3, 5]) if (i < w - 1) { put('bed', i, 0, { h: 2 }); } put('chest', 2, 0); put('chest', 4, 0); if (put('table', 2, h - 2)) put('chair', 3, h - 2); put('barrel', w - 1, h - 1); put('rug', 2, 3, { w: 3, block: false }); }
     else if (k === 'barracks') { for (const i of [1, 2, w - 2]) put('bunk', i, 0, { h: 2 }); put('rack', 3, 0); put('chest', 1, h - 1); put('chest', w - 2, h - 1); }
     else if (k === 'shop') { for (let i = 1; i < w - 1; i++) put(i % 2 ? 'crate' : 'barrel', i, 0); put('shelf', 0, h - 2); put('shelf', w - 1, h - 2); put('crate', 1, h - 1); put('barrel', w - 2, h - 1); }
@@ -284,8 +287,15 @@ function interiorLayout0(b, fl = 0) {
     put('forge', 0, 0, { w: 2 }); npcAt(3, 1); put('anvil', 4, 1); put('barrel', 4, 0);
     for (let j = 0; j < 3; j++) put('rack', w - 1, j);
     put('trough', 0, 2, { w: 2 });
+  } else if (k === 'tavern' && w === 7 && h === 6) {   // taverna-celeiro: barris com torneiras e balcão, lareira enorme na parede da direita, palco do bardo, lustre de roda, mesas e bancos
+    npcAt(1, 0); put('taps', 0, 0); put('bar', 0, 1, { w: 2 }); put('bottles', 6, 0);
+    put('hearth', w - 1, 2, { h: 2 }); put('stage', w - 2, h - 1, { w: 2, block: false }); put('wheel', 3, 2, { block: false }); put('beamlamp', 5, 1, { block: false });
+    if (put('table', 2, 2)) { put('chair', 2, 3, { seat: 3 }); }
+    if (put('table', 1, 4)) { put('chair', 0, 4, { seat: 1 }); put('chair', 2, 4, { seat: 5 }); }
+    put('table', 4, 3, { w: 2 }); put('pew', 4, 4, { w: 2, seat: 3 });
   } else if (k === 'tavern') {
-    npcAt(1, 0); put('barrel', 0, 0); put('counter', 0, 1, { w: 2 }); put('barrel', 0, 2);   // passagem atrás do balcão pelo lado put('fireplace', w - 2, 0); put('shelf', 3, 0); for (const [i, j, fi, fj] of [[4, 0, 4, 1], [w - 1, 1, w - 2, 1], [w - 1, 2, w - 2, 2]]) if (can(i, j) && can(fi, fj)) { put('stove', i, j); taken.add(key(fi, fj)); break; }
+    npcAt(1, 0); put('barrel', 0, 0); put('counter', 0, 1, { w: 2 }); put('barrel', 0, 2);   /* passagem atrás do balcão pelo lado */
+    put('fireplace', w - 2, 0); put('shelf', 3, 0); for (const [i, j, fi, fj] of [[4, 0, 4, 1], [w - 1, 1, w - 2, 1], [w - 1, 2, w - 2, 2]]) if (can(i, j) && can(fi, fj)) { put('stove', i, j); taken.add(key(fi, fj)); break; }
     for (const [ti, tj] of [[5, 2], [1, 3], [5, 4]]) if (put('table', ti, tj)) { put('chair', ti - 1, tj, { seat: 1 }); put('chair', ti + 1, tj, { seat: 5 }); }
   } else if (k === 'hotel' && w === 7 && h === 7) {   // 3 cabines (2x2): duas no fundo, uma na frente; balcão da Ilsa junto à entrada, salinha com mesa
     put('cot', 0, 0, { h: 2, cab: 0 }); put('chest', 1, 0, { cab: 0 }); put('hpart', 0, 2, { v: 0, wp: 'nz' }); put('cabindoor', 1, 2, { v: 0, block: false, cab: 0, adj: [1, 3], inner: [[0, 0], [1, 0], [0, 1], [1, 1]] });
@@ -353,7 +363,8 @@ function interiorLayout0(b, fl = 0) {
   } else if (k === 'bank') {   // salão comprido: mesas altas dos banqueiros dos dois lados, tapete no meio e a porta redonda do cofre no fundo
     put('vault', dc - 1, 0, { w: 3 }); npcAt(dc, 1);
     if (h >= 7) { for (let j = 2; j < h - 2; j += 2) { put('bankdesk', 1, j, { v: 1 }); put('bankdesk', w - 2, j, { v: 2 }); } put('rug', dc, 2, { h: h - 4, block: false }); }
-    else { for (let i = 1; i < w - 1; i++) if (Math.abs(i - dc) > 1) put('bankdesk', i, 2, { v: 1 }); put('rug', dc, 2, { h: h - 2, block: false }); }   // salão largo: fila de mesas altas dos dois lados do corredor até o cofre put('candles', 0, 1); put('candles', w - 1, 1);
+    else { for (let i = 1; i < w - 1; i++) if (Math.abs(i - dc) > 1) put('bankdesk', i, 2, { v: 1 }); put('rug', dc, 2, { h: h - 2, block: false }); }   /* salão largo: fila de mesas altas dos dois lados do corredor até o cofre */
+    put('candles', 0, 1); put('candles', w - 1, 1);
   } else if (k === 'temple') {
     put('altar', dc - 1, 0, { w: 3 }); npcAt(dc, 1); put('candles', 1, 0); put('candles', w - 2, 0);
     for (const j of [3, 5]) { put('pew', 1, j, { w: dc - 1, seat: 3 }); put('pew', dc + 1, j, { w: w - dc - 2, seat: 3 }); }

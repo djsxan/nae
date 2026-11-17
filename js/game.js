@@ -410,6 +410,7 @@ function updateLocal(now, dt) {
     if (me.downed) sp *= 0.22;
     if (WORLD.ground[tileAt(me.x, me.y)] === T.SHALLOW) sp *= 0.65;
     if (stairH(me.x, me.y) >= 0) sp *= 0.8;
+    if (me.buffs && me.buffs.tipsy > now && !G.dev) { const a = Math.sin(now / 420) * 0.55 + Math.sin(now / 170) * 0.15, c = Math.cos(a), s = Math.sin(a); v = [v[0] * c - v[1] * s, v[0] * s + v[1] * c]; sp *= 0.85; }   /* tonto: anda em zigue-zague */
     const step = sp * dt, nx = me.x + v[0] * step, ny = me.y + v[1] * step;
     const ox = me.x, oy = me.y;
     if (freeAt(nx, ny, me.z)) { me.x = nx; me.y = ny; }
@@ -661,7 +662,7 @@ function updateInv() {
   if (me.pots && me.pots.hp) list.push({ k: 'hp', n: me.pots.hp, name: ITEMS.hp.name, icon: '🧪', color: '#e85a5a', desc: ITEMS.hp.desc + ' Clique para beber (Q).', use: () => drinkPot('hp') });
   list.push({ k: 'water', n: '∞', name: 'Cantil', icon: '💧', color: '#6ab8ff', desc: 'Um cantil que nunca seca. Você bebe sozinho quando a sede aperta; ou aperte 0 (ou clique) para beber.', use: () => Net.send({ t: 'use', k: 'water' }) });
   if (me.pots && me.pots.mp) list.push({ k: 'mp', n: me.pots.mp, name: ITEMS.mp.name, icon: '🧪', color: '#5a8ae8', desc: ITEMS.mp.desc + ' Clique para beber (E).', use: () => drinkPot('mp') });
-  for (const k in (me.inv || {})) { const it = LOOT[k]; if (it && me.inv[k] > 0) list.push({ k, n: me.inv[k], name: it.name, icon: it.icon, color: it.color, desc: it.desc + (WANDS[k] && me.wi && me.wi.k === k ? ' A sua: ' + me.wi.w + ', ' + me.wi.c + ', ' + me.wi.len + ' cm, ' + me.wi.feel + ' (dano ' + (me.wi.dmg >= 0 ? '+' : '') + Math.round(me.wi.dmg * 100) + '%, mana ' + (me.wi.mp >= 0 ? '+' : '') + me.wi.mp + ').' : '') + (CLOAK_BY_ITEM[k] && me.ck === CLOAK_BY_ITEM[k] ? ' (vestida)' : '') + ' Vale ' + it.price + ' de ouro cada no Empório.', use: FOOD[k] || CLOAK_BY_ITEM[k] || k === 'ointment' || k === 'firewood' || k === 'herb' ? () => Net.send({ t: 'use', k }) : null }); }
+  for (const k in (me.inv || {})) { const it = LOOT[k]; if (it && me.inv[k] > 0) list.push({ k, n: me.inv[k], name: it.name, icon: it.icon, color: it.color, desc: it.desc + (WANDS[k] && me.wi && me.wi.k === k ? ' A sua: ' + me.wi.w + ', ' + me.wi.c + ', ' + me.wi.len + ' cm, ' + me.wi.feel + ' (dano ' + (me.wi.dmg >= 0 ? '+' : '') + Math.round(me.wi.dmg * 100) + '%, mana ' + (me.wi.mp >= 0 ? '+' : '') + me.wi.mp + ').' : '') + (CLOAK_BY_ITEM[k] && me.ck === CLOAK_BY_ITEM[k] ? ' (vestida)' : '') + ' Vale ' + it.price + ' de ouro cada no Empório.', use: FOOD[k] || k === 'ale' || CLOAK_BY_ITEM[k] || k === 'ointment' || k === 'firewood' || k === 'herb' ? () => Net.send({ t: 'use', k }) : null }); }
   grid.innerHTML = '';
   for (let i = 0; i < INV_SLOTS; i++) {
     const s = document.createElement('div'), it = list[i]; s.className = 'inv-slot';
@@ -1298,7 +1299,8 @@ function enterWorld() {
 }
 function worldRetry() { const ms = Math.min(15000, 1000 * Math.pow(2, Math.min(4, WN.tries - 1))) + Math.random() * 500; netMsg('Sem conexão com o reino. Tentando de novo em ' + Math.round(ms / 1000) + ' s… (tentativa ' + WN.tries + ')'); setTimeout(worldTry, ms); }
 function worldTry() {
-  if (WN.busy || Net.isHost) return;   // já é o anfitrião (ou já está tentando): não derruba nada WN.busy = true; WN.tries++; netMsg(G.started ? 'Reconectando ao reino… (tentativa ' + WN.tries + ')' : 'Entrando no reino de Nae…' + (WN.tries > 1 ? ' (tentativa ' + WN.tries + ')' : ''));
+  if (WN.busy || Net.isHost) return;   /* já é o anfitrião (ou já está tentando): não derruba nada */
+  WN.busy = true; WN.tries++; netMsg(G.started ? 'Reconectando ao reino… (tentativa ' + WN.tries + ')' : 'Entrando no reino de Nae…' + (WN.tries > 1 ? ' (tentativa ' + WN.tries + ')' : ''));
   Net.reset(); Net.onServer = m => { WN.lastMsg = Date.now(); clientOnServer(m); }; Net.onDisconnected = worldLost;
   Net.join(WN.id, err => {
     WN.busy = false;
@@ -1893,7 +1895,7 @@ function prebakeCity(done) {
 // ============================================================
 //  RODA DE EMOJIS (segurar T, soltar sobre um): saudar, dançar, apontar
 // ============================================================
-const EMOTES = [{ k: 'salute', n: 'Saudar', i: '✋' }, { k: 'dance', n: 'Dançar', i: '💃' }, { k: 'point', n: 'Apontar', i: '👉' }, { k: 'cheer', n: 'Ânimo', i: '🙌' }, { k: 'surprise', n: 'Surpresa', i: '😮' }, { k: 'adore', n: 'Adoração', i: '🙏' }, { k: 'anger', n: 'Raiva', i: '😠' }, { k: 'fear', n: 'Medo', i: '😨' }, { k: 'sad', n: 'Tristeza', i: '😢' }];
+const EMOTES = [{ k: 'toast', n: 'Brindar', i: '🍻' }, { k: 'salute', n: 'Saudar', i: '✋' }, { k: 'dance', n: 'Dançar', i: '💃' }, { k: 'point', n: 'Apontar', i: '👉' }, { k: 'cheer', n: 'Ânimo', i: '🙌' }, { k: 'surprise', n: 'Surpresa', i: '😮' }, { k: 'adore', n: 'Adoração', i: '🙏' }, { k: 'anger', n: 'Raiva', i: '😠' }, { k: 'fear', n: 'Medo', i: '😨' }, { k: 'sad', n: 'Tristeza', i: '😢' }];
 (function () {
   const w = document.createElement('div'); w.id = 'emote-wheel'; w.className = 'hidden';
   w.innerHTML = EMOTES.map((e, i) => '<div class="ew-opt" data-i="' + i + '" style="--a:' + (i * 360 / EMOTES.length - 90) + 'deg"><span>' + e.i + '</span><b>' + e.n + '</b></div>').join('') + '<div class="ew-hint">solte sobre um emoji</div>';

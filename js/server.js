@@ -377,7 +377,10 @@ function hostOnClient(from, m) {
       Net.toOne(p.id, { t: 'chestopen', id: c.id, gold, items }); sendStat(p);
       break;
     }
-    case 'emote': { const k = ['salute', 'dance', 'point', 'cheer', 'surprise', 'adore', 'anger', 'fear', 'sad'].includes(m.k) ? m.k : null; if (k && !p.downed) near(p.x, p.y, { t: 'emote', id: p.id, k });
+    case 'emote': if (m.k === 'toast' && !p.downed) { const bi = WORLD.bld[tileAt(p.x, p.y)]; for (const q of Object.values(S.players)) { if (q.downed || dist(q.x, q.y, p.x, p.y) > 3.5 || WORLD.bld[tileAt(q.x, q.y)] !== bi) continue; near(q.x, q.y, { t: 'emote', id: q.id, k: 'cheer' }); }
+        for (const n of Object.values(S.npcs || {})) if (!n.dead && !n.downed && dist(n.x, n.y, p.x, p.y) < 3.5 && WORLD.bld[tileAt(n.x, n.y)] === bi && bi >= 0) near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: 'Saúde! 🍻', ms: 1 });
+        near(p.x, p.y, { t: 'chat', id: p.id, name: p.name, text: '🍻 Saúde!' }); break; }
+      { const k = ['salute', 'dance', 'point', 'cheer', 'surprise', 'adore', 'anger', 'fear', 'sad'].includes(m.k) ? m.k : null; if (k && !p.downed) near(p.x, p.y, { t: 'emote', id: p.id, k });
       if (k === 'adore' && !p.dev && Object.values(S.players).some(w => w.dev && w.skin === 'weaver' && w !== p && dist(w.x, w.y, p.x, p.y) < 6)) { const had = now_() < (p.buffs.weaver || 0); p.buffs.weaver = now_() + 3600000; p.food = Math.max(p.food ?? 100, 80); p.water = Math.max(p.water ?? 100, 80); p.cold = 0; if (!had) tell(p, 'O Tecelão aceita a sua devoção: por 1 hora você não sente fome, sede nem frio.'); sendStat(p); }
       break; }
     case 'exec': {   // entrega o condenado caído ao carrasco: deita na guilhotina, a lâmina cai e a cabeça rola (morte permanente)
@@ -610,6 +613,9 @@ function useItem(p, k) {
   else if (k === 'elixir_warm') { take(); p.buffs.warm = now + 600000; p.cold = 0; tell(p, 'Um calor de brasa corre nas veias: nada de frio por 10 minutos.'); }
   else if (k === 'elixir_swift') { take(); p.buffs.agile = now + 45000; tell(p, 'As pernas ficam leves: passos ligeiros por 45 segundos.'); }
   else if (k === 'ointment') { take(); p.infect = 0; p.infT = 0; tell(p, 'O unguento arde, mas a febre baixa.'); }
+  else if (k === 'ale') { take(); p.water = Math.min(100, (p.water ?? 100) + 20); p.cst = Math.min(cstMaxOf(p), (p.cst ?? 0) + 60); p.aleT = (p.aleT || []).filter(t => now - t < 360000); p.aleT.push(now);
+    near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'drinkb', ms: 1600 });
+    if (p.aleT.length >= 3) { p.buffs.tipsy = now + 120000; tell(p, 'Hic! A cerveja subiu: você está tonto por uns minutos.'); } else tell(p, ['Gelada e espumante!', 'Desce bem.', 'Ahh, que cerveja!'][p.aleT.length - 1] || 'Desce bem.'); }
   else if (k === 'tea') { take(); p.water = Math.min(100, (p.water ?? 100) + 35); p.infect = Math.max(0, (p.infect || 0) - 1); tell(p, 'O chá quente acalma e mata a sede.'); }
   else if (k === 'herb') { take(); useGain(p, 'aid', 1); p.infect = Math.max(0, (p.infect || 0) - 1); p.infT = 0; for (const b of BODY_PARTS) if (p.bleed[b] > 0 && p.bleed[b] <= 0.6) p.bleed[b] = 0; tell(p, 'A erva amarga acalma a febre e estanca os cortes leves.'); }
   else if (k === 'firewood') {
@@ -2253,7 +2259,8 @@ function hostTick() {
   S.lastTick = now;
   const players = Object.values(S.players);
   estateTick(now); jobsTick(now); coinTick(now);
-  if (now - (S.pmapT || 0) > 2000) { S.pmapT = now; const l = Object.values(S.players).filter(p => !p.devHidden).map(p => [p.id, Math.round(p.x), Math.round(p.y), p.name, p.dev ? 1 : 0]); if (l.length > 1) Net.toAll({ t: 'pmap', l }); }   // posição de todos no mapa if (now - (S.bankT || 0) > 5000) { S.bankT = now; bankTick(now); }
+  if (now - (S.pmapT || 0) > 2000) { S.pmapT = now; const l = Object.values(S.players).filter(p => !p.devHidden).map(p => [p.id, Math.round(p.x), Math.round(p.y), p.name, p.dev ? 1 : 0]); if (l.length > 1) Net.toAll({ t: 'pmap', l }); }   /* posição de todos no mapa */
+  if (now - (S.bankT || 0) > 5000) { S.bankT = now; try { bankTick(now); } catch (e) { console.warn('banco', e); } }
 
   if (!S.filled) {
     for (let i = 0; i < 8000 && wildCount() < MAX_WILD; i++) spawnMonster();
@@ -2330,7 +2337,7 @@ function hostTick() {
       if (p.devHidden && p.id !== r.id) continue;
       let fl = (p.walking ? 1 : 0) | (p.downed ? 2 : 0) | (p.carriedBy ? 4 : 0) | (p.carrying ? 8 : 0) | (p.running && p.walking ? 256 : 0) | (p.sit ? 512 : 0) | (p.sit === 'c' ? 1024 : 0) | (p.sleep != null ? 32768 : 0) | (p.drawT ? 65536 : 0) | (p.dragBy ? 131072 : 0) | (p.dragMode === 'foot' ? 262144 : 0) | (p.drag && p.drag.mode === 'arms' ? 524288 : 0) | (p.drag && p.drag.mode === 'foot' ? 1048576 : 0) | (p.drag && p.drag.mode === 'back' ? 2097152 : 0) | (p.drag && p.drag.mode === 'grip' ? 4194304 : 0) | (p.gripBy ? 8388608 : 0) | (p.tied ? 16777216 : 0) | (p.choked ? 33554432 : 0) | (p.choking ? 67108864 : 0) | (p.escortBy || p.surrendered ? 134217728 : 0) | (p.jailUntil > now ? 536870912 : 0) | (p.bound ? 1073741824 : 0) | (p.drag && (p.drag.helper || ((dragTarget(p.drag.k, p.drag.id) || {}).dragBy2)) ? 268435456 : 0) | ((((p.fl || 0) + 1) & 3) << 11) | (p.crouch ? 8192 : 0) | (p.slide ? 16384 : 0);
       for (const b in BUFF_BITS) if (buffOn(p, b)) fl |= BUFF_BITS[b];
-      pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0, (p.surrendered ? 1 : 0) | (p.bound && p.bound.kind === 'rope' ? 2 : 0) | (p.bound && p.bound.kind === 'cuffs' ? 4 : 0) | (p.dragBy && (/^(n:|m:)/.test(String(p.dragBy)) || p.dragMode === 'lead') && !p.downed ? 8 : 0) | (p.pkg ? 16 : 0) | (p.shift ? 32 : 0) | (p.wpn === 'halberd' ? 64 : 0) | ((p.uni || 0) << 7) | (((p.cloak || 0) & 15) << 16) | (p.inMenu ? 1024 : 0) | (p.sheathed ? 2048 : 0) | (p.parry ? (PZ.indexOf(p.parry.z) + 1) << 12 : 0) | ((p.shieldHp ?? 100) <= 0 && p.cls === 'knight' ? 32768 : 0)]);
+      pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0, (p.surrendered ? 1 : 0) | (p.bound && p.bound.kind === 'rope' ? 2 : 0) | (p.bound && p.bound.kind === 'cuffs' ? 4 : 0) | (p.dragBy && (/^(n:|m:)/.test(String(p.dragBy)) || p.dragMode === 'lead') && !p.downed ? 8 : 0) | (p.pkg ? 16 : 0) | (p.shift ? 32 : 0) | (p.wpn === 'halberd' ? 64 : 0) | ((p.uni || 0) << 7) | (((p.cloak || 0) & 15) << 16) | (p.inMenu ? 1024 : 0) | (p.sheathed ? 2048 : 0) | (p.parry ? (PZ.indexOf(p.parry.z) + 1) << 12 : 0) | ((p.shieldHp ?? 100) <= 0 && p.cls === 'knight' ? 32768 : 0) | (p.buffs && p.buffs.tipsy > now_() ? 1048576 : 0)]);
     }
     for (const m of mons) {
       if (Math.abs(m.x - r.x) > VIEW_RADIUS || Math.abs(m.y - r.y) > VIEW_RADIUS) continue;
@@ -2775,7 +2782,7 @@ function courierTick(n, now, dt) {
   if (J.wi !== J.i) { J.wi = J.i; J.wt = now; }
   if (npcWalk(n, wp[0], wp[1], 1.7, dt) || dist(n.x, n.y, wp[0], wp[1]) < 0.6 || (now - J.wt > 9000 && dist(n.x, n.y, wp[0], wp[1]) < 2.5)) {   // ponto inalcançável há 9 s mas perto: conta como alcançado
     if (J.i === 1 && J.st === 'indo buscar') {   // pegou na oficina
-      const r = E.r[J.from]; if (!r || !r.biz) { n.job = null; return; } for (const g in J.goods) { const q = Math.min(J.goods[g], Math.floor(r.biz.store[g] || 0)); J.goods[g] = q; r.biz.store[g] -= q; r.biz.today.xfer = (r.biz.today.xfer || 0) + q * GOODS[g].p * SELL_K; } J.st = 'levando';   // valor do que foi para os seus negócios
+      const r = E.r[J.from]; if (!r || !r.biz) { n.job = null; return; } for (const g in J.goods) { const q = Math.min(J.goods[g], Math.floor(r.biz.store[g] || 0)); J.goods[g] = q; r.biz.store[g] -= q; r.biz.today.xfer = (r.biz.today.xfer || 0) + q * GOODS[g].p * SELL_K; } for (const g in J.goods) if (!J.goods[g]) delete J.goods[g]; if (!Object.keys(J.goods).length) { n.job = null; return; } J.st = 'levando';   // valor do que foi para os seus negócios
     }
     J.i++;
     if (J.i >= J.wp.length) {
@@ -2940,12 +2947,14 @@ const BARD_LINES = ['♪ Lá vem o javali, magro de dar dó... ♪', '♪ Ó Nae
 function tavernTick(now) {
   if (now - (S.tavT || 0) < 2000) return; S.tavT = now; const tav = TAV_BI(); if (tav < 0) return; const hr = resHour(), night = hr >= 19 && hr < 23;
   let bard = Object.values(S.npcs).find(n => n.bard);
-  if (night && !bard) { const T = bldTiles(tav).filter(([x, y]) => !WORLD.seats.some(s => Math.round(s.x) === x && Math.round(s.y) === y)); if (!T.length) return; const [x, y] = T[T.length - 1];
+  if (night && !bard) { const T = bldTiles(tav).filter(([x, y]) => !WORLD.seats.some(s => Math.round(s.x) === x && Math.round(s.y) === y)); if (!T.length) return; let [x, y] = T[T.length - 1];
+    { const tb = BUILDINGS[tav], st = interiorLayout(tb, 0).F.find(f => f.t === 'stage'); if (st) { const [sx, sy] = bLocal(tb, st.i + st.w - 1, st.j); x = sx; y = sy; } }   // no palco
     bard = { id: 'bard', kind: 'v_trav3', name: 'Filipe, o Bardo', transient: true, bard: true, bi: tav, x, y, z: 0, postX: x, postY: y, hp: 60, maxHp: 60, downed: null, dead: false, nextSong: 0 }; S.npcs.bard = bard; Net.toAll({ t: 'vspawn', v: visPublic(bard) }); }
   if (!night && bard) { visGone(bard); return; }
   if (bard && !bard.dead && !bard.downed && now > bard.nextSong) { bard.nextSong = now + 7000 + Math.random() * 5000; near(bard.x, bard.y, { t: 'anim', w: 'n', id: bard.id, a: 'talk', txt: BARD_LINES[Math.floor(Math.random() * BARD_LINES.length)], ms: 1 });
     const inside = Object.values(S.npcs).filter(q => q !== bard && !q.dead && !q.sleeping && q.kind !== 'innkeeper' && WORLD.bld[tileAt(q.x, q.y)] === tav);
-    for (const q of inside) { const r = Math.random(); if (!q.sitting && !q.walk && r < 0.35) near(q.x, q.y, { t: 'anim', w: 'n', id: q.id, a: 'dance', ms: 3200 }); else if (q.sitting && r < 0.25) near(q.x, q.y, { t: 'anim', w: 'n', id: q.id, a: 'talk', txt: ['👏', 'Bravo!', 'Toca outra!', 'Essa é das boas!'][Math.floor(Math.random() * 4)], ms: 1 }); } }
+    for (const q of inside) { const r = Math.random(); if (!q.sitting && !q.walk && r < 0.35) near(q.x, q.y, { t: 'anim', w: 'n', id: q.id, a: 'dance', ms: 3200 }); else if (q.sitting && r < 0.25) near(q.x, q.y, { t: 'anim', w: 'n', id: q.id, a: 'talk', txt: ['👏', 'Bravo!', 'Toca outra!', 'Essa é das boas!'][Math.floor(Math.random() * 4)], ms: 1 }); }
+    for (const p of Object.values(S.players)) if (WORLD.bld[tileAt(p.x, p.y)] === tav && now - (p.danceHintT || 0) > 600000) { p.danceHintT = now; tell(p, '🎵 O bardo está tocando! Aperte T e escolha Dançar (ou Brindar 🍻 com quem está perto).'); } }   /* dica de dança, uma vez a cada 10 min */
 }
 function residentTick(n, now, dt) {
   if (now - (n.meetT || 0) > 1000) { n.meetT = now; memMeet(n, now); bodyReact(n, now); }
@@ -3309,7 +3318,7 @@ function bankMsg(p, m) {
 // semanal: juros sobre o saldo e sobre a dívida; dívida vencida é cobrada do saldo, senão a guarda vai atrás
 function bankTick(now) {
   const B = bankLoad(), day = estDay(), O = bankOwnerRec(); let ch = false;
-  for (const k in B.acc) { const A = B.acc[k]; if (day - A.wk < RENT_DAYS) continue; const wks = Math.floor((day - A.wk) / RENT_DAYS); A.wk += wks * RENT_DAYS; ch = true;
+  for (const k in B.acc) { const A = B.acc[k]; if (day - A.wk < RENT_DAYS) continue; const wks = Math.min(1, Math.floor((day - A.wk) / RENT_DAYS)); A.wk = day; ch = true;   /* no máximo uma semana de juros por vez (o banco ficou semanas sem calcular) */
     const pay = Math.floor(A.g * BANK_INT * wks); if (pay > 0) { if (O && O.biz) { const v = Math.min(pay, Math.floor(O.biz.cofre)); O.biz.cofre -= v; A.g += v; } else A.g += pay; }
     if (A.loan > 0) A.loan = Math.ceil(A.loan * Math.pow(1 + LOAN_INT, wks)); }
   for (const p of Object.values(S.players)) { const A = B.acc[estOwner(p)]; if (!A || !A.loan || !A.due || day < A.due) continue;
@@ -3690,7 +3699,7 @@ function guardFightMonster(n, now, dt) {
 const FOODS = ['bread', 'cookedmeat', 'ointment', 'firewood', 'berries', 'herb', 'apple', 'stew', 'pie', 'tea', 'venison', 'pork'];
 const TRADE = {
   merchant: { sell: { bread: 20, ointment: 6, firewood: 15, rope: 6, lockpick: 4, axe: 3, pickaxe: 3, sickle: 3, pot_hp: 10, pot_mp: 8, pot_band: 15 }, buys: 'all' },
-  innkeeper: { sell: { bread: 15, cookedmeat: 10, stew: 6, pie: 4, tea: 8 }, buys: ['venison', 'pork', 'berries', 'apple', 'herb', 'cookedmeat'] },
+  innkeeper: { sell: { ale: 30, bread: 15, cookedmeat: 10, stew: 6, pie: 4, tea: 8 }, buys: ['venison', 'pork', 'berries', 'apple', 'herb', 'cookedmeat'] },
   fruit: { sell: { apple: 20, berries: 20 }, buys: ['apple', 'berries', 'herb'] },
   smith: { sell: { axe: 4, pickaxe: 4, sickle: 4, lockpick: 3 }, buys: ['ore', 'gem', 'hardwood', 'log'] },
   st_apoth: { sell: { pot_hp: 8, pot_band: 12, herb: 12, ointment: 5, tea: 6 }, buys: ['herb', 'silverleaf', 'flaxraw'] },
