@@ -53,7 +53,7 @@ function estBuild() {
   d.querySelector('#est-x').onclick = () => estToggle(false);
   for (const b of d.querySelectorAll('.est-tabs button')) b.onclick = () => { G.est.tab = b.dataset.tab; estRender(); };
   const cv = d.querySelector('#est-map');
-  cv.onclick = ev => { const r = cv.getBoundingClientRect(), mx = (ev.clientX - r.left) * cv.width / r.width, my = (ev.clientY - r.top) * cv.height / r.height; const P = estPick(mx, my); if (P) { G.est.sel = P.id; if (G.est.tab !== 'mine') G.est.tab = P.kind; estRender(); } };
+  cv.onclick = ev => { const r = cv.getBoundingClientRect(), mx = (ev.clientX - r.left) * cv.width / r.width, my = (ev.clientY - r.top) * cv.height / r.height; const P = estPick(mx, my); if (P) { G.est.sel = P.id; if (G.est.tab !== 'mine') G.est.tab = P.kind === 'bank' || P.kind === 'hotel' ? 'shop' : P.kind; estRender(); } };
 }
 function estToggle(on, tab, sel) {
   estBuild(); const el = document.getElementById('estate'), open = on != null ? on : el.classList.contains('hidden');
@@ -71,7 +71,8 @@ function estRender() {
   const items = PROPS.filter(P => P.kind === E.tab || (E.tab === 'shop' && (P.kind === 'bank' || P.kind === 'hotel')));
   list.innerHTML = items.length ? items.map(P => { const s = estStatus(P); return '<div class="est-row' + (E.sel === P.id ? ' sel' : '') + '" data-pid="' + P.id + '"><i style="background:' + EST_COL[s.k] + '"></i><div><b>' + P.name + '</b><small>' + P.district + ' · ' + P.locName + ' · ' + P.w + '×' + P.h + (P.floors > 1 ? ' · ' + P.floors + ' andares' : '') + '</small></div><div class="est-r"><b>' + P.week + '</b><small>ouro/semana</small><em>' + s.t + '</em></div></div>'; }).join('') : '<div class="gp-note">Nenhum imóvel nesta categoria ainda.</div>';
   const P = PROPS_BY[E.sel];
-  if (!P || P.kind !== E.tab) det.innerHTML = '<div class="gp-note">' + (E.tab === 'house' ? 'Escolha uma casa na lista ou no mapa. Alugando, o aluguel sai sozinho uma vez por semana do jogo (7 dias = 84 minutos); comprando, paga uma vez e só 7 ouro de imposto por semana. Perto do castelo é área nobre (caro); na periferia e na vila, barato.' : 'Lojas vendem sozinhas o que você abastece; oficinas produzem e os mensageiros levam a produção para as suas lojas. O lucro fica no cofre de cada negócio: vá buscar. Até ' + 3 + ' negócios por personagem.') + '</div>';
+  const tabOf = Q => Q.kind === 'bank' || Q.kind === 'hotel' ? 'shop' : Q.kind;   // banco e pousada aparecem na aba Lojas
+  if (!P || tabOf(P) !== E.tab) det.innerHTML = '<div class="gp-note">' + (E.tab === 'house' ? 'Escolha uma casa na lista ou no mapa. Alugando, o aluguel sai sozinho uma vez por semana do jogo (7 dias = 84 minutos); comprando, paga uma vez e só 7 ouro de imposto por semana. Perto do castelo é área nobre (caro); na periferia e na vila, barato.' : 'Lojas vendem sozinhas o que você abastece; oficinas produzem e os mensageiros levam a produção para as suas lojas. O lucro fica no cofre de cada negócio: vá buscar. Até ' + 3 + ' negócios por personagem.') + '</div>';
   else det.innerHTML = estDetailHtml(P);
   estWire();
 }
@@ -187,7 +188,7 @@ function estatePrompt() {
 function estateF() {
   if (estInHome()) { estToggle(true, 'mine'); return true; }
   const b = estInBiz(); if (b) { bizOpen(b.pid); return true; }
-  const P = estNearSign(); if (P) { estToggle(true, P.kind, P.id); return true; }
+  const P = estNearSign(); if (P) { estToggle(true, P.kind === 'bank' || P.kind === 'hotel' ? 'shop' : P.kind, P.id); return true; }
   return false;
 }
 function estLockedFor(ox, oy, x, y) { if (G.dev) return false; return estateBlocked(G.me && G.me.name, ox, oy, x, y, G.est.L); }

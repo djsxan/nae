@@ -109,6 +109,7 @@ function clientOnServer(m) {
     case 'pinfo': { const e = G.players[m.p.id]; if (e) Object.assign(e, m.p); else G.players[m.p.id] = mkEnt({ ...m.p }); break; }
     case 'pleave': delete G.players[m.id]; break;
     case 's': applySnapshot(m, now); break;
+    case 'pay': G.payFx = { v: m.v, own: !!m.own, t0: now }; break;
     case 'scene': G.shopScene = { k: m.k, t0: now, txt: m.txt || '' }; if (G.me) { G.me.say = m.k === 'wand' ? 'Hmm... vamos ver qual varinha escolhe você.' : 'Suba no banquinho, por favor. Vamos tirar as medidas.'; G.me.sayUntil = now + 2200; } break;
     case 'pstat': {
       const e = G.me; if (!e || m.id !== G.myId) break;
@@ -141,7 +142,8 @@ function clientOnServer(m) {
         if (m.by === G.myId) G.shake = Math.max(G.shake, m.crit || m.hv ? 4 : 1.6);
         const mine = m.k === 'p' && m.id === G.myId;
         if (false) G.nums.push({ wx: pos.x, wy: pos.y, text: String(m.dmg), color: m.k === 'm' ? (m.crit ? '#f8d850' : '#ffffff') : (mine ? '#f05040' : '#f0a090'), crit: m.crit, big: m.crit, t0: t, vx: (Math.random() < 0.5 ? -1 : 1) * (0.4 + Math.random() * 0.6) });
-        if (e && !(m.k === 'm' && NO_BLOOD.has(e.type)) && m.ax != null) sprayBlood(pos.x, pos.y - 26, m.x - m.ax, m.y - m.ay, m.crit ? 18 : 9);
+        if (e && !(m.k === 'm' && NO_BLOOD.has(e.type)) && m.ax != null) { sprayBlood(pos.x, pos.y - 26, m.x - m.ax, m.y - m.ay, m.k === 'p' ? (m.crit ? 30 : 20) : (m.crit ? 18 : 9));
+          if (m.k === 'p') { const dl = Math.hypot(m.x - m.ax, m.y - m.ay) || 1, ux = (m.x - m.ax) / dl, uy = (m.y - m.ay) / dl; for (let q = 0; q < 4; q++) { const d = 0.25 + q * 0.22 + Math.random() * 0.15; addBlood(e.rx + ux * d + (Math.random() - 0.5) * 0.25, e.ry + uy * d + (Math.random() - 0.5) * 0.25, e.z || 0, 0.07 + Math.random() * 0.1 - q * 0.012, 60000); } } }
         else for (let k = 0; k < 6; k++) spawnPart(m.k === 'p' ? 'blood' : 'spark', pos.x, pos.y - 26, { color: 'rgba(255,240,180,A)' });
         if (e && m.z && m.k === 'p' && !(e.anim && /^atk_/.test(e.anim.a) && t - e.anim.t0 < (e.anim.ms || 0))) e.anim = { a: m.z === 'head' ? 'hurt_head' : m.z === 'legs' ? 'hurt_leg' : 'hurt', t0: t, ms: 420 };
         if (mine) { G.shake = Math.max(G.shake, 2.5); flashDamage(); }
@@ -562,6 +564,7 @@ function updateHud() {
   $('hud-class').textContent = CLASSES[me.cls].name; $('hud-lvl').textContent = me.lvl;
   bar('hp', me.hp, me.maxHp, `${me.hp} / ${me.maxHp}`);
   bar('mp', me.mp, me.maxMp, `${me.mp} / ${me.maxMp}`);
+  if (typeof survLungUpdate === 'function') survLungUpdate(performance.now());
   bar('st', G.stam ?? stamMax(), stamMax(), 'Estamina'); $('st-fill').parentNode.classList.toggle('tired', !!G.tired);
   bar('xp', me.xp, need(me.lvl), `${me.xp} / ${need(me.lvl)} xp`);
   $('gold').textContent = me.gold;
@@ -708,6 +711,9 @@ function addChat(name, text) {
   log.appendChild(line); while (log.children.length > 60) log.firstChild.remove(); log.scrollTop = log.scrollHeight; chatWake();
 }
 function chatWake(ms = 7000) { const c = $('chat'); if (!c) return; c.classList.add('awake'); clearTimeout(G.chatT); G.chatT = setTimeout(() => { if (document.activeElement !== $('chat-input')) c.classList.remove('awake'); }, ms); }
+// botão ⤢: alterna o chat entre o tamanho normal e o grande (fica salvo)
+function chatSizeApply() { const c = $('chat'); if (c) c.classList.toggle('big', !!SET.chatBig); const b = $('chat-size'); if (b) b.textContent = SET.chatBig ? '⤡' : '⤢'; }
+{ const go = () => { const b = $('chat-size'); if (b) b.onclick = e => { e.stopPropagation(); SET.chatBig = !SET.chatBig; saveSettings(); chatSizeApply(); chatWake(); }; chatSizeApply(); }; if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', go); else go(); }
 function chatOpen() { if (SET.chat === 'off') return; const i = $('chat-input'), c = $('chat'); c.classList.add('typing', 'awake'); i.focus(); }
 function chatClose() { const i = $('chat-input'), c = $('chat'); i.blur(); c.classList.remove('typing'); chatWake(2500); }
 let toastTimer = 0;
@@ -1124,6 +1130,7 @@ function frame() {
       updateTargetFrame();
     }
     if (now - lastHud > 1000) { lastHud = now; updateHud(); }
+    if (typeof survLungUpdate === 'function' && now - (G.lungT || 0) > 50) { G.lungT = now; survLungUpdate(now); }   // o pulmão respira suave
     if (G.dialog) { const n = G.npcs[G.dialog.id]; if (dist(G.me.x, G.me.y, n.x, n.y) > 4.5) closeDialog(); }
   } else drawClassPreviews(now);
   requestAnimationFrame(frame);
@@ -1627,8 +1634,10 @@ function updateNeeds() {
 // ---------- sangue em jato e pedaços decepados ----------
 function sprayBlood(x, y, dx, dy, n) {
   const sx = dx - dy, sy = (dx + dy) * 0.5, l = Math.hypot(sx, sy) || 1;
-  for (let k = 0; k < n; k++) { if (G.parts.length > 340) break; const s = 0.03 + Math.random() * 0.07, sp = (Math.random() - 0.5) * 0.9, c = Math.cos(sp), si = Math.sin(sp), ux = (sx / l) * c - (sy / l) * si, uy = (sx / l) * si + (sy / l) * c;
-    G.parts.push({ kind: 'blood', x: x - G.view.ox, y: y - G.view.oy, vx: ux * s, vy: uy * s - 0.03 - Math.random() * 0.03, t0: performance.now(), life: 600 + Math.random() * 300, seed: Math.random() * 100 }); }
+  for (let k = 0; k < n; k++) { if (G.parts.length > 400) break; const s = 0.03 + Math.random() * 0.08, sp = (Math.random() - 0.5) * 1.1, c = Math.cos(sp), si = Math.sin(sp), ux = (sx / l) * c - (sy / l) * si, uy = (sx / l) * si + (sy / l) * c, big = Math.random();
+    G.parts.push({ kind: 'blood', x: x - G.view.ox + (Math.random() - 0.5) * 3, y: y - G.view.oy + (Math.random() - 0.5) * 3, vx: ux * s, vy: uy * s - 0.03 - Math.random() * 0.04, t0: performance.now(), life: 650 + Math.random() * 450, seed: Math.random() * 100, sz: big < 0.5 ? 1.6 + Math.random() : big < 0.85 ? 2.6 + Math.random() * 1.2 : 4 + Math.random() * 1.5 }); }
+  // névoa fina no ponto do impacto
+  for (let k = 0; k < Math.ceil(n / 3); k++) { if (G.parts.length > 400) break; const a = Math.random() * Math.PI * 2, s = 0.01 + Math.random() * 0.02; G.parts.push({ kind: 'blood', x: x - G.view.ox, y: y - G.view.oy, vx: Math.cos(a) * s + sx / l * 0.015, vy: Math.sin(a) * s * 0.6 - 0.01, t0: performance.now(), life: 300 + Math.random() * 200, seed: Math.random() * 100, sz: 1.2 }); }
 }
 function spawnGib(e, k, part, dx, dy) {
   const s = gibSprite(e, k, part); if (!s) return;

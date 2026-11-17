@@ -103,8 +103,8 @@ const BUILDINGS = TEST3D ? [] : [
   { x: C - 30, y: C - 1, ...BH('shop', 5, 5, 4.0, 2.8, 'Empório do Borin') },
   { x: C - 22, y: C - 1, ...BH('smith', 5, 5, 2.6, 2.6, 'Forja de Hrodgar') },
   { x: C - 15, y: C + 10, ...BH('tavern', 6, 7, 3.0, 2.8, 'Taverna do Javali', { door: 'E', floors: 1 }) },   // de frente para a praça do mercado (só térreo)
-  { x: C - 10, y: C + 22, ...BH('barracks', 8, 5, 4.0, 2.6, 'Quartel da Guarda', { door: 'E', gen: { x: C + 5, y: C + 22, w: 8, h: 5, door: 'S' } }) },   // junto ao portão sul, porta para a rua principal
-  { x: C - 28, y: C + 24, ...BH('stable', 5, 4, 2.6, 2.4, 'Estábulo', { floors: 1 }) },
+  { x: C - 19, y: C + 24, ...BH('barracks', 8, 5, 4.0, 2.6, 'Quartel da Guarda', { door: 'E', gen: { x: C + 5, y: C + 22, w: 8, h: 5, door: 'S' } }) },   // no antigo lugar da pousada, porta para o leste
+  { x: C - 7, y: C + 22, ...BH('stable', 5, 4, 2.6, 2.4, 'Estábulo', { floors: 1, gen: { x: C - 28, y: C + 24, w: 5, h: 4, door: 'S' } }) },   // no antigo lugar do quartel, junto ao portão sul
   { x: C - 29, y: C + 10, ...BH('shop', 5, 5, 2.4, 2.2, 'Boticário de Elva', { v: 1, door: 'N', floors: 1 }) },
   { x: C - 22, y: C - 8, ...BH('shop', 5, 5, 3.8, 2.4, 'Arcanos & Varinhas', { v: 2, door: 'W', floors: 1, deco: 'arcane' }) },   // alta, estreita e antiga
   { x: C - 22, y: C + 10, ...BH('shop', 5, 5, 3.2, 2.0, 'Alfaiataria Real', { v: 3, door: 'N', floors: 1, deco: 'tailor' }) },   // roxo-ameixa e dourado
@@ -950,7 +950,7 @@ function generateWorld() {
     lane(X(49), C + 8, X(48), C + 10);   // trilha da horta
   }
   // pousada do outro lado da rua, atrás das lojas da taverna, porta para a rua (no fim da lista: não muda o número dos prédios salvos)
-  if (!TEST3D) BUILDINGS.push({ x: C - 19, y: C + 22, ...BH('hotel', 7, 7, 2.3, 1.25, 'Pousada do Javali Magro', { floors: 1, door: 'E', dcol: 6 }) });   // 7x7, bem baixa (3 cabines), um passo mais longe da loja de elixir
+  if (!TEST3D) BUILDINGS.push({ x: C - 29, y: C + 24, ...BH('hotel', 7, 7, 2.3, 1.25, 'Pousada do Javali Magro', { floors: 1, door: 'E', dcol: 6 }) });   // 7x7, bem baixa (3 cabines), um passo mais longe da loja de elixir
   if (!TEST3D) BUILDINGS.push({ x: C - 30, y: C - 14, ...BH('house', 5, 4, 3.0, 2.6, '', { door: 'E', v: 2, floors: 1, extra: 1 }) });
   if (!TEST3D) BUILDINGS.push(   // bairro nobre: casarões do lado do castelo (porta para a avenida) e mais um do lado leste
     { x: C + 13, y: C - 21, ...BH('manor', 6, 6, 4.6, 3.0, 'Casa Lorvan', { door: 'E', v: 1 }) },
@@ -1066,7 +1066,7 @@ function generateWorld() {
   deco(C - 31, C - 29, O.TREE); deco(C - 27, C - 26, O.TREE);
   for (let gy = C - 30; gy <= C - 23; gy++) deco(C - 26, gy, gy === C - 26 ? O.NONE : O.LOWWALL);   // muro baixo do cemitério com portão
   // forja, quartel, estábulo, taverna
-  const sm = BUILDINGS[2]; decoAny(sm.x - 1, sm.y + sm.h + 1, O.ANVIL); decoAny(sm.x + sm.w, sm.y + 1, O.BARREL);
+  const sm = BUILDINGS[2]; decoAny(sm.x + sm.w, sm.y + 1, O.BARREL);   // (a bigorna que ficava no meio da rua saiu)
   const bk = BUILDINGS[4]; for (let k = 0; k < 4; k++) decoAny(bk.x + 1 + k * 2, bk.y + bk.h + 3, O.DUMMY); decoAny(bk.x + bk.w, bk.y + bk.h + 1, O.WEAPONRACK);
   const st = BUILDINGS[5]; decoAny(st.x + st.w + 1, st.y, O.HAY); decoAny(st.x + st.w + 1, st.y + 2, O.HAY); decoAny(st.x, st.y + st.h + 2, O.CART);
   // (sem a cerca na frente do estábulo: ela fechava o portãozinho do quintal da Marta)
@@ -1250,7 +1250,7 @@ if (!TEST3D) {
   });
   const sq = { x: CENTER - 32 - 37, y: CENTER + 4 };   // pracinha da vila do oeste (x0 - 37)
   NPCS.push({ id: 'supplier', kind: 'supplier', role: 'supplier', name: 'Jonas, o Entregador do Fornecedor', x: C + 3.6, y: C + 27 });   // espera as encomendas perto do portão principal
-  [['courier1', 'Pip, o Mensageiro', -1.2, 0], ['courier2', 'Lia Ventura, a Mensageira', 1.2, -0.6], ['courier3', 'Tomé Passolargo, o Carroceiro', 0.3, 1.4]].forEach(([id, name, dx, dy]) => NPCS.push({ id, kind: id, role: 'courier', name, x: sq.x + dx, y: sq.y + dy }));
+  [['courier1', 'Pip, o Mensageiro', -1.2, 0], ['courier2', 'Lia Ventura, a Mensageira', 1.2, -0.6], ['courier3', 'Tomé Passolargo, o Carroceiro', 1.6, 1.6]].forEach(([id, name, dx, dy]) => NPCS.push({ id, kind: id, role: 'courier', name, x: sq.x + dx, y: sq.y + dy }));
 }
 // ---------- economia dos negócios: mercadorias, o que cada loja vende e o que cada oficina faz ----------
 const GOODS = {

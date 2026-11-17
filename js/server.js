@@ -2526,7 +2526,7 @@ function estateMsg(p, m) {
     case 'rent': case 'buy': {
       if (!P) return; const mine = E.r[P.id] && E.r[P.id].owner === estOwner(p);
       if (E.r[P.id] && !(mine && m.a === 'buy' && E.r[P.id].mode !== 'own')) { tell(p, 'Esse imóvel já tem dono.'); return; }
-      if (!nearBroker(p) && !nearPropDoor(p, P)) { tell(p, 'O contrato se fecha com o corretor, na Imobiliária, ou na porta do imóvel.'); return; }
+      // compra e aluguel valem de qualquer lugar (painel da imobiliária, menu de negócios ou o Mestre Anselmo)
       if (!mine) { const why = canAcquire(p, P, m.a); if (why) { tell(p, why); return; } }
       const RS = !mine && P.kind !== 'house' ? (E.resale || {})[P.id] : null;   // melhorias deixadas pelo dono anterior: quem compra paga por elas também
       const cost = m.a === 'buy' ? buyPrice(P, p) + (RS ? RS.extra || 0 : 0) - (mine ? E.r[P.id].dep || 0 : 0) : P.rent * (RENT_DAYS + 2);   // 1ª semana + caução de 2 dias
@@ -2743,7 +2743,7 @@ function bizHour(now) {
     else if (P.kind === 'shop') {
       if (B.rsOn) { const GS = SHOP_GOODS[P.shopType] || [], ord = g => B.orders.filter(o => o.g === g).reduce((a, o) => a + o.q, 0), share = Math.floor(shopCap(B) / Math.max(1, GS.length)); for (const g of GS) { const have = (B.stock[g] || 0) + ord(g); if (have >= share) continue;
           const room = shopCap(B) - stockSum(B.stock) - B.orders.reduce((a, o) => a + (o.raw ? 0 : o.q), 0), q = Math.min(share - have, room); if (q < 3) continue; const cost = Math.ceil(GOODS[g].p * q);
-          if (debit(r.owner, null, cost, B)) { B.orders.push({ g, q, at: Date.now() + BIZ_HOUR_MS }); B.today.cost += cost; bizLog(B, 'Reposição automática: ' + q + ' ' + GOODS[g].n + ' (' + cost + ' ouro do banco).'); } else { bizLog(B, 'Reposição automática: sem ouro no banco para ' + GOODS[g].n + '.'); break; } } }
+          if (debit(r.owner, null, cost, B)) { B.orders.push({ g, q, at: Date.now() + BIZ_HOUR_MS / 2 });   /* a encomenda sai do fornecedor em meia hora do jogo */ B.today.cost += cost; bizLog(B, 'Reposição automática: ' + q + ' ' + GOODS[g].n + ' (' + cost + ' ouro do banco).'); } else { bizLog(B, 'Reposição automática: sem ouro no banco para ' + GOODS[g].n + '.'); break; } } }
       if (P.shopType === 'arcane' && B.rsOn && !ownMaker(r.owner, 'wood')) {   // bancada de entalhe: com a reposição ligada (e sem serraria própria), compra madeira quando passa da metade
         B.raw = B.raw || {}; const pend = B.orders.filter(o => o.raw).reduce((a, o) => a + o.q, 0), have = Math.floor(B.raw.wood || 0) + pend;
         if (have < BENCH_CAP / 2) { const q = BENCH_CAP - have, cost = Math.ceil(GOODS.wood.p * q); if (debit(r.owner, null, cost, B)) { B.orders.push({ g: 'wood', q, raw: 1, at: Date.now() + BIZ_HOUR_MS }); B.today.cost += cost; bizLog(B, 'Reposição automática: ' + q + ' Madeira para a bancada (' + cost + ' ouro do banco).'); } else bizLog(B, 'Reposição automática: sem ouro no banco para a madeira da bancada.'); }
@@ -3056,6 +3056,7 @@ function shiftEnd(p, done) {
   if (done) featAdd(p, 'shifts'); p.gold += pay; if (frac > 0.2) { profGain(p, S0.prof, Math.round(10 * frac)); gainXp(p, Math.round((8 + lv) * frac)); }
   if (r && r.owner === estOwner(p)) { const got = Math.max(0, Math.round((r.biz.today.rev || 0) - (S0.rev0 || 0))); info(p, (done ? 'Turno completo' : 'Você saiu do turno') + ' no seu negócio: sem salário (o dinheiro já é seu), mas ele rendeu +' + got + ' de ouro para o banco enquanto você trabalhava (+80% de vendas e produção).'); }
   else info(p, done ? 'Turno completo: +' + pay + ' de ouro.' : 'Você saiu no meio do turno: +' + pay + ' de ouro.');
+  { const v = r && r.owner === estOwner(p) ? Math.max(0, Math.round((r.biz.today.rev || 0) - (S0.rev0 || 0))) : pay; if (done && v > 0) Net.toOne(p.id, { t: 'pay', v, own: r && r.owner === estOwner(p) ? 1 : 0 }); }   // o salário sobe em cima do personagem
   sendStat(p); Net.toOne(p.id, { t: 'shift', on: 0 });
 }
 function jobsTick(now) {
@@ -3315,8 +3316,16 @@ function npcPace(n) {
   if (n._pace == null) { let h = 7; for (const c of String(n.id)) h = (h * 31 + c.charCodeAt(0)) & 0xffff; n._pace = (GAIT_SPD[NPC_GAIT[n.kind] || 'normal'] || 1) * (0.92 + (h % 17) / 100); n._lane = ((h >> 4) % 7 - 3) * 0.07; }
   return n._pace * (n.drunkT > now_() ? GAIT_SPD.drunk : 1);
 }
+// destino em cima de algo sólido (chafariz, poço, parede): vai até o ponto livre mais próximo (senão o NPC rodeia e trava)
+const FREE_SPOT = new Map();
+function npcFreeSpot(tx, ty) {
+  const k = Math.round(tx * 4) + ',' + Math.round(ty * 4); let r = FREE_SPOT.get(k); if (r) return r;
+  r = [tx, ty]; if (!npcStand(tx, ty, 0.24)) { let best = null, bd = 1e9; for (let rad = 0.5; rad <= 2.5 && !best; rad += 0.5) for (let a = 0; a < 16; a++) { const x = tx + Math.cos(a / 16 * Math.PI * 2) * rad, y = ty + Math.sin(a / 16 * Math.PI * 2) * rad; if (npcStand(x, y, 0.24) && WORLD.bld[tileAt(x, y)] === WORLD.bld[tileAt(tx, ty)]) { const d = Math.hypot(x - tx, y - ty); if (d < bd) { bd = d; best = [x, y]; } } } if (best) r = best; }
+  if (FREE_SPOT.size > 4000) FREE_SPOT.clear(); FREE_SPOT.set(k, r); return r;
+}
 function npcWalk(n, tx, ty, speed, dt) {
   const now = now_(), calm = speed < 1.8; if (calm) speed *= npcPace(n);
+  if (calm && !n.fight && !n.flee) [tx, ty] = npcFreeSpot(tx, ty);   // só passeio/trabalho: perseguições continuam mirando o alvo
   const key = Math.round(tx * 4) + ',' + Math.round(ty * 4);
   if (n.walkKey !== key) {   // alvo andando (perseguição): só refaz o caminho se ele se afastou mais de 1,5 tile ou mudou de prédio
     const far = !n.walkT || dist(n.walkT[0], n.walkT[1], tx, ty) > 1.5 || WORLD.bld[tileAt(tx, ty)] !== WORLD.bld[tileAt(n.walkT[0], n.walkT[1])] || !n.legs || !n.legs.length; n.walkKey = key;
@@ -3585,7 +3594,7 @@ const TRADE = {
   smith: { sell: { axe: 4, pickaxe: 4, sickle: 4, lockpick: 3 }, buys: ['ore', 'gem', 'hardwood', 'log'] },
   st_apoth: { sell: { pot_hp: 8, pot_band: 12, herb: 12, ointment: 5, tea: 6 }, buys: ['herb', 'silverleaf', 'flaxraw'] },
   st_bakery: { sell: { bread: 12, pie: 4 }, buys: ['wheat', 'apple', 'berries'] },
-  st_witch: { sell: { elixir_breath: 3, elixir_warm: 4, elixir_swift: 3, amulet_luck: 1, pot_mp: 6, pot_hp: 6, silverleaf: 4 }, buys: ['herb', 'silverleaf', 'gem', 'goo', 'toadskin', 'wispdust', 'slimecore', 'trollheart', 'dragonscale', 'rattail', 'bone'] },
+  st_witch: { fast: 1, sell: { elixir_breath: 6, elixir_warm: 8, elixir_swift: 6, amulet_luck: 2, pot_mp: 12, pot_hp: 12, silverleaf: 8 }, buys: ['herb', 'silverleaf', 'gem', 'goo', 'toadskin', 'wispdust', 'slimecore', 'trollheart', 'dragonscale', 'rattail', 'bone'] },
   st_arcane: { sell: { wand: 4, wand_fine: 2, gem: 3, pot_mp: 8 }, buys: ['gem', 'hardwood', 'silverleaf', 'log', 'wand', 'wand_fine', 'wand_arcane'] },
   st_tailor: { sell: { pot_band: 15, rope: 5, cape_plum: 3, cape_night: 3, cape_emerald: 3, cape_crimson: 3, cape_ivory: 2, robe_star: 2, robe_plum: 2, robe_forest: 2 }, buys: ['flaxraw', 'pelt'] },
   st_scroll: { sell: { map: 6 }, buys: ['log', 'hardwood'] },
@@ -3601,7 +3610,7 @@ function tradeStock(n) {
   const C = tradeCat(n); S.trade = S.trade || {}; let T = S.trade[n.id]; const now = now_();
   if (!T) T = S.trade[n.id] = { stock: { ...C.sell }, t: now };
   { const rb = npcBiz(n); if (rb && rb.biz.store && n.id === 'smith') { for (const k of ['axe', 'pickaxe', 'sickle']) while ((T.stock[k] || 0) < (C.sell[k] || 0) + 2 && (rb.biz.store.tools || 0) >= 1) { T.stock[k] = (T.stock[k] || 0) + 1; rb.biz.store.tools -= 1; } } }   // forja de jogador: ferramentas da produção vão para o balcão
-  const steps = Math.floor((now - T.t) / (BIZ_HOUR_MS * 2)); if (steps > 0 && !n.trader) { T.t += steps * BIZ_HOUR_MS * 2; for (const k in C.sell) T.stock[k] = Math.min(C.sell[k], (T.stock[k] || 0) + steps); }   // repõe 1 de cada a cada 2 horas do jogo
+  const per = BIZ_HOUR_MS * (C.fast ? 1 : 2), steps = Math.floor((now - T.t) / per); if (steps > 0 && !n.trader) { T.t += steps * per;   /* a Morgana repõe a cada hora do jogo */ for (const k in C.sell) T.stock[k] = Math.min(C.sell[k], (T.stock[k] || 0) + steps); }   // repõe 1 de cada a cada 2 horas do jogo
   return T;
 }
 const tSellPrice = (n, p, k) => { const C = tradeCat(n), own = C.sell && k in C.sell, glut = (k === 'bread' || k === 'pie') && ((S.trade || {})[n.id] || { stock: {} }).stock[k] > 25 ? 0.75 : 1; return Math.max(1, Math.round(tBase(k) * (C.mark || 1) * (own ? 1 : 1.3) * glut * (opPriceMul(n, p) || 1))); };

@@ -99,7 +99,7 @@ function drawParticles(ctx, ox, oy, now, dt) {
       case 'chip': ctx.globalAlpha = t > 0.7 ? (1 - t) / 0.3 : 1; ctx.fillStyle = p.color; ctx.fillRect(x, y, 2, 1); ctx.globalAlpha = 1; break;
       case 'mist': softDab(ctx, x, y, 6 + t * 12, '#eef6ff', 0.4 * (1 - t)); break;
       case 'snow': ctx.fillStyle = `rgba(240,248,255,${1 - t})`; ctx.fillRect(x, y, 1, 1); break;
-      case 'blood': ctx.fillStyle = `rgba(150,30,30,${1 - t})`; ctx.fillRect(x, y, 1, 1); break;
+      case 'blood': { const sz = p.sz || 1, a = Math.min(1, (1 - t) * 1.6); ctx.fillStyle = `rgba(${110 + Math.round((p.seed || 0) % 40)},${12 + Math.round((p.seed || 0) % 10)},${14},${a})`; if (sz <= 1) ctx.fillRect(x, y, 1, 1); else { const sp = Math.hypot(p.vx, p.vy) * 40; ctx.beginPath(); ctx.ellipse(x, y, sz * 0.5 + Math.min(1.6, sp), sz * 0.5, Math.atan2(p.vy, p.vx), 0, 7); ctx.fill(); } break; }   // gotas de tamanhos variados, esticadas na direção do voo
     }
   }
   G.parts = keep;
@@ -1398,5 +1398,11 @@ function drawCoinFx(ctx, now) {
   for (const f of G.coinFx) { const e = G.players[f.by]; if (!e) continue; const k = (now - f.t0) / 700, a = iso(f.x, f.y), b = iso(e.rx, e.ry), r = (1 - k) * 10, ang = k * 9;
     const x = a.sx + (b.sx - a.sx) * k + Math.cos(ang) * r + ox, y = a.sy + (b.sy - a.sy) * k - Math.sin(k * Math.PI) * 30 - k * 20 + Math.sin(ang) * r * 0.5 + oy;
     ctx.save(); ctx.globalAlpha = 1 - k * 0.6; ctx.fillStyle = '#f6cc48'; ctx.beginPath(); ctx.ellipse(x, y, 2.4, 2.4, 0, 0, 7); ctx.fill(); ctx.globalCompositeOperation = 'lighter'; ctx.fillStyle = 'rgba(255,230,150,0.5)'; ctx.beginPath(); ctx.arc(x, y, 5, 0, 7); ctx.fill(); ctx.restore(); }
+  if (G.payFx && G.me) {   // salário do turno: sobe devagar em cima do personagem, com uma moeda girando
+    const F = G.payFx, t = now - F.t0, D = 2600; if (t > D) G.payFx = null; else { const k = t / D, p = iso(G.me.rx, G.me.ry), x = p.sx + ox, y = p.sy + oy - 78 - Math.sqrt(k) * 30, a = k < 0.12 ? k / 0.12 : k > 0.7 ? 1 - (k - 0.7) / 0.3 : 1, sc = k < 0.12 ? 0.6 + 0.4 * (k / 0.12) + 0.15 * Math.sin(k / 0.12 * Math.PI) : 1;
+      ctx.save(); ctx.globalAlpha = a; ctx.translate(x, y); ctx.scale(sc, sc);
+      ctx.font = '700 15px "Cinzel", serif'; const tw = ctx.measureText('+' + F.v + ' ouro').width, cx0 = 4 - tw / 2 - 11, w = Math.abs(Math.cos(t / 160)) * 5 + 1; ctx.fillStyle = '#e8c45a'; ctx.strokeStyle = '#7a5a12'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(cx0, -5, w, 5.5, 0, 0, 7); ctx.fill(); ctx.stroke();
+      pxText(ctx, '+' + F.v + ' ouro', 4, 0, '#ffe08a', 15, '"Cinzel", serif', '700'); if (F.own) pxText(ctx, 'rendeu no seu negócio', 4, 14, '#e8d8b0', 9, '"Cinzel", serif', '400');
+      ctx.restore(); } }
   if (G.coinSum && now - G.coinSumT < 1600 && G.me) { const p = iso(G.me.rx, G.me.ry), k = (now - G.coinSumT) / 1600; ctx.save(); ctx.globalAlpha = 1 - k; pxText(ctx, '+' + G.coinSum + ' ouro', p.sx + ox, p.sy + oy - 70 - k * 14, '#ffe08a', 13, '"Cinzel", serif', '700'); ctx.restore(); } else if (G.coinSum && now - G.coinSumT >= 1600) G.coinSum = 0;
 }

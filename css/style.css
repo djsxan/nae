@@ -242,7 +242,7 @@ kbd { font-family: 'Alegreya Sans SC', sans-serif; font-size: 12px; font-weight:
 #dlg-opts button.ghost { opacity: .75; }
 
 /* ---------- avisos ---------- */
-#toast { position: fixed; top: 100px; left: 50%; transform: translateX(-50%); z-index: 20; pointer-events: none; opacity: 0; transition: opacity .25s; font-family: 'Cinzel', serif; font-weight: 700; font-size: 15px; color: #f0dc9a; text-shadow: 0 1px 3px #000, 0 0 8px #000; text-align: center; max-width: calc(100vw - 32px); }
+#toast { position: fixed; top: 100px; left: 50%; transform: translateX(-50%); z-index: 9500; pointer-events: none; opacity: 0; transition: opacity .25s; font-family: 'Cinzel', serif; font-weight: 700; font-size: 15px; color: #f0dc9a; text-shadow: 0 1px 3px #000, 0 0 8px #000; text-align: center; max-width: calc(100vw - 32px); }
 #toast.show { opacity: 1; }
 #banner { position: fixed; top: 22%; left: 50%; transform: translate(-50%, -10px); z-index: 18; text-align: center; pointer-events: none; opacity: 0; transition: opacity .6s, transform .6s; width: calc(100vw - 32px); }
 #banner.show { opacity: 1; transform: translate(-50%, 0); }
@@ -498,6 +498,7 @@ body.nae:not(.nae-ready) #lobby > *:not(#title3d) { visibility: hidden; }
 #surv-medals { position: fixed; z-index: 12; left: 12px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: auto; }
 #surv-medals .sv-w { width: 58px; height: 58px; filter: drop-shadow(0 4px 6px rgba(0,0,0,.6)); }
 #surv-medals .sv-w.low { animation: svPulse 1s ease-in-out infinite; }
+#surv-medals .sv-lw { transition: opacity .8s; } #surv-medals .sv-lw.full { opacity: .55; }   /* estamina cheia: o pulmão fica discreto */
 @keyframes svPulse { 50% { filter: drop-shadow(0 0 8px rgba(255,80,50,.9)) drop-shadow(0 4px 6px rgba(0,0,0,.6)); } }
 #surv-medals svg { width: 100%; height: 100%; display: block; }
 #surv-medals .sv-bg { fill: none; stroke: rgba(58,42,22,.25); stroke-width: 4.2; }
@@ -603,6 +604,11 @@ body.nae[data-tp=play] .start .start-row, body.nae[data-tp=play] .start h2, body
 #chat.typing #chat-input { display: block; }
 #chat.fade { opacity: 0.18; pointer-events: none; } #chat.fade.awake, #chat.fade.typing { opacity: 1; pointer-events: auto; }
 #chat.off { display: none; }
+/* chat maior: caixa mais larga e alta, texto maior */
+#chat.big { width: min(560px, calc(100vw - 24px)); }
+#chat.big #chat-log { height: 210px; font-size: 16.5px; } #chat.big #chat-log b { font-size: 15px; } #chat.big #chat-input { font-size: 16px; padding: 7px 10px; }
+#chat-size { position: absolute; right: 0; top: -22px; width: 22px; height: 20px; padding: 0; border: 1px solid rgba(201,162,74,.35); border-radius: 4px; background: rgba(0,0,0,.45); color: #e8d8b0; font-size: 13px; line-height: 18px; cursor: pointer; opacity: 0; transition: opacity .3s; }
+#chat.awake #chat-size, #chat.typing #chat-size, #chat:not(.fade) #chat-size, #chat:hover #chat-size { opacity: .85; } #chat-size:hover { opacity: 1; background: rgba(201,162,74,.3); }
 #chat.typing #chat-log { overflow-y: auto; scrollbar-width: thin; }
 body.touch #chat { width: 260px; } body.touch #chat-log { height: 70px; }
 #givep { width: min(420px, 94vw); z-index: 34; } .gv-items { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; } .gv-it { position: relative; width: 46px; height: 46px; font-size: 22px; background: rgba(0,0,0,.3); border: 1px solid #6a5028; border-radius: 6px; cursor: pointer; } .gv-it small { position: absolute; right: 3px; bottom: 1px; font-size: 11px; color: #f0d890; } .gv-it:hover { border-color: #e8c870; }
