@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.53.0';
-const VERSION_NAME = 'Nae · Escudo Erguido';
+const VERSION = 'v1.54.0';
+const VERSION_NAME = 'Nae · Varinhas e Veludo';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -209,6 +209,21 @@ const LOOT = {
   gem:      { name: 'Gema Bruta',       price: 55,  icon: '◈', color: '#5ad0f0', desc: 'Pedra preciosa sem lapidar.' },
 };
 // recursos de cada criatura: [item, chance]
+// capas e mantos da Alfaiataria Real: vestir pelo inventário (muda a aparência para todos)
+const CLOAKS = {
+  1: { k: 'cape_plum', n: 'Capa ameixa', tone: '#5e2c52', price: 45 }, 2: { k: 'cape_night', n: 'Capa azul-noite', tone: '#1e2a4a', price: 45 },
+  3: { k: 'cape_emerald', n: 'Capa esmeralda', tone: '#1e4a32', price: 45 }, 4: { k: 'cape_crimson', n: 'Capa carmim', tone: '#7a1a1c', price: 45 },
+  5: { k: 'cape_ivory', n: 'Capa marfim', tone: '#e8e0cc', price: 60 },
+  6: { k: 'robe_star', n: 'Manto das estrelas', tone: '#1a2040', trim: '#d8c070', pat: 'stars', robe: true, price: 120 },
+  7: { k: 'robe_plum', n: 'Manto ameixa e ouro', tone: '#4a1a3a', trim: '#d4a94a', robe: true, price: 120 },
+  8: { k: 'robe_forest', n: 'Manto da floresta', tone: '#1e3a24', trim: '#b8a060', pat: 'leaves', robe: true, price: 120 },
+};
+const CLOAK_BY_ITEM = {}; for (const id in CLOAKS) CLOAK_BY_ITEM[CLOAKS[id].k] = +id;
+for (const id in CLOAKS) { const C = CLOAKS[id]; LOOT[C.k] = { name: C.n, price: C.price, icon: C.robe ? '🥻' : '🧥', color: C.tone, desc: (C.robe ? 'Manto longo costurado sob medida na Alfaiataria Real.' : 'Capa de tecido fino da Alfaiataria Real.') + ' Clique para vestir ou tirar.' }; }
+// varinhas: cada uma escolhe o dono com uma madeira, um núcleo e um tamanho (pequenas diferenças)
+const WAND_WOODS = [['Teixo', 0.02, 0], ['Azevinho', 0, 4], ['Carvalho', 0.01, 2], ['Salgueiro', -0.01, 6], ['Ébano', 0.03, -2], ['Freixo', 0.01, 3], ['Cerejeira', 0, 5], ['Videira', 0.02, 1], ['Nogueira', 0.015, 2], ['Faia', 0, 4]];
+const WAND_CORES = [['pena de grifo', 0.02, 0], ['pelo de unicórnio', 0, 6], ['escama de dragão', 0.03, -3], ['fio de luar', 0.01, 4], ['seiva de árvore anciã', 0.01, 3], ['pluma de coruja branca', 0, 5]];
+const WAND_FEEL = ['leve e ágil', 'firme', 'flexível', 'um pouco teimosa', 'muito obediente', 'quente ao toque'];
 const MON_LOOT = {
   rat: [['rattail', 0.85]], deer: [['hide', 1], ['venison', 0.75]], boar: [['boartusk', 0.9], ['pork', 0.8]], wolf: [['pelt', 0.95]],
   bandit: [['pouch', 0.35]], deserter: [['rustblade', 0.4]], wisp: [['wispdust', 0.6]],
@@ -415,7 +430,8 @@ const REP_TITLES = [[90, 'Herói de Nae'], [75, 'Honrado'], [60, 'Respeitado'], 
 const repTitle = r => (REP_TITLES.find(([m]) => r >= m) || REP_TITLES[REP_TITLES.length - 1])[1];
 const REP_PERKS = [[30, 'abaixo de 30: tudo 15% mais caro e as sentinelas ficam de olho'], [60, 'Respeitado: 5% de desconto nas compras'], [75, 'Honrado: 10% de desconto, imóveis 10% mais baratos e as sentinelas dão um aviso a mais'], [90, 'Herói de Nae: 15% de desconto e metade da pena na cadeia']];
 const repPriceMul = r => r >= 90 ? 0.85 : r >= 75 ? 0.9 : r >= 60 ? 0.95 : r < 30 ? 1.15 : 1;
-const maxMpOf = p => Math.floor(maxMpFor(p.cls, p.lvl) * (1 + treeEff(p, 'mp'))) + (wandOf(p) ? WANDS[wandOf(p)].mp : 0);
+const wandBonus = p => { const k = wandOf(p), I = p && p.wandInfo; return k && I && I.k === k ? I : null; };   // madeira e núcleo da varinha que está na mão
+const maxMpOf = p => Math.floor(maxMpFor(p.cls, p.lvl) * (1 + treeEff(p, 'mp'))) + (wandOf(p) ? WANDS[wandOf(p)].mp + ((wandBonus(p) || {}).mp || 0) : 0);
 const cstMaxOf = p => Math.round(CST_MAX * (1 + treeEff(p, 'cst')));
 
 // arco: tempo de puxar, pegar flecha, soltar; segurar no máximo cansa e treme; velocidades em tiles/s

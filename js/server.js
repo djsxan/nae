@@ -21,10 +21,16 @@ const RUMORS = [
 const now_ = () => Date.now();
 function buffOn(p, b) { return (p.buffs[b] || 0) > now_(); }
 function pinfo(p) { return { id: p.id, name: p.name, color: p.color, cls: p.cls, skin: p.skin, lvl: p.lvl }; }
+// sorteia a madeira, o núcleo e o tamanho de uma varinha
+function wandRoll(k) { const W = WAND_WOODS[Math.floor(Math.random() * WAND_WOODS.length)], C = WAND_CORES[Math.floor(Math.random() * WAND_CORES.length)], len = 20 + Math.floor(Math.random() * 16);
+  return { k, w: W[0], c: C[0], len, feel: WAND_FEEL[Math.floor(Math.random() * WAND_FEEL.length)], dmg: Math.round((W[1] + C[1] + (len - 27) * 0.002) * 1000) / 1000, mp: W[2] + C[2] }; }
+const wandTxt = I => I.w + ', ' + I.c + ', ' + I.len + ' cm, ' + I.feel + ' (dano ' + (I.dmg >= 0 ? '+' : '') + Math.round(I.dmg * 100) + '%, mana ' + (I.mp >= 0 ? '+' : '') + I.mp + ')';
 function fullStat(p) {
   const now = now_();
+  if (wandOf(p) && !wandBonus(p)) p.wandInfo = wandRoll(wandOf(p));   // varinha nova na mão (achada, entalhada ou de save antigo): ela escolhe a madeira e o núcleo
+  if (p.cloak && !(CLOAKS[p.cloak] && p.inv[CLOAKS[p.cloak].k] > 0)) p.cloak = 0;   // vendeu ou perdeu a capa: tira
   return {
-    t: 'pstat', id: p.id, hroom: typeof hotelRoomOf === 'function' && S.estate ? hotelRoomOf(p) : -1, shp: Math.round(p.shieldHp ?? 100), shea: p.sheathed ? 1 : 0, freeLimb: p.freeLimb ? 1 : 0, rep: repOf(p), feats: p.feats || {}, wpn: p.wpn || 'sword', prof: p.prof || {}, job: p.job ? jobView(p) : null, hp: p.hp, maxHp: p.maxHp, mp: p.mp, maxMp: p.maxMp, lvl: p.lvl, xp: p.xp, gold: p.gold,
+    t: 'pstat', id: p.id, wi: p.wandInfo || null, ck: p.cloak || 0, hroom: typeof hotelRoomOf === 'function' && S.estate ? hotelRoomOf(p) : -1, shp: Math.round(p.shieldHp ?? 100), shea: p.sheathed ? 1 : 0, freeLimb: p.freeLimb ? 1 : 0, rep: repOf(p), feats: p.feats || {}, wpn: p.wpn || 'sword', prof: p.prof || {}, job: p.job ? jobView(p) : null, hp: p.hp, maxHp: p.maxHp, mp: p.mp, maxMp: p.maxMp, lvl: p.lvl, xp: p.xp, gold: p.gold,
     pots: { hp: p.pots.hp, mp: p.pots.mp, band: p.pots.band || 0 }, body: p.body, bleed: p.bleed, food: Math.round(p.food ?? 100), water: Math.round(p.water ?? 100), cold: Math.round(p.cold || 0), infect: p.infect || 0, sick: Math.max(0, (p.sickUntil || 0) - now), hasSkin: !!p.hasSkin, lost: p.lost || 0, pro: p.pro || 0, knock: Math.max(0, (p.knockUntil || 0) - now), inv: { ...p.inv }, quests: { ...p.quests }, qdone: { ...p.qdone },
     buffs: Object.entries(p.buffs).filter(([, u]) => u > now).map(([k, u]) => [k, u - now]),
     cds: [0, 1, 2, 3].map(i => Math.max(0, (p.cds[i] || 0) - now)),
@@ -146,6 +152,8 @@ function hostOnClient(from, m) {
     const si = SKINS[cls].findIndex(s => s.id === m.skin), skin = si >= 0 && lvl >= SKIN_LVL[si] ? m.skin : SKINS[cls][0].id;
     const s = townSpot();
     const np = {
+      wandInfo: m.wandInfo && typeof m.wandInfo === 'object' && WANDS[m.wandInfo.k] ? { k: m.wandInfo.k, w: String(m.wandInfo.w || '').slice(0, 20), c: String(m.wandInfo.c || '').slice(0, 30), len: clamp(m.wandInfo.len | 0, 15, 40), feel: String(m.wandInfo.feel || '').slice(0, 24), dmg: clamp(+m.wandInfo.dmg || 0, -0.05, 0.08), mp: clamp(m.wandInfo.mp | 0, -5, 12) } : null,
+      cloak: CLOAKS[m.cloak | 0] ? m.cloak | 0 : 0,
       id: from, name: String(m.name || 'Aventureiro').slice(0, 16), cls, skin, uid: /^[a-z0-9]{4,12}$/.test(m.uid || '') ? m.uid : '',
       color: /^#[0-9a-f]{6}$/i.test(m.color) ? m.color : '#8b2e2e',
       x: s.x, y: s.y, z: 0, lvl, xp: clamp(m.xp | 0, 0, need(lvl) - 1), gold: clamp(m.gold | 0, 0, 1e7),
@@ -445,7 +453,7 @@ function roll(p, mult = 1, tgt = null) {
   if (p.body) dmg *= ((p.lost || 0) & LOST.armA) ? (((p.pro || 0) & LOST.armA) ? 0.6 : 0.3) : ARM_DMG[PART_STATE(p.body.armA)];   // braço da arma ferido / perdido (gancho ajuda)
   dmg *= p._aimMul || 1;
   if (buffOn(p, 'whet')) dmg *= 1.15;
-  if (!p._melee && wandOf(p)) dmg *= 1 + WANDS[wandOf(p)].dmg;   // varinha do mago
+  if (!p._melee && wandOf(p)) dmg *= 1 + WANDS[wandOf(p)].dmg + ((wandBonus(p) || {}).dmg || 0);   // varinha do mago (+ madeira e núcleo)
   dmg *= 1 + treeEff(p, 'dmg') + (p._el === 'fire' ? treeEff(p, 'fire') : p._el === 'ice' ? treeEff(p, 'ice') : 0) + useBonus(p, p._melee ? MELEE_USE[p.cls] : RANGED_USE[p.cls]);
   if (tgt && MON[tgt.type] && MON[tgt.type].beh) dmg *= 1 + treeEff(p, 'beast');
   if (buffOn(p, 'banner')) dmg *= 1.15;
@@ -583,6 +591,7 @@ function useItem(p, k) {
   const now = now_(); if (p.downed || now < (p.useT || 0)) return; p.useT = now + 600;
   if (k === 'water') { drinkCanteen(p, now, true); return; }
   if (!p.inv[k]) return;
+  if (CLOAK_BY_ITEM[k]) { const id = CLOAK_BY_ITEM[k]; p.cloak = p.cloak === id ? 0 : id; tell(p, p.cloak ? 'Você vestiu: ' + CLOAKS[id].n + '.' : 'Você tirou: ' + CLOAKS[id].n + '.'); sendStat(p); return; }   // vestir/tirar capa ou manto
   const take = () => { if (--p.inv[k] <= 0) delete p.inv[k]; };
   if (FOOD[k]) { take(); p.food = Math.min(100, p.food + FOOD[k] * (1 + useBonus(p, 'cook'))); if (k === 'stew') { p.water = Math.min(100, (p.water ?? 100) + 20); p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.15)); } if (k === 'cookedmeat') p.water = Math.max(0, p.water - 5); if ((k === 'venison' || k === 'pork') && Math.random() < 0.3) { p.sickUntil = now + 120000; tell(p, 'A carne crua caiu mal. Você está enjoado (sede dobrada por 2 min).'); } else tell(p, 'Você comeu ' + LOOT[k].name.toLowerCase() + '.'); }
   else if (k === 'elixir_breath') { take(); p.buffs.breath = now + 180000; p.cst = cstMaxOf(p); tell(p, 'Um frescor sobe pelo peito: o fôlego não acaba por 3 minutos.'); }
@@ -2291,7 +2300,7 @@ function hostTick() {
       if (p.devHidden && p.id !== r.id) continue;
       let fl = (p.walking ? 1 : 0) | (p.downed ? 2 : 0) | (p.carriedBy ? 4 : 0) | (p.carrying ? 8 : 0) | (p.running && p.walking ? 256 : 0) | (p.sit ? 512 : 0) | (p.sit === 'c' ? 1024 : 0) | (p.sleep != null ? 32768 : 0) | (p.drawT ? 65536 : 0) | (p.dragBy ? 131072 : 0) | (p.dragMode === 'foot' ? 262144 : 0) | (p.drag && p.drag.mode === 'arms' ? 524288 : 0) | (p.drag && p.drag.mode === 'foot' ? 1048576 : 0) | (p.drag && p.drag.mode === 'back' ? 2097152 : 0) | (p.drag && p.drag.mode === 'grip' ? 4194304 : 0) | (p.gripBy ? 8388608 : 0) | (p.tied ? 16777216 : 0) | (p.choked ? 33554432 : 0) | (p.choking ? 67108864 : 0) | (p.escortBy || p.surrendered ? 134217728 : 0) | (p.jailUntil > now ? 536870912 : 0) | (p.bound ? 1073741824 : 0) | (p.drag && (p.drag.helper || ((dragTarget(p.drag.k, p.drag.id) || {}).dragBy2)) ? 268435456 : 0) | ((((p.fl || 0) + 1) & 3) << 11) | (p.crouch ? 8192 : 0) | (p.slide ? 16384 : 0);
       for (const b in BUFF_BITS) if (buffOn(p, b)) fl |= BUFF_BITS[b];
-      pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0, (p.surrendered ? 1 : 0) | (p.bound && p.bound.kind === 'rope' ? 2 : 0) | (p.bound && p.bound.kind === 'cuffs' ? 4 : 0) | (p.dragBy && (/^(n:|m:)/.test(String(p.dragBy)) || p.dragMode === 'lead') && !p.downed ? 8 : 0) | (p.pkg ? 16 : 0) | (p.shift ? 32 : 0) | (p.wpn === 'halberd' ? 64 : 0) | ((p.uni || 0) << 7) | (p.inMenu ? 1024 : 0) | (p.sheathed ? 2048 : 0) | (p.parry ? (PZ.indexOf(p.parry.z) + 1) << 12 : 0) | ((p.shieldHp ?? 100) <= 0 && p.cls === 'knight' ? 32768 : 0)]);
+      pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0, (p.surrendered ? 1 : 0) | (p.bound && p.bound.kind === 'rope' ? 2 : 0) | (p.bound && p.bound.kind === 'cuffs' ? 4 : 0) | (p.dragBy && (/^(n:|m:)/.test(String(p.dragBy)) || p.dragMode === 'lead') && !p.downed ? 8 : 0) | (p.pkg ? 16 : 0) | (p.shift ? 32 : 0) | (p.wpn === 'halberd' ? 64 : 0) | ((p.uni || 0) << 7) | (((p.cloak || 0) & 15) << 16) | (p.inMenu ? 1024 : 0) | (p.sheathed ? 2048 : 0) | (p.parry ? (PZ.indexOf(p.parry.z) + 1) << 12 : 0) | ((p.shieldHp ?? 100) <= 0 && p.cls === 'knight' ? 32768 : 0)]);
     }
     for (const m of mons) {
       if (Math.abs(m.x - r.x) > VIEW_RADIUS || Math.abs(m.y - r.y) > VIEW_RADIUS) continue;
@@ -3578,7 +3587,7 @@ const TRADE = {
   st_bakery: { sell: { bread: 12, pie: 4 }, buys: ['wheat', 'apple', 'berries'] },
   st_witch: { sell: { elixir_breath: 3, elixir_warm: 4, elixir_swift: 3, amulet_luck: 1, pot_mp: 6, pot_hp: 6, silverleaf: 4 }, buys: ['herb', 'silverleaf', 'gem', 'goo', 'toadskin', 'wispdust', 'slimecore', 'trollheart', 'dragonscale', 'rattail', 'bone'] },
   st_arcane: { sell: { wand: 4, wand_fine: 2, gem: 3, pot_mp: 8 }, buys: ['gem', 'hardwood', 'silverleaf', 'log', 'wand', 'wand_fine', 'wand_arcane'] },
-  st_tailor: { sell: { pot_band: 15, rope: 5 }, buys: ['flaxraw', 'pelt'] },
+  st_tailor: { sell: { pot_band: 15, rope: 5, cape_plum: 3, cape_night: 3, cape_emerald: 3, cape_crimson: 3, cape_ivory: 2, robe_star: 2, robe_plum: 2, robe_forest: 2 }, buys: ['flaxraw', 'pelt'] },
   st_scroll: { sell: { map: 6 }, buys: ['log', 'hardwood'] },
 };
 const TRADER_POOL = ['gem', 'silverleaf', 'hardwood', 'wand', 'map', 'lockpick', 'ointment', 'pot_hp', 'pot_mp'];
@@ -3613,6 +3622,8 @@ function tradeMsg(p, m) {
     if (!canPay(p, cost)) { tell(p, 'Você precisa de ' + cost + ' de ouro.'); return; }
     if (k.startsWith('pot_')) p.pots[k.slice(4)] = (p.pots[k.slice(4)] || 0) + n2; else { if (!p.inv[k] && Object.keys(p.inv).length >= INV_SLOTS) { tell(p, 'Sua mochila está cheia.'); return; } p.inv[k] = (p.inv[k] || 0) + n2; }
     payCity(p, cost); T.stock[k] -= n2; if (!T.stock[k] && !(tradeCat(n).sell && k in tradeCat(n).sell)) delete T.stock[k]; memAdd(n, p, 'buy');
+    if (n.kind === 'st_arcane' && WANDS[k]) { if (wandOf(p) === k) p.wandInfo = wandRoll(k); const I = wandOf(p) === k ? p.wandInfo : wandRoll(k); Net.toOne(p.id, { t: 'scene', k: 'wand', txt: wandTxt(I) }); setTimeout(() => { if (S.players[p.id]) tell(p, 'A varinha escolheu você: ' + wandTxt(I) + '.'); }, 3300); }   // a escolha da varinha
+    if (n.kind === 'st_tailor' && CLOAK_BY_ITEM[k]) { Net.toOne(p.id, { t: 'scene', k: 'fit' }); setTimeout(() => { if (S.players[p.id]) tell(p, 'Medidas tiradas e ajustes feitos: ' + LOOT[k].name + ' cai perfeitamente. Clique nela no inventário para vestir.'); }, 2800); }   // prova de roupa
     { const rb = npcBiz(n); if (rb && rb.owner !== estOwner(p)) { rb.biz.cofre += cost; rb.biz.today.rev += cost; rb.biz.today.sold += n2; bizLog(rb.biz, p.name + ' comprou ' + n2 + 'x ' + tName(k) + ' de ' + n.name.split(',')[0] + ' (' + cost + ' ouro).'); } }
   } else if (m.a === 'sell') {
     const C = tradeCat(n); if (!(p.inv[k] > 0) || !LOOT[k] || !(C.buys === 'all' || C.buys.includes(k))) return; const n2 = Math.min(q, p.inv[k]), pay = tBuyPrice(n, p, k) * n2;

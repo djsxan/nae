@@ -304,7 +304,7 @@ function heroPoseFor(e, now) {
   if (e.isNpc) { P.gait = e.drunk ? 'drunk' : NPC_GAIT[e.kind] || undefined; const h = typeof npcHeld === 'function' ? npcHeld(e) : null; if (h) P.hold = h; }
   if (e.walking) { P.walk = Math.floor(e.walkDist * (e.isNpc ? (GAIT_CAD[P.gait] || 9.5) : e.cls === 'knight' ? 8.5 : 9.5) / (e.running ? 1.45 : 1)) % 12; if (e.running) P.run = 1; if (e.dragMode === 'arms') P.walk = (12 - P.walk) % 12; }   // puxando pelos braços anda de costas
   if (e.skin === 'weaver') { P.walk = -1; P.run = 0; }
-  P.uni = ((e.stb || 0) >> 7) & 7 || undefined;
+  P.uni = ((e.stb || 0) >> 7) & 7 || undefined; P.cloak = ((e.stb || 0) >> 16) & 15 || undefined;
   P.wpn = e.cls === 'knight' && ((e === G.me ? e.wpn === 'halberd' : (e.stb & 64))) ? 'halberd' : undefined;
   if (e === G.me && G.melee && !e.anim) { const k = G.melee.k, held = now - G.melee.t0; P.act = { k: 'atk_' + k, f: Math.min(4, Math.floor(held / 60)) }; }
   if (e.anim && e.anim.tool && actProg(e.anim, now) >= 0) P.tool = e.anim.tool;

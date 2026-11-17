@@ -106,8 +106,8 @@ const BUILDINGS = TEST3D ? [] : [
   { x: C - 10, y: C + 22, ...BH('barracks', 8, 5, 4.0, 2.6, 'Quartel da Guarda', { door: 'E', gen: { x: C + 5, y: C + 22, w: 8, h: 5, door: 'S' } }) },   // junto ao portão sul, porta para a rua principal
   { x: C - 28, y: C + 24, ...BH('stable', 5, 4, 2.6, 2.4, 'Estábulo', { floors: 1 }) },
   { x: C - 29, y: C + 10, ...BH('shop', 5, 5, 2.4, 2.2, 'Boticário de Elva', { v: 1, door: 'N', floors: 1 }) },
-  { x: C - 22, y: C - 8, ...BH('shop', 5, 5, 2.4, 1.6, 'Arcanos & Varinhas', { v: 2, door: 'W' }) },
-  { x: C - 22, y: C + 10, ...BH('shop', 5, 5, 2.4, 2.2, 'Alfaiataria Real', { v: 3, door: 'N', floors: 1 }) },
+  { x: C - 22, y: C - 8, ...BH('shop', 5, 5, 3.8, 2.4, 'Arcanos & Varinhas', { v: 2, door: 'W', floors: 1, deco: 'arcane' }) },   // alta, estreita e antiga
+  { x: C - 22, y: C + 10, ...BH('shop', 5, 5, 3.2, 2.0, 'Alfaiataria Real', { v: 3, door: 'N', floors: 1, deco: 'tailor' }) },   // roxo-ameixa e dourado
   { x: C - 30, y: C - 8, ...BH('shop', 5, 5, 3.6, 2.6, 'Pergaminhos & Mapas', { v: 4, door: 'E' }) },
   { x: C - 5, y: C - 19, ...BH('castle', 12, 10, 10, 6.5, 'Castelo de Nae', { floors: 2 }) },
   { x: C - 27, y: C - 30, ...BH('bank', 8, 12, 5.6, 2.4, 'Banco de Nae', { floors: 1, door: 'S', gen: { x: C - 31, y: C - 23, w: 6, h: 12, door: 'S' } }) },   // no fim da rua oeste, porta para o sul
@@ -259,6 +259,14 @@ function interiorLayout0(b, fl = 0) {
     if (put('table', w - 2, h - 3)) { put('chair', w - 1, h - 3, { seat: 5 }); put('chair', w - 3, h - 3, { seat: 1 }); }
     put('shelf', 0, h - 2); if (h >= 5) put('crate', 0, h - 1);
     put('rug', dc, 1, { block: false });
+  } else if (k === 'shop' && b.deco === 'arcane') {   // Arcanos & Varinhas: paredes de caixinhas até o teto, escada de rodinhas, balcão de veludo e a bancada do artesão
+    npcAt(dc, 0); for (let i = 0; i < w; i++) if (i !== dc) put('wandwall', i, 0); for (let j = 1; j < h - 1; j++) put('wandwall', 0, j);
+    if (dc - 1 >= 1) put('wandcounter', 1, 1, { w: dc - 1 }); put('libladder', 1, 2, { block: false }); put('carvebench', w - 1, 2, { h: 2 }); if (w - 2 - dc >= 1) put('wandcounter', dc + 1, 1, { w: w - 2 - dc });
+    put('chair', w - 2, 3, { seat: 1 }); put('crate', 0, h - 1);
+  } else if (k === 'shop' && b.deco === 'tailor') {   // Alfaiataria Real: tecidos até o teto, mesa de costura mágica, banquinho de provas com espelhos, manequins e o vestido de baile
+    npcAt(dc, 0); for (let i = 0; i < w; i++) if (i !== dc) put('fabricwall', i, 0); for (let j = 1; j < h - 1; j++) put('fabricwall', w - 1, j);
+    if (dc - 1 >= 1) put('sewtable', 1, 1, { w: dc - 1 }); if (w - 2 - dc >= 1) put('counter', dc + 1, 1, { w: w - 2 - dc, v: 3 });
+    put('fitstool', dc, 2, { block: false }); put('gown', 0, 2); put('mannequin2', 0, 3, { v: 1 }); put('mannequin2', 1, 3, { v: 0 }); put('mannequin2', w - 2, 3, { v: 2 });
   } else if (k === 'shop' && b.v === 6) {   // Elixires da Lua Prateada
     npcAt(dc, 0); for (let i = 0; i < w; i++) if (i !== dc) put('shelf', i, 0, { v: 7 });   // estantes de frascos brilhando
     put('counter', 1, 1, { w: dc - 1, v: 6 }); if (w - 2 - dc >= 1) put('counter', dc + 1, 1, { w: w - 2 - dc, v: 6 });
@@ -372,7 +380,7 @@ function interiorLayout0(b, fl = 0) {
 // layout final: descarta móveis que fechariam algum canto do cômodo (todo tile livre precisa ser alcançável)
 const LAYOUT_MEMO = new Map();
 function interiorLayout(b, fl = 0) {
-  const [w, h] = bDims(b), mk = [b.kind, w, h, b.v || 0, floorsOf(b), fl, b.office || '', JSON.stringify(b.stairs || 0), b.extSide || '', b.cellar ? b.cellar.join(',') : ''].join('|');
+  const [w, h] = bDims(b), mk = [b.kind, w, h, b.v || 0, floorsOf(b), fl, b.office || '', JSON.stringify(b.stairs || 0), b.extSide || '', b.cellar ? b.cellar.join(',') : '', b.deco || ''].join('|');
   let L = LAYOUT_MEMO.get(mk); if (L) return L;
   L = interiorLayout0(b, fl);
   const blk = new Uint8Array(w * h), id = (i, j) => j * w + i;

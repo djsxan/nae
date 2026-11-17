@@ -109,9 +109,10 @@ function clientOnServer(m) {
     case 'pinfo': { const e = G.players[m.p.id]; if (e) Object.assign(e, m.p); else G.players[m.p.id] = mkEnt({ ...m.p }); break; }
     case 'pleave': delete G.players[m.id]; break;
     case 's': applySnapshot(m, now); break;
+    case 'scene': G.shopScene = { k: m.k, t0: now, txt: m.txt || '' }; if (G.me) { G.me.say = m.k === 'wand' ? 'Hmm... vamos ver qual varinha escolhe você.' : 'Suba no banquinho, por favor. Vamos tirar as medidas.'; G.me.sayUntil = now + 2200; } break;
     case 'pstat': {
       const e = G.me; if (!e || m.id !== G.myId) break;
-      const oldLvl = e.lvl;
+      const oldLvl = e.lvl; e.wi = m.wi || null; e.ck = m.ck || 0;
       if (m.slow) G.slowUntil = now + m.slow;
       if (m.knock) G.knockUntil = now + m.knock;
       G.cst = m.cst ?? CST_MAX; G.cstMax = m.cstMax || CST_MAX; e.arw = m.arw || []; e.esc = m.esc || 0; e.chk = m.chk || 0; e.bnd = m.bnd || ''; e.bndE = m.bndE || 0; e.jl = m.jl || 0; e.cell = m.cell ?? -1; if (m.tree) e.tree = m.tree; if (m.use) e.use = m.use; if (typeof onProgStat === 'function') onProgStat(); G.stunUntil = now + (m.stun || 0); G.ripUntil = now + (m.rip || 0);
@@ -533,7 +534,7 @@ function saveChar() {
   const me = G.me;
   try {
     const all = loadChars();
-    all[charKey(me.name, me.cls)] = { uid: G.myUid || undefined, name: me.name, cls: me.cls, skin: me.skin, color: me.color, lvl: me.lvl, xp: me.xp, gold: me.gold, pots: me.pots, food: me.food, water: me.water, infect: me.infect, hasSkin: me.hasSkin, tree: me.tree, prof: me.prof, feats: me.feats, freeLimb: me.freeLimb, shieldHp: me.shp, use: me.use, jailLeft: me.jl || 0, body: me.body, bleed: me.bleed, lost: (me.lost || 0) & 30, pro: me.pro || 0, inv: me.inv, quests: me.quests, qdone: me.qdone, t: Date.now() };
+    all[charKey(me.name, me.cls)] = { uid: G.myUid || undefined, wandInfo: me.wi || undefined, cloak: me.ck || 0, name: me.name, cls: me.cls, skin: me.skin, color: me.color, lvl: me.lvl, xp: me.xp, gold: me.gold, pots: me.pots, food: me.food, water: me.water, infect: me.infect, hasSkin: me.hasSkin, tree: me.tree, prof: me.prof, feats: me.feats, freeLimb: me.freeLimb, shieldHp: me.shp, use: me.use, jailLeft: me.jl || 0, body: me.body, bleed: me.bleed, lost: (me.lost || 0) & 30, pro: me.pro || 0, inv: me.inv, quests: me.quests, qdone: me.qdone, t: Date.now() };
     localStorage.setItem(SAVE_KEY, JSON.stringify(all));
   } catch (e) { }
 }
@@ -611,7 +612,7 @@ function updateInv() {
   if (me.pots && me.pots.hp) list.push({ k: 'hp', n: me.pots.hp, name: ITEMS.hp.name, icon: '🧪', color: '#e85a5a', desc: ITEMS.hp.desc + ' Clique para beber (Q).', use: () => drinkPot('hp') });
   list.push({ k: 'water', n: '∞', name: 'Cantil', icon: '💧', color: '#6ab8ff', desc: 'Um cantil que nunca seca. Você bebe sozinho quando a sede aperta; ou aperte 0 (ou clique) para beber.', use: () => Net.send({ t: 'use', k: 'water' }) });
   if (me.pots && me.pots.mp) list.push({ k: 'mp', n: me.pots.mp, name: ITEMS.mp.name, icon: '🧪', color: '#5a8ae8', desc: ITEMS.mp.desc + ' Clique para beber (E).', use: () => drinkPot('mp') });
-  for (const k in (me.inv || {})) { const it = LOOT[k]; if (it && me.inv[k] > 0) list.push({ k, n: me.inv[k], name: it.name, icon: it.icon, color: it.color, desc: it.desc + ' Vale ' + it.price + ' de ouro cada no Empório.', use: FOOD[k] || k === 'ointment' || k === 'firewood' || k === 'herb' ? () => Net.send({ t: 'use', k }) : null }); }
+  for (const k in (me.inv || {})) { const it = LOOT[k]; if (it && me.inv[k] > 0) list.push({ k, n: me.inv[k], name: it.name, icon: it.icon, color: it.color, desc: it.desc + (WANDS[k] && me.wi && me.wi.k === k ? ' A sua: ' + me.wi.w + ', ' + me.wi.c + ', ' + me.wi.len + ' cm, ' + me.wi.feel + ' (dano ' + (me.wi.dmg >= 0 ? '+' : '') + Math.round(me.wi.dmg * 100) + '%, mana ' + (me.wi.mp >= 0 ? '+' : '') + me.wi.mp + ').' : '') + (CLOAK_BY_ITEM[k] && me.ck === CLOAK_BY_ITEM[k] ? ' (vestida)' : '') + ' Vale ' + it.price + ' de ouro cada no Empório.', use: FOOD[k] || CLOAK_BY_ITEM[k] || k === 'ointment' || k === 'firewood' || k === 'herb' ? () => Net.send({ t: 'use', k }) : null }); }
   grid.innerHTML = '';
   for (let i = 0; i < INV_SLOTS; i++) {
     const s = document.createElement('div'), it = list[i]; s.className = 'inv-slot';
@@ -1213,7 +1214,7 @@ function helloMsg() {
   const name = $('name').value.trim() || 'Aventureiro';
   const saved = loadChars()[charKey(name, chosenClass)] || {};
   G.myUid = saved.t ? (saved.uid || '') : (G.myUid && G.myUidFor === charKey(name, chosenClass) ? G.myUid : Math.random().toString(36).slice(2, 10)); G.myUidFor = charKey(name, chosenClass);   // herói novo: código único (não herda nada de um herói antigo com o mesmo nome)
-  return { t: 'hello', uid: G.myUid || undefined, pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, freeLimb: saved.freeLimb, shieldHp: saved.shieldHp, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
+  return { t: 'hello', uid: G.myUid || undefined, wandInfo: saved.wandInfo, cloak: saved.cloak, pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, freeLimb: saved.freeLimb, shieldHp: saved.shieldHp, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
 }
 // reino trancado: pede a senha e manda o hello de novo pela mesma conexão
 function askRoomPw(bad) {
@@ -1970,7 +1971,7 @@ function gatherFx(i, tool) {
 function talkTarget() {
   const me = G.me; if (!me || me.downed) return null; if (typeof estChestHere === 'function' && estChestHere()) return null;   // perto do baú de casa: o F abre o baú
   let best = null, bd = 2.3;
-  for (const id in G.npcs) { const e = G.npcs[id]; if (e.npDead || e.npDown || e.onBackBy || e.dragged || (e.fl || 0) !== (me.fl || 0)) continue;   /* só quem está no mesmo andar */ const d = dist(me.x, me.y, e.rx ?? e.x, e.ry ?? e.y); if (d < bd) { bd = d; best = { k: 'n', id, name: (e.name || '').split(',')[0] }; } }
+  for (const id in G.npcs) { const e = G.npcs[id]; if (e.npDead || e.npDown || e.onBackBy || e.dragged || (e.fl || 0) !== (me.fl || 0)) continue; { const bn = bldAt(e.rx ?? e.x, e.ry ?? e.y), bm = bldAt(me.x, me.y); if (bn >= 0 && bm >= 0 && bn !== bm) continue; }   /* só quem está no mesmo andar e no mesmo prédio (não fala através da parede) */ const d = dist(me.x, me.y, e.rx ?? e.x, e.ry ?? e.y); if (d < bd) { bd = d; best = { k: 'n', id, name: (e.name || '').split(',')[0] }; } }
   if (!best && me.jl > 0 && G.npcs.jailer) best = { k: 'n', id: 'jailer', name: 'Bruno' };   // preso fala com o carcereiro de dentro da cela
   for (const id in G.players) { const q = G.players[id]; if (q === me || q.downed || !q.visible || (q.fl || 0) !== (me.fl || 0)) continue; const d = dist(me.x, me.y, q.rx, q.ry); if (d < Math.min(bd, 1.9)) { bd = d; best = { k: 'p', id, name: q.name }; } }
   return best;
@@ -2043,8 +2044,25 @@ function drawTradeFx(ctx, now) {
     else { ctx.strokeStyle = '#7ad870'; ctx.lineWidth = 1.6; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(x - 3, y); ctx.lineTo(x - 0.8, y + 2.4); ctx.lineTo(x + 3.4, y - 2.6); ctx.stroke(); }
     ctx.restore(); }
 }
+// cenas das lojas: a escolha da varinha (faíscas que falham, um vaso que estoura, até a varinha certa brilhar) e a prova de roupa (fita métrica dourada girando)
+function drawShopScene(ctx, now) {
+  const S0 = G.shopScene, me = G.me; if (!S0 || !me) return; const t = now - S0.t0, P0 = iso(me.rx, me.ry), x = P0.sx + G.view.ox, y = P0.sy + G.view.oy - 30;
+  if (S0.k === 'wand') {
+    if (t > 4200) { G.shopScene = null; return; }
+    if (t < 1300) { if (Math.random() < 0.6) spawnPart('chip', x - G.view.ox + 8 + (Math.random() - 0.5) * 20, y - G.view.oy - 8, { color: ['#ff5a3a', '#ffa83a', '#8a8aff'][Math.floor(Math.random() * 3)] }); }   // faíscas erradas
+    else if (t < 2300) { if (!S0.pop) { S0.pop = 1; for (let k = 0; k < 16; k++) spawnPart('chip', x - G.view.ox + 30 + (Math.random() - 0.5) * 18, y - G.view.oy + 6, { color: ['#c8d8e0', '#9ab0c0', '#e8e0d0'][k % 3] }); G.shake = Math.max(G.shake || 0, 3); } }   // um vaso estoura
+    else { const k = Math.min(1, (t - 2300) / 500), a = (t < 3700 ? 1 : 1 - (t - 3700) / 500); ctx.save(); ctx.globalAlpha = Math.max(0, a); const gr = ctx.createRadialGradient(x, y, 2, x, y, 34 * k); gr.addColorStop(0, 'rgba(255,240,180,0.9)'); gr.addColorStop(1, 'rgba(255,200,80,0)'); ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(x, y, 34 * k, 0, 7); ctx.fill();
+      for (let q = 0; q < 8; q++) { const an = q / 8 * Math.PI * 2 + t / 400, r = 14 + 10 * k; ctx.fillStyle = '#fff4c8'; ctx.fillRect(x + Math.cos(an) * r - 1, y + Math.sin(an) * r * 0.6 - 1, 2, 2); } ctx.restore();
+      if (!S0.ok) { S0.ok = 1; me.say = 'Esta! A varinha escolheu você.'; me.sayUntil = now + 2600; } }
+  } else if (S0.k === 'fit') {
+    if (t > 3000) { G.shopScene = null; return; }
+    const k = t / 3000; ctx.save(); ctx.strokeStyle = 'rgba(232,200,74,0.95)'; ctx.lineWidth = 2; ctx.beginPath();
+    for (let q = 0; q <= 40; q++) { const an = q / 40 * Math.PI * 2 + t / 260, hh = 30 - k * 46 + Math.sin(an * 2) * 2; const px = x + Math.cos(an) * 13, py = y + 24 - (1 - k) * 4 - (q / 40) * 2 + Math.sin(an) * 5 - hh * 0.0 - k * 26; q ? ctx.lineTo(px, py) : ctx.moveTo(px, py); }
+    ctx.stroke(); for (let q = 0; q < 3; q++) { const an = t / 300 + q * 2.1; ctx.fillStyle = 'rgba(255,248,220,0.9)'; ctx.fillRect(x + Math.cos(an) * 18 - 1, y + 10 - k * 26 + Math.sin(an) * 6, 2, 2); } ctx.restore();
+  }
+}
 function drawBlockHud(ctx, now) {
-  drawTradeFx(ctx, now);
+  drawTradeFx(ctx, now); drawShopScene(ctx, now);
   if (G.tradeAt) { const tp = $('tradep'); if (!tp || tp.classList.contains('hidden')) { G.tradeAt = null; G.trade = null; } else if (dist(G.me.x, G.me.y, G.tradeAt.x, G.tradeAt.y) > 4) { tp.classList.add('hidden'); G.tradeAt = null; G.trade = null; } }   // longe do vendedor: fecha a troca
   const me = G.me; if (!me || !G.parrying) return; const ox = G.view.ox, oy = G.view.oy, P = iso(me.rx, me.ry), cx = P.sx + ox, cy = P.sy + oy - 26, f = me.fa ?? 0;
   const sh = me.cls === 'knight' && (me.shp ?? 100) > 0 && me.wpn !== 'halberd' && !me.shea;

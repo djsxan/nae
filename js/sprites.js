@@ -931,6 +931,13 @@ function iconSprite(id) {
 }
 
 // uniforme por cima da aparência (mantém pele, cabelo e barba; troca roupa, tira arma e escudo)
+// capa ou manto da Alfaiataria Real por cima da roupa da classe
+function cloakLook(L, code) {
+  const C = typeof CLOAKS !== 'undefined' && CLOAKS[code]; if (!C) return L;
+  L.cape = true; L.capeTone = tone(C.tone);
+  if (C.robe) Object.assign(L, { armor: 'robe', body: tone(C.tone), body2: tone(shadeHex(C.tone, -0.25)), trim: tone(C.trim || '#d4a94a'), accent: tone(C.trim || '#d4a94a'), pattern: C.pat || L.pattern, pauldron: null });
+  return L;
+}
 function uniformLook(L, code) {
   const U = UNIFORMS[code]; if (!U) return L;
   return Object.assign(L, { armor: 'robe', body: tone(U.body), body2: tone(U.b2), accent: tone(U.b2), trim: tone(U.trim), head: U.head || 'none', weapon: null, shield: null, pauldron: null, cape: false, capeTone: null, quiver: false, pattern: null });

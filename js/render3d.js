@@ -445,9 +445,9 @@ function applyLost(R, mask = 0, pro = 0) {
 }
 function pose3Key(P) { return (P.dir | 0) + '|' + (P.shea ? 'S' : '') + (P.shb ? 'B' : '') + (P.tool ? 'T' + P.tool : '') + (P.gait ? 'g' + P.gait : '') + (P.hold ? 'o' + P.hold : '') + (P.walk >= 0 ? (P.run ? 'r' : 'w') + P.walk : '') + (P.act ? P.act.k + P.act.f : '') + (P.idle ? P.idle.k + P.idle.f : '') + (P.sit ? 's' + P.sit + (P.sv || '') : '') + (P.smk != null ? 'k' + Math.floor(P.smk * 8) : '') + (P.eat != null ? 'e' + Math.floor(P.eat * 8) : '') + (P.carry ? 'c' : '') + (P.down ? 'd' + (P.prone ? 'p' : '') : '') + (P.nowp ? 'nw' : '') + (P.wpn === 'halberd' ? 'hb' : '') + (P.crawl ? 'cw' + P.crawl : '') + (P.drag ? 'D' + P.drag : '') + (P.tied ? 'T' + P.tied : '') + (P.surr ? 'U' : '') + (P.led ? 'L' : '') + (P.held ? 'H' + P.held + (P.held === 2 ? Math.floor(Date.now() / 90) % 4 : '') : '') + (P.cr ? 'K' : '') + (P.sl ? 'L' : '') + (P.hs ? 'h' + P.hs : '') + (P.br != null ? 'b' + P.br : '') + (P.limp ? 'm' + P.limp : '') + (P.armw ? 'W' : '') + (P.lost ? 'X' + P.lost + '_' + (P.pro || 0) : ''); }
 function heroSprite3D(cls, skin, color, P) {
-  const lk = cls + ':' + skin + ':' + color + (P.wpn === 'halberd' && !P.uni ? ':hb' : '') + (P.uni ? ':u' + P.uni : '');
+  const lk = cls + ':' + skin + ':' + color + (P.wpn === 'halberd' && !P.uni ? ':hb' : '') + (P.uni ? ':u' + P.uni : '') + (P.cloak && !P.uni ? ':k' + P.cloak : '');
   return cache3('h3|' + lk + '|' + pose3Key(P) , () => {
-    const L = lookFor(lk, () => { const L0 = skin === 'weaver' ? WEAVER_LOOK() : heroLook(cls, skin, color); if (P.uni) return uniformLook(L0, P.uni); if (P.wpn === 'halberd') { L0.weapon = 'halberd'; L0.shield = null; } return L0; });
+    const L = lookFor(lk, () => { const L0 = skin === 'weaver' ? WEAVER_LOOK() : heroLook(cls, skin, color); if (P.uni) return uniformLook(L0, P.uni); if (P.wpn === 'halberd') { L0.weapon = 'halberd'; L0.shield = null; } if (P.cloak) cloakLook(L0, P.cloak); return L0; });
     let R = _rigs.get(lk); if (!R) { R = buildHumanoid(L, skin === 'weaver' ? { scale: 1.12 } : undefined); if (skin === 'weaver') weaverExtras(R); else epicHero(R, L, 1, skin); _rigs.set(lk, R); }
     const Q = buildPose(cls, P);
     applyLost(R, P.lost || 0, P.pro || 0);
