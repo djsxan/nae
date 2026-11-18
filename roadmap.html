@@ -8,6 +8,7 @@
       ['1.64', 'Contas da Cidade', '18/11', 'Negócios de NPC com economia própria: caixa, produção, compra de insumos uns dos outros (Fazenda → Moinho → Padaria; Serraria e Mina → Forja e Carpintaria; oficinas → lojas) ou do fornecedor 30% mais caro, vendas, salário e manutenção; 3 dias seguidos no vermelho fecham o negócio por 2 dias e ele reabre com empréstimo; Observatório etapa 2: histórico por hora (7 dias) e por dia (para sempre), gráficos por período, relógio do jogo ou real, categoria e medida, ranking, ouro na cidade, produção × vendas, entregas, crimes e monstros, Exportar CSV, relógio do dia, camada de produção, mapa de calor, banda por jogador e alertas dos negócios de NPC'],
       ['1.65', 'Ânimo dos Moradores', '18/11', 'Moradores com humor e carteira: salário do negócio onde trabalham (mensageiros pagos pela cidade), gastos no almoço da Padaria, na taverna e nas lojas, com o dinheiro circulando entre moradores e negócios; humor sobe e desce com necessidades, salário, comida e bebida fora, falta de dinheiro, chuva e crimes vistos, e muda o comportamento (triste trabalha devagar e às vezes falta para beber, feliz produz e compra mais, sem dinheiro come em casa); falas tristes, felizes e de quem está sem dinheiro; donos de negócio com humor pela saúde do negócio; Observatório mostra humor e carteira nas fichas e na tabela, alertas de tristes, sem dinheiro e faltas, e o gráfico de humor e carteiras'],
       ['1.66', 'Senhor do Tempo', '18/11', 'Relógio do jogo único, igual para todos (o anfitrião manda para quem entra): o Tecelão pode pausar a cidade ou acelerar o tempo 2×, 5× ou 10× pelo Observatório, mudando sol, hora, estação, necessidades, economia e entregas; eventos de teste: festa na taverna, caravana de mercadores, ataque de monstros no portão sul, incêndio numa oficina e falta de um insumo por um dia; tudo avisado no chat; o adiantamento do relógio fica salvo no mundo'],
+      ['1.66.1', 'Servidor independente', '18/11', 'Primeiro passo para tirar o servidor do reino da página do anfitrião: armazenamento, clima, noite e direção passam por uma camada própria, e o reino já roda inteiro dentro de um Web Worker em teste; o Observatório mostra as tarefas longas da página do anfitrião (desenho e carregamento de regiões), que travam o servidor e a rede'],
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
@@ -98,6 +99,7 @@
     <h2>Em breve</h2>
     <p class="era-meta">Ideias e pedidos em andamento — podem mudar.</p>
     <div class="soon">
+      <div><h4>Servidor do reino separado</h4><p>Tirar o servidor do reino de dentro da página do anfitrião, para as travadas do desenho não travarem o jogo dos outros.</p></div>
       <div><h4>Mais insumos para os negócios</h4><p>Taverna e forja recebendo mais coisas das oficinas e novas receitas (a padaria já usa trigo e frutas).</p></div>
       <div><h4>Interiores sem atrapalhar a vista</h4><p>Escolha definitiva de como os prédios da frente aparecem quando você está dentro de uma casa.</p></div>
       <div><h4>Bairro nobre vivo</h4><p>Moradores nobres nos casarões novos, com rotina, jardineiros e festas no chafariz.</p></div>

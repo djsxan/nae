@@ -1332,6 +1332,8 @@ function liveVersion(cb) { if (location.protocol === 'file:') { cb(null); return
 function saveUpdPos() { try { const me = G.me; if (G.started && me && !me.downed) sessionStorage.setItem('nae-upd-pos', JSON.stringify({ x: me.x, y: me.y, z: me.z || 0, fl: me.fl || 0, fb: me.fb ?? -1, n: $('name').value.trim(), t: Date.now() })); } catch (e) { } G.leaving = true; }
 function updateNow(v) { saveUpdPos(); netMsg('Nova versão do jogo (' + v + '). Atualizando…'); if (Net.isHost && typeof worldBroadcast === 'function') worldBroadcast(); try { if (typeof saveChar === 'function' && G.me) saveChar(); } catch (e) { } setTimeout(() => location.replace(location.pathname + '?v=' + Date.now()), 1500); }
 setInterval(() => liveVersion(v => { if (v && verNum(v) > verNum(VERSION)) updateNow(v); }), 180000);
+// tarefas longas da página (mais de 200 ms): o desenho e o carregamento de regiões travam também o servidor e a rede
+const LONGT = []; try { new PerformanceObserver(l => { for (const e of l.getEntries()) if (e.duration >= 200) { LONGT.push([Date.now(), Math.round(e.duration)]); if (LONGT.length > 200) LONGT.shift(); } }).observe({ entryTypes: ['longtask'] }); } catch (e) { }
 function worldHost() {
   if (!WN.verOk) { WN.busy = true; liveVersion(v => { WN.busy = false; WN.verOk = true; setTimeout(() => { WN.verOk = false; }, 60000); if (v && verNum(v) > verNum(VERSION)) { updateNow(v); return; } worldHost(); }); return; }   /* confere a versão antes de cada vez que vira anfitrião */
   WN.busy = true; Net.reset(); Net.onClient = hostOnClient; Net.onServer = clientOnServer; Net.onPeerLeave = hostOnLeave;

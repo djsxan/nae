@@ -5,6 +5,15 @@
 //  (VIEW_RADIUS), em pacotes compactos 10x por segundo.
 // ============================================================
 const S = { players: {}, monsters: {}, nextMid: 1, nextSpawn: 0, lastRegen: 0, filled: false, lastTick: 0 };
+// ambiente do servidor: tudo o que ele usa de fora passa por aqui (permite rodar num Web Worker ou num servidor dedicado)
+const HOSTSTORE = { mem: {}, onSet: null,
+  get(k) { try { if (typeof localStorage !== 'undefined') return localStorage.getItem(k); } catch (e) { } return this.mem[k] ?? null; },
+  set(k, v) { try { if (typeof localStorage !== 'undefined') { localStorage.setItem(k, v); return; } } catch (e) { } this.mem[k] = v; if (this.onSet) this.onSet(k, v); } };
+const hsGet = k => { try { return JSON.parse(HOSTSTORE.get(k) || 'null'); } catch (e) { return null; } }, hsSet = (k, o) => HOSTSTORE.set(k, JSON.stringify(o));
+function weatherS() {   /* chuva igual à que os jogadores veem (mesma fórmula), com o ajuste do Tecelão */
+  const ov = (typeof WTs === 'function' ? WTs().rain : null); if (ov != null) return { rain: ov };
+  const t = Date.now() / 1000; return { rain: Math.max(0, Math.min(1, (Math.sin(t / 260) + Math.sin(t / 97) * 0.4 - 0.75) * 2.2)) };
+}
 const MAX_MON = typeof TEST3D !== 'undefined' && TEST3D ? 10 : 320;
 
 const RUMORS = [
@@ -98,7 +107,7 @@ function initBastions() {
   }
 }
 function tickBastions(now) {
-  const night = dayInfo().night;
+  const night = dayInfoS().night;
   for (const s of S.bslots) {
     const m = s.mid != null ? S.monsters[s.mid] : null;
     if (m) { if (s.night && !night) { delete S.monsters[s.mid]; near(m.x, m.y, { t: 'mdie', id: m.id, d: 0 }); s.mid = null; } continue; }
@@ -405,7 +414,7 @@ function hostOnClient(from, m) {
       if (!m.on || p.downed || p.carrying || p.carriedBy) { p.sleep = null; break; }
       const b = BEDS[m.b | 0]; if (!b || dist(p.x, p.y, b.x, b.y) > 2.6) break;
       if (BUILDINGS[b.bi] && BUILDINGS[b.bi].kind === 'hotel' && hotelBedOf(p) !== (m.b | 0)) { tell(p, 'Essa cabine não é sua. Fale com Dona Ilsa, no balcão, para alugar um (3 de ouro por dia).'); break; }
-      p.x = b.x; p.y = b.y; p.dir = dirFromVec(b.dx, b.dy, 0); p.sleep = m.b | 0; p.sit = null; p.walking = false; break;
+      p.x = b.x; p.y = b.y; p.dir = dirFromVecS(b.dx, b.dy); p.sleep = m.b | 0; p.sit = null; p.walking = false; break;
     }
     case 'sit': {
       if (!m.on || p.downed || p.carrying || p.carriedBy) { p.sit = null; break; }
@@ -597,7 +606,7 @@ function survivalTick(p, now, dt) {
     else if (p.water < 30 && p.inv.tea > 0) { p.autoEatT = now + 4000; p.useT = 0; useItem(p, 'tea'); info(p, 'Você bebeu um chá (estava com sede).'); }
   }
   // frio: à noite, fora da cidade, longe do fogo e fora de casa
-  const night = dayInfo().night, indoor = (p.fl || 0) !== 0 || bldAt(p.x, p.y) >= 0, warm = !night || indoor || nearFire(p) || now < (p.buffs.warm || 0);
+  const night = dayInfoS().night, indoor = (p.fl || 0) !== 0 || bldAt(p.x, p.y) >= 0, warm = !night || indoor || nearFire(p) || now < (p.buffs.warm || 0);
   const sk = seasonNow().k, cm = sk === 'winter' ? 1.8 : sk === 'autumn' ? 1.2 : sk === 'summer' ? 0.6 : 1;
   p.cold = clamp((p.cold || 0) + dt * (warm ? -2.5 : inSafe(p.x, p.y) ? (sk === 'winter' ? 0.6 : 0.2) : 100 / (SURV.coldMin * 60) * cm), 0, 100);
   // infecção: ferida grave sem bandagem pode infeccionar; piora com o tempo
@@ -1486,7 +1495,7 @@ function ignitePlayer(p, now) {
 function extinguish(p, msg) { p.burnUntil = 0; near(p.x, p.y, { t: 'burn', id: p.id, ms: 0 }); if (msg) tell(p, msg); }
 const FLAMMABLE = new Set([O.TALLGRASS, O.BUSH, O.FERN, O.TREE, O.PINE, O.OAK, O.BIRCH, O.WILLOW, O.BERRY, O.HERB, O.LOG, O.ROOTS, O.FLOWER, O.REEDS, O.DEADTREE]);
 const BIG_FUEL = new Set([O.TREE, O.PINE, O.OAK, O.BIRCH, O.WILLOW, O.DEADTREE]);
-const raining = () => typeof weatherNow === 'function' && weatherNow().rain > 0.3;
+const raining = () => weatherS().rain > 0.3;
 function igniteTile(x, y, now, list, force) {
   x = Math.round(x); y = Math.round(y); if (!inBounds(x, y)) return;
   const i = y * MAP_W + x; S.burn = S.burn || {}; S.burnt = S.burnt || {};
@@ -2099,7 +2108,7 @@ function jailMsg(p, m) {
   if (m.t === 'opencell') {   // amigo de fora, de noite, com o carcereiro dormindo
     const i = JAILCELLS.findIndex(c => dist(p.x, p.y, c.door[0], c.door[1]) < 1.6); if (i < 0 || !st[i].who) return;
     const q = S.players[st[i].who]; if (!q) return;
-    const night = typeof dayInfo === 'function' && dayInfo().night, jl = S.npcs && S.npcs.jailer, asleep = night || !jl || jl.dead || jl.downed;
+    const night = dayInfoS().night, jl = S.npcs && S.npcs.jailer, asleep = night || !jl || jl.dead || jl.downed;
     if (!asleep) { tell(p, 'O carcereiro está acordado e de olho. Volte de noite.'); return; }
     escapeCell(q, p.name); p.wanted = now + 300000; p.sentence = (p.sentence || 0) + 180000; Net.toAll({ t: 'wanted', id: p.id, ms: 300000 }); return;
   }
@@ -2375,7 +2384,7 @@ function npcbTavernTake(P) {   /* cada freguês na taverna paga 3 da própria ca
 }
 function npcbMoodMul(P) { const W = Object.values(S.npcs || {}).filter(n => !n.dead && !n.transient && n.bi === P.bi && n.mood != null); if (!W.length) return 1; const m = W.reduce((a, n) => a + n.mood, 0) / W.length; return m < 30 ? 0.8 : m > 75 ? 1.1 : 1; }
 function npcMoodHour() {   /* uma vez por hora do jogo */
-  const E = estateLoad(), M = E.npcm || (E.npcm = {}), rain = typeof weatherNow === 'function' ? (weatherNow().rain || 0) : 0;
+  const E = estateLoad(), M = E.npcm || (E.npcm = {}), rain = weatherS().rain || 0;
   const NB = npcbAll();
   for (const n of Object.values(S.npcs || {})) { if (n.transient || n.dead || /^(guard|captain)/.test(n.kind || '') || n.bizWorker || n.collector) continue; if (n.mood == null) npcMoodInit(n);
     const own = n.bi != null && Object.keys(NB).find(id => PROPS_BY[id].bi === n.bi), B = own && NB[own];   /* donos e balconistas fixos: o humor segue a saúde do negócio */
@@ -2413,12 +2422,12 @@ function obsControl(p, m) {
 //  HISTÓRICO DO OBSERVATÓRIO — uma linha por hora do jogo (7 dias) e um resumo por dia (para sempre)
 // ============================================================
 const OBS_HKEY = 'nae-world-obs-v1', OBS_HEATKEY = 'nae-world-heat-v1', HEAT_N = 64;
-function obsLoadH() { if (S.obsH) return S.obsH; S.obsH = { hr: [], dy: [] }; try { const j = typeof localStorage !== 'undefined' && JSON.parse(localStorage.getItem(OBS_HKEY) || 'null'); if (j && j.hr) S.obsH = { hr: j.hr, dy: j.dy || [] }; } catch (e) { } return S.obsH; }
-function obsSaveH(force) { if (!force && Date.now() - (S.ohSaveT || 0) < 30000) return; S.ohSaveT = Date.now(); try { if (typeof localStorage !== 'undefined') localStorage.setItem(OBS_HKEY, JSON.stringify(obsLoadH())); } catch (e) { } }
+function obsLoadH() { if (S.obsH) return S.obsH; S.obsH = { hr: [], dy: [] }; try { const j = hsGet(OBS_HKEY); if (j && j.hr) S.obsH = { hr: j.hr, dy: j.dy || [] }; } catch (e) { } return S.obsH; }
+function obsSaveH(force) { if (!force && Date.now() - (S.ohSaveT || 0) < 30000) return; S.ohSaveT = Date.now(); try { hsSet(OBS_HKEY, obsLoadH()); } catch (e) { } }
 function obsCount(k, x, y) { S.obsCnt = S.obsCnt || {}; S.obsCnt[k] = (S.obsCnt[k] || 0) + 1; if (x != null) obsHeatAdd(k, x, y, 1); }
-function obsHeatLoad() { if (S.heat) return S.heat; S.heat = {}; try { const j = typeof localStorage !== 'undefined' && JSON.parse(localStorage.getItem(OBS_HEATKEY) || 'null'); if (j) S.heat = j; } catch (e) { } return S.heat; }
+function obsHeatLoad() { if (S.heat) return S.heat; S.heat = {}; try { const j = hsGet(OBS_HEATKEY); if (j) S.heat = j; } catch (e) { } return S.heat; }
 function obsHeatAdd(k, x, y, v) { const H = obsHeatLoad(), a = H[k] || (H[k] = new Array(HEAT_N * HEAT_N).fill(0)), cx = Math.max(0, Math.min(HEAT_N - 1, Math.floor(x / MAP_W * HEAT_N))), cy = Math.max(0, Math.min(HEAT_N - 1, Math.floor(y / MAP_H * HEAT_N))); a[cy * HEAT_N + cx] += v; }
-function obsHeatSave() { try { if (typeof localStorage !== 'undefined') localStorage.setItem(OBS_HEATKEY, JSON.stringify(obsHeatLoad())); } catch (e) { } }
+function obsHeatSave() { try { hsSet(OBS_HEATKEY, obsHeatLoad()); } catch (e) { } }
 function obsRoleS(n) { if (n.transient) return 'vis'; if (n.role === 'courier') return 'cou'; if (/^(guard|captain)/.test(n.kind)) return 'grd'; if (/artisan|clerk/.test(n.role || '') || n.bizWorker || /^st_|smith|innkeeper|merchant|banker|tavmaid|hotelkeeper|fruit|tailor|broker/.test(n.kind)) return 'art'; return 'res'; }
 function obsRecord(newDay) {
   const H = obsLoadH(), E = estateLoad(), N = npcbAll(), now = Date.now(), prev = S.obsPrev || (S.obsPrev = {}), row = { t: now, d: estDay(), h: Math.floor(resHour()), b: {}, g: [], c: {}, pop: {} };
@@ -2455,7 +2464,7 @@ function obsSnap() {
     return [P.id, P.name, P.kind, P.bi, r ? r.ownerName : (P.npcOwner || ''), st, st0 ? Math.round(Object.values(st0).reduce((a, v) => a + v, 0)) : null, B && B.today ? [Math.round(B.today.rev || 0), Math.round(B.today.cost || 0), Math.round(B.today.xfer || 0), B.today.sold || 0] : null, wait, B ? (B.staff || []).length : null, B ? Math.floor(B.cofre || 0) : null, lastH && lastH.b[P.id] ? lastH.b[P.id][4] : null]; });
   const se = S.simEv || {}, gn = gameNow();
   return { t: 'obs', at: Date.now(), clk: { rate: SIMCLK.rate, paused: SIMCLK.paused, ev: { party: se.party > gn ? Math.ceil((se.party - gn) / BIZ_HOUR_MS) : 0, short: se.short && se.short.until > gn ? [se.short.g, Math.ceil((se.short.until - gn) / BIZ_HOUR_MS)] : null } }, hour: resHour(), day: estDay() - (S.day0 ?? (S.day0 = estDay())) + 1, host: (S.players[Net.myId] || {}).name || '', npcs, players, biz, ev: (S.events || []).slice(-120),
-    tech: { tick: +(S.tickMs || 0).toFixed(2), max: +(S.tickMax || 0).toFixed(1), stalls: (S.stalls || []).filter(q => Date.now() - q[0] < 3600000), mons: Object.keys(S.monsters).length, npcN: Object.keys(S.npcs || {}).length } };
+    tech: { long: typeof LONGT !== 'undefined' ? LONGT.filter(q => Date.now() - q[0] < 3600000) : [], tick: +(S.tickMs || 0).toFixed(2), max: +(S.tickMax || 0).toFixed(1), stalls: (S.stalls || []).filter(q => Date.now() - q[0] < 3600000), mons: Object.keys(S.monsters).length, npcN: Object.keys(S.npcs || {}).length } };
 }
 function hostTick() {
   const now = now_();
@@ -2586,11 +2595,11 @@ const estDay = () => Math.floor(gameNow() / ESTATE_DAY_MS);
 const isBizProp = P => P && (P.kind === 'shop' || P.kind === 'workshop' || P.kind === 'bank' || P.kind === 'hotel') && P.npc !== 'a Guarda' && !(P.kind === 'workshop' && P.npc && !P.wk);
 function estateLoad() {
   if (S.estate) return S.estate; S.estate = { r: {}, lost: {} };
-  try { const j = typeof localStorage !== 'undefined' && JSON.parse(localStorage.getItem(ESTATE_KEY) || 'null'); if (j && j.r) { S.estate = { r: j.r, lost: j.lost || {}, hotel: j.hotel || {}, npcb: j.npcb || {}, npcm: j.npcm || {}, clk: j.clk || 0 }; if (j.clk && !SIMCLK.real) simSet(Date.now() + j.clk, 1, false); for (const pid in S.estate.r) { const P = PROPS_BY[pid]; if (!P || (P.kind !== 'house' && !isBizProp(P))) delete S.estate.r[pid]; } } } catch (e) { }
+  try { const j = hsGet(ESTATE_KEY); if (j && j.r) { S.estate = { r: j.r, lost: j.lost || {}, hotel: j.hotel || {}, npcb: j.npcb || {}, npcm: j.npcm || {}, clk: j.clk || 0 }; if (j.clk && !SIMCLK.real) simSet(Date.now() + j.clk, 1, false); for (const pid in S.estate.r) { const P = PROPS_BY[pid]; if (!P || (P.kind !== 'house' && !isBizProp(P))) delete S.estate.r[pid]; } } } catch (e) { }
   for (const pid in S.estate.r) bizLinkBank(S.estate.r[pid]);
   S.estateL = estateLocks(); return S.estate;
 }
-function estateSave() { try { if (typeof localStorage !== 'undefined') localStorage.setItem(ESTATE_KEY, JSON.stringify(S.estate)); } catch (e) { } }
+function estateSave() { try { hsSet(ESTATE_KEY, S.estate); } catch (e) { } }
 function estateLocks() { const E = S.estate, L = {}; if (!E) return L; for (const P of PROPS) if (tenantsOf(P).length) L[P.bi] = []; for (const pid in E.r) { const P = PROPS_BY[pid]; if (P && P.kind === 'house') L[P.bi] = [E.r[pid].ownerName.trim().toLowerCase(), ...E.r[pid].auth]; } return L; }
 function tenantsOf(P) { const E = S.estate; if (!P || !P.tenants || !P.tenants.length) return []; if (E && E.gone && E.gone[P.id]) return []; return P.tenants; }
 function estatePublic() { const E = estateLoad(), st = {}; for (const pid in E.r) st[pid] = (E.r[pid].mode === 'own' ? '★' : '') + E.r[pid].ownerName; return st; }
@@ -3570,8 +3579,8 @@ function featAdd(p, k, n = 1) { p.feats = p.feats || {}; p.feats[k] = (p.feats[k
 //  e quem morre de vez deixa o saldo para o dono do banco (ou para a Coroa). Guardado neste reino.
 // ============================================================
 const BANK_KEY = 'nae-world-bank-v1', BANK_INT = 0.02, LOAN_INT = 0.10, LOAN_WEEKS = 2;
-function bankLoad() { if (S.bank) return S.bank; S.bank = { acc: {} }; try { const j = typeof localStorage !== 'undefined' && JSON.parse(localStorage.getItem(BANK_KEY) || 'null'); if (j && j.acc) S.bank = j; } catch (e) { } return S.bank; }
-function bankSave() { try { if (typeof localStorage !== 'undefined') localStorage.setItem(BANK_KEY, JSON.stringify(S.bank)); } catch (e) { } }
+function bankLoad() { if (S.bank) return S.bank; S.bank = { acc: {} }; try { const j = hsGet(BANK_KEY); if (j && j.acc) S.bank = j; } catch (e) { } return S.bank; }
+function bankSave() { try { hsSet(BANK_KEY, S.bank); } catch (e) { } }
 const bankAcc = p => { const B = bankLoad(), k = estOwner(p); return B.acc[k] || (B.acc[k] = { g: 0, loan: 0, due: 0, wk: estDay() }); };
 const bankProp = () => PROPS.find(P => P.kind === 'bank');
 function bankOwnerRec() { const P = bankProp(); return P && S.estate && S.estate.r[P.id]; }
@@ -3614,7 +3623,7 @@ function wvSnap() {
   for (const n of Object.values(S.npcs || {})) { if (n.dead) pop.mortos++; else if (n.downed) pop.caídos++; if (n.transient) pop.visitantes++; else if (n.kind === 'guard' || n.kind === 'captain') pop.guardas++; else pop.moradores++; }
   const mons = {}; for (const m of Object.values(S.monsters)) mons[m.type] = (mons[m.type] || 0) + 1;
   const bast = BASTIONS.map(b => ({ name: b.name, n: Object.values(S.monsters).filter(m => dist(m.x, m.y, b.x, b.y) < b.r + 6).length }));
-  const se = typeof seasonNow === 'function' ? seasonNow() : { n: '' }, wx = typeof weatherNow === 'function' ? weatherNow() : { rain: 0 };
+  const se = typeof seasonNow === 'function' ? seasonNow() : { n: '' }, wx = weatherS() || { rain: 0 };
   return { t: 'wv', players, npcs, props, bank, bankOwner: O ? O.ownerName : 'a Coroa', world: { day: estDay() - (S.day0 ?? (S.day0 = estDay())) + 1, hour: resHour(), season: se.n + (se.day != null ? ' · dia ' + (se.day + 1) : ''), rain: wx.rain, ph: WTs().ph, rainSet: WTs().rain, pop, mons, bast, events: (S.events || []).slice(-40) } };
 }
 function wvMsg(p, m) {
