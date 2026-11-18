@@ -4,7 +4,8 @@
 //  linha do tempo e saúde técnica. Gráficos, relógio do dia e controles chegam nas próximas etapas.
 // ============================================================
 const OBS = { on: false, tab: 'map', data: null, sel: null, view: 'city', trails: {}, reqT: 0, built: false,
-  people: { res: true, art: true, cou: true, grd: true, vis: true, ply: true }, layers: { names: true, houses: true, status: true, alerts: true, trails: true, cargo: true, gold: false }, evf: 'all', pf: 'all' };
+  people: { res: true, art: true, cou: true, grd: true, vis: true, ply: true }, layers: { names: true, houses: true, status: true, alerts: true, trails: true, cargo: true, gold: false, prod: false }, heat: 'none', evf: 'all', pf: 'all',
+  hist: null, histT: 0, per: 'month', clk: 'game', cat: 'all', met: 'profit', dcRole: 'res', dcH: 19 };
 const OBS_ROLES = { res: ['Moradores', '#3a6ad8'], art: ['Artesãos e balconistas', '#d89a1a'], cou: ['Mensageiros', '#c83a8a'], grd: ['Guardas', '#5a646e'], vis: ['Visitantes', '#2a9a7a'], ply: ['Jogadores', '#c8281e'] };
 const OBS_KC = { house: '#9a7a5a', manor: '#7a4a8a', shop: '#2a6aa8', work: '#a8641e', pub: '#4a4a52' };
 const OBS_STC = { ok: '#3e8a4e', warn: '#c08a20', bad: '#b84a34', idle: '#6e7680' };
@@ -66,6 +67,7 @@ function obsCss() {
 #obs .alert { display: grid; grid-template-columns: 6px 1fr auto; gap: 12px; padding: 9px 6px; border-bottom: 1px solid var(--line); align-items: center; } #obs .alert .bar { align-self: stretch; border-radius: 3px; } #obs .alert b { display: block; } #obs .alert small { color: var(--muted); }
 #obs .btn { all: unset; cursor: pointer; padding: 6px 11px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel2); font-weight: 700; } #obs .btn:hover { border-color: var(--accent); }
 #obs .soon { color: var(--muted); padding: 30px; text-align: center; font-size: 15px; }
+#obs .ob-cgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(520px, 1fr)); gap: 10px; } #obs canvas.chart { width: 100%; height: 280px; display: block; }
 #obs .ob-tip { position: fixed; pointer-events: none; background: #0b0d10ee; border: 1px solid var(--line); padding: 5px 9px; border-radius: 5px; font-size: 12.5px; display: none; z-index: 71; }
 @media (max-width: 1100px) { #obs .ob-mapv { grid-template-columns: 1fr; } }`;
   document.head.appendChild(st);
@@ -79,13 +81,13 @@ function obsBuild() {
     <section class="ob-view ob-mapv" data-ov="map"><aside class="box"><h3 id="ob-ptot">Pessoas</h3><div class="flt" id="ob-fp"></div><h3>Camadas</h3><div class="flt" id="ob-fl"></div></aside>
       <div class="box"><div class="maphead"><div class="seg" id="ob-zoom"><button data-z="center">Cidadela</button><button data-z="city">Cidade inteira</button><button data-z="realm">Reino</button></div><span style="color:var(--muted)">Clique numa pessoa ou num prédio</span></div><canvas class="ob-map" id="ob-map" width="1000" height="1000"></canvas>
       <div class="legend"><b style="color:#e6e2d8">Locais:</b>${[['house', 'Casa'], ['manor', 'Casarão nobre'], ['shop', 'Loja, taverna e pousada'], ['work', 'Oficina, fazenda e mina'], ['pub', 'Serviço público']].map(([k, n]) => `<span><i style="border-color:${OBS_KC[k]};background:${OBS_KC[k]}"></i>${n}</span>`).join('')}</div>
-      <div class="legend"><b style="color:#e6e2d8">Status dos negócios:</b><span><i style="border-color:var(--ok);background:rgba(92,191,116,.3)"></i>Lucro bom: vende mais do que gasta</span><span><i style="border-color:var(--warn);background:rgba(224,176,74,.3)"></i>Falta insumo: esperando mercadoria há 2 h ou mais</span><span><i style="border-color:var(--bad);background:rgba(224,96,74,.3)"></i>Prejuízo: gastou mais do que vendeu hoje</span><span><i style="border-color:var(--idle);background:rgba(141,147,156,.3)"></i>Fechado</span><span><b style="color:var(--bad)">!</b> tem alerta (aba Alertas)</span></div></div>
+      <div class="legend"><b style="color:#e6e2d8">Status dos negócios:</b><span><i style="border-color:var(--ok);background:rgba(92,191,116,.3)"></i>Lucro bom: vende mais do que gasta</span><span><i style="border-color:var(--warn);background:rgba(224,176,74,.3)"></i>Falta insumo: esperando mercadoria há 2 h ou mais</span><span><i style="border-color:var(--bad);background:rgba(224,96,74,.3)"></i>Prejuízo: gastou mais do que vendeu (hoje; nos de NPC, ontem)</span><span><i style="border-color:var(--idle);background:rgba(141,147,156,.3)"></i>Fechado</span><span><b style="color:var(--bad)">!</b> tem alerta (aba Alertas)</span></div></div>
       <aside class="box" id="ob-card"></aside></section>
     <section class="ob-view" data-ov="alerts"><div class="box" id="ob-alerts"></div></section>
-    <section class="ob-view" data-ov="dayclock"><div class="box soon">O relógio do dia precisa de alguns dias de dados guardados: chega na próxima etapa, junto com o registro de dados e os gráficos.</div></section>
+    <section class="ob-view" data-ov="dayclock"><div class="box" id="ob-dc"></div></section>
     <section class="ob-view" data-ov="people"><div class="box tablebox" id="ob-people"></div></section>
     <section class="ob-view" data-ov="biz"><div class="box tablebox" id="ob-biz"></div></section>
-    <section class="ob-view" data-ov="charts"><div class="box soon">Gráficos (desde o começo, 1 mês, 1 semana; tempo do jogo ou real), ranking por categoria e exportar CSV: próxima etapa. Os negócios de NPC ganham contabilidade nela também.</div></section>
+    <section class="ob-view" data-ov="charts" style="gap:10px"><div class="box" id="ob-ctools"></div><div class="ob-cgrid" id="ob-charts"></div></section>
     <section class="ob-view" data-ov="events"><div class="box" id="ob-events"></div></section>
     <section class="ob-view" data-ov="tech"><div class="box" id="ob-tech"></div></section>
     <section class="ob-view" data-ov="ctrl"><div class="box soon">Controles de simulação (pausar, acelerar o tempo, criar eventos): etapa 4.</div></section></div><div class="ob-tip" id="ob-tip"></div>`;
@@ -94,9 +96,9 @@ function obsBuild() {
   d.querySelector('#ob-zoom').onclick = e => { const b = e.target.closest('[data-z]'); if (!b) return; OBS.view = b.dataset.z; obsSegs(); };
   const fp = d.querySelector('#ob-fp'); fp.innerHTML = Object.entries(OBS_ROLES).map(([k, [n, c]]) => `<label><input type="checkbox" data-p="${k}" checked><span class="dot" style="background:${c}"></span>${n}<span class="n" data-pn="${k}">0</span></label>`).join('');
   fp.onchange = e => { OBS.people[e.target.dataset.p] = e.target.checked; };
-  const LAY = { names: ['', 'Nomes dos locais'], houses: ['', 'Nomes das casas'], status: ['', 'Prédios por status'], alerts: ['!', 'Alertas no mapa'], trails: ['', 'Rastro e destino'], cargo: ['', 'Carga dos mensageiros'], gold: ['$', 'Ouro hoje por negócio'] };
-  const fl = d.querySelector('#ob-fl'); fl.innerHTML = Object.entries(LAY).map(([k, [ic, n]]) => `<label><input type="checkbox" data-l="${k}" ${OBS.layers[k] ? 'checked' : ''}><span class="ic">${ic}</span>${n}</label>`).join('') + '<div style="color:var(--muted);font-size:11.5px;padding:4px">Produção de recursos por hora e mapa de calor chegam com o registro de dados (próxima etapa).</div>';
-  fl.onchange = e => { OBS.layers[e.target.dataset.l] = e.target.checked; };
+  const LAY = { names: ['', 'Nomes dos locais'], houses: ['', 'Nomes das casas'], status: ['', 'Prédios por status'], alerts: ['!', 'Alertas no mapa'], trails: ['', 'Rastro e destino'], cargo: ['', 'Carga dos mensageiros'], gold: ['$', 'Ouro hoje por negócio'], prod: ['⚒', 'Produção na última hora'] };
+  const fl = d.querySelector('#ob-fl'); fl.innerHTML = Object.entries(LAY).map(([k, [ic, n]]) => `<label><input type="checkbox" data-l="${k}" ${OBS.layers[k] ? 'checked' : ''}><span class="ic">${ic}</span>${n}</label>`).join('') + '<h3 style="margin-top:10px">Mapa de calor</h3>' + [['none', 'Desligado'], ['time', 'Onde passam mais tempo'], ['sale', 'Vendas'], ['crime', 'Crimes'], ['mon', 'Monstros mortos']].map(([k, n]) => `<label><input type="radio" name="ob-heat" data-h="${k}" ${k === 'none' ? 'checked' : ''}>${n}</label>`).join('');
+  fl.onchange = e => { if (e.target.dataset.h) { OBS.heat = e.target.dataset.h; obsReqH(true); } else OBS.layers[e.target.dataset.l] = e.target.checked; };
   const cv = d.querySelector('#ob-map'), tip = d.querySelector('#ob-tip');
   cv.onclick = e => { OBS.sel = obsPick(e); obsCard(); };
   cv.onmousemove = e => { const h = obsPick(e); if (!h) { tip.style.display = 'none'; return; } tip.style.display = 'block'; tip.style.left = e.clientX + 14 + 'px'; tip.style.top = e.clientY + 10 + 'px'; tip.textContent = h.k === 'b' ? obsName(h.bi) : h.name; };
@@ -105,7 +107,10 @@ function obsBuild() {
     const tp = e.target.closest('[data-tp]'); if (tp) { const [kind, id] = tp.dataset.tp.split('|'); Net.send({ t: 'wv', a: 'act', op: 'tp', kind, id }); showToast('Teleportando…'); }
     const fo = e.target.closest('[data-fo]'); if (fo) { const [kind, id] = fo.dataset.fo.split('|'); if (typeof GM !== 'undefined') GM.follow = { kind, id }; obsToggle(false); showToast('Seguindo. Pare no painel do Tecelão (TAB).'); }
     const ef = e.target.closest('[data-ef]'); if (ef) { OBS.evf = ef.dataset.ef; obsEvents(); }
-    const pf = e.target.closest('[data-pf]'); if (pf) { OBS.pf = pf.dataset.pf; obsPeople(); } });
+    const pf = e.target.closest('[data-pf]'); if (pf) { OBS.pf = pf.dataset.pf; obsPeople(); }
+    const cs = e.target.closest('[data-cs]'); if (cs) { const [k, v] = cs.dataset.cs.split('|'); OBS[k] = v; if (k === 'dcRole') obsDayClock(); else obsCharts(); }
+    if (e.target.closest('[data-csv]')) obsCsv(); });
+  d.addEventListener('input', e => { if (e.target.id === 'ob-dch') { OBS.dcH = +e.target.value; obsDayClock(); } });
   obsSegs(); obsTab(OBS.tab);
 }
 function obsSegs() { document.querySelectorAll('#ob-zoom [data-z]').forEach(b => b.classList.toggle('on', b.dataset.z === OBS.view)); }
@@ -113,7 +118,7 @@ function obsTab(t) { OBS.tab = t; document.querySelectorAll('#ob-tabs [data-ot]'
 function obsToggle(on) {
   if (on == null) on = !OBS.on; if (on && !(G.dev || G.devTools)) { showToast('O Observatório é do modo Tecelão.'); return; }
   obsBuild(); OBS.on = on; document.getElementById('obs').classList.toggle('hidden', !on);
-  if (on) { G.paused = true; G.keys.clear(); OBS.reqT = 0; obsReq(); Net.send({ t: 'menu', on: 1 }); requestAnimationFrame(obsLoop); }
+  if (on) { G.paused = true; G.keys.clear(); OBS.reqT = 0; obsReq(); obsReqH(true); Net.send({ t: 'menu', on: 1 }); requestAnimationFrame(obsLoop); }
   else { G.paused = !!((typeof GM !== 'undefined' && GM.on) || (typeof EM !== 'undefined' && EM.on)); Net.send({ t: 'menu', on: 0 }); }
 }
 function obsKey(k, e) {
@@ -129,11 +134,14 @@ function obsData(m) {
   for (const p of m.players) { const T = OBS.trails['p' + p[0]] || (OBS.trails['p' + p[0]] = []); T.push([p[2], p[3]]); if (T.length > 60) T.shift(); }
   if (OBS.on) obsRender();
 }
-function obsLoop() { if (!OBS.on) return; obsReq(); if (OBS.tab === 'map') obsDraw(performance.now()); requestAnimationFrame(obsLoop); }
+function obsReqH(force) { const now = performance.now(); if (!force && now - OBS.histT < 30000) return; OBS.histT = now; Net.send({ t: 'obsh' }); }
+function obsHist(m) { OBS.hist = m; if (OBS.on && (OBS.tab === 'charts' || OBS.tab === 'dayclock')) obsRender(); }
+function obsLoop() { if (!OBS.on) return; obsReq(); obsReqH(); if (OBS.tab === 'map') obsDraw(performance.now()); requestAnimationFrame(obsLoop); }
 // ---------- alertas (calculados com o retrato atual) ----------
 function obsAlerts() {
   const D = OBS.data, A = []; if (!D) return A;
   for (const b of D.biz) { const [pid, name, kind, bi, owner, st, stock, td, wait, staff] = b;
+    if (/\(NPC\)$/.test(owner)) { if (b[14]) A.push(['bad', `${name} fechado por dívidas`, `Reabre em ${b[14]} dia(s) com empréstimo do banco. Dívida atual: ${b[13]}.`, bi]); else if (b[12] >= 1) A.push(['bad', `${name} no vermelho há ${b[12]} dia(s)`, `Caixa ${b[10]}. Com 3 dias seguidos no vermelho, fecha.`, bi]); else if (wait) A.push(['warn', `${name} sem ${obsGood(wait[0])} há ${wait[1]} dia(s)`, `Nenhum negócio de NPC tinha o insumo: comprou do fornecedor (30% mais caro) ou ficou sem produzir.`, bi]); if (b[13] > 0 && !b[14]) A.push(['warn', `${name} pagando empréstimo`, `Dívida de ${b[13]} com o banco.`, bi]); continue; }
     if (wait && wait[1] >= 2) A.push(['bad', `${name} esperando ${obsGood(wait[0])} há ${wait[1]} h do jogo`, `O pedido ainda não foi entregue. Confira se a oficina do mesmo dono tem ${obsGood(wait[0])} e se os mensageiros estão livres.`, bi]);
     if (st === 'bad' && td) A.push(['bad', `${name} com prejuízo hoje`, `Gastou ${td[1]} e vendeu ${td[0]}${td[2] ? ' (+' + td[2] + ' em mercadoria enviada)' : ''}.`, bi]);
     if (st === 'idle') A.push(['warn', `${name} fechado`, `O dono (${owner || '—'}) fechou o negócio.`, bi]);
@@ -168,6 +176,8 @@ function obsDraw(now) {
   if (OBS.sel && OBS.sel.k === 'b') { const b = BUILDINGS[OBS.sel.bi]; if (b) { x.strokeStyle = '#fff'; x.lineWidth = 0.6; x.strokeRect(b.x - 0.4, b.y - 0.4, b.w + 0.8, b.h + 0.8); } }
   x.restore();
   x.globalCompositeOperation = 'multiply'; x.fillStyle = 'rgba(230,205,160,0.5)'; x.fillRect(0, 0, SZ, SZ); x.globalCompositeOperation = 'source-over';
+  if (OBS.heat !== 'none' && OBS.hist && OBS.hist.heat && OBS.hist.heat[OBS.heat]) { const A = OBS.hist.heat[OBS.heat], N = 64, mx = Math.max(1, ...A), c = { time: '230,150,20', sale: '40,160,70', crime: '210,40,30', mon: '120,80,210' }[OBS.heat];
+    for (let i = 0; i < A.length; i++) { if (!A[i]) continue; const cx = (i % N + 0.5) * 256 / N, cy = (Math.floor(i / N) + 0.5) * 256 / N, [px, py] = obsP(cx, cy), r = 256 / N * S * 1.4, a = Math.min(0.75, 0.15 + 0.6 * Math.log(1 + A[i]) / Math.log(1 + mx)); const gr = x.createRadialGradient(px, py, 0, px, py, r); gr.addColorStop(0, 'rgba(' + c + ',' + a + ')'); gr.addColorStop(1, 'rgba(' + c + ',0)'); x.fillStyle = gr; x.fillRect(px - r, py - r, 2 * r, 2 * r); } }
   const rects = [], fits = (cx, cy, w, h) => !rects.some(r => cx - w / 2 < r[0] + r[2] / 2 && cx + w / 2 > r[0] - r[2] / 2 && cy - h / 2 < r[1] + r[3] / 2 && cy + h / 2 > r[1] - r[3] / 2);
   const label = (t, cx, cy, size, col, bg, avoid) => { x.font = `700 ${size}px "Alegreya Sans SC", "Alegreya Sans", sans-serif`; const w = x.measureText(t).width + 12, h = size + 8;
     if (avoid) { let ok = false; for (const [dx, dy] of [[0, 0], [0, h + 2], [0, -h - 2], [w * 0.55, 0], [-w * 0.55, 0]]) if (fits(cx + dx, cy + dy, w, h)) { cx += dx; cy += dy; ok = true; break; } if (!ok) return; rects.push([cx, cy, w, h]); }
@@ -178,6 +188,7 @@ function obsDraw(now) {
     if (mx < -50 || my < -50 || mx > SZ + 50 || my > SZ + 50) continue;
     if ((house && OBS.layers.houses) || (!house && OBS.layers.names)) label(nm.length > 24 ? nm.slice(0, 23) + '…' : nm, mx, my, house ? (big ? 13 : 11) : (big ? 15 : 12.5), house ? '#f4ead8' : '#fff', house ? 'rgba(60,44,28,.82)' : 'rgba(22,18,14,.86)', true);
     const B = bst[bi]; if (OBS.layers.gold && B && B[7]) { const v = B[7][0] + B[7][2] - B[7][1]; label(`$ ${v >= 0 ? '+' : ''}${v} hoje`, mx, my - 20, 11.5, v >= 0 ? '#e8f8e0' : '#ffe0d8', v >= 0 ? 'rgba(46,110,58,.92)' : 'rgba(150,50,36,.92)', true); }
+    if (OBS.layers.prod && B && B[11] != null) label(`⚒ +${B[11]}/h`, mx, my + 20, 11.5, '#fff4d8', 'rgba(110,80,30,.92)', true);
     if (OBS.layers.alerts && abi.has(bi)) { const [ax, ay] = obsP(b.x + b.w / 2, b.y), pulse = 1 + Math.sin(now / 250) * 0.15; x.fillStyle = '#c8281e'; x.beginPath(); x.arc(ax, ay - 6, 9 * pulse, 0, 7); x.fill(); x.fillStyle = '#fff'; x.font = '800 13px sans-serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('!', ax, ay - 6); } }
   if (!D) { label('Lendo a cidade…', SZ / 2, 30, 15, '#fff', 'rgba(20,20,24,.85)'); return; }
   const dot = (id, role, wx, wy, dest, cargo, name, selK, selId) => { if (!OBS.people[role]) return; const c = OBS_ROLES[role][1], [px, py] = obsP(wx, wy), sel = OBS.sel && OBS.sel.k === selK && OBS.sel.id === selId;
@@ -226,6 +237,76 @@ function obsRender() {
   else if (OBS.tab === 'biz') obsBiz();
   else if (OBS.tab === 'events') obsEvents();
   else if (OBS.tab === 'tech') obsTech();
+  else if (OBS.tab === 'charts') obsCharts();
+  else if (OBS.tab === 'dayclock') obsDayClock();
+}
+// ---------- gráficos ----------
+const OBS_PER = { all: 'Desde o começo', month: '1 mês', week: '1 semana' }, OBS_CLK = { game: 'Tempo do jogo', real: 'Tempo real' };
+const OBS_CAT = { all: 'Todos', shop: 'Lojas', workshop: 'Oficinas', inn: 'Taverna e pousada', npc: 'Só de NPC', pl: 'Só de jogadores' };
+const OBS_MET = { profit: ['Lucro', b => b[0] - b[1]], rev: ['Receita', b => b[0]], cost: ['Custo', b => b[1]], sold: ['Vendas', b => b[2]], prod: ['Produção', b => b[4]], stock: ['Estoque', b => b[3]] };
+function obsSeries() {   /* devolve [{label, t, b:{pid:[...]}, g, c}] conforme período e relógio */
+  const H = OBS.hist; if (!H) return []; const now = Date.now();
+  const base = Math.min(...H.dy.map(r => r.d), ...H.hr.map(r => r.d)), dn = d => d - base + 1;   /* dias contados a partir do primeiro registro */
+  let rows = OBS.per === 'week' && OBS.clk === 'game' ? H.hr.map(r => ({ ...r, label: 'd' + dn(r.d) + ' ' + String(r.h).padStart(2, '0') + 'h' })) : H.dy.map(r => ({ ...r, label: 'dia ' + dn(r.d) }));
+  if (OBS.clk === 'game' && OBS.per === 'month') rows = rows.slice(-28);
+  if (OBS.clk === 'real') { const span = OBS.per === 'week' ? 7 * 864e5 : OBS.per === 'month' ? 30 * 864e5 : Infinity, src = (OBS.per === 'week' ? H.dy.concat(H.hr.filter(r => !H.dy.some(d => d.d === r.d))) : H.dy).filter(r => now - r.t <= span), bucket = OBS.per === 'week' ? 36e5 : 864e5, M = new Map();
+    for (const r of src) { const k = Math.floor(r.t / bucket); const a = M.get(k) || { t: k * bucket, b: {}, g: r.g, c: {}, label: '' }; for (const pid in r.b) { const x = a.b[pid] || (a.b[pid] = [0, 0, 0, 0, 0, r.b[pid][5]]); for (let i = 0; i < 5; i++) x[i] = i === 3 ? r.b[pid][3] : x[i] + r.b[pid][i]; } for (const kk in r.c || {}) a.c[kk] = (a.c[kk] || 0) + r.c[kk]; a.g = r.g; M.set(k, a); }
+    rows = [...M.values()].sort((p, q) => p.t - q.t).map(r => { const d = new Date(r.t); return { ...r, label: OBS.per === 'week' ? d.getDate() + '/' + (d.getMonth() + 1) + ' ' + d.getHours() + 'h' : d.getDate() + '/' + (d.getMonth() + 1) }; }); }
+  return rows;
+}
+function obsCatOk(pid) { const N = OBS.hist && OBS.hist.names && OBS.hist.names[pid]; if (!N) return false; const [nm, kind, wk, npc] = N; return OBS.cat === 'all' || (OBS.cat === 'shop' && kind === 'shop') || (OBS.cat === 'workshop' && kind === 'workshop' && wk !== 'tavern') || (OBS.cat === 'inn' && (wk === 'tavern' || kind === 'hotel')) || (OBS.cat === 'npc' && npc) || (OBS.cat === 'pl' && !npc); }
+function obsCharts() {
+  const tb = document.getElementById('ob-ctools'), box = document.getElementById('ob-charts'); if (!tb) return;
+  const seg = (k, opts) => '<div class="seg">' + Object.entries(opts).map(([v, n]) => `<button data-cs="${k}|${v}" class="${OBS[k] === v ? 'on' : ''}">${Array.isArray(n) ? n[0] : n}</button>`).join('') + '</div>';
+  tb.innerHTML = `<div class="tools">${seg('per', OBS_PER)}${seg('clk', OBS_CLK)}${seg('cat', OBS_CAT)}${seg('met', OBS_MET)}<button class="btn" data-csv="1">Exportar CSV</button></div>`;
+  const R = obsSeries(); if (!OBS.hist) { box.innerHTML = '<div class="box soon">Lendo o histórico…</div>'; return; }
+  if (R.length < 2) { box.innerHTML = `<div class="box soon">Ainda há pouco histórico para este período (${R.length} ponto). O jogo guarda uma linha por hora do jogo (30 s) e um resumo por dia do jogo (12 min). Experimente "1 semana" em tempo do jogo.</div>`; return; }
+  const last = R[R.length - 1], tot = {}; for (const r of R) for (const pid in r.b) if (obsCatOk(pid)) tot[pid] = (tot[pid] || 0) + (OBS.met === 'stock' ? 0 : OBS_MET[OBS.met][1](r.b[pid])); if (OBS.met === 'stock') for (const pid in last.b) if (obsCatOk(pid)) tot[pid] = last.b[pid][3];
+  const top = Object.entries(tot).sort((a, b) => b[1] - a[1]), nm = pid => (OBS.hist.names[pid] || [pid])[0], COL = ['#c9a24a', '#5cbf74', '#7fb0e8', '#e07ab8', '#e0604a', '#a99ae8', '#9ae0c0', '#d8d2c4'];
+  box.innerHTML = '<div class="box"><h3 id="ob-c1h"></h3><canvas class="chart" id="ob-c1"></canvas></div><div class="box"><h3 id="ob-c2h"></h3><canvas class="chart" id="ob-c2"></canvas></div><div class="box"><h3>Ouro na cidade</h3><canvas class="chart" id="ob-c3"></canvas></div><div class="box"><h3>Produção × vendas (soma da categoria)</h3><canvas class="chart" id="ob-c4"></canvas></div><div class="box"><h3>Entregas, crimes e monstros mortos</h3><canvas class="chart" id="ob-c5"></canvas></div>';
+  const met = OBS_MET[OBS.met][0]; document.getElementById('ob-c1h').textContent = met + ' por negócio (os 6 maiores)'; document.getElementById('ob-c2h').textContent = 'Ranking: ' + met.toLowerCase() + ' no período';
+  const labels = R.map(r => r.label);
+  obsLine('ob-c1', top.slice(0, 6).map(([pid], i) => ({ n: nm(pid), c: COL[i], d: R.map(r => r.b[pid] ? OBS_MET[OBS.met][1](r.b[pid]) : 0) })), labels);
+  obsBars('ob-c2', top.slice(0, 10).map(([pid, v]) => [nm(pid), Math.round(v)]));
+  obsLine('ob-c3', [{ n: 'Jogadores online', c: '#c8281e', d: R.map(r => (r.g || [])[0] || 0) }, { n: 'Banco', c: '#5cbf74', d: R.map(r => (r.g || [])[1] || 0) }, { n: 'Caixa dos negócios de NPC', c: '#7fb0e8', d: R.map(r => (r.g || [])[2] || 0) }], labels);
+  const sum = (r, i) => Object.entries(r.b).filter(([pid]) => obsCatOk(pid)).reduce((a, [, b]) => a + b[i], 0);
+  obsLine('ob-c4', [{ n: 'Produzido', c: '#e0b04a', d: R.map(r => sum(r, 4)) }, { n: 'Vendido', c: '#a99ae8', d: R.map(r => sum(r, 2)) }], labels);
+  obsLine('ob-c5', [{ n: 'Entregas', c: '#c83a8a', d: R.map(r => (r.c || {}).del || 0) }, { n: 'Crimes', c: '#e0604a', d: R.map(r => (r.c || {}).crime || 0) }, { n: 'Monstros', c: '#a99ae8', d: R.map(r => (r.c || {}).mon || 0) }], labels);
+}
+function obsCanvas(id) { const c = document.getElementById(id); if (!c) return null; const dpr = devicePixelRatio || 1, w = c.clientWidth, h = c.clientHeight; if (!w) return null; c.width = w * dpr; c.height = h * dpr; const g = c.getContext('2d'); g.scale(dpr, dpr); return [g, w, h]; }
+function obsLine(id, series, labels) {
+  const C = obsCanvas(id); if (!C) return; const [g, w, h] = C, L = 56, Rr = 12, T = 22, B = 24, all = series.flatMap(s => s.d).concat([0]), mx0 = Math.max(...all), mn0 = Math.min(...all), pad = (mx0 - mn0) * 0.08 || 1, mx = mx0 + pad, mn = Math.min(0, mn0 - (mn0 < 0 ? pad : 0));
+  const X = i => L + i * (w - L - Rr) / Math.max(1, labels.length - 1), Y = v => T + (1 - (v - mn) / (mx - mn)) * (h - T - B);
+  g.font = '11px sans-serif'; g.strokeStyle = '#2b3038'; g.fillStyle = '#8d939c'; g.lineWidth = 1;
+  for (let k = 0; k <= 4; k++) { const v = mn + (mx - mn) * k / 4, y = Y(v); g.beginPath(); g.moveTo(L, y); g.lineTo(w - Rr, y); g.stroke(); g.textAlign = 'right'; g.fillText(Math.round(v).toLocaleString('pt-BR'), L - 6, y + 4); }
+  if (mn < 0) { g.strokeStyle = '#5a6068'; g.beginPath(); g.moveTo(L, Y(0)); g.lineTo(w - Rr, Y(0)); g.stroke(); }
+  g.textAlign = 'center'; g.fillStyle = '#8d939c'; const stepL = Math.ceil(labels.length / 7); labels.forEach((l, i) => { if (i % stepL === 0 || i === labels.length - 1) g.fillText(l, X(i), h - 6); });
+  let lx = L; g.textAlign = 'left'; for (const s of series) { g.fillStyle = s.c; g.fillRect(lx, 5, 10, 10); g.fillStyle = '#e6e2d8'; const t = s.n.length > 22 ? s.n.slice(0, 21) + '…' : s.n; g.fillText(t, lx + 14, 14); lx += g.measureText(t).width + 30; if (lx > w - 60) break; }
+  for (const s of series) { g.strokeStyle = s.c; g.lineWidth = 2; g.beginPath(); s.d.forEach((v, i) => i ? g.lineTo(X(i), Y(v)) : g.moveTo(X(i), Y(v))); g.stroke(); const i = s.d.length - 1; g.fillStyle = s.c; g.beginPath(); g.arc(X(i), Y(s.d[i]), 3, 0, 7); g.fill(); }
+}
+function obsBars(id, items) {
+  const C = obsCanvas(id); if (!C) return; const [g, w, h] = C; if (!items.length) return; const mx = Math.max(1, ...items.map(i => Math.abs(i[1]))), L = 170, bh = (h - 10) / items.length;
+  g.font = '12px sans-serif'; items.forEach(([n, v], k) => { const y = 5 + k * bh, bw = (w - L - 80) * Math.abs(v) / mx; g.fillStyle = '#8d939c'; g.textAlign = 'right'; g.fillText(n.length > 24 ? n.slice(0, 23) + '…' : n, L - 8, y + bh / 2 + 4); g.fillStyle = v < 0 ? '#e0604a' : k === 0 ? '#c9a24a' : '#5a6470'; g.fillRect(L, y + 3, bw, bh - 8); g.fillStyle = '#e6e2d8'; g.textAlign = 'left'; g.fillText((v > 0 ? '+' : '') + v.toLocaleString('pt-BR'), L + bw + 6, y + bh / 2 + 4); });
+}
+function obsCsv() {
+  const H = OBS.hist; if (!H) return; const lines = ['tipo;dia_do_jogo;hora_do_jogo;data_real;negocio;categoria;npc;receita;custo;vendas;estoque;producao'];
+  const put = (kind, r) => { for (const pid in r.b) { const N = H.names[pid] || [pid, '', '', 0], b = r.b[pid]; lines.push([kind, r.d, r.h ?? '', new Date(r.t).toISOString(), N[0], N[1], N[3] ? 'sim' : 'nao', b[0], b[1], b[2], b[3], b[4]].join(';')); } };
+  for (const r of H.dy) put('dia', r); for (const r of H.hr) put('hora', r);
+  const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'nae-observatorio-' + new Date().toISOString().slice(0, 10) + '.csv'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+// ---------- relógio do dia ----------
+function obsDayClock() {
+  const box = document.getElementById('ob-dc'); if (!box) return; const H = OBS.hist, PL = [['Em casa', '#3a6ad8'], ['Trabalhando', '#d89a1a'], ['Taverna', '#c83a3a'], ['Lojas e oficinas', '#2a9a7a'], ['Na rua', '#8d939c']];
+  const roles = { res: 'Moradores', art: 'Artesãos e balconistas', cou: 'Mensageiros', grd: 'Guardas', vis: 'Visitantes' };
+  const acc = Array.from({ length: 24 }, () => [0, 0, 0, 0, 0]), days = new Set(); for (const r of (H && H.hr) || []) { const a = r.pop && r.pop[OBS.dcRole]; if (!a) continue; days.add(r.d); for (let i = 0; i < 5; i++) acc[r.h][i] += a[i]; }
+  box.innerHTML = `<div class="tools"><span style="color:var(--muted)">Onde cada tipo de morador costuma estar em cada hora (média de ${days.size} dia(s) do jogo registrados)</span><div class="seg">${Object.entries(roles).map(([k, n]) => `<button data-cs="dcRole|${k}" class="${OBS.dcRole === k ? 'on' : ''}">${n}</button>`).join('')}</div></div><canvas class="chart" id="ob-dcc" style="height:320px"></canvas>
+    <div class="tools" style="margin-top:10px"><span style="color:var(--muted)">Hora</span><input type="range" id="ob-dch" min="0" max="23" value="${OBS.dcH}" style="flex:1;accent-color:#c9a24a"><b id="ob-dchl" style="font-family:monospace">${String(OBS.dcH).padStart(2, '0')}:00</b></div><div id="ob-dcinfo" style="color:var(--muted)"></div>`;
+  const C = obsCanvas('ob-dcc'); if (!C) return; const [g, w, h] = C, L = 44, T = 26, B = 22, bw = (w - L - 10) / 24;
+  g.font = '11px sans-serif'; g.fillStyle = '#8d939c'; g.textAlign = 'right'; for (const v of [0, 50, 100]) g.fillText(v + '%', L - 6, T + (1 - v / 100) * (h - T - B) + 4);
+  acc.forEach((col, i) => { const t = col.reduce((a, b) => a + b, 0); let y = h - B; if (t) col.forEach((v, k) => { const hg = v / t * (h - T - B); g.fillStyle = PL[k][1]; g.fillRect(L + i * bw + 1, y - hg, bw - 2, hg); y -= hg; }); else { g.fillStyle = '#1e2228'; g.fillRect(L + i * bw + 1, T, bw - 2, h - T - B); } g.fillStyle = i === OBS.dcH ? '#e6e2d8' : '#8d939c'; g.textAlign = 'center'; if (i % 2 === 0 || i === OBS.dcH) g.fillText(String(i).padStart(2, '0'), L + i * bw + bw / 2, h - 6); });
+  g.strokeStyle = '#fff'; g.lineWidth = 2; g.strokeRect(L + OBS.dcH * bw, T - 2, bw, h - T - B + 2);
+  let lx = L; g.textAlign = 'left'; PL.forEach(([n, c]) => { g.fillStyle = c; g.fillRect(lx, 6, 10, 10); g.fillStyle = '#e6e2d8'; g.fillText(n, lx + 14, 15); lx += g.measureText(n).width + 34; });
+  const col = acc[OBS.dcH], t = col.reduce((a, b) => a + b, 0); document.getElementById('ob-dcinfo').textContent = t ? 'Às ' + String(OBS.dcH).padStart(2, '0') + ':00: ' + PL.map(([n], k) => n.toLowerCase() + ' ' + Math.round(col[k] / t * 100) + '%').join(' · ') : 'Ainda sem registros nessa hora.';
 }
 function obsPeople() {
   const D = OBS.data; if (!D) return; const rows = D.npcs.filter(n => OBS.pf === 'all' || obsRole(n) === OBS.pf);
@@ -236,8 +317,9 @@ function obsPeople() {
 }
 function obsBiz() {
   const D = OBS.data; if (!D) return;
-  document.getElementById('ob-biz').innerHTML = `<div class="tools"><span style="color:var(--muted)">Valores do dia atual do jogo. Negócios de NPC ainda sem contabilidade aparecem como “sem dados” (ganham contabilidade na próxima etapa). Clique para ver no mapa.</span></div>
-    <table><tr><th>Negócio</th><th>Tipo</th><th>Dono</th><th>Status</th><th class="num">Estoque</th><th class="num">Funcionários</th><th class="num">Vendas</th><th class="num">Receita</th><th class="num">Enviado</th><th class="num">Custo</th><th class="num">Resultado</th><th class="num">Cofre</th><th>Esperando</th></tr>${D.biz.map(b => { const td = b[7], v = td ? td[0] + td[2] - td[1] : null; return `<tr class="click" data-goto="${b[3]}"><td>${obsEsc(b[1])}</td><td>${{ shop: 'Loja', workshop: 'Oficina' }[b[2]] || b[2]}</td><td>${obsEsc(b[4] || '—')}</td><td><span class="pill p-${b[5] || 'none'}">${b[5] ? OBS_STT[b[5]] : 'sem dados'}</span></td><td class="num">${b[6] ?? '—'}</td><td class="num">${b[9] ?? '—'}</td><td class="num">${td ? td[3] : '—'}</td><td class="num">${td ? '$ ' + td[0] : '—'}</td><td class="num">${td ? '$ ' + td[2] : '—'}</td><td class="num">${td ? '$ ' + td[1] : '—'}</td><td class="num" style="color:${v == null ? 'inherit' : v >= 0 ? 'var(--ok)' : 'var(--bad)'}">${v == null ? '—' : (v >= 0 ? '+' : '') + v}</td><td class="num">${b[10] != null ? '$ ' + b[10] : '—'}</td><td>${b[8] ? obsEsc(obsGood(b[8][0])) + ' · ' + b[8][1] + ' h' : '—'}</td></tr>`; }).join('')}</table>`;
+  const npcN = D.biz.filter(b => /\(NPC\)$/.test(b[4] || '')).length;
+  document.getElementById('ob-biz').innerHTML = `<div class="tools"><span style="color:var(--muted)">Valores do dia atual do jogo. ${npcN} negócios de NPC com economia própria (compram insumos dos outros negócios de NPC ou do fornecedor, pagam salário e manutenção; 3 dias seguidos no vermelho = fecha por 2 dias e reabre com empréstimo). Clique para ver no mapa.</span></div>
+    <table><tr><th>Negócio</th><th>Tipo</th><th>Dono</th><th>Status</th><th class="num">Estoque</th><th class="num">Produção/h</th><th class="num">Vendas</th><th class="num">Receita</th><th class="num">Custo</th><th class="num">Resultado</th><th class="num">Caixa</th><th class="num">Dias no vermelho</th><th class="num">Dívida</th><th class="num">Do fornecedor</th><th>Falta</th></tr>${D.biz.map(b => { const td = b[7], v = td ? td[0] + td[2] - td[1] : null, npc = /\(NPC\)$/.test(b[4] || ''); return `<tr class="click" data-goto="${b[3]}"><td>${obsEsc(b[1])}</td><td>${{ shop: 'Loja', workshop: 'Oficina', hotel: 'Pousada', bank: 'Banco' }[b[2]] || b[2]}</td><td>${obsEsc(b[4] || '—')}</td><td><span class="pill p-${b[5] || 'none'}">${b[5] ? OBS_STT[b[5]] : 'sem dados'}</span></td><td class="num">${b[6] ?? '—'}</td><td class="num">${b[11] ?? '—'}</td><td class="num">${td ? td[3] : '—'}</td><td class="num">${td ? '$ ' + (td[0] + td[2]) : '—'}</td><td class="num">${td ? '$ ' + td[1] : '—'}</td><td class="num" style="color:${v == null ? 'inherit' : v >= 0 ? 'var(--ok)' : 'var(--bad)'}">${v == null ? '—' : (v >= 0 ? '+' : '') + v}</td><td class="num">${b[10] != null ? '$ ' + b[10] : '—'}</td><td class="num">${npc ? b[12] : '—'}</td><td class="num">${npc ? b[13] : '—'}</td><td class="num">${npc ? b[15] : '—'}</td><td>${b[8] ? obsEsc(obsGood(b[8][0])) + ' · ' + b[8][1] + (npc ? ' dia(s)' : ' h') : '—'}</td></tr>`; }).join('')}</table>`;
 }
 function obsEvents() {
   const D = OBS.data; if (!D) return; const L = D.ev.slice().reverse().filter(e => OBS.evf === 'all' || obsEvCat(e[1]) === OBS.evf);
@@ -247,7 +329,7 @@ function obsEvents() {
 function obsTech() {
   const D = OBS.data; if (!D) return; const T = D.tech, st = T.stalls;
   document.getElementById('ob-tech').innerHTML = `<h3>Servidor (computador do anfitrião: ${obsEsc(D.host)})</h3><div class="kpis"><div class="kpi"><div class="v">${T.tick} ms</div><div class="l">passo médio do servidor (ele roda 10 vezes por segundo)</div></div><div class="kpi"><div class="v">${T.max} ms</div><div class="l">passo mais lento recente</div></div><div class="kpi"><div class="v">${st.length}</div><div class="l">travadas acima de 1 s na última hora</div></div><div class="kpi"><div class="v">${T.npcN}</div><div class="l">NPCs simulados</div></div><div class="kpi"><div class="v">${T.mons}</div><div class="l">monstros no mundo</div></div></div>
-    <h3 style="margin-top:14px">Jogadores conectados</h3><table><tr><th>Jogador</th><th class="num">Nível</th><th class="num">Ping</th><th class="num">Reconexões</th><th>Papel</th></tr>${D.players.map(p => `<tr><td>${obsEsc(p[1])}</td><td class="num">${p[4]}</td><td class="num">${p[8] ? 'local' : p[6] != null ? p[6] + ' ms' : '—'}</td><td class="num">${p[7]}</td><td>${p[8] ? '<span class="pill p-ok">anfitrião</span>' : '<span class="pill p-idle">jogador</span>'}</td></tr>`).join('')}</table>
+    <h3 style="margin-top:14px">Jogadores conectados</h3><table><tr><th>Jogador</th><th class="num">Nível</th><th class="num">Ping</th><th class="num">KB/s recebidos</th><th class="num">Reconexões</th><th>Papel</th></tr>${D.players.map(p => `<tr><td>${obsEsc(p[1])}</td><td class="num">${p[4]}</td><td class="num">${p[8] ? 'local' : p[6] != null ? p[6] + ' ms' : '—'}</td><td class="num">${p[8] ? '—' : p[10] != null ? p[10] : '—'}</td><td class="num">${p[7]}</td><td>${p[8] ? '<span class="pill p-ok">anfitrião</span>' : '<span class="pill p-idle">jogador</span>'}</td></tr>`).join('')}</table>
     <h3 style="margin-top:14px">Travadas do servidor (última hora)</h3>${st.length ? '<table><tr><th>Quando</th><th class="num">Duração</th></tr>' + st.slice().reverse().map(q => { const d = new Date(q[0]); return `<tr><td>${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}</td><td class="num" style="color:${q[1] > 5000 ? 'var(--bad)' : 'var(--warn)'}">${(q[1] / 1000).toFixed(1)} s</td></tr>`; }).join('') + '</table>' : '<div style="color:var(--muted)">Nenhuma travada acima de 1 s. Ótimo.</div>'}
-    <div style="color:var(--muted);font-size:12px;margin-top:10px">Dados enviados por segundo por jogador chegam na próxima etapa.</div>`;
+    <div style="color:var(--muted);font-size:12px;margin-top:10px">KB/s: estimativa do estado do mundo que o anfitrião manda para cada jogador (10 vezes por segundo).</div>`;
 }

@@ -174,6 +174,7 @@ function clientOnServer(m) {
     }
     case 'hp': Net.send({ t: 'hpr', t0: m.t0 }); break;   /* ping do anfitrião */
     case 'obs': if (typeof obsData === 'function') obsData(m); break;
+    case 'obsh': if (typeof obsHist === 'function') obsHist(m); break;
     case 'tonelinv': G.tonelInv = { from: m.from, name: m.name, bet: m.bet, until: performance.now() + 60000 }; showToast('🍺 ' + m.name + ' te desafiou para o Tonel (aposta ' + m.bet + '). Fale com o Brom para aceitar.'); break;
     case 'aoe':
       if (m.a === 'boom' && m.big) { G.effects.push({ a: 'bigboom', x: m.x, y: m.y, t0: now, dur: 1100, seed: Math.floor(Math.random() * 1000) }); break; }   // explosão da Bola de Fogo
@@ -202,7 +203,7 @@ function clientOnServer(m) {
     case 'hotel': G.hotel = m; if (G.dialog && G.dialog.id === 'hotelkeeper') setDialogText(m.room >= 0 ? 'Sua cabine é a ' + (m.room + 1) + ', por mais ' + m.until + ' dia(s). O baú fica ao lado do catre.' : 'Você não tem cabine. Vagas agora: ' + m.free + ' de 6.'); if ($('hchest') && !$('hchest').classList.contains('hidden')) hotelChestShow(); break;
     case 'wt': WT.ph = m.ph ?? null; WT.rain = m.rain ?? null; break;
     case 'denied': if (m.why === 'ver') { if (verNum(m.ver) > verNum(VERSION)) { netMsg('O reino está numa versão mais nova. Atualizando o jogo…'); saveUpdPos(); setTimeout(() => location.replace(location.pathname + '?v=' + Date.now()), 1200); } else { netMsg('O anfitrião está numa versão antiga do jogo. Esperando ele atualizar…'); Net.reset(); setTimeout(worldTry, 8000); } break; } askRoomPw(m.why === 'pwbad'); break;
-    case 'wsnap': if (!Net.isHost) { try { localStorage.setItem('nae-world-estate-v1', JSON.stringify(m.est || {})); localStorage.setItem('nae-world-bank-v1', JSON.stringify(m.bank || {})); } catch (e) { } WN.succ = m.succ || []; } break;   // guarda a cópia do mundo
+    case 'wsnap': if (!Net.isHost) { try { if (m.oh) localStorage.setItem('nae-world-obs-v1', JSON.stringify(m.oh)); localStorage.setItem('nae-world-estate-v1', JSON.stringify(m.est || {})); localStorage.setItem('nae-world-bank-v1', JSON.stringify(m.bank || {})); } catch (e) { } WN.succ = m.succ || []; } break;   // guarda a cópia do mundo
     case 'roompw': G.roomLocked = m.on; pzRoomRefresh(); break;
     case 'npc': if (G.dialog && G.dialog.id === m.n) { setDialogText(m.text); if (m.n === 'captain') later(50, () => G.dialog && buildDialogOptions('captain')); } break;
     case 'down': { const e = G.players[m.id]; if (e) { e.downed = true; e.downUntil = now + DOWNED_MS; } if (m.id === G.myId) { setTarget(null); G.path = null; } break; }
