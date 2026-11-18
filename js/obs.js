@@ -90,7 +90,7 @@ function obsBuild() {
     <section class="ob-view" data-ov="charts" style="gap:10px"><div class="box" id="ob-ctools"></div><div class="ob-cgrid" id="ob-charts"></div></section>
     <section class="ob-view" data-ov="events"><div class="box" id="ob-events"></div></section>
     <section class="ob-view" data-ov="tech"><div class="box" id="ob-tech"></div></section>
-    <section class="ob-view" data-ov="ctrl"><div class="box soon">Controles de simulação (pausar, acelerar o tempo, criar eventos): etapa 4.</div></section></div><div class="ob-tip" id="ob-tip"></div>`;
+    <section class="ob-view" data-ov="ctrl"><div class="box" id="ob-ctrl"></div></section></div><div class="ob-tip" id="ob-tip"></div>`;
   document.body.appendChild(d);
   d.querySelector('#ob-tabs').onclick = e => { const b = e.target.closest('[data-ot]'); if (!b) return; if (b.dataset.ot === 'close') obsToggle(false); else obsTab(b.dataset.ot); };
   d.querySelector('#ob-zoom').onclick = e => { const b = e.target.closest('[data-z]'); if (!b) return; OBS.view = b.dataset.z; obsSegs(); };
@@ -109,7 +109,8 @@ function obsBuild() {
     const ef = e.target.closest('[data-ef]'); if (ef) { OBS.evf = ef.dataset.ef; obsEvents(); }
     const pf = e.target.closest('[data-pf]'); if (pf) { OBS.pf = pf.dataset.pf; obsPeople(); }
     const cs = e.target.closest('[data-cs]'); if (cs) { const [k, v] = cs.dataset.cs.split('|'); OBS[k] = v; if (k === 'dcRole') obsDayClock(); else obsCharts(); }
-    if (e.target.closest('[data-csv]')) obsCsv(); });
+    if (e.target.closest('[data-csv]')) obsCsv();
+    const oc = e.target.closest('[data-oc]'); if (oc) { const [a, v, g2] = oc.dataset.oc.split('|'); Net.send({ t: 'obsc', a, v, k: v, g: g2 }); } });
   d.addEventListener('input', e => { if (e.target.id === 'ob-dch') { OBS.dcH = +e.target.value; obsDayClock(); } });
   obsSegs(); obsTab(OBS.tab);
 }
@@ -229,7 +230,8 @@ function obsCard() {
 function obsRender() {
   const D = OBS.data; if (!D || !OBS.on) return;
   const hh = Math.floor(D.hour), mm = Math.floor((D.hour - hh) * 60);
-  document.getElementById('ob-clock').innerHTML = `<span>Dia <b>${D.day}</b> · <b>${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}</b></span><span>Anfitrião <b>${obsEsc(D.host)}</b></span><span>Passo <b>${D.tech.tick} ms</b></span>`;
+  const ck = D.clk || { rate: 1 };
+  document.getElementById('ob-clock').innerHTML = `<span>Dia <b>${D.day}</b> · <b>${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}</b></span><span>Tempo <b style="color:${ck.paused ? 'var(--bad)' : ck.rate > 1 ? 'var(--warn)' : 'inherit'}">${ck.paused ? 'pausado' : ck.rate + '×'}</b></span><span>Anfitrião <b>${obsEsc(D.host)}</b></span><span>Passo <b>${D.tech.tick} ms</b></span>`;
   const A = obsAlerts(); document.getElementById('ob-abadge').textContent = A.length; document.getElementById('ob-abadge').style.display = A.length ? '' : 'none';
   const cnt = {}; for (const n of D.npcs) if (!(n[11] & 4)) cnt[obsRole(n)] = (cnt[obsRole(n)] || 0) + 1; cnt.ply = D.players.length;
   document.querySelectorAll('#ob-fp [data-pn]').forEach(e => e.textContent = cnt[e.dataset.pn] || 0);
@@ -241,6 +243,7 @@ function obsRender() {
   else if (OBS.tab === 'events') obsEvents();
   else if (OBS.tab === 'tech') obsTech();
   else if (OBS.tab === 'charts') obsCharts();
+  else if (OBS.tab === 'ctrl') obsCtrl();
   else if (OBS.tab === 'dayclock') obsDayClock();
 }
 // ---------- gráficos ----------
@@ -297,6 +300,17 @@ function obsCsv() {
   const put = (kind, r) => { for (const pid in r.b) { const N = H.names[pid] || [pid, '', '', 0], b = r.b[pid]; lines.push([kind, r.d, r.h ?? '', new Date(r.t).toISOString(), N[0], N[1], N[3] ? 'sim' : 'nao', b[0], b[1], b[2], b[3], b[4]].join(';')); } };
   for (const r of H.dy) put('dia', r); for (const r of H.hr) put('hora', r);
   const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'nae-observatorio-' + new Date().toISOString().slice(0, 10) + '.csv'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+// ---------- controles de simulação ----------
+function obsCtrl() {
+  const box = document.getElementById('ob-ctrl'), D = OBS.data; if (!box || !D) return; const ck = D.clk || { rate: 1, paused: false, ev: {} }, ev = ck.ev || {};
+  const b = (a, v, label, on, extra) => `<button class="btn" data-oc="${a}|${v}${extra ? '|' + extra : ''}" style="${on ? 'border-color:var(--accent);color:var(--accent)' : ''}">${label}</button>`;
+  box.innerHTML = `<h3>Tempo</h3><div class="tools">${b('pause', 0, ck.paused ? '▶ Voltar a correr' : '⏸ Pausar a cidade', ck.paused)}${[1, 2, 5, 10].map(v => b('rate', v, v + '×', !ck.paused && ck.rate === v)).join('')}</div>
+    <p style="color:var(--muted)">Afeta todos no reino e o chat avisa. Pausado: o sol para, as necessidades e a economia param (as pessoas ainda andam). Acelerado: horas, necessidades, produção, vendas e salários andam mais rápido; os moradores podem não chegar a tempo nos lugares. Se outro jogador assumir o reino, o tempo volta a 1×.</p>
+    <h3 style="margin-top:14px">Criar evento</h3><div class="tools">${b('ev', 'party', '🎉 Festa na taverna (3 h)')}${b('ev', 'caravan', '🐪 Caravana de mercadores')}${b('ev', 'attack', '⚔ Ataque no portão sul')}${b('ev', 'fire', '🔥 Incêndio numa oficina')}</div>
+    <div class="tools"><span style="color:var(--muted)">Falta de insumo por 1 dia:</span>${['wheat', 'wood', 'ore', 'herb', 'flax'].map(g => b('ev', 'short', obsGood(g), false, g)).join('')}</div>
+    <h3 style="margin-top:14px">Eventos ativos</h3><div style="color:var(--muted)">${[ev.party ? `🎉 Festa: mais ${ev.party} h do jogo` : '', ev.short ? `⚠ Falta de ${obsGood(ev.short[0])}: mais ${ev.short[1]} h do jogo` : ''].filter(Boolean).join(' · ') || 'Nenhum.'}</div>
+    <p style="color:var(--muted);margin-top:12px">Dica: acelere o tempo e acompanhe as abas Negócios, Alertas e Gráficos para ver como a cidade reage a cada evento.</p>`;
 }
 // ---------- relógio do dia ----------
 function obsDayClock() {

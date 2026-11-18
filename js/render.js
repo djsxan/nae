@@ -24,7 +24,7 @@ function wtSmooth(natPh, natRain) {
   const dr = tR - WT.cRain, rs = 0.085 * dt; WT.cRain = Math.abs(dr) <= rs ? tR : WT.cRain + Math.sign(dr) * rs;
 }
 function dayInfo() {
-  if (WT.t !== -1) wtSmooth((Date.now() % DAY_CYCLE_MS) / DAY_CYCLE_MS, WT.cRain ?? 0);
+  if (WT.t !== -1) wtSmooth((gameNow() % DAY_CYCLE_MS) / DAY_CYCLE_MS, WT.cRain ?? 0);
   const ph = typeof G !== 'undefined' && G.devTime ? (G.devTime === 'day' ? 0.06 : 0.5) : WT.cPh;
   const sk = typeof seasonNow === 'function' ? seasonNow().k : 'spring', sun = Math.cos(ph * Math.PI * 2) + ({ summer: 0.16, winter: -0.14, autumn: -0.04, spring: 0.04 })[sk];
   const k = clamp((0.15 - sun) / 0.65, 0, 1);
@@ -41,7 +41,7 @@ function sunShadow(day) {
 // clima global (chuva em alguns períodos — igual para todos)
 function weatherNow() {
   const t = Date.now() / 1000;
-  const nat = clamp((Math.sin(t / 260) + Math.sin(t / 97) * 0.4 - 0.75) * 2.2, 0, 1); wtSmooth((Date.now() % DAY_CYCLE_MS) / DAY_CYCLE_MS, nat); const rain = WT.cRain;
+  const nat = clamp((Math.sin(t / 260) + Math.sin(t / 97) * 0.4 - 0.75) * 2.2, 0, 1); wtSmooth((gameNow() % DAY_CYCLE_MS) / DAY_CYCLE_MS, nat); const rain = WT.cRain;
   return { rain, wind: 0.6 + Math.sin(t / 40) * 0.4 };
 }
 function spawnPart(kind, x, y, extra) {

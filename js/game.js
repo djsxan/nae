@@ -173,6 +173,7 @@ function clientOnServer(m) {
       break;
     }
     case 'hp': Net.send({ t: 'hpr', t0: m.t0 }); break;   /* ping do anfitrião */
+    case 'clk': if (!Net.isHost) simSet(m.g, m.rate, m.paused); break;   /* relógio do jogo vindo do anfitrião */
     case 'obs': if (typeof obsData === 'function') obsData(m); break;
     case 'obsh': if (typeof obsHist === 'function') obsHist(m); break;
     case 'tonelinv': G.tonelInv = { from: m.from, name: m.name, bet: m.bet, until: performance.now() + 60000 }; showToast('🍺 ' + m.name + ' te desafiou para o Tonel (aposta ' + m.bet + '). Fale com o Brom para aceitar.'); break;

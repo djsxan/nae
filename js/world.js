@@ -1292,11 +1292,16 @@ const BIZ_UP = {   // melhorias: custo por nível (até 3)
 };
 // ---------- mercado imobiliário: imóveis da cidade (casas para alugar; lojas e oficinas por enquanto com donos NPC) ----------
 const ESTATE_DAY_MS = 12 * 60 * 1000;   // um dia do jogo
+// relógio do jogo: normalmente igual ao relógio real; o Tecelão pode pausar ou acelerar (o anfitrião manda para todos)
+const SIMCLK = { base: 0, real: 0, rate: 1, paused: false };
+function gameNow() { return SIMCLK.real ? SIMCLK.base + (SIMCLK.paused ? 0 : (Date.now() - SIMCLK.real) * SIMCLK.rate) : Date.now(); }
+function simRate() { return SIMCLK.paused ? 0 : SIMCLK.rate; }
+function simSet(g, rate, paused) { SIMCLK.base = g; SIMCLK.real = Date.now(); SIMCLK.rate = rate; SIMCLK.paused = !!paused; }
 const BIZ_HOUR_MS = ESTATE_DAY_MS / 24;   // uma hora do jogo = 30 s
 const RENT_DAYS = 7;   // o aluguel é cobrado por semana (7 dias do jogo)
 // estações: cada uma dura 7 dias do jogo (84 min reais); o ano tem 4
 const SEASONS = [{ k: 'spring', n: 'Primavera' }, { k: 'summer', n: 'Verão' }, { k: 'autumn', n: 'Outono' }, { k: 'winter', n: 'Inverno' }];
-function seasonNow(t) { const day = Math.floor((t ?? Date.now()) / ESTATE_DAY_MS), i = Math.floor(day / 7) % 4; return { i, k: SEASONS[i].k, n: SEASONS[i].n, day: (day % 7) + 1 }; }
+function seasonNow(t) { const day = Math.floor((t ?? gameNow()) / ESTATE_DAY_MS), i = Math.floor(day / 7) % 4; return { i, k: SEASONS[i].k, n: SEASONS[i].n, day: (day % 7) + 1 }; }
 const PROPS = [], PROPS_BY = {};
 (function buildProps() {
   if (TEST3D) return;

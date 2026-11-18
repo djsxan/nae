@@ -190,6 +190,7 @@ function hostOnClient(from, m) {
       if (m.devMode === 'normal') { np.devPowers = true; Net.toOne(from, { t: 'dev', ok: 1, mode: 'normal' }); return; }   // criador com a vocação normal (toma dano, monstros atacam), mas com o painel
       np.dev = true; np.skin = 'weaver'; np.devHidden = false; Net.toOne(from, { t: 'dev', ok: 1 }); Net.toAll({ t: 'pinfo', p: pinfo(np) });
     });
+    Net.toOne(from, { t: 'clk', g: gameNow(), rate: SIMCLK.rate, paused: SIMCLK.paused });
     Net.toOne(from, { t: 'welcome', you: from, x: np.x, y: np.y, z: np.z || 0, fl: np.fl || 0, fb: np.fb ?? -1, players: Object.values(S.players).map(pinfo), objs: S.objMods || {} });
     Net.toOthers({ t: 'pinfo', p: pinfo(np) }, from);
     setTimeout(() => { if (S.players[from] && S.npcs) Net.toOne(from, { t: 'vlist', list: Object.values(S.npcs).filter(n => n.transient).map(visPublic) }); }, 600);
@@ -251,6 +252,7 @@ function hostOnClient(from, m) {
     case 'job': jobMsg(p, m); break;
     case 'wv': wvMsg(p, m); break;
     case 'obs': if (p.dev || p.devPowers) Net.toOne(p.id, obsSnap()); break;   /* Observatório do Tecelão */
+    case 'obsc': if (p.dev || p.devPowers) obsControl(p, m); break;   /* controles de simulação */
     case 'obsh': if (p.dev || p.devPowers) { const H = obsLoadH(); Net.toOne(p.id, { t: 'obsh', hr: H.hr, dy: H.dy, heat: S.heat || obsHeatLoad(), names: Object.fromEntries(PROPS.filter(q => q.kind !== 'house').map(q => [q.id, [q.name, q.kind, q.wk || q.shopType || '', q.npcOwner && !(S.estate && S.estate.r[q.id]) ? 1 : 0]])) }); } break;
     case 'hpr': if (isFinite(m.t0)) p.ping = Math.max(0, Date.now() - m.t0); break;   /* resposta do ping do anfitrião */
     case 'sheathe': p.autoShea = false; sheatheToggle(p); break;
@@ -2316,7 +2318,8 @@ function npcbBuy(pid, B, g, q) {
   for (const sp in N) { if (sp === pid || got >= q || PROPS_BY[sp].kind !== 'workshop') continue; const X = N[sp]; if (X.closed) continue;   /* só quem produz vende para os outros negócios */ const have = Math.floor(X.store[g] || 0) - 2; if (have <= 0) continue;
     const t = Math.min(q - got, have, Math.floor(Math.max(0, B.cofre) / GOODS[g].p)); if (t <= 0) break; const v = t * GOODS[g].p;
     X.store[g] -= t; X.cofre += v; X.today.rev += v; X.today.sold += t; B.cofre -= v; B.today.cost += v; B.today.buy += v; B.store[g] = (B.store[g] || 0) + t; got += t; }
-  if (got < q) { const t = Math.min(q - got, Math.floor(Math.max(0, B.cofre) / (GOODS[g].p * NPCB_SUP))); if (t > 0) { const v = Math.ceil(t * GOODS[g].p * NPCB_SUP); B.cofre -= v; B.today.cost += v; B.today.buy += v; B.today.sup += t; B.store[g] = (B.store[g] || 0) + t; got += t; } }
+  const supK = NPCB_SUP * (S.simEv && S.simEv.short && S.simEv.short.g === g && S.simEv.short.until > gameNow() ? 2.5 : 1);
+  if (got < q) { const t = Math.min(q - got, Math.floor(Math.max(0, B.cofre) / (GOODS[g].p * supK))); if (t > 0) { const v = Math.ceil(t * GOODS[g].p * supK); B.cofre -= v; B.today.cost += v; B.today.buy += v; B.today.sup += t; B.store[g] = (B.store[g] || 0) + t; got += t; } }
   if (got < q) { B.shortH = (B.shortH || 0) + 1; B.shortG = g; } return got;
 }
 function npcbStaffHere(P) { return Object.values(S.npcs || {}).some(n => !n.dead && !n.downed && !n.transient && n.bi === P.bi && WORLD.bld[tileAt(n.x, n.y)] === P.bi); }
@@ -2327,7 +2330,8 @@ function npcbHour() {
     const tav = P.wk === 'tavern'; if (tav ? !(hr >= 10) : !open) continue;   /* a taverna abre às 10 e vai até a meia-noite */
     const k = npcbStaffHere(P) ? 1.2 * npcbMoodMul(P) : 0.7;
     if (P.kind === 'workshop') { const W = WORKS[P.wk];
-      if (W.make) for (const g in W.make) { B.frac[g] = (B.frac[g] || 0) + W.make[g] * k * NPCB_EXTRACT * ((P.wk === 'wheat' || P.wk === 'farm') ? (sk === 'winter' ? 0.4 : sk === 'summer' ? 1.25 : 1) : 1); const q = Math.floor(B.frac[g]); B.frac[g] -= q; if (q) { B.store[g] = (B.store[g] || 0) + q; B.today.mk[g] = (B.today.mk[g] || 0) + q; } }
+      if (W.make) for (const g in W.make) { if (S.simEv && S.simEv.short && S.simEv.short.g === g && S.simEv.short.until > gameNow()) continue;   /* falta (evento) */
+        B.frac[g] = (B.frac[g] || 0) + W.make[g] * k * NPCB_EXTRACT * ((P.wk === 'wheat' || P.wk === 'farm') ? (sk === 'winter' ? 0.4 : sk === 'summer' ? 1.25 : 1) : 1); const q = Math.floor(B.frac[g]); B.frac[g] -= q; if (q) { B.store[g] = (B.store[g] || 0) + q; B.today.mk[g] = (B.today.mk[g] || 0) + q; } }
       if (W.recipes) { const rk = Object.keys(W.recipes).sort((a, b) => (B.store[a] || 0) - (B.store[b] || 0))[0], rec = W.recipes[rk]; B.frac._b = (B.frac._b || 0) + k * 1.5; let nb = Math.floor(B.frac._b); B.frac._b -= nb;
         while (nb-- > 0) { if ((B.store[rk] || 0) >= (rk === 'serve' ? 20 : NPCB_KEEP)) break; for (const g in rec) { const miss = rec[g] - Math.floor(B.store[g] || 0); if (miss > 0) npcbBuy(pid, B, g, rec[g] * 3); } if (Object.keys(rec).some(g => (B.store[g] || 0) < rec[g])) break; for (const g in rec) B.store[g] -= rec[g]; B.store[rk] = (B.store[rk] || 0) + 1; B.today.mk[rk] = (B.today.mk[rk] || 0) + 1; } }
       if (P.wk === 'tavern') { const pat = Object.values(S.npcs).filter(q => !q.dead && !/^(guard|captain)/.test(q.kind) && WORLD.bld[tileAt(q.x, q.y)] === P.bi && q.role !== 'clerk' && q.kind !== 'innkeeper' && q.kind !== 'tavmaid').length, served = Math.min(pat, Math.floor(B.store.serve || 0)), v = npcbTavernTake(P) + 3 + served * 4; B.store.serve = (B.store.serve || 0) - served; if (v) { B.cofre += v; B.today.rev += v; B.today.sold += pat; } }
@@ -2388,6 +2392,24 @@ function npcDayEnd() {   /* fim do dia: decisão de faltar amanhã, compras nas 
       if (GS.length && !B.closed) { const g = GS[Math.floor(Math.random() * GS.length)], v = Math.round(GOODS[g].p * NPCB_SHOP_K); if (n.gold >= v) { n.gold -= v; B.store[g]--; B.cofre += v; B.today.rev += v; B.today.sold++; B.today.res = (B.today.res || 0) + v; moodAdd(n, 2); } } } }
 }
 // ============================================================
+//  CONTROLES DE SIMULAÇÃO (Observatório, só o Tecelão) — afetam todos no reino e são avisados no chat
+// ============================================================
+function simBroadcast() { const E = estateLoad(); E.clk = Math.round(gameNow() - Date.now()); estateSave(); Net.toAll({ t: 'clk', g: gameNow(), rate: SIMCLK.rate, paused: SIMCLK.paused }); }
+function obsControl(p, m) {
+  const E = estateLoad(), N = npcbAll(), ev = S.simEv || (S.simEv = {}), H = BIZ_HOUR_MS;
+  if (m.a === 'rate') { const v = [1, 2, 5, 10].includes(+m.v) ? +m.v : 1; simSet(gameNow(), v, false); simBroadcast(); sys(v === 1 ? '⏳ O Tecelão devolveu o tempo ao ritmo normal.' : '⏩ O Tecelão acelerou o tempo: ' + v + '× mais rápido.'); }
+  else if (m.a === 'pause') { const pz = !SIMCLK.paused; simSet(gameNow(), SIMCLK.rate, pz); simBroadcast(); sys(pz ? '⏸ O Tecelão parou o tempo: o sol fica parado e a cidade não avança.' : '▶ O tempo voltou a correr.'); }
+  else if (m.a === 'ev') {
+    if (m.k === 'party') { ev.party = gameNow() + 3 * H; for (const n of Object.values(S.npcs || {})) if (!n.transient) moodAdd(n, 8); sys('🎉 Festa na cidade! Os moradores largaram tudo e foram para o Ronco do Dragão (3 horas do jogo).'); }
+    else if (m.k === 'short') { const g = ['wheat', 'wood', 'ore', 'herb', 'flax'].includes(m.g) ? m.g : 'wheat'; ev.short = { g, until: gameNow() + 24 * H }; for (const pid in N) if (N[pid].store[g]) N[pid].store[g] = 0; sys('⚠ Falta de ' + GOODS[g].n + ' na região: ninguém produz por um dia e o fornecedor cobra 2,5× mais.'); }
+    else if (m.k === 'attack') { const types = Object.keys(MON).filter(t => /goblin|orc|bandit|skeleton/.test(t)); let n0 = 0; for (let k = 0; k < 60 && n0 < 8; k++) { const x = C + (Math.random() - 0.5) * 10, y = C + 42 + Math.random() * 5; if (REACH[Math.round(y) * MAP_W + Math.round(x)] && monStand(x, y, null)) { spawnAt(pick(types.length ? types : ['goblin']), x, y); n0++; } } sys('⚔ Ataque! ' + n0 + ' monstros apareceram diante do portão sul.'); }
+    else if (m.k === 'caravan') { for (let k = 0; k < 6; k++) visSpawn(now_(), 'trav'); for (const pid in N) if (PROPS_BY[pid].kind === 'shop' && !N[pid].closed) { const v = 40 + Math.round(Math.random() * 60); N[pid].cofre += v; N[pid].today.rev += v; N[pid].today.sold += 4; } sys('🐪 Uma caravana de mercadores chegou: seis viajantes nas ruas e as lojas venderam bem.'); }
+    else if (m.k === 'fire') { const ids = Object.keys(N).filter(id => PROPS_BY[id].kind === 'workshop' && !N[id].closed); if (!ids.length) return; const id = pick(ids), B = N[id], P0 = PROPS_BY[id]; for (const g in B.store) B.store[g] = Math.floor(B.store[g] * 0.4); B.cofre -= 120; B.today.cost += 120; B.closed = 1; npcbLog(B, 'Incêndio! Perdeu boa parte do estoque e pagou 120 de reparos.'); for (const n of Object.values(S.npcs || {})) if (n.bi === P0.bi) moodAdd(n, -15); sys('🔥 Incêndio na ' + P0.name + '! Fechada por um dia para reparos.'); }
+    estateSave();
+  }
+  Net.toOne(p.id, obsSnap());
+}
+// ============================================================
 //  HISTÓRICO DO OBSERVATÓRIO — uma linha por hora do jogo (7 dias) e um resumo por dia (para sempre)
 // ============================================================
 const OBS_HKEY = 'nae-world-obs-v1', OBS_HEATKEY = 'nae-world-heat-v1', HEAT_N = 64;
@@ -2427,11 +2449,12 @@ function obsSnap() {
   const biz = PROPS.filter(P => P.kind !== 'house').map(P => { const r = E[P.id], NB = !r && NBs[P.id]; if (NB) { const td = NB.today, yd = NB.hist[NB.hist.length - 1], st = NB.closed ? 'idle' : NB.loss >= 1 || NB.cofre < 0 || (yd && yd.cost > yd.rev) ? 'bad' : NB.short >= 2 ? 'warn' : 'ok';   /* status pelo resultado de ontem */
       return [P.id, P.name, P.kind, P.bi, P.npcOwner + ' (NPC)', st, Math.round(Object.values(NB.store).reduce((a, v) => a + Math.max(0, v), 0)), [Math.round(td.rev), Math.round(td.cost), 0, td.sold], NB.short >= 2 ? [NB.shortG || '', NB.short] : null, null, Math.floor(NB.cofre), lastH && lastH.b[P.id] ? lastH.b[P.id][4] : null, NB.loss, NB.debt, NB.closed, td.sup || 0]; }
     const B = r && r.biz; let st = null, wait = null;
-    if (B) { const w = Object.entries(B.wait || {}).sort((a, b) => a[1] - b[1]); if (w.length) wait = [w[0][0].replace(/r$/, ''), Math.round((Date.now() - w[0][1]) / BIZ_HOUR_MS * 10) / 10];
+    if (B) { const w = Object.entries(B.wait || {}).sort((a, b) => a[1] - b[1]); if (w.length) wait = [w[0][0].replace(/r$/, ''), Math.round((gameNow() - w[0][1]) / BIZ_HOUR_MS * 10) / 10];
       const td = B.today || {}; st = B.closed ? 'idle' : wait && wait[1] >= 2 ? 'warn' : (td.cost || 0) > (td.rev || 0) + (td.xfer || 0) && (td.cost || 0) > 30 ? 'bad' : 'ok'; }
     const st0 = B ? (P.kind === 'shop' ? B.stock : B.store) || {} : null;
     return [P.id, P.name, P.kind, P.bi, r ? r.ownerName : (P.npcOwner || ''), st, st0 ? Math.round(Object.values(st0).reduce((a, v) => a + v, 0)) : null, B && B.today ? [Math.round(B.today.rev || 0), Math.round(B.today.cost || 0), Math.round(B.today.xfer || 0), B.today.sold || 0] : null, wait, B ? (B.staff || []).length : null, B ? Math.floor(B.cofre || 0) : null, lastH && lastH.b[P.id] ? lastH.b[P.id][4] : null]; });
-  return { t: 'obs', at: Date.now(), hour: resHour(), day: estDay() - (S.day0 ?? (S.day0 = estDay())) + 1, host: (S.players[Net.myId] || {}).name || '', npcs, players, biz, ev: (S.events || []).slice(-120),
+  const se = S.simEv || {}, gn = gameNow();
+  return { t: 'obs', at: Date.now(), clk: { rate: SIMCLK.rate, paused: SIMCLK.paused, ev: { party: se.party > gn ? Math.ceil((se.party - gn) / BIZ_HOUR_MS) : 0, short: se.short && se.short.until > gn ? [se.short.g, Math.ceil((se.short.until - gn) / BIZ_HOUR_MS)] : null } }, hour: resHour(), day: estDay() - (S.day0 ?? (S.day0 = estDay())) + 1, host: (S.players[Net.myId] || {}).name || '', npcs, players, biz, ev: (S.events || []).slice(-120),
     tech: { tick: +(S.tickMs || 0).toFixed(2), max: +(S.tickMax || 0).toFixed(1), stalls: (S.stalls || []).filter(q => Date.now() - q[0] < 3600000), mons: Object.keys(S.monsters).length, npcN: Object.keys(S.npcs || {}).length } };
 }
 function hostTick() {
@@ -2559,11 +2582,11 @@ function startHostLoop() {
 const ESTATE_KEY = 'nae-world-estate-v1', ESTATE_AUTH_MAX = 6, ESTATE_CHEST_SLOTS = 48, ESTATE_ABANDON_DAYS = 30, BIZ_MAX = 9999, BIZ_OFFLINE_MS = 2 * ESTATE_DAY_MS;
 const SALARY = { shop: 6, workshop: 8, bank: 30, hotel: 6 }, SAFE_CAP = 500, WS_CAP = 400, SHOP_CAP = 120, THEFT = [0.06, 0.04, 0.02, 0.01];
 const estOwner = p => String(p.name || '').trim().toLowerCase() + '|' + p.cls + (p.uid ? '#' + p.uid : '');   // heróis novos têm código único: não herdam casa, negócios nem banco de um herói antigo
-const estDay = () => Math.floor(Date.now() / ESTATE_DAY_MS);
+const estDay = () => Math.floor(gameNow() / ESTATE_DAY_MS);
 const isBizProp = P => P && (P.kind === 'shop' || P.kind === 'workshop' || P.kind === 'bank' || P.kind === 'hotel') && P.npc !== 'a Guarda' && !(P.kind === 'workshop' && P.npc && !P.wk);
 function estateLoad() {
   if (S.estate) return S.estate; S.estate = { r: {}, lost: {} };
-  try { const j = typeof localStorage !== 'undefined' && JSON.parse(localStorage.getItem(ESTATE_KEY) || 'null'); if (j && j.r) { S.estate = { r: j.r, lost: j.lost || {}, hotel: j.hotel || {}, npcb: j.npcb || {}, npcm: j.npcm || {} }; for (const pid in S.estate.r) { const P = PROPS_BY[pid]; if (!P || (P.kind !== 'house' && !isBizProp(P))) delete S.estate.r[pid]; } } } catch (e) { }
+  try { const j = typeof localStorage !== 'undefined' && JSON.parse(localStorage.getItem(ESTATE_KEY) || 'null'); if (j && j.r) { S.estate = { r: j.r, lost: j.lost || {}, hotel: j.hotel || {}, npcb: j.npcb || {}, npcm: j.npcm || {}, clk: j.clk || 0 }; if (j.clk && !SIMCLK.real) simSet(Date.now() + j.clk, 1, false); for (const pid in S.estate.r) { const P = PROPS_BY[pid]; if (!P || (P.kind !== 'house' && !isBizProp(P))) delete S.estate.r[pid]; } } } catch (e) { }
   for (const pid in S.estate.r) bizLinkBank(S.estate.r[pid]);
   S.estateL = estateLocks(); return S.estate;
 }
@@ -2926,7 +2949,7 @@ function bizNeeds(owner) {   // o que cada negócio do dono precisa receber
 }
 function ownMaker(owner, g) { for (const pid in S.estate.r) { const r = S.estate.r[pid], P = PROPS_BY[pid]; if (r.owner === owner && r.biz && P.kind === 'workshop' && WORKS[P.wk] && WORKS[P.wk].make && WORKS[P.wk].make[g]) return true; } return false; }   // tem oficina própria que extrai isso? então espera o mensageiro
 function dispatchCouriers() {
-  const E = S.estate; if (!E || !S.npcs) return; const now = Date.now();
+  const E = S.estate; if (!E || !S.npcs) return; const now = gameNow();
   const busy = Object.values(S.npcs).filter(n => n.role === 'courier' && n.job), pair = new Set(busy.map(n => n.job.from + '>' + n.job.to + (n.job.raw ? 'r' : '')));
   const free = Object.values(S.npcs).filter(n => n.role === 'courier' && !n.job && !n.dead && !n.downed && !n.sleeping && (n.act === 'work' || n.act == null));
   // pedidos de todos os donos, com a fonte (oficina do mesmo dono que tem a mercadoria)
@@ -2949,7 +2972,7 @@ function dispatchCouriers() {
 }
 // carroça de reserva: quem espera há mais de 3 horas do jogo recebe direto da oficina do mesmo dono (sem depender dos mensageiros)
 function cartReserve() {
-  const E = S.estate; if (!E) return; const now = Date.now(), owners = new Set(Object.values(E.r).filter(r => r.biz).map(r => r.owner));
+  const E = S.estate; if (!E) return; const now = gameNow(), owners = new Set(Object.values(E.r).filter(r => r.biz).map(r => r.owner));
   for (const ow of owners) for (const need of bizNeeds(ow)) {
     const DR = E.r[need.pid], DB = DR && DR.biz; if (!DB || !DB.wait) continue; const wk = need.g + (need.raw ? 'r' : ''); if (!DB.wait[wk] || now - DB.wait[wk] < BIZ_HOUR_MS * 3) continue;
     for (const sp in E.r) { const r = E.r[sp], SP = PROPS_BY[sp]; if (sp === need.pid || r.owner !== ow || !r.biz || !SP || SP.kind !== 'workshop') continue; const q = Math.min(Math.floor(r.biz.store[need.g] || 0), need.room, 30); if (q < 1) continue;
@@ -3052,7 +3075,7 @@ function estateTick(now) {
   if (now - (S.estT || 0) < 2000) return;
   { const E0 = estateLoad(); if (E0.offers) for (const pid in E0.offers) if (estDay() - E0.offers[pid].day >= 1) offerClose(PROPS_BY[pid], false, 'Sua oferta por ' + (PROPS_BY[pid] || {}).name + ' venceu sem resposta. O dinheiro voltou para o banco.'); } const dt = S.estT ? (now - S.estT) / 1000 : 2; S.estT = now;
   const E = estateLoad(), day = estDay();
-  if (Date.now() - (S.bizT || 0) >= BIZ_HOUR_MS) { S.bizT = Date.now(); bizHour(now); }
+  if (gameNow() - (S.bizT || 0) >= BIZ_HOUR_MS || gameNow() < (S.bizT || 0)) { S.bizT = gameNow(); bizHour(now); }
   for (const pid of Object.keys(E.r)) {
     const r = E.r[pid], P = PROPS_BY[pid], owed = Math.floor((day - r.paid) / RENT_DAYS); if (owed <= 0) continue;   // semanas vencidas
     const due = (r.mode === 'own' ? 1 : P.rent) * RENT_DAYS, q = ownerOnline(r);
@@ -3080,7 +3103,7 @@ function estHomeBed(p) { if (p.sleep == null) return false; const b = BEDS[p.sle
 //  ROTINA DOS MORADORES — dormem em casa (22h–6h), tomam café, trabalham, almoçam (taverna ou casa), trabalham,
 //  à noite vão à taverna/pracinha conversar; fome, cansaço e vontade de conversar mudam a ordem. Andam pelas portas.
 // ============================================================
-const resHour = () => (((Date.now() % ESTATE_DAY_MS) / ESTATE_DAY_MS) * 24 + 12) % 24;   // fase 0 do dia = meio-dia
+const resHour = () => (((gameNow() % ESTATE_DAY_MS) / ESTATE_DAY_MS) * 24 + 12) % 24;   // fase 0 do dia = meio-dia
 const VILLAGE_SQ = () => [CENTER - 32 - 37, CENTER + 4];
 function bldTiles(bi) { const b = BUILDINGS[bi], out = []; if (!b) return out; for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) if (WORLD.bld[tileAt(x, y)] === bi && canStand(x, y, 0, 0.2) && !doorTile(b).every((v, k) => v === [x, y][k])) out.push([x, y]); return out; }
 const _resSpots = {};
@@ -3106,7 +3129,7 @@ function tavSeat(n) {   // cadeira livre na taverna
 function seatFree(n) { if (n.seatK != null) { if (S.seatTaken && S.seatTaken[n.seatK] === n.id) delete S.seatTaken[n.seatK]; n.seatK = null; } n.sitting = false; n.doze = false; }
 function resSpot(n, act) {
   const village = BUILDINGS[n.home] && BUILDINGS[n.home].x < CENTER - 52, tav = BUILDINGS.findIndex(b => b.kind === 'tavern');
-  const homeBi = n.homeless && tav >= 0 ? tav : n.home, day = Math.floor(Date.now() / ESTATE_DAY_MS), h = [...n.id].reduce((a, c) => a + c.charCodeAt(0), 0) + day * 7;
+  const homeBi = n.homeless && tav >= 0 ? tav : n.home, day = Math.floor(gameNow() / ESTATE_DAY_MS), h = [...n.id].reduce((a, c) => a + c.charCodeAt(0), 0) + day * 7;
   if (act === 'sleep' || act === 'home') return resHomeSpot(n, homeBi);
   if (act === 'work') return [n.postX, n.postY];
   const sq = VILLAGE_SQ();
@@ -3201,11 +3224,13 @@ function residentTick(n, now, dt) {
   if (now - (n.meetT || 0) > 1000) { n.meetT = now; memMeet(n, now); bodyReact(n, now); }
   const hr = resHour(), N = n.need || (n.need = { food: 70 + Math.random() * 30, rest: 90, social: 40 + Math.random() * 40 }), perDay = 24 / (ESTATE_DAY_MS / 1000);
   if (n.mood == null) npcMoodInit(n);
+  dt *= simRate();   /* relógio do jogo */
   N.food = Math.max(0, N.food - dt * perDay * 4); N.social = Math.max(0, N.social - dt * perDay * 3); if (!n.sleeping) N.rest = Math.max(0, N.rest - dt * perDay * 5);
   let act = hr >= 22 || hr < 6 ? 'sleep' : N.rest < 12 ? 'sleep' : N.food < 25 ? 'eat' : hr < 7 ? 'home' : hr < 12 ? 'work' : hr < 13 ? 'eat' : hr < 18 ? 'work' : N.social < 75 ? 'social' : 'home';
   if (n.role === 'courier' && act === 'work') act = 'work';
   if (act === 'work' && n.role !== 'courier' && n.skipDay === estDay()) act = 'social';   /* triste: faltou ao trabalho e foi para a taverna */
   if (act === 'social' && n.gold < 3) act = 'home';   /* sem dinheiro, nada de taverna */
+  if (S.simEv && S.simEv.party > gameNow() && act !== 'sleep') act = 'social';   /* festa: todo mundo na taverna */
   if (act !== n.act) { if (n.act === 'social' && (act === 'home' || act === 'sleep') && hr >= 20.5 && Math.random() < 0.4) n.drunkT = now + 150000; seatFree(n); n.act = act; n.sleeping = false; const [tx, ty] = resSpot(n, act); n.rpath = planRoute(n, tx, ty); n.arrived = false; }
   if (n.rpath && n.rpath.length) { const [wx, wy] = n.rpath[0]; if (npcWalk(n, wx, wy, 1.15, dt) || dist(n.x, n.y, wx, wy) < 0.45 || (n.seatK != null && n.rpath.length === 1 && dist(n.x, n.y, wx, wy) < 1.3)) { n.rpath.shift(); if (!n.rpath.length) { n.arrived = true; n.x = wx; n.y = wy; if (n.seatK != null) { const s = WORLD.seats[n.seatK]; n.x = s.x; n.y = s.y; n.dir = s.dir; n.sitting = true; } } } return; }
   if (n.sitting) n.doze = n.drunkT > now && hr >= 21;   // bêbado cochila na mesa
@@ -3402,21 +3427,21 @@ const ownerWorkMul = (r, P) => Object.values(S.players).some(p => p.shift && p.s
 //  POPULAÇÃO FLUTUANTE — donas de casa, viajantes e visitantes entram pelos portões, circulam, compram de verdade
 //  nas lojas dos jogadores e vão embora; raramente aparece um marginal que pode cometer um crime casual.
 // ============================================================
-function dayInfoS() { const ph = (Date.now() % ESTATE_DAY_MS) / ESTATE_DAY_MS, sun = Math.cos(ph * Math.PI * 2); return { night: sun < -0.25 }; }
+function dayInfoS() { const ph = (gameNow() % ESTATE_DAY_MS) / ESTATE_DAY_MS, sun = Math.cos(ph * Math.PI * 2); return { night: sun < -0.25 }; }
 const VIS_NAMES = { f: ['Ana', 'Beatriz', 'Celeste', 'Dália', 'Eva', 'Flora', 'Glória', 'Helena', 'Inês', 'Joana', 'Lúcia', 'Marina', 'Nádia', 'Olga', 'Rita', 'Sara', 'Teresa', 'Vera'], m: ['Abel', 'Bento', 'Caio', 'Davi', 'Edgar', 'Fábio', 'Gil', 'Hugo', 'Ivo', 'Júlio', 'Lauro', 'Mauro', 'Nico', 'Otávio', 'Paulo', 'Rui', 'Saulo', 'Tito', 'Vasco'] };
 const VIS_TYPES = { house: { n: 'dona de casa', looks: ['v_house1', 'v_house2', 'v_house3', 'v_house4'], g: 'f' }, trav: { n: 'viajante', looks: ['v_trav1', 'v_trav2', 'v_trav3', 'v_monk'], g: 'm' }, vis: { n: 'visitante', looksF: ['v_vis2', 'v_noblef', 'v_peasf', 'v_elderf'], looksM: ['v_vis1', 'v_noblem', 'v_peasm', 'v_elderm'], g: 'x' }, thug: { n: 'marginal', looks: ['v_thug1', 'v_thug2'], g: 'm' } };
 const VIS_TITLE = { v_monk: 'peregrino', v_noblef: 'dama da corte', v_noblem: 'nobre de passagem', v_peasm: 'camponês', v_peasf: 'camponesa', v_elderm: 'ancião', v_elderf: 'anciã', v_trav3: 'menestrel' };
 const visGates = () => { const x0 = CENTER - 32; return [[CENTER + 0.5, CENTER + 30.5], [x0 + 3, CENTER + 5.5], [CENTER + 0.5, CENTER - 30.5]]; };
 const VIS_HUB = [CENTER + 0.5, CENTER + 12];
 function visPublic(n) { return { id: n.id, kind: n.kind, name: n.name, x: n.x, y: n.y, trader: n.trader ? 1 : 0, bard: n.bard ? 1 : 0 }; }
-function visSpawn(now) {
+function visSpawn(now, force) {
   const night = typeof dayInfoS === 'function' ? dayInfoS().night : false, r = Math.random();
-  const type = r < 0.07 ? 'thug' : r < 0.42 ? 'house' : r < 0.7 ? 'trav' : 'vis', T = VIS_TYPES[type];
-  if (type === 'house' && night) return;   // compras são de dia
+  const type = force || (r < 0.07 ? 'thug' : r < 0.42 ? 'house' : r < 0.7 ? 'trav' : 'vis'), T = VIS_TYPES[type];
+  if (type === 'house' && night && !force) return;   // compras são de dia
   const gk = Math.floor(Math.random() * 3), gate = visGates()[gk], g = T.g === 'x' ? (Math.random() < 0.5 ? 'f' : 'm') : T.g;
   const nm = VIS_NAMES[g][Math.floor(Math.random() * VIS_NAMES[g].length)], id = 'v_' + (S.visN = (S.visN || 0) + 1), pool = T.looks || (g === 'f' ? T.looksF : T.looksM), kind = pool[Math.floor(Math.random() * pool.length)];
   const n = { id, kind, name: nm + ', ' + (VIS_TITLE[kind] || T.n), transient: true, vtype: type, x: gate[0] + (Math.random() - 0.5), y: gate[1], z: 0, postX: gate[0], postY: gate[1], hp: 60, maxHp: 60, downed: null, dead: false, gate: gk, stops: visPlan(type), si: 0, wait: 0, born: now };
-  if (type === 'trav' && Math.random() < 0.35) { n.trader = true; n.name = nm + ', mercador viajante'; }   // alguns viajantes trazem coisas raras
+  if (type === 'trav' && (force || Math.random() < 0.35)) { n.trader = true; n.name = nm + ', mercador viajante'; }   // alguns viajantes trazem coisas raras
   S.npcs[id] = n; Net.toAll({ t: 'vspawn', v: visPublic(n) });
 }
 // parada no banco: na frente de um banqueiro (o ponto livre mais próximo; quem chega depois espera atrás, formando fila)
