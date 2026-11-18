@@ -103,7 +103,7 @@ function clientOnServer(m) {
       for (const p of m.players) G.players[p.id] = mkEnt({ ...p });
       for (const i in m.objs || {}) WORLD.obj[+i] = m.objs[i];
       G.me = G.players[G.myId];
-      Object.assign(G.me, { x: m.x, y: m.y, rx: m.x, ry: m.y, z: 0, visible: true, mp: 0, maxMp: 1, hp: 1, maxHp: 1, quests: {}, qdone: {}, pots: { hp: 0, mp: 0 }, inv: {}, gold: 0, buffs: {}, lastTile: tileAt(m.x, m.y), sendT: 0 });
+      Object.assign(G.me, { x: m.x, y: m.y, rx: m.x, ry: m.y, z: m.z || 0, fl: m.fl || 0, fb: m.fb ?? -1, visible: true, mp: 0, maxMp: 1, hp: 1, maxHp: 1, quests: {}, qdone: {}, pots: { hp: 0, mp: 0 }, inv: {}, gold: 0, buffs: {}, lastTile: tileAt(m.x, m.y), sendT: 0 });
       startGame();
       if (!G.prebaked) { G.prebaked = true; prebakeCity(); }
       break;
@@ -1278,7 +1278,8 @@ function helloMsg() {
   const name = $('name').value.trim() || 'Aventureiro';
   const saved = loadChars()[charKey(name, chosenClass)] || {};
   G.myUid = saved.t ? (saved.uid || '') : (G.myUid && G.myUidFor === charKey(name, chosenClass) ? G.myUid : Math.random().toString(36).slice(2, 10)); G.myUidFor = charKey(name, chosenClass);   // herói novo: código único (não herda nada de um herói antigo com o mesmo nome)
-  return { t: 'hello', ver: VERSION, uid: G.myUid || undefined, wandInfo: saved.wandInfo, cloak: saved.cloak, pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, freeLimb: saved.freeLimb, shieldHp: saved.shieldHp, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
+  const me = G.started && G.me && !G.me.downed ? G.me : null;   /* reconectando: conta onde estava */
+  return { t: 'hello', ver: VERSION, ...(me ? { px: me.x, py: me.y, pz: me.z || 0, pfl: me.fl || 0, pfb: me.fb ?? -1 } : {}), uid: G.myUid || undefined, wandInfo: saved.wandInfo, cloak: saved.cloak, pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, freeLimb: saved.freeLimb, shieldHp: saved.shieldHp, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
 }
 // reino trancado: pede a senha e manda o hello de novo pela mesma conexão
 function askRoomPw(bad) {
@@ -1335,7 +1336,15 @@ function worldHost() {
   });
 }
 // vigia: o aviso de conexão fechada às vezes não chega; se o anfitrião ficar 6 s sem mandar nada, ele caiu
-setInterval(() => { if (WN.inWorld && G.started && !Net.isHost && !WN.busy && WN.lastMsg && Date.now() - WN.lastMsg > 6000 && Date.now() - WN.lostT > 8000) worldLost(); }, 1000);
+// se o próprio jogo travou (gerando terreno longe da cidade, aba em segundo plano), não conta como queda; antes de desistir, pergunta ao anfitrião e espera a resposta
+setInterval(() => {
+  const now = Date.now(), gap = now - (WN.wdT || now); WN.wdT = now;
+  if (gap > 2500) { WN.lastMsg = now; WN.pingT = 0; return; }
+  if (!WN.inWorld || !G.started || Net.isHost || WN.busy || !WN.lastMsg) return;
+  const q = now - WN.lastMsg; if (q < 5000) { WN.pingT = 0; return; }
+  if (!WN.pingT) { WN.pingT = now; Net.send({ t: 'ping' }); return; }
+  if (q > 12000 && now - WN.pingT > 6000 && now - WN.lostT > 8000) { WN.pingT = 0; worldLost(); }
+}, 1000);
 function worldLost() {
   if (Net.isHost || WN.busy || (Date.now() - WN.lostT < 3000)) return; const i = WN.succ.indexOf(Net.myId); WN.rank = i < 0 ? 12 : i; WN.lostT = Date.now(); WN.tries = 0;
   netMsg('O anfitrião saiu. Reconectando…'); setTimeout(worldTry, 600 + Math.random() * 600);

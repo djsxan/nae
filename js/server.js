@@ -151,13 +151,14 @@ function hostOnClient(from, m) {
     const cls = CLASSES[m.cls] ? m.cls : 'knight';
     const lvl = clamp(m.lvl | 0 || 1, 1, 300);
     const si = SKINS[cls].findIndex(s => s.id === m.skin), skin = si >= 0 && lvl >= SKIN_LVL[si] ? m.skin : SKINS[cls][0].id;
-    const s = townSpot();
+    let s = townSpot(), sz = 0, sfl = 0, sfb = -1;   /* reconexão: volta para onde estava (não para o Templo) */
+    if (isFinite(m.px) && isFinite(m.py) && !(+m.jailLeft > 0)) { const z0 = isFinite(m.pz) ? +m.pz : 0, f0 = m.pfl | 0, b0 = isFinite(m.pfb) ? m.pfb | 0 : -1; try { if (canStandZ(+m.px, +m.py, z0, 0.18, f0, b0)) { s = { x: +m.px, y: +m.py }; sz = z0; sfl = f0; sfb = b0; } } catch (e) { } }
     const np = {
       wandInfo: m.wandInfo && typeof m.wandInfo === 'object' && WANDS[m.wandInfo.k] ? { k: m.wandInfo.k, w: String(m.wandInfo.w || '').slice(0, 20), c: String(m.wandInfo.c || '').slice(0, 30), len: clamp(m.wandInfo.len | 0, 15, 40), feel: String(m.wandInfo.feel || '').slice(0, 24), dmg: clamp(+m.wandInfo.dmg || 0, -0.05, 0.08), mp: clamp(m.wandInfo.mp | 0, -5, 12) } : null,
       cloak: CLOAKS[m.cloak | 0] ? m.cloak | 0 : 0,
       id: from, name: String(m.name || 'Aventureiro').slice(0, 16), cls, skin, uid: /^[a-z0-9]{4,12}$/.test(m.uid || '') ? m.uid : '',
       color: /^#[0-9a-f]{6}$/i.test(m.color) ? m.color : '#8b2e2e',
-      x: s.x, y: s.y, z: 0, lvl, xp: clamp(m.xp | 0, 0, need(lvl) - 1), gold: clamp(m.gold | 0, 0, 1e7),
+      x: s.x, y: s.y, z: sz, fl: sfl, fb: sfb, lvl, xp: clamp(m.xp | 0, 0, need(lvl) - 1), gold: clamp(m.gold | 0, 0, 1e7),
       pots: { hp: clamp((m.pots && m.pots.hp) | 0, 0, 999), mp: clamp((m.pots && m.pots.mp) | 0, 0, 999), band: clamp((m.pots && m.pots.band) | 0, 0, 999) },
       food: clamp(isFinite(m.food) ? +m.food : 100, 0, 100), water: clamp(isFinite(m.water) ? +m.water : 100, 0, 100), infect: clamp(m.infect | 0, 0, 2), cold: 0, hasSkin: !!m.hasSkin,
       lost: (m.lost | 0) & 30, pro: (m.pro | 0) & 30, cst: CST_MAX, body: Object.fromEntries(BODY_PARTS.map(k => [k, clamp(m.body && isFinite(m.body[k]) ? +m.body[k] : 100, 0, 100)])),
@@ -186,7 +187,7 @@ function hostOnClient(from, m) {
       if (m.devMode === 'normal') { np.devPowers = true; Net.toOne(from, { t: 'dev', ok: 1, mode: 'normal' }); return; }   // criador com a vocação normal (toma dano, monstros atacam), mas com o painel
       np.dev = true; np.skin = 'weaver'; np.devHidden = false; Net.toOne(from, { t: 'dev', ok: 1 }); Net.toAll({ t: 'pinfo', p: pinfo(np) });
     });
-    Net.toOne(from, { t: 'welcome', you: from, x: np.x, y: np.y, players: Object.values(S.players).map(pinfo), objs: S.objMods || {} });
+    Net.toOne(from, { t: 'welcome', you: from, x: np.x, y: np.y, z: np.z || 0, fl: np.fl || 0, fb: np.fb ?? -1, players: Object.values(S.players).map(pinfo), objs: S.objMods || {} });
     Net.toOthers({ t: 'pinfo', p: pinfo(np) }, from);
     setTimeout(() => { if (S.players[from] && S.npcs) Net.toOne(from, { t: 'vlist', list: Object.values(S.npcs).filter(n => n.transient).map(visPublic) }); }, 600);
     sendStat(np);
@@ -230,6 +231,7 @@ function hostOnClient(from, m) {
       if (!q) break;
       p.target = q.id; basicAttack(p, q, now); break;
     }
+    case 'ping': Net.toOne(p.id, { t: 'pong' }); break;   /* o cliente quer saber se o anfitrião está vivo */
     case 'pcs': p.hs = Math.max(0, Math.min(500, +m.s || 0)); break;   // nota do computador (para escolher o próximo anfitrião)
     case 'chat': { const text = String(m.text || '').slice(0, 140).trim();
       if (text.toLowerCase() === '/resetmundo' && (p.dev || p.devPowers)) { worldReset(p); break; }
@@ -423,10 +425,13 @@ function handleMove(p, m) {
   const x = +m.x, y = +m.y;
   if (!isFinite(x) || !isFinite(y)) return;
   const z = heightAt(x, y, p.z);
-  const dt = Math.min(1, (now - p.lastMv) / 1000);
+  const dt = Math.min(3, (now - p.lastMv) / 1000);   /* tolera até 3 s de atraso da rede */
   const maxStep = PLAYER_SPEED * (m.sl || now < (p.dodgeAllow || 0) ? RUN_MUL * 2.6 : m.r ? RUN_MUL * 1.5 : 1.7) * (dt + 0.25) + 0.4;
   const ok = dist(p.x, p.y, x, y) <= maxStep && canStandZ(x, y, z, 0.18, p.fl || 0, p.fb ?? -1) && Math.abs(z - (+m.z || 0)) < 0.45;
-  if (!ok || estateBlocked(p.name, p.x, p.y, x, y, S.estateL)) { Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: p.z, fl: p.fl || 0, fb: p.fb ?? -1 }); return; }
+  if (!ok || estateBlocked(p.name, p.x, p.y, x, y, S.estateL)) {
+    const far = dist(p.x, p.y, x, y), lagOnly = far > maxStep && far < 10 && canStandZ(x, y, z, 0.18, p.fl || 0, p.fb ?? -1) && Math.abs(z - (+m.z || 0)) < 0.45 && !estateBlocked(p.name, p.x, p.y, x, y, S.estateL);
+    if (lagOnly) return;   /* passo longo só por atraso: ignora (o próximo, com mais tempo passado, é aceito) em vez de puxar o jogador de volta */
+    Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: p.z, fl: p.fl || 0, fb: p.fb ?? -1 }); return; }
   if (p.sit && dist(p.x, p.y, x, y) > 0.05) p.sit = null;
   p.x = x; p.y = y; p.z = z; p.dir = m.d | 0; p.walking = !!m.w; p.running = !!m.r; p.crouch = !!m.c; if (m.sl && !p.slide) { p.cst = Math.max(0, (p.cst ?? 0) - SLIDE_COST); p.cstT = now; } p.slide = !!m.sl; p.tired = !!m.ti; p.lastMv = now;
   if (p.casting && dist(p.x, p.y, p.castX, p.castY) > 0.3) { p.casting = null; near(p.x, p.y, { t: 'castend', id: p.id }); }
