@@ -384,6 +384,7 @@ function buildPose(cls, P) {
   else if (P.sit) { Q.lA = [1.5, -1.55]; Q.lB = [1.45, -1.5]; Q.drop = 12; Q.aA = [0.45, 0.25, 0.7]; Q.aB = [0.45, 0.25, 0.7]; Q.tl = -0.02; }
   if (P.tied) { Q.aA = [-0.45, -0.28, 0.35]; Q.aB = [-0.45, -0.28, 0.35]; Q.tl = 0.12; Q.ht = 0.3; Q.tie = P.tied; Q.nowp = 1; }   // mãos amarradas atrás das costas
   if (P.nowp) Q.nowp = 1;
+  if (P.bed) { Q.aA = [0.08, 0.16, 0.12]; Q.aB = [0.08, 0.16, 0.12]; Q.lA = [0.02, -0.04]; Q.lB = [-0.02, -0.04]; Q.tl = 0; Q.tw = 0; Q.ht = 0.05; Q.sway = 0; Q.nowp = 1; }   // deitado na cama: esticado, braços ao lado do corpo, sem arma
   if (P.wpn === 'halberd' && !P.down && !P.sit) { if (!P.act) { Q.aA = [0.55, 0.12, 0.9]; Q.wp = 3.05; } Q.aB = [Q.aA[0] - 0.12, 0.28, Math.max(0.2, Q.aA[2] + 0.35)]; }   // em repouso: haste em pé, lâmina para cima   // alabarda: a mão esquerda segura a haste mais abaixo
   if (P.down && P.crawl) {   // rastejando de bruços: braços se alternam puxando o corpo; 5 = parado com uma mão estendida pedindo piedade
     const ph = (P.crawl - 1) / 4 * Math.PI * 2;

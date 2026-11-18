@@ -471,7 +471,7 @@ function updateLocal(now, dt) {
   }
   const stF = (me.crouch ? 1 : 0) | (me.slide ? 2 : 0);
   if (G.mouseS) G.mouseW = screenToWorld(G.mouseS[0], G.mouseS[1]);   // o cursor parado continua apontando para o mesmo lugar da TELA quando a câmera anda
-  if ((combatFacing() || G.parrying) && G.mouseW && !me.sit && me.sleep == null) { let a = Math.atan2(G.mouseW.y - me.y, G.mouseW.x - me.x);   /* sentado ou deitado: não gira com o mouse */
+  if ((combatFacing() || G.parrying) && G.mouseW && !me.sit && !me.bathing && me.sleep == null) { let a = Math.atan2(G.mouseW.y - me.y, G.mouseW.x - me.x);   /* sentado ou deitado: não gira com o mouse */
     { let best = null, bd = 3.4; for (const id in G.monsters) { const q = G.monsters[id]; if (q.dieAt || !q.visible || Math.abs((q.z || 0) - (me.z || 0)) > 0.5) continue; const d = dist(q.rx, q.ry, me.x, me.y), aq = Math.atan2(q.ry - me.y, q.rx - me.x); let df = Math.abs(aq - a) % (Math.PI * 2); if (df > Math.PI) df = Math.PI * 2 - df; if (d < bd && df < 0.95) { bd = d; best = aq; } }
       for (const id in G.players) { const q = G.players[id]; if (id === G.myId || !q.visible || q.downed || q.isNpc) continue; const d = dist(q.rx, q.ry, me.x, me.y), aq = Math.atan2(q.ry - me.y, q.rx - me.x); let df = Math.abs(aq - a) % (Math.PI * 2); if (df > Math.PI) df = Math.PI * 2 - df; if (d < bd && df < 0.95) { bd = d; best = aq; } }
       if (best != null) a = best; }   /* assistência de mira: o inimigo perto, na direção do cursor */
@@ -927,7 +927,8 @@ function closeDialog() { G.dialog = null; $('dialog').classList.add('hidden'); }
 
 // ---------- mouse e teclado ----------
 function screenToWorld(mx, my) {
-  const z = G.me ? (G.me.z || 0) * FLOOR_PX : 0;
+  let z = G.me ? (G.me.z || 0) * FLOOR_PX : 0;
+  { const me = G.me, b = me && me.fl && BUILDINGS[me.fb]; if (b && typeof bldDims === 'function') z += me.fl * (bldDims(b).H / floorsOf(b)) * HV; }   /* andar de cima: o chão dele está mais alto na tela */
   return unIso(mx / SCALE - G.view.ox, my / SCALE - G.view.oy + z);
 }
 function monsterUnderMouse(mx, my) {
@@ -1025,7 +1026,7 @@ canvas.addEventListener('mousedown', e => {
   if (bed >= 0 && e.button === 0) {
     const b = BEDS[bed];
     if (dist(me.x, me.y, b.x, b.y) <= 2) lieDown(bed);
-    else { G.path = findPath(me.x, me.y, b.x, b.y, me.z, 1); G.pathGoal = G.path ? { x: Math.round(b.x), y: Math.round(b.y) } : null; G.pendingBed = G.path ? bed : null; }
+    else { G.path = (me.fl || 0) !== 0 ? [[b.x, b.y]] : findPath(me.x, me.y, b.x, b.y, me.z, 1); G.pathGoal = G.path ? { x: Math.round(b.x), y: Math.round(b.y) } : null; G.pendingBed = G.path ? bed : null; }   /* andar de cima: vai reto até a cama */
     return;
   }
   if (e.button !== 0 || me.carriedBy) return;
@@ -1084,6 +1085,7 @@ window.addEventListener('keydown', e => {
   if (k === 'r' && G.me.downed) { if (!PERMADEATH) { Net.send({ t: 'giveup' }); return; } gameAsk('Desistir é MORTE PERMANENTE: seu personagem será apagado. Tem certeza?', { yes: 'Desistir', no: 'Continuar lutando' }).then(ok => { if (ok) Net.send({ t: 'giveup' }); }); return; }
   if (k === 'f' && !e.repeat && typeof dojoF === 'function' && dojoF()) return;
   if (k === 'f' && !e.repeat && typeof liftNear === 'function' && liftNear()) { liftMenu(); return; }
+  if (k === 'f' && !e.repeat && typeof leverNear === 'function' && leverNear()) { Net.send({ t: 'tub' }); return; }
   if (k === 'f' && !e.repeat && typeof ofuroNear === 'function' && ofuroNear()) { bathEnter(); return; }
   if (k === 'f' && !e.repeat && typeof dummyNear === 'function' && dummyNear() && !G.training) { Net.send({ t: 'train', a: 'start' }); return; }
   if (k === 'f' && !e.repeat && openNearChest(1.8)) return;
@@ -1806,7 +1808,7 @@ function updateNeeds() {
   if (typeof survMedalsUpdate === 'function') survMedalsUpdate(me);
   const pr = $('prompt'); if (!G.loot && !nearCorpse()) { const raw = me.inv && (me.inv.venison || me.inv.pork); const stN = typeof nearStove === 'function' && nearStove(), hv = nearHarvest(), exN = me.carrying && STAGE.x >= 0 && dist(me.x, me.y, STAGE.x, STAGE.y) < 3.4; const jp = typeof jailPrompt === 'function' ? jailPrompt() : '';
   const bq = typeof boundNear === 'function' ? boundNear() : null;
-  const txt = me.bound ? (me.bnd === 'rope' ? 'Mãos amarradas com corda: martele ESPAÇO para se soltar (' + (me.bndE || 0) + '%)' : 'Algemado: só uma gazua ou o carcereiro abrem') : bq ? (bq.bound ? 'F: soltar ' + bq.name : '') : jp ? jp : (typeof dojoPrompt === 'function' && dojoPrompt()) ? dojoPrompt() : (typeof liftNear === 'function' && liftNear()) ? 'F: elevador (escolher o andar)' : (typeof ofuroNear === 'function' && ofuroNear()) ? 'F: tomar banho no ofurô' : G.training ? 'Treinando no boneco · ande para parar' : (typeof dummyNear === 'function' && dummyNear()) ? 'F: treinar no ' + dummyNear().t + ' (diária ' + DOJO_FEE[1] + ' de ouro)' : G.me && G.me.bathing ? 'Relaxando no ofurô · ande para sair' : (typeof jobsPrompt === 'function' && jobsPrompt()) ? jobsPrompt() : (typeof estatePrompt === 'function' && estatePrompt()) ? estatePrompt() : me.wantedUntil > performance.now() && !me.escorted ? 'Y: render-se às sentinelas' : me.dragMode === 'grip' ? 'Segure o clique esquerdo: apertar o pescoço · H solta' : exN ? 'F: entregar ao carrasco (execução)' : stN ? 'F: cozinhar' : hv >= 0 ? (WORLD.obj[hv] === O.BERRY ? 'F: colher frutas' : 'F: colher erva') : raw && nearFireC() ? 'F: assar a carne' : nearWaterC() && (me.water ?? 100) < 98 ? 'F: beber' : ''; G.survPrompt = txt; } else G.survPrompt = '';
+  const txt = me.bound ? (me.bnd === 'rope' ? 'Mãos amarradas com corda: martele ESPAÇO para se soltar (' + (me.bndE || 0) + '%)' : 'Algemado: só uma gazua ou o carcereiro abrem') : bq ? (bq.bound ? 'F: soltar ' + bq.name : '') : jp ? jp : (typeof dojoPrompt === 'function' && dojoPrompt()) ? dojoPrompt() : (typeof liftNear === 'function' && liftNear()) ? 'F: elevador (escolher o andar)' : (typeof leverNear === 'function' && leverNear()) ? leverPrompt() : (typeof ofuroNear === 'function' && ofuroNear()) ? ofuroPrompt() : G.training ? 'Treinando no boneco · ande para parar (sem limite de tempo)' : (typeof dummyNear === 'function' && dummyNear()) ? 'F: treinar no ' + dummyNear().t + (dummyNear().priv ? ' (seu boneco particular, de graça)' : ' (diária, uma vez por dia)') : G.me && G.me.bathing ? 'Relaxando no ofurô · ande para sair' : (typeof jobsPrompt === 'function' && jobsPrompt()) ? jobsPrompt() : (typeof estatePrompt === 'function' && estatePrompt()) ? estatePrompt() : me.wantedUntil > performance.now() && !me.escorted ? 'Y: render-se às sentinelas' : me.dragMode === 'grip' ? 'Segure o clique esquerdo: apertar o pescoço · H solta' : exN ? 'F: entregar ao carrasco (execução)' : stN ? 'F: cozinhar' : hv >= 0 ? (WORLD.obj[hv] === O.BERRY ? 'F: colher frutas' : 'F: colher erva') : raw && nearFireC() ? 'F: assar a carne' : nearWaterC() && (me.water ?? 100) < 98 ? 'F: beber' : ''; G.survPrompt = txt; } else G.survPrompt = '';
   if ($('pz-use') && typeof useHtml === 'function') $('pz-use').innerHTML = useHtml();
   if ($('pz-surv')) $('pz-surv').innerHTML = '<div><b>Fome</b> ' + Math.round(100 - (me.food ?? 100)) + '% · <b>Sede</b> ' + Math.round(100 - (me.water ?? 100)) + '% · <b>Frio</b> ' + Math.round(me.cold || 0) + '%</div><div><b>Infecção</b> ' + ['nenhuma', 'febre', 'grave'][me.infect || 0] + (me.sick > 0 ? ' · <b>enjoado</b>' : '') + '</div><div class="gp-note">Coma e beba, fique perto do fogo à noite, trate feridas graves com bandagem. A morte é permanente.</div>';
 }

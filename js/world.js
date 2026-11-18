@@ -196,7 +196,7 @@ function iwallsLocal(b, fl) {
   // andares 1–2: a cabine abre no patamar (i = 7) que vai até a varanda; apto A (com o antigo hall) e apto B com as portas para a varanda; a fachada (v = D) tem os vãos das portas
   if (fl < floorsOf(b) - 1) return [[6, 0, 6, D], [3, 0, 3, D], [0, D, 1, D], [2, D, 4, D], [5, D, 6, D]];   /* patamar de 2 casas (u 6..8) aberto até a varanda */
   // suíte: entra pelo hall (porta em u = 6, v 3..4); a porta de correr para a varanda (u 2..4) é só por dentro
-  return [[6, 0, 6, 3], [6, 4, 6, D], [0, D, 2, D], [4, D, 8, D]];
+  return [[6, 0, 6, 2], [6, 3, 6, D], [0, D, 2, D], [4, D, 8, D]];   /* porta para o hall em v 2..3 */
   // (o resto do andar da suíte é aberto; o ofurô fica no canto sudoeste)
 }
 const IWALL_MEMO = new Map();
@@ -210,7 +210,10 @@ function iwallCross(bi, fl, ax, ay, bx, by) { const L = iwallsWorld(bi, fl); if 
 function ofuroOf(b) { if (!b || b.kind !== 'dojo') return null; const [x, y] = localToWorld(b, 1, 1);   // banheira da suíte de luxo (último andar): um lugar em cada canto, bem juntinhos
   const seats = [[0.6, 0.6], [1.4, 0.6], [0.6, 1.4], [1.4, 1.4]].map(([u, v]) => localToWorld(b, u, v));
   const edges = [{ a: [1.86, 0.45], b: [1.86, 1.55], face: [-1, 0] }, { a: [0.45, 1.86], b: [1.55, 1.86], face: [0, -1] }].map(E => ({ a: localToWorld(b, ...E.a), b: localToWorld(b, ...E.b), cin: localToWorld(b, 1, 1) }));
-  return { x, y, fl: floorsOf(b) - 1, seats, edges, rack: localToWorld(b, 2.5, 0.5), water: [0.24, 1.76] }; }
+  return { x, y, fl: floorsOf(b) - 1, seats, edges, rack: localToWorld(b, 2.3, 1.45), water: [0.24, 1.76], lever: localToWorld(b, 2.5, 0.62) }; }
+// água do ofurô: alavanca para baixo enche em 2 min, para cima esvazia em 1 min; T = { lv, mode: 'fill'|'drain'|'', lever, t }
+const TUB_FILL = 120000, TUB_DRAIN = 60000;
+function tubLv(T, now) { if (!T) return 0; const dt = Math.max(0, now - (T.t || 0)); return T.mode === 'fill' ? Math.min(1, T.lv + dt / TUB_FILL) : T.mode === 'drain' ? Math.max(0, T.lv - dt / TUB_DRAIN) : T.lv; }
 function inOfuroWater(b, fl, x, y) { const O = ofuroOf(b); if (!O || fl !== O.fl) return false; const [u, v] = worldToLocal(b, x, y); return u > O.water[0] && u < O.water[1] && v > O.water[0] && v < O.water[1]; }
 // varanda andável na fachada da rua (1 casa de fundo, fora do prédio), nos andares de cima: [u0, u1] no quadro local
 function balconyOf(b, fl) { if (!b || b.deco !== 'machiya' || fl < 1) return null; return fl < floorsOf(b) - 1 ? [0, bDims(b)[0]] : [0, 6]; }
@@ -312,9 +315,9 @@ function interiorLayout0(b, fl = 0) {
       // apto B (i 0..2, j 0..4)
       put('futon', 0, 0, { h: 2, block: false }); put('kakejiku', 1, 0, { block: false }); put('tansu', 2, 0); put('andon', 1, 1, { block: false }); put('irori', 1, 2, { block: false }); put('chabudai', 2, 3, { block: false }); put('ikebana', 0, 4, { block: false }); put('byobu', 2, 2, { block: false });
     } else {   // suíte de luxo
-      put('plantpot', 7, 4, { block: false }); put('andon', 7, 2, { block: false }); keep(6, 3); keep(5, 3); keep(4, 3); keep(2, 4); keep(3, 4); keep(2, 3); keep(3, 3);   // porta do hall e porta de correr da varanda livres
-      put('ofuro', 0, 0, { w: 2, h: 2, block: false }); put('kakebar', 2, 0, { block: false }); put('andon', 0, 2, { block: false });   /* ala do banho (a cortina separa da cama) */
-      put('tansu', 3, 1); put('ikebana', 3, 2, { block: false }); put('tokonoma', 3, 0); put('platbed', 4, 0, { w: 2, h: 2, block: false }); put('andon', 5, 2, { block: false });
+      put('plantpot', 7, 4, { block: false }); put('andon', 7, 2, { block: false }); keep(6, 2); keep(5, 2); keep(2, 4); keep(3, 4); keep(2, 3); keep(3, 3);   // porta do hall e porta de correr da varanda livres
+      put('ofuro', 0, 0, { w: 2, h: 2, block: false }); put('andon', 0, 2, { block: false });   /* ala do banho (a cortina separa da cama) */
+      put('ikebana', 3, 1, { block: false }); put('tokonoma', 3, 0); put('platbed', 4, 0, { w: 2, h: 2, block: false }); put('tansu', 5, 3);   /* tansu colado na parede do hall */
       put('kotatsu', 4, 2, { block: false }); put('zengarden', 0, 3, { w: 2, h: 2 }); put('jkitchen', 4, 4, { w: 2 });   /* cozinha no canto perto da varanda */
     }
   } else if (k === 'shop' && b.deco === 'greenhouse') {   // Boticário de Elva: gavetinhas e potes no fundo, alambique, balcão com balança e almofariz, canteiros, plantas que brilham, vasos pendurados, ervas secando e o tanque

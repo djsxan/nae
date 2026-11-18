@@ -201,6 +201,7 @@ function hostOnClient(from, m) {
     });
     Net.toOne(from, { t: 'clk', g: gameNow(), rate: SIMCLK.rate, paused: SIMCLK.paused });
     Net.toOne(from, { t: 'welcome', you: from, x: np.x, y: np.y, z: np.z || 0, fl: np.fl || 0, fb: np.fb ?? -1, players: Object.values(S.players).map(pinfo), objs: S.objMods || {} });
+    tubSendAll(from);
     Net.toOthers({ t: 'pinfo', p: pinfo(np) }, from);
     setTimeout(() => { if (S.players[from] && S.npcs) Net.toOne(from, { t: 'vlist', list: Object.values(S.npcs).filter(n => n.transient).map(visPublic) }); }, 600);
     sendStat(np);
@@ -421,6 +422,7 @@ function hostOnClient(from, m) {
       p.x = b.x; p.y = b.y; p.dir = dirFromVecS(b.dx, b.dy); p.sleep = m.b | 0; p.sit = null; p.walking = false; break;
     }
     case 'bath': bathMsg(p, m); break;
+    case 'tub': tubMsg(p, m); break;
     case 'duel': duelMsg(p, m); break;
     case 'hipthrow': hipThrow(p); break;
     case 'train': trainMsg(p, m); break;
@@ -918,6 +920,7 @@ function bathMsg(p, m) {
   if (!m.on) { if (p.bath) bathEnd(p); return; }
   const b = BUILDINGS[p.fb], O2 = ofuroOf(b); if (!O2 || (p.fl || 0) !== O2.fl || p.downed || p.carrying || p.bath) return;
   if (dist(p.x, p.y, O2.x, O2.y) > 2.4) { tell(p, 'Chegue perto do ofurô.'); return; }
+  { const lv = tubLv(tubRec(p.fb), Date.now()); if (lv < 0.5) { tell(p, lv < 0.02 ? 'O ofurô está vazio: baixe a alavanca na parede para encher.' : 'A água ainda está baixa: espere encher pelo menos até a metade.'); return; } }
   const others = Object.values(S.players).filter(q => q !== p && q.bath && q.bath.bi === p.fb);
   if (m.mode === 'float') {   /* boiar de barriga para cima no meio: só sozinho na água */
     if (others.some(q => q.bath.mode !== 'edge')) { tell(p, 'Para boiar no meio, você precisa estar sozinho na banheira.'); return; }
@@ -936,6 +939,27 @@ function bathBegin(p, O2, B, now) {
   p.sit = 'g'; p.walking = false; p.bath = { t0: now, bi: p.fb, tick: now, seat: B.seat, mode: B.mode }; if (p.atk) p.atk = null; if (!p.sheathed) sheatheToggle(p, true, true);   /* a arma vai para o cabideiro */
   const k = Math.max(0, B.seat); near(p.x, p.y, { t: 'bath', id: p.id, on: 1, x: p.x, y: p.y, mode: B.mode, rx: O2.rack[0] + (k % 2) * 0.3, ry: O2.rack[1] - (k >> 1) * 0.3, dir: p.dir });
   tell(p, B.mode === 'float' ? 'Você boia de barriga para cima no meio do ofurô.' : B.mode === 'edge' ? 'Você senta na beira do ofurô, com as pernas na água quente.' : 'Banho no ofurô: recupera vida e fôlego, tira o frio e limpa as feridas. Fique 15 s para sair bem descansado.');
+}
+// ---------- água do ofurô: alavanca na parede (baixo = enche em 2 min com as bicas correndo; cima = fecha as bicas e esvazia em 1 min); esfria depois de 1 dia do jogo ----------
+function tubRec(bi) { const E = estateLoad(), M = E.tub || (E.tub = {}); return M[bi] || (M[bi] = { lv: 0, mode: '', lever: 0, t: 0, fullG: 0, cold: false }); }
+function tubPayload(bi) { const T = tubRec(bi); return { t: 'tub', bi, lv: +tubLv(T, Date.now()).toFixed(4), mode: T.mode, lever: T.lever, cold: !!T.cold }; }
+function tubSendAll(to) { for (let bi = 0; bi < BUILDINGS.length; bi++) if (ofuroOf(BUILDINGS[bi])) Net.toOne(to, tubPayload(bi)); }
+function tubMsg(p, m) {
+  const b = BUILDINGS[p.fb], O2 = ofuroOf(b); if (!O2 || (p.fl || 0) !== O2.fl || p.downed || p.bath) return;
+  if (dist(p.x, p.y, O2.lever[0], O2.lever[1]) > 1.3) { tell(p, 'Chegue perto da alavanca na parede.'); return; }
+  const T = tubRec(p.fb), now = Date.now(), lv = tubLv(T, now);
+  if (T.lever) { T.lever = 0; T.lv = lv; T.t = now; T.mode = lv > 0 ? 'drain' : ''; info(p, lv > 0 ? 'Alavanca para cima: as bicas fecham e o ofurô começa a esvaziar (1 min).' : 'Alavanca para cima: as bicas fecham.'); }
+  else { T.lever = 1; T.lv = lv; T.t = now; T.mode = 'fill'; if (lv < 1) { T.fullG = 0; T.cold = false; } info(p, lv < 1 ? 'Alavanca para baixo: a água quente começa a encher o ofurô (2 min).' : 'Alavanca para baixo: as bicas voltam a correr.'); }
+  p.dir = dirFromVecS(O2.lever[0] - p.x, O2.lever[1] - p.y + 0.4); near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'punch', tx: O2.lever[0], ty: O2.lever[1] - 0.5, ms: 500 });
+  Net.toAll(tubPayload(p.fb)); estateSave();
+}
+function tubTick(now) {
+  if (now - (S.tubT || 0) < 1000) return; S.tubT = now; const E = S.estate; if (!E || !E.tub) return; const t = Date.now();
+  for (const bi in E.tub) { const T = E.tub[bi], lv = tubLv(T, t); let ch = false;
+    if (T.mode === 'fill' && lv >= 1 && !T.fullG) { T.lv = 1; T.t = t; T.fullG = gameNow(); T.cold = false; ch = true; }
+    if (T.mode === 'drain' && lv <= 0) { T.lv = 0; T.t = t; T.mode = ''; ch = true; }
+    const cold = !!(T.fullG && lv >= 1 && gameNow() - T.fullG > ESTATE_DAY_MS); if (cold !== !!T.cold) { T.cold = cold; ch = true; }
+    if (ch) { Net.toAll(tubPayload(+bi)); estateSave(); } }
 }
 // ---------- Dojô do Punho de Ferro: diária e treino AFK nos bonecos (só o cavaleiro aprende) ----------
 function dojoRec() { const P = PROPS.find(q => q.wk === 'dojo'); if (!P) return null; const r = S.estate && S.estate.r[P.id]; return { P, r, B: r && r.biz, N: (!r && S.estate) ? npcbAll()[P.id] : null }; }
@@ -962,7 +986,6 @@ function trainEnd(p, why) { const T = p.train; if (!T) return; p.train = null; N
 function trainTick(now) {
   for (const p of Object.values(S.players)) { const T = p.train; if (!T) continue;
     if (p.downed || p.bath || dist(p.x, p.y, T.x, T.y) > 0.6 || (p.fl || 0) !== (DUMMIES[T.i].fl || 0)) { trainEnd(p, 'Você parou de treinar.'); continue; }
-    if ((p.food ?? 100) < 20) { trainEnd(p, 'Com fome demais para continuar: vá comer alguma coisa.'); continue; }
     if (now < T.next) continue; const d = DUMMIES[T.i];
     if (T.rest) { if ((p.cst ?? 0) >= cstMaxOf(p) * 0.6) { T.rest = false; tell(p, 'Fôlego de volta: o treino continua.'); } T.next = now + 1000; continue; }
     if ((p.cst ?? 0) < 14) { T.rest = true; T.next = now + 1000; tell(p, 'Sem fôlego: o personagem para um pouco para respirar.'); continue; }
@@ -977,18 +1000,19 @@ function trainTick(now) {
 function bathEnd(p) {
   const B = p.bath; if (!B) return; p.bath = null; if (p.sit === 'g') p.sit = null; const now = now_(), secs = (now - B.t0) / 1000;
   near(p.x, p.y, { t: 'bath', id: p.id, on: 0 });
-  if (secs >= 15) { p.buffs.rested = now + 600000; p.buffs.warm = Math.max(p.buffs.warm || 0, now + 300000); tell(p, 'Banho tomado: Bem descansado (10 min: recupera vida e mana mais rápido e ganha um pouco mais de experiência) e quentinho por 5 minutos.'); sendStat(p); }
+  if ((B.full || 0) >= 15) { p.buffs.rested = now + 600000; p.buffs.warm = Math.max(p.buffs.warm || 0, now + 300000); tell(p, 'Banho tomado: Bem descansado (10 min: recupera vida e mana mais rápido e ganha um pouco mais de experiência) e quentinho por 5 minutos.'); sendStat(p); }
 }
 function bathTick(now) {
   for (const p of Object.values(S.players)) { const B = p.bath; if (!B) continue;
     if (!p.sit || p.downed || (p.fl || 0) === 0) { bathEnd(p); continue; }
     if (now - B.tick < 1000) continue; B.tick = now;
+    { const T = tubRec(B.bi), lv = tubLv(T, Date.now()); if (lv < 0.25) { bathEnd(p); tell(p, 'A água escoou: você sai do ofurô.'); continue; } if (lv < 1 || T.cold) continue; B.full = (B.full || 0) + 1; }   /* os efeitos só com a banheira cheia e quente */
     const kk = B.mode === 'edge' ? 0.5 : 1; p.hp = Math.min(p.maxHp, p.hp + Math.max(1, Math.round(p.maxHp * 0.02 * kk))); p.cst = Math.min(cstMaxOf(p), (p.cst ?? 0) + 10 * kk); p.cold = 0;
     if (p.bleed) for (const k in p.bleed) p.bleed[k] = 0; if (p.infect === 1 && now - B.t0 > 5000) { p.infect = 0; p.infT = 0; tell(p, 'A água quente limpou as feridas: a febre passou.'); }
     sendStat(p); }
 }
 function mageTick(now) {   /* brasa (animais recuam), flores (curam e acalmam) */
-  bathTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
+  bathTick(now); tubTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
   for (const p of Object.values(S.players)) {
     if (p.cls !== 'mage' || !buffOn(p, 'ember') || p.downed) continue;
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(p.x, p.y, m.x, m.y) > 3.5) continue; m.flee = { from: p.id, until: now + 1800 }; if (m.aggro === p.id) m.aggro = null; m.atk = null; }
@@ -2791,7 +2815,7 @@ const estDay = () => Math.floor(gameNow() / ESTATE_DAY_MS);
 const isBizProp = P => P && (P.kind === 'shop' || P.kind === 'workshop' || P.kind === 'bank' || P.kind === 'hotel') && P.npc !== 'a Guarda' && !(P.kind === 'workshop' && P.npc && !P.wk);
 function estateLoad() {
   if (S.estate) return S.estate; S.estate = { r: {}, lost: {} };
-  try { const j = hsGet(ESTATE_KEY); if (j && j.r) { S.estate = { r: j.r, lost: j.lost || {}, hotel: j.hotel || {}, npcb: j.npcb || {}, npcm: j.npcm || {}, clk: j.clk || 0 }; if (j.clk && !SIMCLK.real) simSet(Date.now() + j.clk, 1, false); for (const pid in S.estate.r) { const P = PROPS_BY[pid]; if (!P || (P.kind !== 'house' && !isBizProp(P))) delete S.estate.r[pid]; } } } catch (e) { }
+  try { const j = hsGet(ESTATE_KEY); if (j && j.r) { S.estate = { r: j.r, lost: j.lost || {}, hotel: j.hotel || {}, npcb: j.npcb || {}, npcm: j.npcm || {}, tub: j.tub || {}, clk: j.clk || 0 }; if (j.clk && !SIMCLK.real) simSet(Date.now() + j.clk, 1, false); for (const pid in S.estate.r) { const P = PROPS_BY[pid]; if (!P || (P.kind !== 'house' && !isBizProp(P))) delete S.estate.r[pid]; } } } catch (e) { }
   for (const pid in S.estate.r) bizLinkBank(S.estate.r[pid]);
   S.estateL = estateLocks(); return S.estate;
 }

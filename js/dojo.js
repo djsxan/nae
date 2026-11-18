@@ -100,7 +100,7 @@ function drawBath(ctx, e, sx, sy, now) {
   if (mode === 'float') { drawFloat(ctx, e, sx, sy, now); return; }
   if (mode === 'edge') { drawEdge(ctx, e, sx, sy, now, smk); return; }
   const st = G.bathStudy && G.bathStudy.pose ? { pa: G.bathStudy.pose, pb: G.bathStudy.pose, t: 0, closed: !!G.bathStudy.closed, sink: G.bathStudy.sink || 0, phase: '', lift: (BATH_POSES[G.bathStudy.pose] || {}).lift || 0 } : bathState(e, now), s = batherSprite3D(e, smk >= 0 ? 'A' : st.pa, smk >= 0 ? 'A' : st.pb, smk >= 0 ? 0 : st.t, smk >= 0 ? false : st.closed, smk); if (smk >= 0) { st.sink = 0; st.phase = ''; st.lift = BATH_POSES.A.lift; }
-  const br = Math.sin(now / 1100) * 0.6, wy = sy - 0.33 * HV, x0 = sx - s.ax, y0 = sy - s.ay + 0.25 * HV - st.lift + st.sink + br;   /* a água do ofurô fica fixa; o corpo sobe conforme a pose e afunda no mergulho */
+  const br = Math.sin(now / 1100) * 0.6, wy = sy - tubH(e.fb) * HV, x0 = sx - s.ax, y0 = sy - s.ay + 0.25 * HV - st.lift + st.sink + br;   /* a água do ofurô fica fixa; o corpo sobe conforme a pose e afunda no mergulho */
   ctx.save(); ctx.imageSmoothingEnabled = true;
   ctx.save(); ctx.beginPath(); ctx.rect(x0 - 2, wy, s.w + 4, s.h); ctx.clip(); ctx.globalAlpha = st.sink > 20 ? 0.22 : 0.32; ctx.drawImage(s.c, x0, y0, s.w, s.h); ctx.restore();   /* debaixo d'água */
   ctx.lineWidth = 0.35; for (let q = 0; q < 2; q++) { const ph = (now / 1500 + q / 2) % 1; ctx.strokeStyle = 'rgba(255,255,255,' + (0.45 * (1 - ph)).toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(sx, wy + 1, 6 + ph * 9, 2 + ph * 3, 0, 0, 7); ctx.stroke(); }   /* ondinhas em volta do corpo */
@@ -117,7 +117,7 @@ function smokePuff(e, sx, my, smk, now) { if (smk === 4 && e._puff !== Math.floo
 // boiando de barriga para cima: o corpo deitado na superfície, balançando e girando bem devagar, com ondinhas em volta
 function drawFloat(ctx, e, sx, sy, now) {
   const age = now - e.bathing.t0, d0 = (e.dir | 0), dir = (d0 + Math.floor(age / 7000)) % 8, closed = (age % 9000) > 3000, s = batherSprite3D(Object.assign(Object.create(e), { dir }), 'A', 'A', 0, closed, -1, 'float');
-  const bob = Math.sin(now / 900) * 0.8, wy = sy - 0.33 * HV, x0 = sx - s.ax, y0 = wy - s.ay + 6 + bob;
+  const bob = Math.sin(now / 900) * 0.8, wy = sy - tubH(e.fb) * HV, x0 = sx - s.ax, y0 = wy - s.ay + 6 + bob;
   ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(s.c, x0, y0, s.w, s.h);
   const g = ctx.createRadialGradient(sx, wy + 4, 2, sx, wy + 4, 22); g.addColorStop(0, 'rgba(120,200,200,0)'); g.addColorStop(0.55, 'rgba(120,200,200,0.28)'); g.addColorStop(1, 'rgba(120,200,200,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(sx, wy + 4, 22, 8, 0, 0, 7); ctx.fill();   /* água lambendo as bordas do corpo */
   ctx.lineWidth = 0.35; for (let q = 0; q < 3; q++) { const ph = (now / 1800 + q / 3) % 1; ctx.strokeStyle = 'rgba(255,255,255,' + (0.5 * (1 - ph)).toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(sx, wy + 4, 10 + ph * 12, 3.5 + ph * 4, 0, 0, 7); ctx.stroke(); }
@@ -126,7 +126,7 @@ function drawFloat(ctx, e, sx, sy, now) {
 // sentado na beira: o corpo sobre a borda de hinoki e as canelas dentro da água
 function drawEdge(ctx, e, sx, sy, now, smk) {
   const age = now - e.bathing.t0, closed = smk < 0 && ((age % 12000) > 8000 || (age % 4300) < 160), s = batherSprite3D(e, 'A', 'A', 0, closed, smk, 'edge'), sw = Math.sin(now / 700) * 0.4;
-  const lift = 0.3 * HV, wy = sy - 0.22 * HV, x0 = sx - s.ax, y0 = sy - s.ay - lift;
+  const lift = 0.3 * HV, wy = sy - Math.max(0.04, 0.22 - 0.28 * (1 - tubLvC(e.fb))) * HV, x0 = sx - s.ax, y0 = sy - s.ay - lift;
   ctx.save(); ctx.imageSmoothingEnabled = true;
   ctx.save(); ctx.beginPath(); ctx.rect(x0 - 2, wy, s.w + 4, s.h); ctx.clip(); ctx.globalAlpha = 0.4; ctx.drawImage(s.c, x0 + sw, y0, s.w, s.h); ctx.restore();   /* pernas debaixo d'água (balançando) */
   ctx.save(); ctx.beginPath(); ctx.rect(x0 - 2, y0 - 4, s.w + 4, wy - y0 + 4); ctx.clip(); ctx.drawImage(s.c, x0, y0, s.w, s.h); ctx.restore();
@@ -138,7 +138,7 @@ function drawWader(ctx, e, sx, sy, now) {
   const P0 = heroPoseFor(e, now), lk = e.cls + ':' + e.skin + ':' + e.color, P1 = { dir: P0.dir | 0, walk: P0.walk, run: false };
   const s = cache3('wade|' + lk + '|' + pose3Key(P1), () => { const L = lookFor('bath:' + lk, () => { const L0 = heroLook(e.cls, e.skin, e.color); return Object.assign(L0, { hair: L0.hair || '#4a3424', armor: 'bare', body: L0.skin, body2: L0.skin, legs: L0.skin, boots: L0.skin, head: 'none', cape: false, weapon: null, shield: null, pauldron: null, quiver: false, extra: null, pattern: null, trunks: BATH_TRUNKS[e.cls] || '#2a3a5a' }); });
     let R = _rigs.get('bath:' + lk); if (!R) { R = buildHumanoid(L); _rigs.set('bath:' + lk, R); } const Q = buildPose(e.cls, P1); applyPose(R, Q, P1, P1.walk >= 0 ? P1.walk / 12 * Math.PI * 2 : 0); return shoot3D(R, P1.dir, 0, false); }, 'wade|' + e.id);
-  const wy = sy - 0.42 * HV, x0 = sx - s.ax, y0 = sy - s.ay;
+  const wy = sy - (0.42 - 0.28 * (1 - tubLvC(e.fb))) * HV, x0 = sx - s.ax, y0 = sy - s.ay;
   ctx.save(); ctx.imageSmoothingEnabled = true;
   ctx.save(); ctx.beginPath(); ctx.rect(x0 - 2, wy, s.w + 4, s.h); ctx.clip(); ctx.globalAlpha = 0.35; ctx.drawImage(s.c, x0, y0, s.w, s.h); ctx.restore();
   ctx.save(); ctx.beginPath(); ctx.rect(x0 - 2, y0 - 4, s.w + 4, wy - y0 + 4); ctx.clip(); ctx.drawImage(s.c, x0, y0, s.w, s.h); ctx.restore();
@@ -147,28 +147,76 @@ function drawWader(ctx, e, sx, sy, now) {
 }
 function wadingNow(e) { return R3.ok && !e.bathing && !e.downed && (e.fl || 0) > 0 && e.fb != null && typeof inOfuroWater === 'function' && inOfuroWater(BUILDINGS[e.fb], e.fl, e.rx, e.ry); }
 // a roupa (na cor da vocação) e a arma penduradas no cabideiro
-function drawRack(ctx, e, sx, sy) {
+function drawRack(ctx, e, sx, sy) {   /* a roupa (na cor da vocação) dobrada no deque, com a toalha por cima e a arma deitada ao lado */
   const B = e.bathing; if (B && B.rx != null) { const p = iso(B.rx, B.ry), p0 = iso(e.rx, e.ry), cx = sx + p.sx - p0.sx, cy = sy + p.sy - p0.sy; const col = { knight: '#6a7a8a', archer: '#4a6a3a', mage: '#7a2a2a' }[e.cls] || '#6a5a4a';
-    ctx.save(); ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 8, cy - 40); ctx.lineTo(cx + 8, cy - 40); ctx.lineTo(cx + 10, cy - 18); ctx.lineTo(cx - 10, cy - 18); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(cx - 1, cy - 40, 2, 22);
-    ctx.strokeStyle = e.cls === 'mage' ? '#6a4a2a' : '#b8bcc4'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx + 13, cy - 44); ctx.lineTo(cx + 17, cy - 8); ctx.stroke(); ctx.restore(); }
+    ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(cx, cy, 8, 3.4, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = col; ctx.beginPath(); ctx.ellipse(cx, cy - 1.8, 7, 3, 0, 0, 7); ctx.fill(); ctx.fillRect(cx - 7, cy - 3.6, 14, 1.8); ctx.beginPath(); ctx.ellipse(cx, cy - 3.6, 7, 3, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,.18)'; ctx.beginPath(); ctx.ellipse(cx - 1, cy - 4, 5, 2, 0, 0, 7); ctx.fill();
+    ctx.fillStyle = '#f4efe2'; ctx.beginPath(); ctx.ellipse(cx + 1, cy - 5, 4, 1.7, 0, 0, 7); ctx.fill(); ctx.fillRect(cx - 3, cy - 6, 8, 1); ctx.beginPath(); ctx.ellipse(cx + 1, cy - 6, 4, 1.7, 0, 0, 7); ctx.fill();   /* toalha dobrada */
+    ctx.strokeStyle = e.cls === 'mage' ? '#6a4a2a' : '#b8bcc4'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(cx + 9, cy - 1); ctx.lineTo(cx + 22, cy + 5); ctx.stroke(); ctx.restore(); }
 }
 
 // ---------- bonecos de treino: F perto de um makiwara ou mokujin; o boneco balança quando apanha ----------
 function dummyNear() { const me = G.me; if (!me || me.downed || me.bathing || G.training) return null; let best = null, bd = 1.7; for (const q of DUMMIES) { if ((q.fl || 0) !== (me.fl || 0)) continue; const dd = Math.hypot(me.x - q.x, me.y - q.y); if (dd < bd) { bd = dd; best = q; } } return best; }
 if (typeof progEvent === 'function') { const _peT = progEvent; progEvent = function (m, now) {
   if (m.t === 'train') { G.training = !!m.on; return true; }
+  if (m.t === 'tub') { tubRecv(m); return true; }
   if (m.t === 'dummyhit') { const q = DUMMIES[m.i]; if (q) setTimeout(() => { const w = tileW(q.x, q.y, 22); for (let k = 0; k < 4; k++) spawnPart('dust', w.x + (Math.random() - 0.5) * 6, w.y + (Math.random() - 0.5) * 4); if (q.t === 'makiwara') for (let k = 0; k < 2; k++) spawnPart('sparkle', w.x, w.y, { color: 'rgba(230,200,120,A)', life: 350 }); }, m.d || 0); return true; }
   return _peT(m, now);
 }; }
 
 // ---------- hidromassagem: água agitada e espumante sobre os jatos, microbolhas subindo e estourando, vapor ----------
+// ---------- água do ofurô (lado do jogador): nível que sobe e desce com a alavanca da parede ----------
+G.tub = G.tub || {};
+function tubRecv(m) { const prev = G.tub[m.bi]; G.tub[m.bi] = { lv: m.lv, mode: m.mode, lever: m.lever, cold: !!m.cold, t: Date.now(), wetT: prev && prev.mode === 'drain' && m.mode === '' ? Date.now() : (prev && prev.wetT) || 0, flipT: prev && prev.lever !== m.lever ? Date.now() : (prev && prev.flipT) || 0 }; }
+function tubLvC(bi) { return tubLv(G.tub[bi], Date.now()); }
+function tubH(bi) { return 0.05 + 0.28 * tubLvC(bi); }   /* altura da superfície na tela (cheia = 0,33, a mesma dos banhistas) */
+function leverNear() { const me = G.me; if (!me || me.downed || me.bathing || !me.fl) return null; const b = BUILDINGS[me.fb], O2 = typeof ofuroOf === 'function' && ofuroOf(b); if (!O2 || me.fl !== O2.fl || !O2.lever) return null; return Math.hypot(me.x - O2.lever[0], me.y - O2.lever[1]) < 0.75 ? O2 : null; }
+function leverPrompt() { const T = G.tub[G.me.fb]; return T && T.lever ? 'F: levantar a alavanca (fecha as bicas e esvazia o ofurô)' : 'F: baixar a alavanca (enche o ofurô com água quente)'; }
+function ofuroPrompt() { const T = G.tub[G.me.fb], lv = tubLvC(G.me.fb); if (lv >= 0.5) return lv < 1 ? 'F: tomar banho no ofurô (' + (T && T.mode === 'drain' ? 'esvaziando' : 'ainda enchendo') + ': os efeitos só com ele cheio)' : T && T.cold ? 'F: tomar banho no ofurô (a água esfriou: esvazie e encha de novo)' : 'F: tomar banho no ofurô'; return T && T.mode === 'fill' ? 'Ofurô enchendo… dá para entrar quando chegar na metade' : T && T.mode === 'drain' ? 'Ofurô esvaziando…' : 'Ofurô vazio · use a alavanca na parede, à direita'; }
+// alavanca de latão numa placa de jacarandá, na parede do fundo à direita da cascata: para cima = vazio, para baixo = enchendo
+function drawLever(ctx, T, pt) {
+  const tgt = T.lever ? -1 : 1, k = Math.min(1, Math.max(0, (Date.now() - (T.flipT || 0)) / 450)), e2 = k * k * (3 - 2 * k); T.ang = tgt * (2 * e2 - 1);   /* vira em 0,45 s */
+  const U = 2.5, V = 0.17, H0 = 0.62, poly = q => { ctx.beginPath(); ctx.moveTo(q[0][0], q[0][1]); for (let k = 1; k < q.length; k++) ctx.lineTo(q[k][0], q[k][1]); ctx.closePath(); };
+  ctx.save(); poly([pt(U - 0.07, V, H0 - 0.25), pt(U + 0.07, V, H0 - 0.25), pt(U + 0.07, V, H0 + 0.25), pt(U - 0.07, V, H0 + 0.25)]); ctx.fillStyle = '#3a140a'; ctx.fill(); ctx.strokeStyle = '#c9a24a'; ctx.lineWidth = 0.5; ctx.stroke();
+  const s0 = pt(U, V, H0 - 0.17), s1 = pt(U, V, H0 + 0.17); ctx.strokeStyle = '#120806'; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(s0[0], s0[1]); ctx.lineTo(s1[0], s1[1]); ctx.stroke();   /* fenda */
+  { const [ax, ay] = pt(U, V, H0 + 0.21), [bx, by] = pt(U, V, H0 - 0.21); ctx.fillStyle = '#b8b0a0'; ctx.beginPath(); ctx.arc(ax, ay, 0.6, 0, 7); ctx.fill(); ctx.fillStyle = '#6ac8d0'; ctx.beginPath(); ctx.arc(bx, by, 0.6, 0, 7); ctx.fill(); }   /* marcas: em cima vazio, embaixo água */
+  const a = T.ang * 0.95, [px, py] = pt(U, V + 0.02, H0), [ex, ey] = pt(U, V + 0.02 + 0.24 * Math.cos(a), H0 + 0.24 * Math.sin(a));
+  ctx.strokeStyle = '#7a5a20'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(px, py); ctx.lineTo(ex, ey); ctx.stroke(); ctx.strokeStyle = '#e8c870'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.moveTo(px, py - 0.3); ctx.lineTo(ex, ey - 0.3); ctx.stroke();   /* haste de latão */
+  ctx.fillStyle = '#5a2412'; ctx.beginPath(); ctx.ellipse(ex, ey, 1.9, 1.5, 0, 0, 7); ctx.fill(); ctx.fillStyle = 'rgba(255,220,180,.35)'; ctx.beginPath(); ctx.arc(ex - 0.5, ey - 0.5, 0.6, 0, 7); ctx.fill();   /* punho de madeira */
+  ctx.fillStyle = '#c9a24a'; ctx.beginPath(); ctx.arc(px, py, 1.2, 0, 7); ctx.fill(); ctx.restore();
+}
 function drawOfuroFx(ctx, P, now) {
   const me = G.me; if (!me || !me.fl) return; const b = BUILDINGS[me.fb], O2 = typeof ofuroOf === 'function' && ofuroOf(b); if (!O2 || me.fl !== O2.fl) return;
-  const raise = me.fl * (bldDims(b).H / floorsOf(b)) * HV + 0.33 * HV, at = (u, v) => { const [x, y] = localToWorld(b, u, v), q = P(x, y, 0); return [q[0], q[1] - raise]; };
+  const T = G.tub[me.fb] || (G.tub[me.fb] = { lv: 0, mode: '', lever: 0, t: 0 }), lv = tubLv(T, Date.now()), base = me.fl * (bldDims(b).H / floorsOf(b)) * HV, hW = 0.05 + 0.28 * lv;
+  const pt = (u, v, h) => { const [x, y] = localToWorld(b, u, v), q = P(x, y, 0); return [q[0], q[1] - base - h * HV]; }, at = (u, v) => pt(u, v, hW);
   const hsh = (k, s) => { const x = Math.sin(k * 127.1 + s * 311.7) * 43758.5453; return x - Math.floor(x); };
-  drawCascade(ctx, b, me.fl, P, now, raise);
-  const busy = Object.values(G.players).some(q => q.bathing && q.fb === me.fb && q.fl === O2.fl); if (busy && !G.ofuroOn) G.ofuroOn = now; if (!busy) G.ofuroOn = 0;   /* os jatos ligam quando alguém entra e ficam ligados enquanto houver gente */
-  if (!busy) { if (G.view && Math.random() < 0.15) { const [vx, vy] = at(0.3 + Math.random() * 1.4, 0.3 + Math.random() * 1.4); spawnPart('smoke', vx - G.view.ox, vy - G.view.oy - 2, { color: '#ffffff' }); } return; }
+  const A = 0.275, Z = 1.725, RIM = 0.39, poly = q => { ctx.beginPath(); ctx.moveTo(q[0][0], q[0][1]); for (let k = 1; k < q.length; k++) ctx.lineTo(q[k][0], q[k][1]); ctx.closePath(); }, quad = h => [pt(A, A, h), pt(Z, A, h), pt(Z, Z, h), pt(A, Z, h)];
+  drawLever(ctx, T, pt);
+  ctx.save(); poly(quad(RIM)); ctx.clip();   /* tudo de dentro da banheira só aparece pela abertura de cima */
+  const wetA = T.mode === 'drain' ? 1 : T.wetT && !T.lever ? Math.max(0, 1 - (Date.now() - T.wetT) / 120000) : 0;
+  if (wetA > 0) { const h0 = Math.max(0.05, hW);   /* madeira molhada onde a água estava, secando aos poucos */
+    ctx.fillStyle = 'rgba(48,24,8,' + (0.42 * wetA).toFixed(3) + ')'; poly([pt(A, A, h0), pt(Z, A, h0), pt(Z, A, 0.33), pt(A, A, 0.33)]); ctx.fill(); poly([pt(Z, A, h0), pt(Z, Z, h0), pt(Z, Z, 0.33), pt(Z, A, 0.33)]); ctx.fill();
+    ctx.strokeStyle = 'rgba(36,18,6,' + (0.8 * wetA).toFixed(3) + ')'; ctx.lineWidth = 1.1; ctx.beginPath(); const l0 = pt(A, A, 0.33), l1 = pt(Z, A, 0.33), l2 = pt(Z, Z, 0.33); ctx.moveTo(l0[0], l0[1]); ctx.lineTo(l1[0], l1[1]); ctx.lineTo(l2[0], l2[1]); ctx.stroke();   /* a linha d'água */
+    if (lv < 0.01) { ctx.fillStyle = 'rgba(30,16,6,' + (0.38 * wetA).toFixed(3) + ')'; poly(quad(0.05)); ctx.fill();
+      for (let k = 0; k < 9; k++) { const u = 0.4 + hsh(k, 31) * 1.2, v = 0.4 + hsh(k, 32) * 1.2, [gx, gy] = pt(u, v, 0.05), ln = 2 + hsh(k, 33) * 4; ctx.strokeStyle = 'rgba(255,245,230,' + (0.35 * wetA).toFixed(3) + ')'; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.moveTo(gx, gy); ctx.lineTo(gx + ln, gy - ln * 0.5); ctx.stroke(); }   /* brilho de madeira molhada */
+      for (let k = 0; k < 5; k++) { const u = 0.5 + hsh(k, 41) * 1.0, v = 0.5 + hsh(k, 42) * 1.0, [gx, gy] = pt(u, v, 0.05); ctx.fillStyle = 'rgba(150,200,205,' + (0.35 * wetA).toFixed(3) + ')'; ctx.beginPath(); ctx.ellipse(gx, gy, 2 + hsh(k, 43) * 3, 1 + hsh(k, 44) * 1.2, 0, 0, 7); ctx.fill(); } } }   /* pocinhas que sobraram */
+  if (lv > 0.004) {   /* a superfície da água no nível atual */
+    const c0 = pt(A, A, hW), c1 = pt(Z, Z, hW), gr = ctx.createLinearGradient(c0[0], c0[1], c1[0], c1[1]);
+    if (T.cold) { gr.addColorStop(0, 'rgba(120,170,175,0.8)'); gr.addColorStop(1, 'rgba(95,145,155,0.84)'); } else { gr.addColorStop(0, 'rgba(125,205,208,0.78)'); gr.addColorStop(1, 'rgba(88,172,182,0.84)'); }
+    ctx.fillStyle = gr; poly(quad(hW)); ctx.fill();
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 0.5; { const l0 = pt(A, A, hW), l1 = pt(Z, A, hW), l2 = pt(Z, Z, hW); ctx.beginPath(); ctx.moveTo(l0[0], l0[1]); ctx.lineTo(l1[0], l1[1]); ctx.lineTo(l2[0], l2[1]); ctx.stroke(); }   /* menisco nas paredes do fundo */
+    for (let k = 0; k < 4; k++) { const q = (Date.now() / 5200 + k / 4) % 1, v = A + 0.1 + q * (Z - A - 0.2), p0 = pt(A + 0.12 + hsh(k, 3) * 0.2, v, hW), p1 = pt(Z - 0.12 - hsh(k, 4) * 0.2, v, hW); ctx.strokeStyle = 'rgba(255,255,255,' + (0.16 * Math.sin(q * Math.PI)).toFixed(3) + ')'; ctx.lineWidth = 0.4; ctx.beginPath(); ctx.moveTo(p0[0], p0[1]); ctx.lineTo(p1[0], p1[1]); ctx.stroke(); }   /* brilho correndo na superfície */
+    if (T.mode === 'drain') { const [cx, cy] = pt(1.3, 1.3, hW), R = 2 + 7 * Math.min(1, lv * 1.6), rot = Date.now() / 260;   /* redemoinho sobre o ralo */
+      ctx.fillStyle = 'rgba(40,90,100,0.35)'; ctx.beginPath(); ctx.ellipse(cx, cy, R * 0.35, R * 0.16, 0, 0, 7); ctx.fill();
+      for (let k = 0; k < 3; k++) { ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 0.4; ctx.beginPath(); for (let s = 0; s <= 24; s++) { const t = s / 24, a = rot + k * 2.09 + t * 4.2, r = R * (1 - t * 0.85); const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r * 0.45; s ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); }
+      for (let k = 0; k < 8; k++) { const q = (Date.now() / 900 + k / 8) % 1, a = rot * 1.5 + k * 0.8 + q * 3, r = R * (1 - q); ctx.fillStyle = 'rgba(255,255,255,' + (0.8 * (1 - q)).toFixed(2) + ')'; ctx.fillRect(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.45, 0.45, 0.45); } } }
+  ctx.restore();
+  if (T.lever) drawCascade(ctx, b, me.fl, P, now, base + 0.33 * HV, hW - 0.33);   /* as bicas correm com a alavanca para baixo */
+  const hot = lv > 0.05 && !T.cold, filling = T.lever && lv < 1;
+  if (hot && G.view && Math.random() < 0.12 + 0.3 * lv + (filling ? 0.3 : 0)) { const [vx, vy] = at(0.3 + Math.random() * 1.4, 0.3 + Math.random() * 1.4); spawnPart('smoke', vx - G.view.ox, vy - G.view.oy - 2, { color: '#ffffff' }); }   /* vapor */
+  const busy = lv >= 0.5 && Object.values(G.players).some(q => q.bathing && q.fb === me.fb && q.fl === O2.fl); if (busy && !G.ofuroOn) G.ofuroOn = now; if (!busy) G.ofuroOn = 0;   /* os jatos ligam quando alguém entra e ficam ligados enquanto houver gente */
+  if (!busy) return;
   const on = Math.min(1, (now - G.ofuroOn) / 1500);
   ctx.save(); ctx.globalAlpha = on;
   const jets = [[0.35, 0.75], [0.35, 1.25], [1.65, 0.75], [1.65, 1.25], [1.0, 1.65]];   /* bicos nas paredes (a do fundo tem a cascata) */
@@ -181,7 +229,6 @@ function drawOfuroFx(ctx, P, now) {
     if (ph < 0.85) { ctx.fillStyle = 'rgba(255,255,255,' + (0.25 + 0.5 * ph).toFixed(2) + ')'; ctx.fillRect(bx, by - ph * 0.5, 0.45, 0.45); }
     else { const q = (ph - 0.85) / 0.15; ctx.strokeStyle = 'rgba(255,255,255,' + (0.5 * (1 - q)).toFixed(2) + ')'; ctx.lineWidth = 0.18; ctx.beginPath(); ctx.ellipse(bx, by, 0.4 + q * 1.4, 0.2 + q * 0.6, 0, 0, 7); ctx.stroke(); } }
   ctx.restore();
-  if (G.view && Math.random() < 0.5) { const [vx, vy] = at(0.3 + Math.random() * 1.4, 0.3 + Math.random() * 1.4); spawnPart('smoke', vx - G.view.ox, vy - G.view.oy - 2, { color: '#ffffff' }); }   /* vapor */
 }
 
 
@@ -238,17 +285,22 @@ function dojoLessons() {
 document.addEventListener('keydown', e => { if (e.key === 'Escape') for (const id of ['duelmenu', 'duelbet', 'lessons']) { const d = document.getElementById(id); if (d) d.remove(); } });
 
 // cascata decorativa: lâmina d'água saindo da bica de bronze dourado na parede oeste e caindo na banheira (animação constante)
-function drawCascade(ctx, b, fl, P, now, raise) {
+function drawCascade(ctx, b, fl, P, now, raise, hitH = -0.02) {   /* cortina d'água: fios saindo das cinco bicas de bambu na altura da cortina, caindo na banheira com espuma, anéis e respingos */
   const at = (u, v, h) => { const [x, y] = localToWorld(b, u, v), q = P(x, y, 0); return [q[0], q[1] - raise - (h || 0) * HV]; };
-  const u0 = 0.72, u1 = 1.28, v0 = 0.08, top = 1.05, wy = 0;
+  const N = 5, tips = [], hits = [];
+  for (let k = 0; k < N; k++) { const u = 0.56 + k * 0.22; tips.push(at(u, 0.44, 0.89)); hits.push(at(u, 0.6, hitH)); }
   ctx.save();
-  for (let k = 0; k <= 10; k++) { const u = u0 + (u1 - u0) * k / 10, [x1, y1] = at(u, v0 + 0.02, top), [x2, y2] = at(u, v0 + 0.16, wy + 0.02), sh = 0.35 + 0.25 * Math.sin(now / 140 + k * 1.7);
-    const g = ctx.createLinearGradient(x1, y1, x2, y2); g.addColorStop(0, 'rgba(210,240,250,' + (0.55 * sh).toFixed(2) + ')'); g.addColorStop(1, 'rgba(240,255,255,' + (0.85 * sh).toFixed(2) + ')');
-    ctx.strokeStyle = g; ctx.lineWidth = 0.55; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(x1 + (x2 - x1) * 0.15, y1 + (y2 - y1) * 0.55, x2, y2); ctx.stroke(); }
-  for (let k = 0; k < 7; k++) { const q = (now / 520 + k / 7) % 1, u = u0 + (u1 - u0) * ((k * 0.37) % 1), [x1, y1] = at(u, v0 + 0.02, top), [x2, y2] = at(u, v0 + 0.16, wy); ctx.fillStyle = 'rgba(255,255,255,' + (0.7 * (1 - q * 0.5)).toFixed(2) + ')'; ctx.fillRect(x1 + (x2 - x1) * q, y1 + (y2 - y1) * q * q, 0.45, 1.2); }   /* fios d'água descendo */
-  const [cx, cy] = at(1.0, v0 + 0.2, 0); for (let k = 0; k < 3; k++) { const q = (now / 600 + k / 3) % 1; ctx.strokeStyle = 'rgba(255,255,255,' + (0.6 * (1 - q)).toFixed(2) + ')'; ctx.lineWidth = 0.3; ctx.beginPath(); ctx.ellipse(cx, cy, 2 + q * 7, 0.9 + q * 2.6, 0, 0, 7); ctx.stroke(); }   /* anéis onde a água bate */
+  { const g = ctx.createLinearGradient(0, tips[0][1], 0, hits[0][1]); g.addColorStop(0, 'rgba(200,235,250,0.18)'); g.addColorStop(1, 'rgba(230,250,255,0.32)'); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(tips[0][0], tips[0][1]); for (const p of tips) ctx.lineTo(p[0], p[1]); for (let k = N - 1; k >= 0; k--) ctx.lineTo(hits[k][0], hits[k][1]); ctx.closePath(); ctx.fill(); }   /* véu translúcido entre os fios */
+  for (let k = 0; k < N; k++) { const [x0, y0] = tips[k], [x1, y1] = hits[k];
+    for (let s = 0; s < 3; s++) { const off = (s - 1) * 0.3, sh = 0.55 + 0.3 * Math.sin(now / 80 + k * 1.7 + s); ctx.strokeStyle = 'rgba(230,248,255,' + sh.toFixed(2) + ')'; ctx.lineWidth = 0.45; ctx.beginPath(); ctx.moveTo(x0 + off, y0); ctx.quadraticCurveTo(x0 + off + (x1 - x0) * 0.4, y0 + (y1 - y0) * 0.12, x1 + off * 1.5, y1); ctx.stroke(); }
+    for (let s = 0; s < 3; s++) { const q = (now / 330 + s / 3 + k * 0.17) % 1, x2 = x0 + (x1 - x0) * (0.4 * q + 0.6 * q * q), y2 = y0 + (y1 - y0) * q * q; ctx.fillStyle = 'rgba(255,255,255,' + (0.9 - q * 0.3).toFixed(2) + ')'; ctx.fillRect(x2 - 0.25, y2, 0.5, 1.2); } }   /* gotas descendo */
+  const [fx0, fy0] = hits[0], [fx1, fy1] = hits[N - 1], cx = (fx0 + fx1) / 2, cy = (fy0 + fy1) / 2;
+  { const g = ctx.createRadialGradient(cx, cy, 1, cx, cy, 16); g.addColorStop(0, 'rgba(255,255,255,0.55)'); g.addColorStop(1, 'rgba(255,255,255,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(cx, cy, 16, 5, Math.atan2(fy1 - fy0, fx1 - fx0), 0, 7); ctx.fill(); }   /* espuma onde a cortina bate */
+  for (let k = 0; k < N; k++) for (let s = 0; s < 2; s++) { const q = (now / 600 + s / 2 + k * 0.23) % 1, [hx, hy] = hits[k]; ctx.strokeStyle = 'rgba(255,255,255,' + (0.65 * (1 - q)).toFixed(2) + ')'; ctx.lineWidth = 0.3; ctx.beginPath(); ctx.ellipse(hx, hy + q * 2, 1.2 + q * 5, 0.5 + q * 2, 0, 0, 7); ctx.stroke(); }   /* anéis se abrindo e correndo para a frente */
+  for (let k = 0; k < 10; k++) { const q = (now / 900 + k / 10) % 1, [hx, hy] = hits[k % N]; ctx.fillStyle = 'rgba(255,255,255,' + (0.7 * (1 - q)).toFixed(2) + ')'; ctx.fillRect(hx + Math.sin(k * 2.1) * 3 * q, hy + q * 5, 0.45, 0.45); }   /* bolhas espalhando */
   ctx.restore();
-  if (G.view && Math.random() < 0.35) spawnPart('sparkle', cx - G.view.ox + (Math.random() - 0.5) * 5, cy - G.view.oy - 1, { color: 'rgba(220,245,255,A)', vx: (Math.random() - 0.5) * 0.04, vy: -0.03 - Math.random() * 0.03, life: 380 });   /* respingos */
+  if (G.view && Math.random() < 0.55) { const [hx, hy] = hits[Math.floor(Math.random() * N)]; spawnPart('sparkle', hx - G.view.ox + (Math.random() - 0.5) * 2, hy - G.view.oy - 1, { color: 'rgba(225,248,255,A)', vx: (Math.random() - 0.5) * 0.05, vy: -0.03 - Math.random() * 0.04, life: 400 }); }   /* respingos */
+  if (G.view && Math.random() < 0.12) spawnPart('smoke', cx - G.view.ox, cy - G.view.oy - 4, { color: '#ffffff' });   /* névoa da queda */
 }
 
 // ---------- portas de correr dos apartamentos: abrem deslizando quando alguém chega perto e fecham sozinhas ----------
@@ -256,7 +308,7 @@ const APT_DOOR_K = {};
 function drawAptDoors(ctx, P, now) {
   const me = G.me; if (!me || !me.fl) return; const b = BUILDINGS[me.fb]; if (!b || b.deco !== 'machiya') return;
   const nF = floorsOf(b), fl = me.fl, D = bDims(b)[1], raise = fl * (bldDims(b).H / nF) * HV;
-  const doors = fl < nF - 1 ? [[1, 2, 'f'], [4, 5, 'f']] : [[2, 4, 'f'], [3, 4, 's']];   /* fachada: [u0, u1]; 's' = porta lateral da suíte para o hall (u = 6, v 3..4) */
+  const doors = fl < nF - 1 ? [[1, 2, 'f'], [4, 5, 'f']] : [[2, 4, 'f'], [2, 3, 's']];   /* fachada: [u0, u1]; 's' = porta lateral da suíte para o hall (u = 6, v 3..4) */
   const at = (u, v, h) => { const [x, y] = localToWorld(b, u, v), q = P(x, y); return [q[0], q[1] - raise - h * HV]; };
   const people = Object.values(G.players).filter(q => (q.fl || 0) === fl && q.fb === me.fb);
   if (fl === nF - 1) { const night = G.devTime === 'night' || (typeof dayInfo === 'function' && dayInfo().night); const glow = [[1.0, 1.2, 0, 1.7, 120], [4.5, 2.6, 0, 1.5, 110], [4.9, 0.6, 0, 0.6, 90], [3.2, 1.6, 0, 1.0, 70], [1.0, 0.9, 0, 0.6, 80], [5.4, 4.2, 0, 0.5, 70]];   /* luz quente e aconchegante: lanternas, andons, kamado e banheira */

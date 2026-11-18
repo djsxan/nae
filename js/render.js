@@ -460,7 +460,7 @@ function drawHeroEntity(ctx, e, sx, sy, now) {
     ctx.imageSmoothingEnabled = true; pblit(ctx, woundOf(s, 3), sx, sy - 0.95 * (typeof HV !== 'undefined' ? HV : 25)); e._spr = null; return;
   }
   if (R3.ok && e.sleepB && !e.downed) {   // deitado na cama, dormindo
-    const P = { dir: e.dir || 0, walk: -1, down: true, lost: e.lost || 0, pro: e.pro || 0 };
+    const P = { dir: e.dir || 0, walk: -1, down: true, bed: 1, nowp: 1, lost: e.lost || 0, pro: e.pro || 0 };
     const s = e.isNpc ? npcSprite3D(e.kind, P) : heroSprite3D(e.cls, e.skin, e.color, P);
     ctx.imageSmoothingEnabled = true; pblit(ctx, s, sx, sy - 11); if (typeof drawZzz === 'function') drawZzz(ctx, sx, sy - 26, now); e._spr = null; return;
   }
