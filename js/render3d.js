@@ -90,9 +90,10 @@ function buildHumanoid(L, opts = {}) {
   const spine = joint(hips, 0, 0.02 * S, 0);
   const R = {};
   const hx = h => (h && h.hex) || h || '#888888';
-  const armorK = L.armor === 'plate' ? (L.pattern === 'scales' ? 'darkmetal' : (L.head === 'winged' ? 'gold' : 'metal')) : L.armor === 'leather' ? 'leather' : 'cloth';
+  const bare = L.armor === 'bare';   /* sem camisa (banho): corpo de pele, só a sunga */
+  const armorK = bare ? 'skin' : L.armor === 'plate' ? (L.pattern === 'scales' ? 'darkmetal' : (L.head === 'winged' ? 'gold' : 'metal')) : L.armor === 'leather' ? 'leather' : 'cloth';
   const bodyM = mat(hx(L.body), armorK), body2M = mat(hx(L.body2), L.armor === 'plate' ? 'leather' : 'leather');
-  const skinM = mat(hx(L.skin), 'skin'), legM = mat(hx(L.legs), L.armor === 'plate' ? armorK : 'cloth'), bootM = mat(hx(L.boots), 'leather');
+  const skinM = mat(hx(L.skin), 'skin'), legM = bare ? skinM : mat(hx(L.legs), L.armor === 'plate' ? armorK : 'cloth'), bootM = bare ? skinM : mat(hx(L.boots), 'leather');
   const accM = mat(hx(L.accent), 'cloth'), trimM = mat(hx(L.trim), 'gold');
   const robe = L.armor === 'robe';
   // tronco
@@ -101,10 +102,15 @@ function buildHumanoid(L, opts = {}) {
   const belly = mesh(capG(0.14 * S, 0.12 * S), bodyM, 0, -0.2 * S, 0); belly.scale.set(1.1, 1, 0.75); spine.add(belly);
   const belt = mesh(cylG(0.165 * S, 0.165 * S, 0.06 * S), body2M, 0, -0.06 * S, 0); belt.scale.set(1.05, 1, 0.78); spine.add(belt);
   const buckle = mesh(boxG(0.06 * S, 0.05 * S, 0.02 * S), trimM, 0, -0.06 * S, 0.13 * S); spine.add(buckle);
+  if (bare) { buckle.visible = false; belt.visible = false; const tm = mat(hx(L.trunks || '#2a3a5a'), 'cloth'); const tr = mesh(capG(0.155 * S, 0.1 * S), tm, 0, -0.17 * S, 0); tr.scale.set(1.12, 1, 0.8); spine.add(tr); const wb = mesh(cylG(0.172 * S, 0.172 * S, 0.03 * S), mat('#f2ece0', 'cloth'), 0, -0.1 * S, 0); wb.scale.set(1.05, 1, 0.78); spine.add(wb); R.trunks = tr; R.trunksM = tm; }
   if (L.armor === 'plate') {
     const tab = mesh(boxG(0.16 * S, 0.5 * S, 0.02 * S), accM, 0, -0.08 * S, 0.135 * S); chest.add(tab);
     const em = mesh(boxG(0.07 * S, 0.07 * S, 0.012 * S), trimM, 0, 0.06 * S, 0.15 * S); em.rotation.z = Math.PI / 4; chest.add(em);
   }
+  if (L.gi) {   /* gi branco por cima da hakama: jaqueta transpassada, mangas largas e faixa preta */
+    const gm = mat(hx(L.gi), 'cloth'); const j = mesh(capG(0.18 * S, 0.32 * S), gm, 0, 0.0, 0); j.scale.set(1.17, 1, 0.8); chest.add(j);
+    const lap = mesh(boxG(0.04 * S, 0.34 * S, 0.02 * S), mat('#d8d2c4', 'cloth'), 0.02 * S, 0.02 * S, 0.142 * S); lap.rotation.z = 0.45; chest.add(lap);
+    const ob = mesh(cylG(0.178 * S, 0.178 * S, 0.07 * S), mat('#141414', 'cloth'), 0, -0.07 * S, 0); ob.scale.set(1.08, 1, 0.8); spine.add(ob); R.gi = gm; }
   if (L.armor === 'vest') { const ap = mesh(boxG(0.22 * S, 0.5 * S, 0.02 * S), body2M, 0, -0.12 * S, 0.12 * S); chest.add(ap); }
   if (robe) {
     const pts = []; for (let i = 0; i <= 10; i++) { const t = i / 10; pts.push(new THREE.Vector2(0.17 + t * t * 0.17 + t * 0.05, -t * 0.82)); }
@@ -121,7 +127,7 @@ function buildHumanoid(L, opts = {}) {
   // braços
   const arm = (side) => {
     const sh = joint(chest, side * 0.22 * S, 0.17 * S, 0);
-    const up = mesh(capG(robe ? 0.07 * S : 0.058 * S, 0.2 * S), robe ? mat(hx(L.body), 'cloth') : (L.armor === 'plate' ? bodyM : mat(hx(L.armor === 'vest' ? '#cfc6b4' : L.body.hex || L.body), L.armor === 'leather' ? 'leather' : 'cloth')), 0, -0.14 * S, 0); sh.add(up);
+    const up = mesh(capG(robe ? 0.07 * S : 0.058 * S, 0.2 * S), bare ? skinM : L.gi ? mat(hx(L.gi), 'cloth') : robe ? mat(hx(L.body), 'cloth') : (L.armor === 'plate' ? bodyM : mat(hx(L.armor === 'vest' ? '#cfc6b4' : L.body.hex || L.body), L.armor === 'leather' ? 'leather' : 'cloth')), 0, -0.14 * S, 0); sh.add(up);
     if (L.pauldron) {
       const pM = L.pauldron === 'wing' ? trimM : bodyM;
       const pd = mesh(sphG(0.11 * S), pM, side * 0.02 * S, 0.0, 0); pd.scale.set(1.15, 0.8, 1); sh.add(pd);
@@ -129,7 +135,7 @@ function buildHumanoid(L, opts = {}) {
       if (L.pauldron === 'wing') { const wg = mesh(boxG(0.02 * S, 0.14 * S, 0.1 * S), mat('#f4efe2', 'cloth'), side * 0.1 * S, 0.1 * S, 0); wg.rotation.z = -side * 0.5; sh.add(wg); }
     }
     const el = joint(sh, 0, -0.29 * S, 0);
-    const fM = L.armor === 'plate' ? bodyM : L.armor === 'leather' ? body2M : robe ? mat(hx(L.body), 'cloth') : skinM;
+    const fM = L.gi ? mat(hx(L.gi), 'cloth') : L.armor === 'plate' ? bodyM : L.armor === 'leather' ? body2M : robe ? mat(hx(L.body), 'cloth') : skinM;
     el.add(mesh(capG(robe ? 0.075 * S : 0.05 * S, 0.18 * S), fM, 0, -0.12 * S, 0));
     if (robe) { const cuff = mesh(torG(0.075 * S, 0.012 * S), trimM, 0, -0.22 * S, 0); cuff.rotation.x = Math.PI / 2; el.add(cuff); }
     const hand = joint(el, 0, -0.27 * S, 0);
@@ -141,6 +147,7 @@ function buildHumanoid(L, opts = {}) {
   const leg = (side) => {
     const hp = joint(hips, side * 0.1 * S, 0, 0);
     hp.add(mesh(capG(0.075 * S, 0.3 * S), legM, 0, -0.21 * S, 0));
+    if (bare) hp.add(mesh(cylG(0.088 * S, 0.084 * S, 0.12 * S), mat(hx(L.trunks || '#2a3a5a'), 'cloth'), 0, -0.07 * S, 0));   /* perna da sunga */
     const kn = joint(hp, 0, -0.43 * S, 0);
     if (L.armor === 'plate') kn.add(mesh(sphG(0.065 * S), bodyM, 0, 0, 0.03 * S));
     kn.add(mesh(capG(0.062 * S, 0.24 * S), legM, 0, -0.17 * S, 0));
@@ -176,17 +183,21 @@ function buildHead(head, L, S, skinM, accM, trimM) {
   const skull = mesh(sphG(0.105 * S), skinM, 0, 0, 0); skull.scale.set(0.92, 1.05, 1); head.add(skull);
   const jaw = mesh(sphG(0.08 * S), skinM, 0, -0.05 * S, 0.02 * S); jaw.scale.set(0.9, 0.85, 1); head.add(jaw);
   const nose = mesh(coneG(0.018 * S, 0.05 * S, 6), skinM, 0, -0.01 * S, 0.1 * S); nose.rotation.x = Math.PI / 2; head.add(nose);
-  for (const s of [-1, 1]) { head.add(mesh(sphG(0.014 * S), mat('#f2ece0', 'skin'), s * 0.035 * S, 0.015 * S, 0.088 * S)); head.add(mesh(sphG(0.008 * S), mat(hx(L.eyes ? '#1a140e' : '#1a140e'), 'gem'), s * 0.035 * S, 0.015 * S, 0.1 * S)); head.add(mesh(boxG(0.04 * S, 0.008 * S, 0.01 * S), mat(hx(L.hair || '#3a2a1e'), 'hair'), s * 0.036 * S, 0.04 * S, 0.095 * S)); head.add(mesh(sphG(0.025 * S), skinM, s * 0.1 * S, 0, 0)); }
+  head.userData.eyes = []; head.userData.lids = [];
+  for (const s of [-1, 1]) { const ew = mesh(sphG(0.014 * S), mat('#f2ece0', 'skin'), s * 0.035 * S, 0.015 * S, 0.088 * S), ep = mesh(sphG(0.008 * S), mat(hx(L.eyes ? '#1a140e' : '#1a140e'), 'gem'), s * 0.035 * S, 0.015 * S, 0.1 * S); head.add(ew); head.add(ep); head.userData.eyes.push(ew, ep);
+    { const lid = mesh(sphG(0.017 * S), skinM, s * 0.035 * S, 0.016 * S, 0.091 * S); lid.scale.set(1.15, 0.75, 0.9); lid.visible = false; head.add(lid); const lash = mesh(boxG(0.03 * S, 0.004 * S, 0.006 * S), mat('#2a1a10', 'hair'), s * 0.035 * S, 0.008 * S, 0.104 * S); lash.rotation.z = s * -0.12; lash.visible = false; head.add(lash); head.userData.lids.push(lid, lash); }   /* pálpebras (olhos fechados) */ head.add(mesh(boxG(0.04 * S, 0.008 * S, 0.01 * S), mat(hx(L.hair || '#3a2a1e'), 'hair'), s * 0.036 * S, 0.04 * S, 0.095 * S)); head.add(mesh(sphG(0.025 * S), skinM, s * 0.1 * S, 0, 0)); }
   const hairM = mat(hx(L.hair || '#3a2a1e'), 'hair');
   const helm = L.head === 'greathelm' || L.head === 'horned' || L.head === 'winged';
   const hood = ['hood', 'furhood', 'astralhood', 'antlerhood'].includes(L.head);
-  if (L.hair && !helm && !hood) {
+  if (L.topknot) { const hm2 = mat(hx(L.hair), 'hair'); const ring = mesh(sphG(0.108 * S), hm2, 0, -0.005 * S, -0.012 * S); ring.geometry = geo('fringe' + S, () => new THREE.SphereGeometry(0.108 * S, 18, 10, 0, Math.PI * 2, Math.PI * 0.42, Math.PI * 0.2)); head.add(ring); const kn = mesh(sphG(0.034 * S), hm2, 0, 0.1 * S, -0.06 * S); head.add(kn); const tie = mesh(cylG(0.016 * S, 0.016 * S, 0.02 * S, 8), mat('#8a1a1a', 'cloth'), 0, 0.085 * S, -0.05 * S); head.add(tie); }   /* careca com coque */
+  if (L.brows) for (const s of [-1, 1]) { const bw = mesh(boxG(0.045 * S, 0.012 * S, 0.012 * S), mat(hx(L.brows), 'hair'), s * 0.037 * S, 0.04 * S, 0.097 * S); bw.rotation.z = s * 0.3; head.add(bw); }
+  if (L.hair && !helm && !hood && !L.bald) {
     const cap = mesh(sphG(0.112 * S), hairM, 0, 0.02 * S, -0.01 * S); cap.scale.set(0.95, 0.9, 1.02); head.add(cap);
     cap.geometry = geo('hairCap' + S, () => new THREE.SphereGeometry(0.112 * S, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.55));
     cap.rotation.x = -0.42;   // inclina para trás: a franja sobe acima dos olhos e a nuca fica coberta
     if (L.hairStyle === 'long') { const back = mesh(capG(0.09 * S, 0.22 * S), hairM, 0, -0.12 * S, -0.05 * S); back.scale.set(1.1, 1, 0.6); head.add(back); }
   }
-  if (L.beard && !L.braids) { const b = mesh(coneG(0.075 * S, 0.16 * S, 12), mat(hx(L.beard), 'hair'), 0, -0.12 * S, 0.05 * S); b.rotation.x = Math.PI; head.add(b); }
+  if (L.beard && !L.braids) { const b = mesh(coneG(0.075 * S, L.beardLong ? 0.3 * S : 0.16 * S, 12), mat(hx(L.beard), 'hair'), 0, L.beardLong ? -0.19 * S : -0.12 * S, 0.05 * S); b.rotation.x = Math.PI; head.add(b); if (L.beardLong) head.add(mesh(capG(0.026 * S, 0.07 * S), mat(hx(L.beard), 'hair'), 0, -0.03 * S, 0.1 * S).rotateZ(Math.PI / 2)); }
   if (L.braids) {   /* barba cheia com duas tranças e argolas de ouro */
     const hm = mat(hx(L.beard), 'hair'), gold = mat('#d4a94a', 'metal'); const b = mesh(coneG(0.1 * S, 0.2 * S, 12), hm, 0, -0.12 * S, 0.055 * S); b.rotation.x = Math.PI; b.scale.set(1.1, 1, 0.8); head.add(b);
     for (const sx of [-1, 1]) { for (let k = 0; k < 4; k++) head.add(mesh(sphG(0.026 * S), hm, sx * 0.045 * S, (-0.2 - k * 0.045) * S, 0.07 * S)); head.add(mesh(cylG(0.024 * S, 0.024 * S, 0.02 * S, 8), gold, sx * 0.045 * S, -0.39 * S, 0.07 * S)); }
@@ -431,6 +442,7 @@ function cache3(key, make, who) {
   if (SPR3.size > 900) SPR3.delete(SPR3.keys().next().value);
   return s;
 }
+function setEyesClosed(R, closed) { const u = R && R.head && R.head.userData; if (!u || !u.lids) return; for (const m of u.eyes) m.visible = !closed; for (const m of u.lids) m.visible = !!closed; }
 function rigFor(key, L, opts) { let r = _rigs.get(key); if (!r) { r = buildHumanoid(L, opts); _rigs.set(key, r); } return r; }
 // membros perdidos: esconde a parte, mostra coto ensanguentado ou prótese (perna de pau / gancho)
 function applyLost(R, mask = 0, pro = 0) {

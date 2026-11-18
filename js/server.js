@@ -418,6 +418,7 @@ function hostOnClient(from, m) {
       p.x = b.x; p.y = b.y; p.dir = dirFromVecS(b.dx, b.dy); p.sleep = m.b | 0; p.sit = null; p.walking = false; break;
     }
     case 'bath': bathMsg(p, m); break;
+    case 'train': trainMsg(p, m); break;
     case 'sit': {
       if (!m.on || p.downed || p.carrying || p.carriedBy) { p.sit = null; break; }
       const st = m.s != null ? WORLD.seats[m.s | 0] : null;
@@ -452,7 +453,7 @@ function handleMove(p, m) {
     if (lagOnly) return;   /* passo longo só por atraso: ignora (o próximo, com mais tempo passado, é aceito) em vez de puxar o jogador de volta */
     Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: p.z, fl: p.fl || 0, fb: p.fb ?? -1 }); return; }
   if (p.sit && dist(p.x, p.y, x, y) > 0.05) p.sit = null;
-  p.x = x; p.y = y; p.z = z; if (!p.sit || p.walking || m.w) p.dir = m.d | 0; p.walking = !!m.w; p.running = !!m.r; p.crouch = !!m.c; if (m.sl && !p.slide) { p.cst = Math.max(0, (p.cst ?? 0) - SLIDE_COST); p.cstT = now; } p.slide = !!m.sl; p.tired = !!m.ti; p.lastMv = now;
+  p.x = x; p.y = y; p.z = z; if (!p.sit || p.bath || p.walking || m.w) p.dir = m.d | 0; p.walking = !!m.w; p.running = !!m.r; p.crouch = !!m.c; if (m.sl && !p.slide) { p.cst = Math.max(0, (p.cst ?? 0) - SLIDE_COST); p.cstT = now; } p.slide = !!m.sl; p.tired = !!m.ti; p.lastMv = now;
   if (p.casting && dist(p.x, p.y, p.castX, p.castY) > 0.3) { p.casting = null; near(p.x, p.y, { t: 'castend', id: p.id }); }
   if (p.carrying) { const t = S.players[p.carrying]; if (t) { t.x = p.x; t.y = p.y; t.z = p.z; } }
 }
@@ -911,9 +912,47 @@ function bathMsg(p, m) {
   const now = now_();
   if (!m.on) { if (p.bath) bathEnd(p); return; }
   const b = BUILDINGS[p.fb], O2 = ofuroOf(b); if (!O2 || (p.fl || 0) !== O2.fl || p.downed || p.carrying || p.bath) return;
-  if (dist(p.x, p.y, O2.x, O2.y) > 1.7) { tell(p, 'Chegue perto do ofurô.'); return; }
-  p.x = O2.x; p.y = O2.y; p.sit = 'g'; p.walking = false; p.bath = { t0: now, bi: p.fb, tick: now }; if (p.atk) p.atk = null; if (!p.sheathed) sheatheToggle(p, true, true);   /* a arma vai para o cabideiro */
-  near(p.x, p.y, { t: 'bath', id: p.id, on: 1, x: p.x, y: p.y, rx: O2.rack[0], ry: O2.rack[1] }); tell(p, 'Banho no ofurô: recupera vida e fôlego, tira o frio e limpa as feridas. Fique 15 s para sair bem descansado.');
+  if (dist(p.x, p.y, O2.x, O2.y) > 2.4) { tell(p, 'Chegue perto do ofurô.'); return; }
+  const used = new Set(Object.values(S.players).filter(q => q.bath && q.bath.bi === p.fb).map(q => q.bath.seat)), free = O2.seats.map((s0, k) => k).filter(k => !used.has(k)).sort((a, c) => dist(p.x, p.y, O2.seats[a][0], O2.seats[a][1]) - dist(p.x, p.y, O2.seats[c][0], O2.seats[c][1]));
+  if (!free.length) { tell(p, 'O ofurô está cheio (4 pessoas).'); return; } const seat = free[0], [sx2, sy2] = O2.seats[seat];
+  p.x = sx2; p.y = sy2; p.dir = dirFromVecS(O2.x - sx2, O2.y - sy2); Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: 0, fl: p.fl, fb: p.fb }); p.sit = 'g'; p.walking = false; p.bath = { t0: now, bi: p.fb, tick: now, seat }; if (p.atk) p.atk = null; if (!p.sheathed) sheatheToggle(p, true, true);   /* a arma vai para o cabideiro */
+  near(p.x, p.y, { t: 'bath', id: p.id, on: 1, x: p.x, y: p.y, rx: O2.rack[0] + (seat % 2) * 0.3, ry: O2.rack[1] - (seat >> 1) * 0.3, dir: p.dir }); tell(p, 'Banho no ofurô: recupera vida e fôlego, tira o frio e limpa as feridas. Fique 15 s para sair bem descansado.');
+}
+// ---------- Dojô do Punho de Ferro: diária e treino AFK nos bonecos (só o cavaleiro aprende) ----------
+function dojoRec() { const P = PROPS.find(q => q.wk === 'dojo'); if (!P) return null; const r = S.estate && S.estate.r[P.id]; return { P, r, B: r && r.biz, N: (!r && S.estate) ? npcbAll()[P.id] : null }; }
+function dojoFee() { const D = dojoRec(); return DOJO_FEE[(D && D.B && D.B.fee != null) ? D.B.fee : 1]; }
+function dojoEarn(v, txt) { const D = dojoRec(); if (!D || !v) return; if (D.B) { D.B.cofre += v; D.B.today.rev += v; D.B.today.sold = (D.B.today.sold || 0) + 1; if (txt) bizLog(D.B, txt); } else if (D.N) { D.N.cofre += v; D.N.today.rev += v; D.N.today.sold = (D.N.today.sold || 0) + 1; D.N.today.pl = (D.N.today.pl || 0) + v; } }
+function dojoPaid(p) {   // diária: uma vez por dia do jogo (o dono e quem ele autorizou não pagam)
+  const D = dojoRec(); if (!D) return false; if (p.dev) return true; if (D.r && (D.r.owner === estOwner(p) || (D.r.auth || []).includes(p.name))) return true;
+  if (p.dojoDay === estDay()) return true; const fee = dojoFee();
+  if (!canPay(p, fee)) { tell(p, 'A diária do dojô é ' + fee + ' de ouro.'); return false; }
+  payCity(p, fee); p.dojoDay = estDay(); dojoEarn(fee, p.name + ' pagou a diária (' + fee + ').'); tell(p, 'Diária do dojô paga: ' + fee + ' de ouro. Pode treinar o dia todo.'); sendStat(p); return true;
+}
+function trainMsg(p, m) {
+  if (m.a === 'stop') { if (p.train) trainEnd(p, 'Você parou de treinar.'); return; }
+  if (p.train || p.downed || p.carrying || p.bath || (p.fl || 0) !== 0) return;
+  let best = -1, bd = 1.9; DUMMIES.forEach((d, i) => { const dd = dist(p.x, p.y, d.x, d.y); if (dd < bd) { bd = dd; best = i; } }); if (best < 0) { tell(p, 'Chegue perto de um boneco de treino.'); return; }
+  if (Object.values(S.players).some(q => q !== p && q.train && q.train.i === best) || Object.values(S.npcs).some(n => n.dojoDummy === best)) { tell(p, 'Esse boneco está ocupado.'); return; }
+  if (!dojoPaid(p)) return;
+  const d = DUMMIES[best]; p.x = d.fx; p.y = d.fy; p.sit = null; p.dir = dirFromVecS(d.x - d.fx, d.y - d.fy); p.train = { i: best, t0: now_(), next: now_() + 900, rest: false, x: p.x, y: p.y, hits: 0, gain: 0 };
+  Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: 0, fl: 0, fb: -1 }); Net.toOne(p.id, { t: 'train', on: 1, i: best });
+  tell(p, (d.t === 'makiwara' ? 'Socos no makiwara' : 'Golpes no mokujin') + ': o personagem treina sozinho até cansar. Ande para parar.' + (p.cls === 'knight' ? '' : ' (Só o cavaleiro aprende com os bonecos.)'));
+}
+function trainEnd(p, why) { const T = p.train; if (!T) return; p.train = null; Net.toOne(p.id, { t: 'train', on: 0 }); if (why) tell(p, why + (T.gain ? ' Treino: ' + T.hits + ' golpes.' : '')); sendStat(p); }
+function trainTick(now) {
+  for (const p of Object.values(S.players)) { const T = p.train; if (!T) continue;
+    if (p.downed || p.bath || dist(p.x, p.y, T.x, T.y) > 0.6 || (p.fl || 0) !== 0) { trainEnd(p, 'Você parou de treinar.'); continue; }
+    if ((p.food ?? 100) < 20) { trainEnd(p, 'Com fome demais para continuar: vá comer alguma coisa.'); continue; }
+    if (now < T.next) continue; const d = DUMMIES[T.i];
+    if (T.rest) { if ((p.cst ?? 0) >= cstMaxOf(p) * 0.6) { T.rest = false; tell(p, 'Fôlego de volta: o treino continua.'); } T.next = now + 1000; continue; }
+    if ((p.cst ?? 0) < 14) { T.rest = true; T.next = now + 1000; tell(p, 'Sem fôlego: o personagem para um pouco para respirar.'); continue; }
+    p.cst -= 7; p.food = Math.max(0, (p.food ?? 100) - 0.12); p.water = Math.max(0, (p.water ?? 100) - 0.1); T.hits++; T.next = now + (d.t === 'makiwara' ? 1100 : 1350);
+    const fist = d.t === 'makiwara' || p.sheathed, a = fist ? (T.hits % 3 === 2 ? 'kick' : 'punch') : (T.hits % 2 ? 'swing' : 'bash');
+    near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a, tx: d.x, ty: d.y, ms: 700 }); near(d.x, d.y, { t: 'dummyhit', i: T.i, d: 260 });
+    const partner = Object.values(S.npcs).some(o => o.task === 'partner' && o.partnerOf === p.id && dist(o.x, o.y, p.x, p.y) < 2.4);
+    if (p.cls === 'knight') { const k = fist ? 'fist' : 'sword'; useGain(p, k, 0.3 * (partner ? 1.5 : 1)); if (d.t === 'mokujin') useGain(p, 'parry', 0.12); T.gain++; if (T.hits % 10 === 0) sfx(p.x, p.y, '+ ' + USE[k].name, '#e8c060', 0); }
+    if (T.hits % 4 === 0) sendStat(p);
+  }
 }
 function bathEnd(p) {
   const B = p.bath; if (!B) return; p.bath = null; if (p.sit === 'g') p.sit = null; const now = now_(), secs = (now - B.t0) / 1000;
@@ -929,7 +968,7 @@ function bathTick(now) {
     sendStat(p); }
 }
 function mageTick(now) {   /* brasa (animais recuam), flores (curam e acalmam) */
-  bathTick(now);
+  bathTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now);
   for (const p of Object.values(S.players)) {
     if (p.cls !== 'mage' || !buffOn(p, 'ember') || p.downed) continue;
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(p.x, p.y, m.x, m.y) > 3.5) continue; m.flee = { from: p.id, until: now + 1800 }; if (m.aggro === p.id) m.aggro = null; m.atk = null; }
@@ -2676,7 +2715,7 @@ function hostTick() {
       if (p.devHidden && p.id !== r.id) continue;
       let fl = (p.walking ? 1 : 0) | (p.downed ? 2 : 0) | (p.carriedBy ? 4 : 0) | (p.carrying ? 8 : 0) | (p.running && p.walking ? 256 : 0) | (p.sit ? 512 : 0) | (p.sit === 'c' ? 1024 : 0) | (p.sleep != null ? 32768 : 0) | (p.drawT ? 65536 : 0) | (p.dragBy ? 131072 : 0) | (p.dragMode === 'foot' ? 262144 : 0) | (p.drag && p.drag.mode === 'arms' ? 524288 : 0) | (p.drag && p.drag.mode === 'foot' ? 1048576 : 0) | (p.drag && p.drag.mode === 'back' ? 2097152 : 0) | (p.drag && p.drag.mode === 'grip' ? 4194304 : 0) | (p.gripBy ? 8388608 : 0) | (p.tied ? 16777216 : 0) | (p.choked ? 33554432 : 0) | (p.choking ? 67108864 : 0) | (p.escortBy || p.surrendered ? 134217728 : 0) | (p.jailUntil > now ? 536870912 : 0) | (p.bound ? 1073741824 : 0) | (p.drag && (p.drag.helper || ((dragTarget(p.drag.k, p.drag.id) || {}).dragBy2)) ? 268435456 : 0) | ((((p.fl || 0) + 1) & 3) << 11) | (p.crouch ? 8192 : 0) | (p.slide ? 16384 : 0);
       for (const b in BUFF_BITS) if (buffOn(p, b)) fl |= BUFF_BITS[b];
-      pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0, (p.surrendered ? 1 : 0) | (p.bound && p.bound.kind === 'rope' ? 2 : 0) | (p.bound && p.bound.kind === 'cuffs' ? 4 : 0) | (p.dragBy && (/^(n:|m:)/.test(String(p.dragBy)) || p.dragMode === 'lead') && !p.downed ? 8 : 0) | (p.pkg ? 16 : 0) | (p.shift ? 32 : 0) | (p.wpn === 'halberd' ? 64 : 0) | ((p.uni || 0) << 7) | (((p.cloak || 0) & 15) << 16) | (p.inMenu ? 1024 : 0) | (p.sheathed ? 2048 : 0) | (p.parry ? (PZ.indexOf(p.parry.z) + 1) << 12 : 0) | ((p.shieldHp ?? 100) <= 0 && p.cls === 'knight' ? 32768 : 0) | (p.buffs && p.buffs.tipsy > now_() ? 1048576 : 0)]);
+      pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0, (p.surrendered ? 1 : 0) | (p.bound && p.bound.kind === 'rope' ? 2 : 0) | (p.bound && p.bound.kind === 'cuffs' ? 4 : 0) | (p.dragBy && (/^(n:|m:)/.test(String(p.dragBy)) || p.dragMode === 'lead') && !p.downed ? 8 : 0) | (p.pkg ? 16 : 0) | (p.shift ? 32 : 0) | (p.wpn === 'halberd' ? 64 : 0) | ((p.uni || 0) << 7) | (((p.cloak || 0) & 15) << 16) | (p.inMenu ? 1024 : 0) | (p.sheathed ? 2048 : 0) | (p.parry ? (PZ.indexOf(p.parry.z) + 1) << 12 : 0) | ((p.shieldHp ?? 100) <= 0 && p.cls === 'knight' ? 32768 : 0) | (p.buffs && p.buffs.tipsy > now_() ? 1048576 : 0), p.fl || 0]);   /* andar exato no fim (o campo de bits só cabe até o 2º andar) */
     }
     for (const m of mons) {
       if (Math.abs(m.x - r.x) > VIEW_RADIUS || Math.abs(m.y - r.y) > VIEW_RADIUS) continue;
@@ -2832,6 +2871,7 @@ function staffHome(id) {   // cada funcionário mora numa casa da cidade (sempre
   const h = [...String(id)].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0, P = H[h % H.length], b = BUILDINGS[P.bi], [dx, dy] = doorTile(b), v = DOOR_V[b.door || 'S']; return [dx + v[0] * 1.2, dy + v[1] * 1.2];
 }
 function workerTick(n, now, dt) {
+  if (!n.goingHome && BUILDINGS[n.bi] && BUILDINGS[n.bi].kind === 'dojo' && !n.walkTo0 && WORLD.bld[tileAt(n.x, n.y)] === n.bi) { dojoWorkerTick(n, now, dt); return; }   /* já dentro do dojô */
   if (n.goingHome) { if (npcWalk(n, n.homeAt[0], n.homeAt[1], 1.0, dt) || dist(n.x, n.y, n.homeAt[0], n.homeAt[1]) < 0.8) visGone(n); return; }   // volta para casa e some porta adentro
   if (n.walkTo) { if (npcWalk(n, n.walkTo[0], n.walkTo[1], 0.7, dt)) { n.walkTo = null; n.wt = now + 5000 + Math.random() * 9000; n.act = 'work'; } return; }
   if (now > n.wt) { const T = bldFreeTiles(n.bi); if (T.length) { const t = T[Math.floor(Math.random() * T.length)]; n.walkTo = [t[0], t[1]]; n.act = null; } else n.wt = now + 8000; }
@@ -3025,6 +3065,7 @@ function bizMsg(p, m) {
     case 'fire': { B.staff = B.staff || []; const s = B.staff[m.i | 0]; if (!s) return; B.staff.splice(m.i | 0, 1); bizLog(B, s.n + ' foi dispensad' + (s.g === 'f' ? 'a' : 'o') + '.'); staffSync(pid, r); break; }
     case 'margin': { const g = String(m.g); if (P.kind !== 'shop' || !(g in B.margin)) return; B.margin[g] = clamp(m.v | 0, 0, 2); break; }
     case 'recipe': { const W = WORKS[P.wk]; if (!W || !W.recipes) return; if (m.v === 'all') { B.recipeUser = false; break; } if (!W.recipes[m.v]) return; B.recipe = m.v; B.recipeUser = true; break; }
+    case 'fee': { if (P.wk !== 'dojo') return; B.fee = clamp(m.v | 0, 0, 2); bizLog(B, 'Diária: ' + ['barata', 'justa', 'cara'][B.fee] + ' (' + DOJO_FEE[B.fee] + ' ouro).'); break; }
     case 'keep': { if (P.kind !== 'workshop') return; B.keep = m.v == null || m.v === '' ? null : clamp(m.v | 0, 0, 100); break; }
     case 'toggle': { if (P.kind !== 'workshop' || !['autobuy', 'sell'].includes(m.k)) return; B[m.k] = !B[m.k]; break; }
     case 'sell': { bizSellBack(p, pid); return; }   // vender pelo menu de gestão
@@ -3584,7 +3625,7 @@ const ownerWorkMul = (r, P) => Object.values(S.players).some(p => p.shift && p.s
 // ============================================================
 function dayInfoS() { const ph = (gameNow() % ESTATE_DAY_MS) / ESTATE_DAY_MS, sun = Math.cos(ph * Math.PI * 2); return { night: sun < -0.25 }; }
 const VIS_NAMES = { f: ['Ana', 'Beatriz', 'Celeste', 'Dália', 'Eva', 'Flora', 'Glória', 'Helena', 'Inês', 'Joana', 'Lúcia', 'Marina', 'Nádia', 'Olga', 'Rita', 'Sara', 'Teresa', 'Vera'], m: ['Abel', 'Bento', 'Caio', 'Davi', 'Edgar', 'Fábio', 'Gil', 'Hugo', 'Ivo', 'Júlio', 'Lauro', 'Mauro', 'Nico', 'Otávio', 'Paulo', 'Rui', 'Saulo', 'Tito', 'Vasco'] };
-const VIS_TYPES = { house: { n: 'dona de casa', looks: ['v_house1', 'v_house2', 'v_house3', 'v_house4'], g: 'f' }, trav: { n: 'viajante', looks: ['v_trav1', 'v_trav2', 'v_trav3', 'v_monk'], g: 'm' }, vis: { n: 'visitante', looksF: ['v_vis2', 'v_noblef', 'v_peasf', 'v_elderf'], looksM: ['v_vis1', 'v_noblem', 'v_peasm', 'v_elderm'], g: 'x' }, thug: { n: 'marginal', looks: ['v_thug1', 'v_thug2'], g: 'm' } };
+const VIS_TYPES = { gym: { n: 'praticante', looksF: ['v_gymf'], looksM: ['v_gymm'], g: 'x' }, offg: { n: 'sentinela de folga', looks: ['v_offguard'], g: 'm' }, house: { n: 'dona de casa', looks: ['v_house1', 'v_house2', 'v_house3', 'v_house4'], g: 'f' }, trav: { n: 'viajante', looks: ['v_trav1', 'v_trav2', 'v_trav3', 'v_monk'], g: 'm' }, vis: { n: 'visitante', looksF: ['v_vis2', 'v_noblef', 'v_peasf', 'v_elderf'], looksM: ['v_vis1', 'v_noblem', 'v_peasm', 'v_elderm'], g: 'x' }, thug: { n: 'marginal', looks: ['v_thug1', 'v_thug2'], g: 'm' } };
 const VIS_TITLE = { v_monk: 'peregrino', v_noblef: 'dama da corte', v_noblem: 'nobre de passagem', v_peasm: 'camponês', v_peasf: 'camponesa', v_elderm: 'ancião', v_elderf: 'anciã', v_trav3: 'menestrel' };
 const visGates = () => { const x0 = CENTER - 32; return [[CENTER + 0.5, CENTER + 30.5], [x0 + 3, CENTER + 5.5], [CENTER + 0.5, CENTER - 30.5]]; };
 const VIS_HUB = [CENTER + 0.5, CENTER + 12];
@@ -3626,7 +3667,76 @@ function npcLoansHour() {
     if (x.bad && Math.random() < 0.04) { L.splice(i, 1); const O = bankOwnerRec(); if (O && O.biz) bizLog(O.biz, x.n + ' sumiu sem pagar o empréstimo (' + x.left + ' perdidos).'); continue; }
     if (Math.random() < (x.bad ? 0.08 : 0.25)) { const v = Math.min(x.left, Math.max(5, Math.round(x.amt * 0.2))); x.left -= v; bankBook(v * 0.25, null); if (x.left <= 0) { L.splice(i, 1); bankBook(0, x.n + ' quitou o empréstimo.'); } } }   // o banco fica com os juros (parte da parcela)
 }
+function dojoVisTick(now) {   /* de manhã (6–9 h) moradores; no fim da tarde (17–20 h) sentinelas de folga */
+  if (now - (S.dojoVT || 0) < 15000 || !Object.keys(S.players).length || !DUMMIES.length) return; S.dojoVT = now; const hr = resHour();
+  const morning = hr >= 6 && hr < 10, evening = hr >= 17 && hr < 21; if (!morning && !evening) return;
+  const D = dojoRec(); if (D && D.B && D.B.closed) return; const fee = D && D.B ? D.B.fee ?? 1 : 1, want = [3, 2, 1][fee];
+  const have = Object.values(S.npcs).filter(n => n.transient && (n.vtype === 'gym' || n.vtype === 'offg')).length; if (have >= want || Math.random() < 0.4) return;
+  visSpawn(now, evening && Math.random() < 0.7 ? 'offg' : 'gym');
+}
+function tatamiSpots() { const b = BUILDINGS.find(q => q.kind === 'dojo'); if (!b) return []; return [bLocal(b, 2, 2), bLocal(b, 3, 3), bLocal(b, 1, 3), bLocal(b, 2, 4)].map(([x, y], k) => ({ x, y, k })); }   /* duas duplas no tatame */
+function tatamiTaken() { const t = new Set(); for (const n of Object.values(S.npcs)) { const st = n.stops && n.stops[n.si]; if (st && st.dojo === -1 && st.tk != null) t.add(st.tk); if (n.spar != null) t.add(n.spar); } return t; }
+function dojoStop() {   /* um boneco livre, ou o tatame (lutar com outro praticante) */
+  { const T = tatamiSpots(), taken = tatamiTaken(), free = T.filter(q => !taken.has(q.k)); if (free.length && (Math.random() < 0.45 || taken.size === 1)) { const q = free[0]; return { x: q.x, y: q.y, w: 40000 + Math.random() * 20000, dojo: -1, tk: q.k }; } }
+  const used = new Set(Object.values(S.npcs).map(n => n.dojoDummy != null ? n.dojoDummy : (n.stops && n.stops[n.si] && n.stops[n.si].dojo)).filter(v => v != null && v >= 0));   /* também os que estão a caminho */ for (const p of Object.values(S.players)) if (p.train) used.add(p.train.i);
+  const free = DUMMIES.map((d, i) => i).filter(i => !used.has(i)); const i = free.length ? free[Math.floor(Math.random() * free.length)] : -1;
+  if (i >= 0) { const d = DUMMIES[i]; return { x: d.fx, y: d.fy, w: 35000 + Math.random() * 25000, dojo: i }; }
+  const b = BUILDINGS.find(q => q.kind === 'dojo'), [x, y] = bLocal(b, 2, 2); return { x: x + Math.random(), y: y + Math.random(), w: 30000, dojo: -1 };
+}
+function dojoNpcTrain(n, st, now) {   /* o visitante treina: paga a diária ao chegar e bate no boneco */
+  if (!n.dojoPaid) { n.dojoPaid = 1; n.dojoDummy = st.dojo >= 0 ? st.dojo : null; const D = dojoRec(); if (D && D.B && !dojoReception() && Math.random() < 0.3) bizLog(D.B, n.name.split(',')[0] + ' entrou sem pagar (não havia ninguém na recepção).'); else dojoEarn(dojoFee(), n.name.split(',')[0] + ' pagou a diária para treinar.'); }
+  if (now < (n.dojoT || 0)) return; n.dojoT = now + 1200 + Math.random() * 500; const d = DUMMIES[st.dojo];
+  if (d) { n.dir = dirFromVecS(d.x - n.x, d.y - n.y); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'punch', tx: d.x, ty: d.y, ms: 700 }); near(d.x, d.y, { t: 'dummyhit', i: st.dojo, d: 260 }); }
+  else dojoSpar(n, now);
+}
+// luta no tatame: dois em volta se encaram e trocam golpes; de vez em quando um derruba o outro
+function dojoSpar(n, now) {
+  const b = BUILDINGS.find(q => q.kind === 'dojo'), foe = Object.values(S.npcs).find(o => o !== n && !o.dead && WORLD.bld[tileAt(o.x, o.y)] === (b && BUILDINGS.indexOf(b)) && ((o.stops && o.stops[o.si] && o.stops[o.si].dojo === -1) || o.sparring) && dist(o.x, o.y, n.x, n.y) < 3.2);
+  if (!foe) { near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: Math.random() < 0.5 ? 'kata' : 'guard', ms: 2400 }); n.dojoT = now + 2600; return; }   /* sem parceiro: treina a forma sozinho */
+  n.dir = dirFromVecS(foe.x - n.x, foe.y - n.y); const r = Math.random();
+  if (r < 0.08 && now > (S.sparWin || 0)) { S.sparWin = now + 9000; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'shove', tx: foe.x, ty: foe.y, ms: 700 }); setTimeout(() => { if (S.npcs[foe.id]) { near(foe.x, foe.y, { t: 'anim', w: 'n', id: foe.id, a: 'hurt', ms: 600 }); setTimeout(() => { if (S.npcs[foe.id]) near(foe.x, foe.y, { t: 'anim', w: 'n', id: foe.id, a: 'getup', ms: 900 }); }, 700); } if (S.npcs[n.id]) near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: ['Ippon!', 'Derrubei!', 'De novo?'][Math.floor(Math.random() * 3)], ms: 1 }); const sen = S.npcs.st_dojo; if (sen && dist(sen.x, sen.y, n.x, n.y) < 7) setTimeout(() => { if (S.npcs.st_dojo) near(sen.x, sen.y, { t: 'anim', w: 'n', id: 'st_dojo', a: 'talk', txt: ['Bom golpe!', 'Mais quadril!', 'Levante a guarda!'][Math.floor(Math.random() * 3)], ms: 1 }); }, 1200); }, 400); n.dojoT = now + 3200; return; }
+  near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: r < 0.45 ? 'punch' : r < 0.7 ? 'kick' : r < 0.85 ? 'parry' : 'guard', tx: foe.x, ty: foe.y, ms: r < 0.7 ? 600 : 900 }); n.dojoT = now + 1100 + Math.random() * 600;
+}
+// o sensei: kata, meditação, reverência e conselhos a quem treina
+function dojoSenseiTick(now) {
+  const n = S.npcs && S.npcs.st_dojo; if (!n || n.dead || n.downed || n.sleeping || now < (n.dojoT || 0)) return; const b = BUILDINGS.findIndex(q => q.kind === 'dojo'); if (WORLD.bld[tileAt(n.x, n.y)] !== b) return;
+  const pupils = Object.values(S.npcs).filter(o => o !== n && WORLD.bld[tileAt(o.x, o.y)] === b).length + Object.values(S.players).filter(p => WORLD.bld[tileAt(p.x, p.y)] === b && !(p.fl)).length, r = Math.random();
+  if (pupils && r < 0.3) { near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: ['Respire pelo ventre.', 'De novo. Mais devagar.', 'O golpe nasce no pé.', 'Olhos no oponente!', 'Mil vezes. Depois mais mil.'][Math.floor(Math.random() * 5)], ms: 1 }); n.dojoT = now + 6000; return; }
+  if (r < 0.55) { near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'kata', ms: 2600 }); n.dojoT = now + 4500; return; }
+  if (r < 0.75) { near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'seiza', ms: 9000 }); n.dojoT = now + 10500; return; }
+  near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'bow', ms: 1600 }); n.dojoT = now + 3500;
+}
+// funcionários do dojô: varrem o chão, lutam no tatame entre si ou descansam
+function dojoReception() { const D = dojoRec(), st = D && D.B && D.B.staff; if (!st || !st.length) return null; const n = S.npcs[st[0].id]; return n && !n.dead && WORLD.bld[tileAt(n.x, n.y)] === D.P.bi ? n : null; }
+function dojoWorkerTick(n, now, dt) {
+  if (n.walkTo) { if (npcWalk(n, n.walkTo[0], n.walkTo[1], 0.8, dt)) { n.walkTo = null; } return; }
+  if (now < (n.dojoT || 0)) return;
+  const D = dojoRec(), b = BUILDINGS[n.bi];
+  if (D && D.B && D.B.staff && D.B.staff[0] && D.B.staff[0].id === n.id) {   /* recepção: fica na entrada, cumprimenta quem chega e cobra a diária */
+    const [rx, ry] = bLocal(b, 4, 4); if (dist(n.x, n.y, rx, ry) > 0.4) { n.walkTo = [rx, ry]; return; }
+    n.greeted = n.greeted || {}; const who = Object.values(S.npcs).concat(Object.values(S.players)).find(o => o !== n && !(o.fl) && WORLD.bld[tileAt(o.x, o.y)] === n.bi && dist(o.x, o.y, n.x, n.y) < 2.2 && !n.greeted[o.id]);
+    if (who) { n.greeted[who.id] = now; n.dir = dirFromVecS(who.x - n.x, who.y - n.y); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'bow', ms: 1600 }); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: ['Bem-vindo ao Punho de Ferro!', 'A diária é na recepção.', 'Tire as sandálias, por favor.'][Math.floor(Math.random() * 3)], ms: 1 }); n.dojoT = now + 2500; }
+    else n.dojoT = now + 1500; for (const k in n.greeted) if (now - n.greeted[k] > 300000) delete n.greeted[k]; return; }
+  if (!n.task || now > n.taskUntil) { const trainee = Object.values(S.players).find(p => p.train && !Object.values(S.npcs).some(o => o !== n && o.task === 'partner' && o.partnerOf === p.id)), r = Math.random();
+    n.task = trainee && r < 0.5 ? 'partner' : r < 0.25 ? 'sweep' : r < 0.45 ? 'spar' : r < 0.62 ? 'tea' : r < 0.8 ? 'demo' : 'rest';
+    if (n.task === 'partner') { n.partnerOf = trainee.id; const d = DUMMIES[trainee.train.i]; n.walkTo = [d.x + (d.fx - d.x) * 0.2 + (d.fy - d.y) * 0.8, d.y + (d.fy - d.y) * 0.2 - (d.fx - d.x) * 0.8]; n.taskUntil = now + 40000; return; }
+    if (n.task === 'demo') { const [x, y] = bLocal(b, 3, 3); n.walkTo = [x, y]; n.taskUntil = now + 30000; return; }
+    if (n.task === 'tea') { const tgt = Object.values(S.players).concat(Object.values(S.npcs)).filter(o => o !== n && !(o.fl) && WORLD.bld[tileAt(o.x, o.y)] === n.bi && o.id !== 'st_dojo').sort(() => Math.random() - 0.5)[0]; if (!tgt) n.task = 'rest'; else { n.teaFor = tgt.id; n.walkTo = [tgt.x + 0.6, tgt.y + 0.3]; n.taskUntil = now + 15000; return; } }
+    if (n.task === 'tea' || n.task === 'rest') { n.taskUntil = now + 15000; } else { n.taskUntil = now + 20000 + Math.random() * 15000; } if (n.task !== 'sweep' && n.task !== 'spar') return;
+    n.sparring = n.task === 'spar'; n.spar = null; n.taskUntil = now + 20000 + Math.random() * 15000; n.sparring = n.task === 'spar'; n.spar = null;
+    if (n.task === 'spar') { const T = tatamiSpots(), taken = tatamiTaken(), q = T.find(t => !taken.has(t.k)); if (q) { n.spar = q.k; n.walkTo = [q.x, q.y]; } else n.task = 'sweep'; }
+    if (n.task === 'sweep') { const F = bldFreeTiles(n.bi); if (F.length) { const t = F[Math.floor(Math.random() * F.length)]; n.walkTo = [t[0], t[1]]; } }
+    return; }
+  if (n.task === 'sweep') { near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'sweep', ms: 2800 }); n.dojoT = now + 3000; if (Math.random() < 0.35) { const F = bldFreeTiles(n.bi); if (F.length) { const t = F[Math.floor(Math.random() * F.length)]; n.walkTo = [t[0], t[1]]; } } return; }
+  if (n.task === 'spar') { dojoSpar(n, now); return; }
+  if (n.task === 'partner') { const p = S.players[n.partnerOf]; if (!p || !p.train) { n.task = null; return; } n.dir = dirFromVecS(p.x - n.x, p.y - n.y); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: Math.random() < 0.7 ? 'guard' : 'talk', txt: ['Mais forte!', 'Isso!', 'Respira!', 'Gire o quadril!'][Math.floor(Math.random() * 4)], ms: 1500 }); n.dojoT = now + 1700; return; }
+  if (n.task === 'demo') { near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'kata', ms: 2600 }); n.dojoT = now + 3000; if (now - (S.dojoDemoT || 0) > 15000) { S.dojoDemoT = now; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: ['Venham treinar no Punho de Ferro!', 'Corpo forte, mente calma!', 'Primeira aula com desconto!'][Math.floor(Math.random() * 3)], ms: 1 }); const hr = resHour(); if (hr >= 7 && hr < 20 && Math.random() < 0.5 && Object.values(S.npcs).filter(o => o.vtype === 'gym' || o.vtype === 'offg').length < 4) visSpawn(now, 'gym'); } return; }
+  if (n.task === 'tea') { const o = S.players[n.teaFor] || S.npcs[n.teaFor]; n.task = null; if (!o) return; n.dir = dirFromVecS(o.x - n.x, o.y - n.y); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'offer', ms: 1400 }); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: 'Um chá verde?', ms: 1 });
+    if (S.players[o.id]) { o.cst = Math.min(cstMaxOf(o), (o.cst ?? 0) + 60); o.water = Math.min(100, (o.water ?? 100) + 20); tell(o, 'Um funcionário do dojô serviu chá verde: +fôlego e mata a sede (2 de ouro para o dojô).'); if (canPay(o, 2)) { payCity(o, 2); dojoEarn(2, o.name + ' tomou chá (2).'); } sendStat(o); } else dojoEarn(1, null); n.dojoT = now + 3000; return; }
+  near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: Math.random() < 0.5 ? 'seiza' : 'bow', ms: Math.random() < 0.5 ? 7000 : 1600 }); n.dojoT = now + 7500;
+}
 function visPlan(type) {
+  if (type === 'gym' || type === 'offg') return [dojoStop()];
   const shops = PROPS.filter(P => P.kind === 'shop'), owned0 = shops.filter(P => S.estate && S.estate.r[P.id] && S.estate.r[P.id].biz && Object.keys(S.estate.r[P.id].biz.stock).length), owned = [];
   for (const P of owned0) { const L = (S.estate.r[P.id].biz.up || {}).vitrine || 0; for (let k = 0; k <= L; k++) owned.push(P); }   // cada nível de vitrine faz a loja ser escolhida mais vezes
   const pick = a => a[Math.floor(Math.random() * a.length)], tav = BUILDINGS.findIndex(b => b.kind === 'tavern'), spot = (x, y, w) => ({ x: x + (Math.random() - 0.5) * 2, y: y + (Math.random() - 0.5) * 2, w });
@@ -3657,8 +3767,9 @@ function visitorTick(n, now, dt) {
   const st = n.stops[n.si]; if (!st) { n.leaving = true; n.rpath = null; return; }
   if (!n.rpath) n.rpath = (dist(n.x, n.y, VIS_HUB[0], VIS_HUB[1]) > 14 ? [VIS_HUB] : []).concat(planRoute({ x: dist(n.x, n.y, VIS_HUB[0], VIS_HUB[1]) > 14 ? VIS_HUB[0] : n.x, y: dist(n.x, n.y, VIS_HUB[0], VIS_HUB[1]) > 14 ? VIS_HUB[1] : n.y }, st.x, st.y));
   if (n.rpath.length) { const [wx, wy] = n.rpath[0]; if (npcWalk(n, wx, wy, 1.05, dt) || dist(n.x, n.y, wx, wy) < 0.5) n.rpath.shift(); if (!n.rpath.length) { n.wait = now + st.w; if (st.shop) setTimeout(() => { if (S.npcs[n.id]) visBuy(n, st.shop); }, 2500); if (st.bank) setTimeout(() => { if (S.npcs[n.id]) npcBankVisit(n, st.bank); }, 2200); } return; }
+  if (st.dojo != null) dojoNpcTrain(n, st, now);
   if (n.vtype === 'thug') thugTick(n, now);
-  if (now > n.wait) { n.si++; n.rpath = null; }
+  if (now > n.wait) { if (n.dojoDummy != null) n.dojoDummy = null; n.si++; n.rpath = null; }
   else if (Math.random() < 0.004 && n.vtype !== 'thug') { const mate = Object.values(S.npcs).find(o => o !== n && !o.sleeping && dist(o.x, o.y, n.x, n.y) < 2.5); if (mate) near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: RES_LINES.any[Math.floor(Math.random() * RES_LINES.any.length)], ms: 1 }); }
 }
 // crimes raros e casuais do marginal (no máximo um a cada 4 minutos na cidade toda)

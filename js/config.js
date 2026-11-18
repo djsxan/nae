@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.70.0';
-const VERSION_NAME = 'Nae · Punho de Ferro';
+const VERSION = 'v1.71.0';
+const VERSION_NAME = 'Nae · Mil Socos';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -444,6 +444,7 @@ const USE = {
   el_earth: { name: 'Terra', cat: 'Magias', K: 300, desc: 'Florescer: mais flores e curam mais.' },
   el_holy:  { name: 'Luz', cat: 'Magias', K: 300, desc: 'Fé Inabalável: cura mais.' },
   el_water: { name: 'Água', cat: 'Magias', K: 300, desc: 'Fonte: alcança mais longe.' },
+  fist:   { name: 'Punhos', cat: 'Armas', K: 400, desc: 'Socos e chutes (no dojô, no makiwara): mais dano de mão nua.' },
   parry:  { name: 'Aparar', cat: 'Defesa', K: 160, desc: 'Defesas bem-sucedidas: janela perfeita maior e menos fôlego gasto ao bloquear.' },
   dodge:  { name: 'Esquiva', cat: 'Defesa', K: 160, desc: 'Esquivas: gastam menos fôlego.' },
   vigor:  { name: 'Vigor', cat: 'Defesa', K: 700, desc: 'Apanhar endurece: mais vida máxima.' },

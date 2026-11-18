@@ -25,6 +25,8 @@ const BEDS = [];
 const KITCHENS = [];
 const CHESTS = [];   // baús dentro das casas: { x, y, bi } (baú seguro de quem aluga)
 const HOTEL_CABS = [];   // cabines da pousada: { k, bi, bedIdx, chest:{x,y}, door:[x,y], di, spot:[x,y], tiles:Set }
+const DUMMIES = [];   // bonecos de treino: { x, y, bi, t: 'makiwara' | 'mokujin', fx, fy } (fx/fy: onde fica quem treina)
+const DOJO_FEE = [3, 5, 8];   // diária: barata, justa, cara
 const HOTEL_DOORS = new Map();   // índice do tile da porta → cabine
 const JAILCELLS = [];   // celas da cadeia: { door:[x,y], spot:[x,y], tiles:Set(índice), bi }   // fogões (casas e taverna): { x, y, bi }
 const FRUIT_STOOL = { x: -1, y: -1 };
@@ -200,7 +202,9 @@ function iwallHit(bi, fl, x, y, r) { const L = iwallsWorld(bi, fl); if (!L) retu
 function iwallCross(bi, fl, ax, ay, bx, by) { const L = iwallsWorld(bi, fl); if (!L) return false;   /* passo de tile a tile atravessa uma parede fina? */
   for (const [x0, y0, x1, y1] of L) { if (Math.abs(x0 - x1) < 0.01) { if ((ax - x0) * (bx - x0) < 0 && Math.max(ay, by) > Math.min(y0, y1) && Math.min(ay, by) < Math.max(y0, y1)) return true; } else if ((ay - y0) * (by - y0) < 0 && Math.max(ax, bx) > Math.min(x0, x1) && Math.min(ax, bx) < Math.max(x0, x1)) return true; }
   return false; }
-function ofuroOf(b) { if (!b || b.kind !== 'dojo') return null; const [x, y] = localToWorld(b, 0.85, 0.9); return { x, y, fl: floorsOf(b) - 1, rack: localToWorld(b, 0.5, 2.5) }; }   // banheira da suíte de luxo (último andar)
+function ofuroOf(b) { if (!b || b.kind !== 'dojo') return null; const [x, y] = localToWorld(b, 1.5, 1.5);   // banheira da suíte de luxo (último andar): água 2×2 com um lugar em cada canto
+  const seats = [[0.82, 0.82], [2.18, 0.82], [0.82, 2.18], [2.18, 2.18]].map(([u, v]) => localToWorld(b, u, v));
+  return { x, y, fl: floorsOf(b) - 1, seats, rack: localToWorld(b, 3.5, 1.5) }; }
 // varanda andável na fachada da rua (1 casa de fundo, fora do prédio), nos andares de cima: [u0, u1] no quadro local
 function balconyOf(b, fl) { if (!b || b.deco !== 'machiya' || fl < 1) return null; return fl < floorsOf(b) - 1 ? [0, bDims(b)[0]] : [0, 6]; }
 function worldToLocal(b, x, y) { const s = b.door || 'S', X0 = b.x - 0.5, Y0 = b.y - 0.5; if (s === 'S') return [x - X0, y - Y0]; if (s === 'N') return [X0 + b.w - x, Y0 + b.h - y]; if (s === 'E') return [Y0 + b.h - y, x - X0]; return [y - Y0, X0 + b.w - x]; }
@@ -292,8 +296,8 @@ function interiorLayout0(b, fl = 0) {
     const keep = (i, j) => taken.add(key(i, j));
     if (fl === 0) {
       keep(6, 4); put('umbrella', 7, 4, { block: false }); put('andon', 7, 2, { block: false }); put('plantpot', 7, 3, { block: false });
-      put('kamiza', 2, 0, { w: 2 }); put('makiwara', 0, 0); put('makiwara', 0, 1); put('mokujin', 5, 0); put('mokujin', 5, 2);
-      put('tatami', 0, 2, { w: 3, h: 2, block: false }); put('bokkenrack', 5, 4); put('andon', 1, 4, { block: false }); put('andon', 4, 1, { block: false }); put('kakejiku', 4, 0, { block: false });
+      put('kamiza', 2, 0, { w: 2 }); put('makiwara', 0, 1); put('makiwara', 0, 3); put('mokujin', 5, 1); put('mokujin', 5, 3);
+      F.push({ t: 'tatami', i: 1, j: 1, w: 4, h: 4, block: false, v: 0 }); put('bokkenrack', 5, 0);   /* tatame por baixo de tudo (pisável, inclusive o caminho da porta) */ put('andon', 0, 0, { block: false }); put('andon', 4, 0, { block: false }); put('andon', 0, 4, { block: false });
     } else if (fl < floorsOf(b) - 1) {
       for (const i of [6, 7]) for (const j of [2, 3, 4]) keep(i, j); keep(4, 4); keep(4, 3); keep(1, 4); keep(1, 3);   // patamar (2 casas) e portas para a varanda livres
       // apto A (i 3..5 e o antigo hall i 6, j 2..4)
@@ -301,10 +305,10 @@ function interiorLayout0(b, fl = 0) {
       // apto B (i 0..2, j 0..4)
       put('futon', 0, 0, { h: 2, block: false }); put('kakejiku', 1, 0, { block: false }); put('tansu', 2, 0); put('andon', 1, 1, { block: false }); put('irori', 1, 2, { block: false }); put('chabudai', 2, 3, { block: false }); put('ikebana', 0, 4, { block: false }); put('byobu', 2, 2, { block: false });
     } else {   // suíte de luxo
-      put('plantpot', 7, 4, { block: false }); put('andon', 7, 2, { block: false }); keep(6, 3); keep(5, 3); keep(4, 3); keep(2, 1); keep(2, 2); keep(2, 4); keep(3, 4); keep(2, 3); keep(3, 3);   // porta do hall e porta de correr da varanda livres
-      put('ofuro', 0, 0, { w: 2, h: 2, block: false }); put('kakebar', 0, 2, { block: false });
-      put('tokonoma', 2, 0, { w: 2 }); put('platbed', 4, 0, { w: 2, h: 2, block: false }); put('andon', 5, 2, { block: false });
-      put('kotatsu', 4, 2, { block: false }); put('byobu', 1, 2, { block: false });
+      put('plantpot', 7, 4, { block: false }); put('andon', 7, 2, { block: false }); keep(6, 3); keep(5, 3); keep(4, 3); keep(2, 4); keep(3, 4); keep(2, 3); keep(3, 3);   // porta do hall e porta de correr da varanda livres
+      put('ofuro', 0, 0, { w: 3, h: 3, block: false }); put('kakebar', 3, 1, { block: false });
+      put('tokonoma', 3, 0); put('platbed', 4, 0, { w: 2, h: 2, block: false }); put('andon', 5, 2, { block: false });
+      put('kotatsu', 4, 2, { block: false }); put('byobu', 3, 2, { block: false });
       put('zengarden', 0, 3, { w: 2, h: 2 }); put('tansu', 5, 4); put('ikebana', 4, 4, { block: false });
     }
   } else if (k === 'shop' && b.deco === 'greenhouse') {   // Boticário de Elva: gavetinhas e potes no fundo, alambique, balcão com balança e almofariz, canteiros, plantas que brilham, vasos pendurados, ervas secando e o tanque
@@ -1233,6 +1237,7 @@ function placeFurniture(b, bi, f, obj, seats, idx) {
   }
   if (f.t === 'cot' || f.t === 'futon') { const [px, py] = bLocal(b, f.i, f.j), [fx, fy] = bLocal(b, f.i, f.j + f.h - 1); BEDS.push({ x: (px + fx) / 2, y: (py + fy) / 2, dx: fx - px, dy: fy - py, bi }); }
   if (f.t === 'stove') { const [x, y] = bLocal(b, f.i, f.j); KITCHENS.push({ x, y, bi }); }
+  if (f.t === 'makiwara' || f.t === 'mokujin') { const [x, y] = bLocal(b, f.i, f.j), side = f.i === 0 ? 1 : -1, [fx, fy] = bLocal(b, f.i + side, f.j); DUMMIES.push({ x, y, bi, t: f.t, fx, fy }); }
   if (f.t === 'chest' && (b.kind === 'house' || b.kind === 'manor') && !b.office) { const [x, y] = bLocal(b, f.i, f.j); CHESTS.push({ x, y, bi }); }
   if (f.t === 'bed') { const [px, py] = bLocal(b, f.i + (f.w - 1) / 2, f.j), [fx, fy] = bLocal(b, f.i + (f.w - 1) / 2, f.j + f.h - 1); BEDS.push({ x: (px + fx) / 2, y: (py + fy) / 2, dx: fx - px, dy: fy - py, bi }); }
   for (let a = 0; a < f.w; a++) for (let c = 0; c < f.h; c++) { const [x, y] = bLocal(b, f.i + a, f.j + c); if (f.block) obj[idx(x, y)] = O.PART; }
@@ -1309,6 +1314,7 @@ if (!TEST3D) { const ob = BUILDINGS.find(b => b.office === 'estate'); if (ob) NP
 if (!TEST3D) { const hb = BUILDINGS.find(b => b.kind === 'hotel'); if (hb) NPCS.push({ id: 'hotelkeeper', name: 'Dona Ilsa, a Estalajadeira', kind: 'hotelkeeper', ...npcIn(hb, { x: hb.x + hb.w - 2, y: hb.y + hb.h - 1 }) }); }
 if (!TEST3D) { const bb = BUILDINGS.find(b => b.kind === 'bank'); if (bb) { NPCS.push({ id: 'banker', name: 'Mestre Varkas, o Banqueiro', kind: 'banker', ...npcIn(bb, { x: bb.x + 1, y: bb.y + 1 }) }); const [w, h] = bDims(bb); (w >= 8 && h >= 10 ? [['banker2', 'Edda, a Caixa', 6, 3], ['banker3', 'Osric, o Contador', 1, 6], ['banker4', 'Gorim, o Escriturário', 6, 6], ['banker5', 'Hilde, a Tesoureira', 1, 9], ['banker6', 'Brann, o Avaliador', 6, 9], ['bankporter', 'Tobb, o Porteiro', 2, 11]] : w >= 6 && h >= 10 ? [['banker2', 'Edda, a Caixa', w - 1, 3], ['banker3', 'Osric, o Contador', 0, 6], ['banker4', 'Gorim, o Escriturário', w - 1, 6], ['banker5', 'Hilde, a Tesoureira', 0, 9], ['banker6', 'Brann, o Avaliador', w - 1, 9], ['bankporter', 'Tobb, o Porteiro', w - 2, h - 2]] : [['banker2', 'Edda, a Caixa', 2, 1], ['banker3', 'Osric, o Contador', w - 3, 1]]).forEach(([id, name, i, j]) => { const [x, y] = bLocal(bb, i, j); NPCS.push({ id, name, kind: id, x, y }); }); } }
 const STAFF_NAMES = {
+  dojo: 'Mestre Tetsuo, o Sensei',
   saw: 'Bruno Serra, o Serrador', mine: 'Gunnar Pedrafunda, o Mineiro', farm: 'Rosa Quintal, a Hortelã', carp: 'Elias Plaina, o Carpinteiro', alch: 'Odila Varga, a Destiladora',
   wheat: 'Tonico Espiga, o Fazendeiro', mill: 'Dona Firmina, a Moleira', bakery: 'Mestre Bartolo, o Padeiro', witch: 'Morgana Vespertina, a Alquimista', apoth: 'Clara Malva, a Boticária', arcane: 'Silas Runa, o Balconista', tailor: 'Berta Agulha, a Costureira', scroll: 'Teodoro Tinta, o Copista',
 };
@@ -1316,6 +1322,7 @@ const SHOP_TYPE_BY_NAME = { 'Elixires da Lua Prateada': 'witch', 'Boticário de 
 if (!TEST3D) {
   BUILDINGS.forEach((b, bi) => {
     if (b.kind === 'workshop') NPCS.push({ id: 'st_' + b.wk, kind: 'st_' + b.wk, role: 'artisan', bi, name: STAFF_NAMES[b.wk], ...npcIn(b, { x: b.x + 1, y: b.y + 1 }) });
+    if (b.kind === 'dojo') { const [x, y] = bLocal(b, 3, 1); NPCS.push({ id: 'st_dojo', kind: 'st_dojo', role: 'artisan', bi, name: STAFF_NAMES.dojo, x, y }); }   // o sensei, na frente do kamiza
     const st = b.kind === 'shop' && SHOP_TYPE_BY_NAME[b.name]; if (st) { b.shopType = st; NPCS.push({ id: 'st_' + st, kind: 'st_' + st, role: 'clerk', bi, name: STAFF_NAMES[st], ...npcIn(b, { x: b.x + 1, y: b.y + 1 }) }); }
   });
   const sq = { x: CENTER - 32 - 37, y: CENTER + 4 };   // pracinha da vila do oeste (x0 - 37)
@@ -1338,6 +1345,7 @@ const WORKS = {
   wheat: { n: 'Fazenda', make: { wheat: 2 } }, mill: { n: 'Moinho', recipes: { flour: { wheat: 2 } } }, bakery: { n: 'Padaria', recipes: { loaves: { flour: 1 }, pies: { flour: 1, fruit: 1 }, cakes: { flour: 2, fruit: 1 } } },
   forge: { n: 'Forja', recipes: { tools: { wood: 1, ore: 2 } } }, tavern: { n: 'Taverna', recipes: { serve: { flax: 1 } } },
   carp: { n: 'Carpintaria', recipes: { woodgoods: { wood: 2 }, paper: { wood: 2 } } }, alch: { n: 'Alambique', recipes: { potion: { herb: 2 } } },
+  dojo: { n: 'Dojô' },   // serviço: diárias de quem treina e aulas do sensei
 };
 const MARGIN = [{ n: 'Barato', k: 1.25, p: 0.9 }, { n: 'Justo', k: 1.6, p: 0.7 }, { n: 'Caro', k: 2.1, p: 0.42 }];
 const BIZ_UP = {   // melhorias: custo por nível (até 3)
@@ -1371,6 +1379,7 @@ const PROPS = [], PROPS_BY = {};
     if (b.kind === 'house' && !b.office) { P = { ...base, id: 'h' + bi, kind: 'house', name: 'Casa ' + n, rent: (4 + Math.round(area * 0.3) + (fl - 1) * 4) * 2 }; }   // casas 2x mais caras: a pousada é o começo
     else if (b.kind === 'manor') P = { ...base, id: 'm' + bi, kind: 'house', manor: true, name: b.name || 'Casarão', rent: Math.round((4 + Math.round(area * 0.3) + (fl - 1) * 4) * 2 * 1.4) };   // casarões do bairro nobre: aluguel e venda
     else if (b.kind === 'tavern') P = { ...base, id: 's' + bi, kind: 'workshop', wk: 'tavern', name: b.name, npcOwner: 'Brom', rent: 20 + Math.round(area * 0.8) };
+    else if (b.kind === 'dojo') P = { ...base, id: 'w' + bi, kind: 'workshop', wk: 'dojo', name: b.name, npcOwner: 'Mestre Tetsuo', rent: 16 + Math.round(area * 0.7) };   // o dojô (os aluguéis dos apartamentos entram na etapa 4)
     else if (b.kind === 'smith') P = { ...base, id: 'w' + bi, kind: 'workshop', wk: 'forge', name: b.name, npcOwner: 'Hrodgar', rent: 16 + Math.round(area * 0.7) };
     else if (b.kind === 'shop' || b.kind === 'boutique') P = { ...base, id: 's' + bi, kind: 'shop', shopType: b.shopType, name: b.name || 'Loja', npc: b.shopType ? null : ownerOf(b), rent: 20 + Math.round(area * 0.8) + (fl - 1) * 6 };
     else if (b.kind === 'bank') P = { ...base, id: 'b' + bi, kind: 'bank', name: b.name, rent: 450, repMin: 70 };

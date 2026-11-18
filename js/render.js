@@ -975,7 +975,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   const addEnt = (e, kind) => {
     if (!e.visible) return;
     const p = iso(e.rx, e.ry), sx = p.sx + ox, sy = p.sy + oy - (e.z || 0) * FLOOR_PX;
-    if (sx < -100 || sx > vw + 100 || sy < -40 || sy > vh + 200) return;
+    if (sx < -100 || sx > vw + 100 || sy < -40 || sy > vh + 200 + (e.fl ? e.fl * 90 : 0)) return;   /* andar alto: a altura do andar só entra depois */
     const efl = e.fl || 0, ebi = (e.z || 0) < 0.5 ? (e === G.me && G.climbing ? G.climbing.bi : efl !== 0 ? (e.fb ?? bldAt(e.rx, e.ry)) : bldAt(e.rx, e.ry)) : -1;   // subindo a escada (até a externa, do lado de fora): altura do prédio da escada
     if (efl !== 0 && !(ebi === inB0 && efl === myFl) && !(ebi >= 0 && BUILDINGS[ebi] && BUILDINGS[ebi].deco === 'machiya' && WORLD.bld[Math.round(e.ry) * MAP_W + Math.round(e.rx)] !== ebi)) return;       // quem está em outro andar não aparece (quem está numa varanda aparece, na altura do andar)
     const stH = typeof stageLift === 'function' ? stageLift(e.rx, e.ry) : 0;
@@ -1124,7 +1124,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       labels.push({ sx: it.sx, sy: it.sy - (R3.ok ? 56 : 78), name: e.name, color: '#b8e0a8', npc: e, e });
     } else {
       ctx.imageSmoothingEnabled = true; drawAuras(ctx, e, it.sx, it.sy, now); ctx.imageSmoothingEnabled = false;
-      if (e.bathing && typeof drawBather === 'function') drawBather(ctx, e, it.sx, it.sy, now); else drawHeroEntity(ctx, e, it.sx, it.sy, now); if (e.arrows) drawStuck(ctx, e, it.sx, it.sy, now);
+      if (!(e.bathing && R3.ok && typeof drawBath === 'function')) drawHeroEntity(ctx, e, it.sx, it.sy, now); if (e.arrows) drawStuck(ctx, e, it.sx, it.sy, now);
       if (typeof drawPlayerBubble === 'function') drawPlayerBubble(ctx, e, it.sx, it.sy, now);
       if (e.dragMode === 'back' && typeof drawBackCorpse === 'function') { drawBackCorpse(ctx, e, it.sx, it.sy, now); drawNpcOnBack(ctx, e, it.sx, it.sy); }
       heroExtras(e, it.sx, it.sy);
@@ -1174,6 +1174,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       const s = interiorSprite(inside.b, f) || (f === 0 ? buildingSprite(inside.b, false) : null);
       if (s) pblit(ctx, s, inside.sx, inside.sy - flRaise(inside.b, f), a);
     }
+    if (typeof drawOfuroFx === 'function') try { drawOfuroFx(ctx, (x, y, z) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy - (z || 0) * FLOOR_PX]; }, now); } catch (e) { }   /* bolhas e vapor do ofurô, por cima da água */
     for (const it of items) if (it.inside) drawItem(it);
     if (G.cellarDark) { cutL.length = 0; front.length = 0; }   // no porão não se vê os prédios da frente
     if (cutL.length) {   // corte estilo Tibia: os prédios da frente aparecem só até a altura do joelho (paredes baixas), sem esconder o cômodo

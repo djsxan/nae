@@ -272,7 +272,7 @@ function applySnapshot(m, now) {
   G.chests = (m.ch || []).map(c => ({ id: c[0], x: c[1] / 100, y: c[2] / 100, open: !!c[3], mine: !!c[4] }));
   G.corpses = (m.co || []).map(c => ({ id: c[0], type: MON_TYPES[c[1]], x: c[2] / 100, y: c[3] / 100, z: c[4], looted: !!c[5], ix: c[6] / 10, iy: c[7] / 10, lost: c[8] || 0, onBack: c[9] || null }));
   const seenP = new Set();
-  for (let [id, x100, y100, z, dir, fl, hpPct, carrying, lifted, bb, lp, tow, stb] of m.p) {
+  for (let [id, x100, y100, z, dir, fl, hpPct, carrying, lifted, bb, lp, tow, stb, flx] of m.p) {
     seenP.add(id);
     let e = G.players[id];
     if (!e) e = G.players[id] = mkEnt({ id, name: '...', cls: 'knight', skin: 'iron', color: '#888888', lvl: 1 });
@@ -289,7 +289,7 @@ function applySnapshot(m, now) {
       continue;
     }
     e.hp = hpPct; e.maxHp = 100; e.z = z;
-    e.srvDir = dir; e.srvWalk = !!(fl & 1); if (e !== G.me) { e.running = !!(fl & 256); e.fl = ((fl >> 11) & 3) - 1; e.crouch = !!(fl & 8192); e.slide = !!(fl & 16384); e.sit = fl & 512 ? { chair: fl & 1024 ? 1 : 0 } : null; e.sleepB = fl & 32768 ? 1 : null; e.bowDrawT = fl & 65536 ? (e.bowDrawT || performance.now()) : 0; }
+    e.srvDir = dir; e.srvWalk = !!(fl & 1); if (e !== G.me) { e.running = !!(fl & 256); e.fl = flx != null ? flx : ((fl >> 11) & 3) - 1; e.crouch = !!(fl & 8192); e.slide = !!(fl & 16384); e.sit = fl & 512 ? { chair: fl & 1024 ? 1 : 0 } : null; e.sleepB = fl & 32768 ? 1 : null; e.bowDrawT = fl & 65536 ? (e.bowDrawT || performance.now()) : 0; }
     e.buf.push({ t: now, x, y });
     if (e.buf.length > 6) e.buf.shift();
   }
@@ -471,6 +471,7 @@ function updateLocal(now, dt) {
   }
   const stF = (me.crouch ? 1 : 0) | (me.slide ? 2 : 0);
   if (G.mouseS) G.mouseW = screenToWorld(G.mouseS[0], G.mouseS[1]);   // o cursor parado continua apontando para o mesmo lugar da TELA quando a câmera anda
+  if (me.bathing && G.mouseW) { const a = Math.atan2(G.mouseW.y - me.y, G.mouseW.x - me.x); me.dir = dirFromVec(Math.cos(a), Math.sin(a), me.dir); }   /* no ofurô: olha para onde o mouse aponta */
   if ((combatFacing() || G.parrying) && G.mouseW && !me.sit && me.sleep == null) { let a = Math.atan2(G.mouseW.y - me.y, G.mouseW.x - me.x);   /* sentado ou deitado: não gira com o mouse */
     { let best = null, bd = 3.4; for (const id in G.monsters) { const q = G.monsters[id]; if (q.dieAt || !q.visible || Math.abs((q.z || 0) - (me.z || 0)) > 0.5) continue; const d = dist(q.rx, q.ry, me.x, me.y), aq = Math.atan2(q.ry - me.y, q.rx - me.x); let df = Math.abs(aq - a) % (Math.PI * 2); if (df > Math.PI) df = Math.PI * 2 - df; if (d < bd && df < 0.95) { bd = d; best = aq; } }
       for (const id in G.players) { const q = G.players[id]; if (id === G.myId || !q.visible || q.downed || q.isNpc) continue; const d = dist(q.rx, q.ry, me.x, me.y), aq = Math.atan2(q.ry - me.y, q.rx - me.x); let df = Math.abs(aq - a) % (Math.PI * 2); if (df > Math.PI) df = Math.PI * 2 - df; if (d < bd && df < 0.95) { bd = d; best = aq; } }
@@ -827,6 +828,7 @@ const NPC_DIALOG = {
   st_arcane: { greet: "Cristais, varinhas, coisas que zumbem. Não encoste no que brilha.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_tailor: { greet: "Linho, lã e linha. Se o patrão mandar tecido, eu deixo a loja cheia de cor.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_witch: { greet: "Bem-vindo à Lua Prateada. Cada frasco aqui foi destilado sob a lua cheia. Não toque no que borbulha.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  st_dojo: { greet: "Bem-vindo ao Punho de Ferro. O corpo aprende pela repetição: mil socos no makiwara antes de um no inimigo.", opts: [['🥋 Como funciona o treino?', { local: 'Pague a diária e aperte F perto de um makiwara ou de um mokujin: você treina sozinho até cansar, descansa e volta. Só o cavaleiro aprende com os bonecos (espada e punhos). Com fome, o treino para.' }], ['Aulas de golpes (em breve)', { local: 'Logo vou ensinar o arremesso de quadril, a rasteira, o soco em sequência e a postura de defesa. Volte em breve.' }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_scroll: { greet: "Papel, pergaminho, tinta. Um bom mapa vale mais que uma espada, acredite.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   courier1: { greet: "Pip, mensageiro! Levo e trago o que for, da vila até a Rua Nova, num pé só.", opts: [['Tem alguma entrega para mim?', { job: 'delivery' }], ['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
   courier2: { greet: "Lia Ventura. Conheço cada viela daqui até o rio. Ninguém me alcança.", opts: [['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
@@ -1083,6 +1085,7 @@ window.addEventListener('keydown', e => {
   if (k === 'r' && G.me.downed) { if (!PERMADEATH) { Net.send({ t: 'giveup' }); return; } gameAsk('Desistir é MORTE PERMANENTE: seu personagem será apagado. Tem certeza?', { yes: 'Desistir', no: 'Continuar lutando' }).then(ok => { if (ok) Net.send({ t: 'giveup' }); }); return; }
   if (k === 'f' && !e.repeat && typeof liftNear === 'function' && liftNear()) { liftMenu(); return; }
   if (k === 'f' && !e.repeat && typeof ofuroNear === 'function' && ofuroNear()) { bathEnter(); return; }
+  if (k === 'f' && !e.repeat && typeof dummyNear === 'function' && dummyNear() && !G.training) { Net.send({ t: 'train', a: 'start' }); return; }
   if (k === 'f' && !e.repeat && openNearChest(1.8)) return;
   if (k === 'f' && !e.repeat && G.me && (G.me.carrying || G.me.dragMode === 'arms' || G.me.dragMode === 'foot') && STAGE.x >= 0 && dist(G.me.x, G.me.y, STAGE.x, STAGE.y) < 3.4) { Net.send({ t: 'exec' }); return; }
   if (k === 'y' && !e.repeat && G.me && G.me.wantedUntil > performance.now()) { Net.send({ t: 'surrender' }); return; }
@@ -1803,7 +1806,7 @@ function updateNeeds() {
   if (typeof survMedalsUpdate === 'function') survMedalsUpdate(me);
   const pr = $('prompt'); if (!G.loot && !nearCorpse()) { const raw = me.inv && (me.inv.venison || me.inv.pork); const stN = typeof nearStove === 'function' && nearStove(), hv = nearHarvest(), exN = me.carrying && STAGE.x >= 0 && dist(me.x, me.y, STAGE.x, STAGE.y) < 3.4; const jp = typeof jailPrompt === 'function' ? jailPrompt() : '';
   const bq = typeof boundNear === 'function' ? boundNear() : null;
-  const txt = me.bound ? (me.bnd === 'rope' ? 'Mãos amarradas com corda: martele ESPAÇO para se soltar (' + (me.bndE || 0) + '%)' : 'Algemado: só uma gazua ou o carcereiro abrem') : bq ? (bq.bound ? 'F: soltar ' + bq.name : '') : jp ? jp : (typeof liftNear === 'function' && liftNear()) ? 'F: elevador (escolher o andar)' : (typeof ofuroNear === 'function' && ofuroNear()) ? 'F: tomar banho no ofurô' : G.me && G.me.bathing ? 'Relaxando no ofurô · ande para sair' : (typeof jobsPrompt === 'function' && jobsPrompt()) ? jobsPrompt() : (typeof estatePrompt === 'function' && estatePrompt()) ? estatePrompt() : me.wantedUntil > performance.now() && !me.escorted ? 'Y: render-se às sentinelas' : me.dragMode === 'grip' ? 'Segure o clique esquerdo: apertar o pescoço · H solta' : exN ? 'F: entregar ao carrasco (execução)' : stN ? 'F: cozinhar' : hv >= 0 ? (WORLD.obj[hv] === O.BERRY ? 'F: colher frutas' : 'F: colher erva') : raw && nearFireC() ? 'F: assar a carne' : nearWaterC() && (me.water ?? 100) < 98 ? 'F: beber' : ''; G.survPrompt = txt; } else G.survPrompt = '';
+  const txt = me.bound ? (me.bnd === 'rope' ? 'Mãos amarradas com corda: martele ESPAÇO para se soltar (' + (me.bndE || 0) + '%)' : 'Algemado: só uma gazua ou o carcereiro abrem') : bq ? (bq.bound ? 'F: soltar ' + bq.name : '') : jp ? jp : (typeof liftNear === 'function' && liftNear()) ? 'F: elevador (escolher o andar)' : (typeof ofuroNear === 'function' && ofuroNear()) ? 'F: tomar banho no ofurô' : G.training ? 'Treinando no boneco · ande para parar' : (typeof dummyNear === 'function' && dummyNear()) ? 'F: treinar no ' + dummyNear().t + ' (diária ' + DOJO_FEE[1] + ' de ouro)' : G.me && G.me.bathing ? 'Relaxando no ofurô · ande para sair' : (typeof jobsPrompt === 'function' && jobsPrompt()) ? jobsPrompt() : (typeof estatePrompt === 'function' && estatePrompt()) ? estatePrompt() : me.wantedUntil > performance.now() && !me.escorted ? 'Y: render-se às sentinelas' : me.dragMode === 'grip' ? 'Segure o clique esquerdo: apertar o pescoço · H solta' : exN ? 'F: entregar ao carrasco (execução)' : stN ? 'F: cozinhar' : hv >= 0 ? (WORLD.obj[hv] === O.BERRY ? 'F: colher frutas' : 'F: colher erva') : raw && nearFireC() ? 'F: assar a carne' : nearWaterC() && (me.water ?? 100) < 98 ? 'F: beber' : ''; G.survPrompt = txt; } else G.survPrompt = '';
   if ($('pz-use') && typeof useHtml === 'function') $('pz-use').innerHTML = useHtml();
   if ($('pz-surv')) $('pz-surv').innerHTML = '<div><b>Fome</b> ' + Math.round(100 - (me.food ?? 100)) + '% · <b>Sede</b> ' + Math.round(100 - (me.water ?? 100)) + '% · <b>Frio</b> ' + Math.round(me.cold || 0) + '%</div><div><b>Infecção</b> ' + ['nenhuma', 'febre', 'grave'][me.infect || 0] + (me.sick > 0 ? ' · <b>enjoado</b>' : '') + '</div><div class="gp-note">Coma e beba, fique perto do fogo à noite, trate feridas graves com bandagem. A morte é permanente.</div>';
 }
