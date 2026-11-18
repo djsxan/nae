@@ -130,7 +130,7 @@ const BUILDINGS = TEST3D ? [] : [
 // i = posição ao longo da parede da porta (largura A), j = profundidade (0 = fundo, D-1 = linha da porta)
 const DOOR_V = { S: [0, 1], N: [0, -1], E: [1, 0], W: [-1, 0] };
 // jeito de andar de cada tipo de NPC: idoso (curvado, devagar), nobre (empertigado, mãos para trás), apressado, pesado (trabalhador), leve, sereno (mãos juntas)
-const NPC_GAIT = { v_elderm: 'old', v_elderf: 'old', jailer: 'old', noble: 'noble', noble2: 'noble', v_noblef: 'noble', v_noblem: 'noble', banker: 'noble', broker: 'noble', tailor: 'noble', banker2: 'light', banker3: 'calm',
+const NPC_GAIT = { v_elderm: 'old', v_elderf: 'old', jailer: 'old', noble: 'noble', noble2: 'noble', v_noblef: 'noble', v_noblem: 'noble', banker: 'noble', broker: 'noble', agent: 'noble', tailor: 'noble', banker2: 'light', banker3: 'calm',
   courier1: 'hurry', courier2: 'hurry', courier3: 'hurry', v_thug1: 'hurry', v_thug2: 'hurry', supplier: 'hurry', v_trav1: 'hurry', smith: 'heavy', st_saw: 'heavy', st_mine: 'heavy', st_carp: 'heavy', merchant: 'heavy', executioner: 'heavy', v_peasm: 'heavy',
   v_house1: 'light', v_house2: 'light', v_house3: 'light', v_house4: 'light', innkeeper: 'heavy', tavmaid: 'hurry', fruit: 'light', v_peasf: 'light', st_apoth: 'light', st_tailor: 'light', v_vis1: 'light', v_vis2: 'light', priest: 'calm', v_monk: 'calm', gardener: 'normal' };
 const GAIT_SPD = { old: 0.62, noble: 0.85, hurry: 1.28, heavy: 0.95, light: 1.0, calm: 0.8, normal: 1, drunk: 0.75 };
@@ -291,6 +291,8 @@ function interiorLayout0(b, fl = 0) {
     if (wk === 'bakery') { put('stove', w - 2, 0); put('stove', w - 3, 0); put('display', 1, 0, { v: 0 }); }
     else if (wk === 'mill' || wk === 'wheat') { put('crate', w - 2, 0); put('hay', 1, 0); }
     else if (wk === 'alch') { put('stove', w - 2, 0); put('shelf', 1, 0); } else if (wk === 'mine') { put('anvil', w - 2, 1); put('rack', 1, 0); } else if (wk === 'saw' || wk === 'carp') { put('rack', 1, 0); put('crate', w - 1, h - 1); } else { put('crate', 1, 0); put('barrel', w - 1, h - 1); }
+  } else if (k === 'house' && b.office === 'agency') {   // agência de empregos: balcão com a agenciadora, quadro de candidatos com retratos e banco de espera junto à fachada
+    npcAt(w - 1, 1); put('agcounter', w - 2, 0, { h: 3 }); put('jobboard', w - 1, h - 2, { h: 2, block: false }); put('waitbench', 0, h - 1, { w: 2 }); put('filing', 0, 0); put('rug', 1, 1, { w: 2, block: false });   /* a câmera vê a parede da porta e a do lado da agenciadora */
   } else if (k === 'house' && b.office && w >= 5 && h >= 4) {   // escritório do corretor: escrivaninha com livros-razão, mapa emoldurado, quadro de chaves, arquivos, cadeira do cliente e a maquete da cidade
     put('keyboard', 0, 0); npcAt(1, 0); put('desk', 0, 1, { w: 2 }); put('chair', 1, 2, { seat: 3 }); put('filing', w - 1, 0); put('citymodel', w - 2, 2, { w: 2 }); put('filing', 0, h - 1, { v: 1 }); put('mapframe', w - 1, 1, { block: false });
   } else if (k === 'house' && b.office) {   // imobiliária: corretor atrás da mesa, estantes de pastas, mapa da cidade na parede
@@ -317,7 +319,7 @@ function interiorLayout0(b, fl = 0) {
     } else {   // suíte de luxo
       put('plantpot', 7, 4, { block: false }); put('andon', 7, 2, { block: false }); keep(6, 2); keep(5, 2); keep(2, 4); keep(3, 4); keep(2, 3); keep(3, 3);   // porta do hall e porta de correr da varanda livres
       put('ofuro', 0, 0, { w: 2, h: 2, block: false }); put('andon', 0, 2, { block: false });   /* ala do banho (a cortina separa da cama) */
-      put('ikebana', 3, 1, { block: false }); put('tokonoma', 3, 0); put('platbed', 4, 0, { w: 2, h: 2, block: false }); put('tansu', 5, 3);   /* tansu colado na parede do hall */
+      put('chest', 3, 1); put('ikebana', 3, 2, { block: false }); put('tokonoma', 3, 0);   /* baú ao lado da cama, do lado sul (o que não encosta na parede) */ put('platbed', 4, 0, { w: 2, h: 2, block: false }); put('tansu', 5, 3);   /* tansu colado na parede do hall */
       put('kotatsu', 4, 2, { block: false }); put('zengarden', 0, 3, { w: 2, h: 2 }); put('jkitchen', 4, 4, { w: 2 });   /* cozinha no canto perto da varanda */
     }
   } else if (k === 'shop' && b.deco === 'greenhouse') {   // Boticário de Elva: gavetinhas e potes no fundo, alambique, balcão com balança e almofariz, canteiros, plantas que brilham, vasos pendurados, ervas secando e o tanque
@@ -1007,6 +1009,7 @@ function generateWorld() {
     let ob = null, bd = 1e9; for (const hb of houses) { const d = Math.hypot(hb.x + hb.w / 2 - (C - 18), hb.y + hb.h / 2 - (C + 13)); if (d < bd) { bd = d; ob = hb; } }
     if (ob) { delete ob.arch; ob.kind = 'shop'; ob.name = 'Elixires da Lua Prateada'; ob.v = 6; ob.x = C - 22; ob.y = C + 15; ob.door = 'S'; ob.w = 6; ob.h = 4; ob.floors = 2; ob.H = 4.2; ob.RH = 2.2; ob.wall = Math.round(4.2 * 19.6); ob.roof = Math.round(2.2 * 19.6); } }   // loja da alquimista (antiga imobiliária)   // atrás da Alfaiataria, porta para a rua de baixo
   { const off = houses.find(q => q.x === C + 18 && q.y === C - 29); if (off) { delete off.arch; Object.assign(off, { office: 'estate', name: 'Imobiliária Chave de Bronze', door: 'S', floors: 2, H: 3.8, RH: 2.0, wall: Math.round(3.8 * 19.6), roof: Math.round(2.0 * 19.6) }); } }   // escritório do Mestre Anselmo (no lugar da Casa 6, porta para o sul)
+  { const ag = houses.find(q => q.x === C - 21 && q.y === C - 14); if (ag) { delete ag.arch; Object.assign(ag, { office: 'agency', name: 'Agência Mão Amiga' }); } }   // agência de empregos (no lugar da Casa 2, Rua Nova, ao lado do dojô)
   { const h18 = houses.find(q => q.x === C + 15 && q.y === C + 23); if (h18) { h18.x = C + 14; h18.y = C - 13; h18.door = 'E'; h18.w = 4; h18.h = 6; h18.noble = 1; } }   // casa nobre, ao lado do castelo
   for (let i = 0; i < bld.length; i++) if (bld[i] === -2) bld[i] = -1;   // marcas temporárias que sobraram (a imobiliária muda de lugar depois de sorteada)
   // ---- vila do oeste (do outro lado do rio, na estrada que sai do portão oeste): casas espaçadas e oficinas ----
@@ -1066,7 +1069,7 @@ function generateWorld() {
       for (const a of list) APTS.push({ ...a, bi, fl, v0: 0, v1: bDims(b)[1] });
       for (const f of interiorLayout(b, fl).F) { const cx = f.i + f.w / 2, cz = f.j + f.h / 2, [x, y] = localToWorld(b, cx, cz), A = aptAt(bi, fl, x, y); if (!A) continue;
         if (f.t === 'futon' || f.t === 'platbed') { const [x0, y0] = localToWorld(b, cx, f.j + 0.3), [x1, y1] = localToWorld(b, cx, f.j + f.h - 0.3); BEDS.push({ x, y, dx: x1 - x0, dy: y1 - y0, bi, fl, apt: A.key }); }
-        if (f.t === 'tansu') APT_CHESTS.push({ x, y, bi, fl, apt: A.key });
+        if (f.t === 'tansu') APT_CHESTS.push({ x, y, bi, fl, apt: A.key }); if (f.t === 'chest') APT_CHESTS.unshift({ x, y, bi, fl, apt: A.key });   /* a suíte tem um baú de verdade ao lado da cama */
         if (f.t === 'irori' || f.t === 'jkitchen') KITCHENS.push({ x, y, bi, fl });
         if (f.t === 'zengarden') { const [dx, dy] = localToWorld(b, f.i + 1.45, f.j + 0.6), [tx, ty] = localToWorld(b, f.i + 2.5, f.j + 0.6); DUMMIES.push({ x: dx, y: dy, bi, fl, t: 'makiwara', fx: tx, fy: ty, apt: A.key, priv: 1 }); } } } });
   // ---- chão da cidade: pedra gasta, terra nas vielas, grama nos cantos, lajes na avenida ----
@@ -1326,6 +1329,7 @@ const WORLD = TEST3D ? generateDistrict() : generateWorld();
 // o carrasco fica ao lado do cadafalso, perto da alavanca
 if (STAGE.x >= 0) { const ex = NPCS.find(n => n.id === 'executioner'); if (ex) { const c = [[0.1, 1.05], [0.1, -1.05], [1.1, 1.0]].find(([dx, dy]) => !BLOCKING.has(WORLD.obj[Math.round(STAGE.y + dy) * MAP_W + Math.round(STAGE.x + dx)])) || [0.1, 1.05]; ex.x = STAGE.x + c[0]; ex.y = STAGE.y + c[1]; } }
 // corretor de imóveis (a casa do escritório só existe depois de gerar o mundo)
+if (!TEST3D) { const ab = BUILDINGS.find(b => b.office === 'agency'); if (ab) { const [ax, ay] = bLocal(ab, ab.w - 1, 1), [c1x, c1y] = bLocal(ab, 0, ab.h - 1), [c2x, c2y] = bLocal(ab, 1, ab.h - 1); NPCS.push({ id: 'agent', name: 'Dona Celeste, a agenciadora', kind: 'agent', x: ax, y: ay }, { id: 'cand1', name: 'Rosa, candidata a doméstica', kind: 'v_maidf', x: c1x, y: c1y, sitting: 1 }, { id: 'cand2', name: 'Tobias, candidato a doméstico', kind: 'v_maidm', x: c2x, y: c2y, sitting: 1 }); } }
 if (!TEST3D) { const ob = BUILDINGS.find(b => b.office === 'estate'); if (ob) NPCS.push({ id: 'broker', name: 'Mestre Anselmo, o Corretor', kind: 'broker', ...npcIn(ob, { x: ob.x + 1, y: ob.y + 1 }) }); }
 // ---------- gente dos negócios: artesãos das oficinas, balconistas das lojas vagas e mensageiros (os 12 primeiros moradores) ----------
 if (!TEST3D) { const hb = BUILDINGS.find(b => b.kind === 'hotel'); if (hb) NPCS.push({ id: 'hotelkeeper', name: 'Dona Ilsa, a Estalajadeira', kind: 'hotelkeeper', ...npcIn(hb, { x: hb.x + hb.w - 2, y: hb.y + hb.h - 1 }) }); }
@@ -1409,7 +1413,7 @@ const PROPS = [], PROPS_BY = {};
   });
   // todo negócio sem jogador tem um dono NPC (que vende o ponto; não aluga)
   const OWN = ['Mestre Aurélio Vaz', 'Dona Brígida Sal', 'Seu Custódio Pena', 'Dona Filomena Rocha', 'Mestre Gaspar Lume', 'Dona Henriqueta Mós', 'Seu Inácio Ferraz', 'Dona Joana Trigo', 'Mestre Lauro Brasa', 'Dona Matilde Cera', 'Seu Norberto Funil', 'Dona Odete Lã', 'Mestre Prudêncio Faia', 'Dona Quitéria Junco'];
-  for (const A of APTS) { const b = BUILDINGS[A.bi], rent = A.suite ? 86 : 23; const P = { bi: A.bi, area: (A.u1 - A.u0) * 5, w: A.u1 - A.u0, h: 5, floors: 1, district: district(b), id: 'ap' + A.key, kind: 'house', apt: A.key, fl: A.fl, suite: A.suite ? 1 : 0, name: A.name + ' · Punho de Ferro', rent, loc: 1, locName: A.suite ? 'suíte de luxo' : 'apartamento' }; P.week = rent * 7; P.buy = rent * 60; PROPS.push(P); PROPS_BY[P.id] = P; }   // apartamentos do prédio do dojô (aluguel vai para o dono do dojô)
+  for (const A of APTS) { const b = BUILDINGS[A.bi], rent = A.suite ? 0 : 23; const P = { bi: A.bi, area: (A.u1 - A.u0) * 5, w: A.u1 - A.u0, h: 5, floors: 1, district: district(b), id: 'ap' + A.key, kind: 'house', apt: A.key, fl: A.fl, suite: A.suite ? 1 : 0, name: A.name + ' · Punho de Ferro', rent, loc: 1, locName: A.suite ? 'suíte de luxo' : 'apartamento' }; P.week = rent * 7; P.buy = rent * 60; PROPS.push(P); PROPS_BY[P.id] = P; }   // apartamentos do prédio do dojô (aluguel vai para o dono do dojô)
   let oi = 0; for (const P of PROPS) if (P.npcOwner) continue; else if ((P.kind === 'shop' || P.kind === 'workshop') && !P.npc) P.npcOwner = OWN[oi++ % OWN.length]; else if (P.kind === 'hotel') P.npcOwner = 'Dona Ilsa';
 })();
 // ---------- moradores: cada um mora numa casa da cidade ou da vila (as casas com inquilino não ficam para alugar, mas podem ser compradas) ----------

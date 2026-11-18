@@ -11,8 +11,8 @@ function visEvent(m) {
 }
 function applyNpcRows(rows, now) {
   const seen = new Set();
-  for (const [id, x100, y100, fl, onBack, carrying] of rows || []) {
-    const e = G.npcs[id]; if (!e) continue; seen.add(id);
+  for (const [id, x100, y100, fl, onBack, carrying, nfl, nfb] of rows || []) {
+    const e = G.npcs[id]; if (!e) continue; seen.add(id); e.fl = nfl || 0; e.fb = nfl ? nfb : undefined;   /* andar (o doméstico sobe de elevador) */
     e.srv = true; e.dragMode = fl & 64 ? 'lead' : (e.dragMode === 'lead' ? null : e.dragMode); e.npDown = !!(fl & 1); e.npDead = !!(fl & 2); e.dragged = !!(fl & 4); e.prone = !!(fl & 8); e.npWalk = !!(fl & 32); e.crawl = !!(fl & 128); e.npSleep = !!(fl & 256); e.pkg = !!(fl & 512); e.drunk = !!(fl & 1024); e.npDrawn = !!(fl & 2048);
     if (fl & 4096) e.custP = { sit: 'c', doze: fl & 8192 ? 1 : 0, npc: 1 }; else if (e.custP && e.custP.npc) e.custP = null;   // sentado na taverna (e cochilando)
     e.onBackBy = onBack || null; e.carrying = carrying || null;

@@ -242,6 +242,26 @@ function canvasTex(kind) {
     x.strokeStyle = '#e2b74e'; x.fillStyle = '#e2b74e'; x.lineWidth = 14; x.beginPath(); x.arc(84, 110, 32, 0, 7); x.stroke(); x.fillRect(112, 102, 92, 16); x.fillRect(176, 116, 12, 26); x.fillRect(154, 116, 12, 18);   // chave
     x.font = 'bold 26px serif'; x.textAlign = 'center'; x.fillText('IMÓVEIS', 128, 196); x.font = 'italic 17px serif'; x.fillText('Chave de Bronze', 128, 222);
     y.fillStyle = gray(0.5); y.fillRect(0, 0, S, S);
+  } else if (kind === 'handsign') {   // placa da agência: duas mãos se apertando
+    x.fillStyle = '#3a2416'; x.fillRect(0, 0, S, S); x.strokeStyle = '#c9a24a'; x.lineWidth = 8; x.strokeRect(6, 6, S - 12, S - 12);
+    x.save(); x.translate(128, 104); x.fillStyle = '#e8c49a'; x.strokeStyle = '#7a4a2a'; x.lineWidth = 3;
+    x.beginPath(); x.moveTo(-86, 18); x.lineTo(-40, -10); x.quadraticCurveTo(-10, -26, 18, -12); x.lineTo(40, 2); x.quadraticCurveTo(46, 12, 36, 16); x.lineTo(6, 6); x.lineTo(-30, 30); x.lineTo(-86, 40); x.closePath(); x.fill(); x.stroke();
+    x.fillStyle = '#d8b088'; x.beginPath(); x.moveTo(86, 18); x.lineTo(42, -12); x.quadraticCurveTo(14, -22, -8, -8); x.lineTo(-30, 8); x.quadraticCurveTo(-34, 18, -24, 20); x.lineTo(2, 12); x.quadraticCurveTo(10, 26, 0, 34); x.lineTo(30, 32); x.lineTo(86, 42); x.closePath(); x.fill(); x.stroke();
+    for (let k = 0; k < 3; k++) { x.beginPath(); x.moveTo(-6 + k * 10, 12 + k * 3); x.lineTo(4 + k * 10, 24 + k * 2); x.stroke(); }
+    x.fillStyle = '#2e3a5a'; x.fillRect(-100, 14, 18, 34); x.fillStyle = '#6a2a1a'; x.fillRect(82, 14, 18, 34); x.restore();
+    x.fillStyle = '#e2b74e'; x.font = 'bold 30px serif'; x.textAlign = 'center'; x.fillText('EMPREGOS', 128, 200); x.font = 'italic 18px serif'; x.fillText('Mão Amiga', 128, 228);
+    y.fillStyle = gray(0.5); y.fillRect(0, 0, S, S);
+  } else if (kind === 'jobboard') {   // quadro de cortiça com os retratos dos candidatos do dia
+    x.fillStyle = '#a8784a'; x.fillRect(0, 0, S, S); for (let k = 0; k < 900; k++) { x.fillStyle = 'rgba(' + (R() < 0.5 ? '60,36,16' : '220,180,120') + ',0.35)'; x.fillRect(R() * S, R() * S, 2, 2); }
+    x.fillStyle = '#f2e6c8'; x.fillRect(40, 8, 176, 30); x.fillStyle = '#3a2416'; x.font = 'bold 17px serif'; x.textAlign = 'center'; x.fillText('CANDIDATOS DO DIA', 128, 29);
+    const tones = ['#e8c49a', '#c89a74', '#a8764e', '#f0d0b0', '#8a5a3a', '#e2b896'], hairs = ['#3a2416', '#7a4a1a', '#1a1410', '#c8a060', '#6a6460', '#4a2e1a'], cloth = ['#6a4a5a', '#4a5a4a', '#5a4a3a', '#3a4a6a', '#7a3a2a', '#4a4a5a'];
+    for (let k = 0; k < 6; k++) { const cx = 46 + (k % 3) * 82, cy = 92 + Math.floor(k / 3) * 104, rot = ((k * 7) % 5 - 2) * 0.03; x.save(); x.translate(cx, cy); x.rotate(rot);
+      x.fillStyle = '#f6eedc'; x.fillRect(-32, -44, 64, 88); x.fillStyle = '#d8ccb0'; x.fillRect(-26, -38, 52, 46);
+      x.fillStyle = cloth[k]; x.beginPath(); x.ellipse(0, 6, 20, 12, 0, Math.PI, 0); x.fill(); x.fillStyle = '#f4efe2'; x.fillRect(-7, -4, 14, 10);
+      x.fillStyle = tones[k]; x.beginPath(); x.arc(0, -16, 11, 0, 7); x.fill(); x.fillStyle = hairs[k]; x.beginPath(); x.arc(0, -19, 11, Math.PI * 1.05, Math.PI * 1.95); x.fill(); if (k % 2 === 0) { x.fillStyle = cloth[(k + 3) % 6]; x.fillRect(-12, -30, 24, 6); }
+      x.fillStyle = '#3a2416'; x.fillRect(-22, 16, 44, 4); x.fillRect(-22, 24, 30, 3); x.fillStyle = '#7a5a2a'; x.font = 'bold 11px serif'; x.fillText((6 + k * 3) + ' ouro', 0, 40);
+      x.fillStyle = '#a8302a'; x.beginPath(); x.arc(0, -42, 4, 0, 7); x.fill(); x.restore(); }
+    y.fillStyle = gray(0.55); y.fillRect(0, 0, S, S);
   } else if (kind === 'adsboard') {
     x.fillStyle = '#5a3a20'; x.fillRect(0, 0, S, S);
     const ads = [['#f2e6c8', 'CASA', '161/sem'], ['#e8dcc0', 'LOJA', 'à venda'], ['#f4ead4', 'OFICINA', '2520'], ['#efe2c4', 'CASA', 'nobre'], ['#f2e6c8', 'PONTO', 'centro'], ['#e8dcc0', 'ALUGA', 'vila']];
@@ -1308,6 +1328,7 @@ function styleOf(b) {
   if (b.deco === 'arcane') return { wall: '#3a2a20', roof: '#2c2a32', tex: 'oldplank', roofTex: 'slate', trim: '#a8823a' };   // varinhas: madeira quase preta, ouro gasto
   if (b.deco === 'tailor') return { wall: '#dccbaa', roof: '#33263a', tex: 'oldplank', roofTex: 'slate', trim: '#d4a94a' };   // alfaiataria: paredes bege, telhado ameixa e dourado
   if (b.kind === 'shop' && b.v === 6) return { wall: '#3e3a52', roof: '#24403e', tex: 'stoneblock', roofTex: 'slate', trim: '#c9a24a' };   // alquimista: pedra escura arroxeada, latão
+  if (b.office === 'agency') return { wall: '#e6dfcf', roof: '#3a2c24', tex: 'stoneblock', roofTex: 'slate', trim: '#3a2416' };   // agência: pedra clara e madeira escura
   if (b.office) return { wall: '#e8e2d2', roof: '#34404e', tex: 'stoneblock', roofTex: 'slate', trim: '#b08a3a' };   // imobiliária: pedra clara e bronze
   if (b.kind === 'workshop') return WSTYLE[b.wk] || WSTYLE.carp;
   if (b.kind === 'house' || (b.kind === 'shop' && b.v)) { const h = HVAR[(b.v || 0) % HVAR.length]; return { tex: 'plaster', ...h }; }
@@ -2087,10 +2108,11 @@ function mBuilding(b, night) {
   if (b.office) {
     const dX = doorCol(b) + 0.5, bronze = smat(null, '#b08a3a', { metal: 0.9, rough: 0.3 }), stone = smat('stoneblock', '#d8d0bc', { bump: 1 });
     for (let s = 0; s < 2; s++) o.add(wbox(1.3 - s * 0.2, 0.09, 0.32 - s * 0.12, dX, 0.045 + s * 0.09, h + 0.16 - s * 0.06, stone, 1));   // degraus
-    const sg = grp(); sg.add(mk(new THREE.BoxGeometry(0.05, 0.05, 0.6).translate(0, 0, 0.3), bronze)); sg.add(mk(new THREE.BoxGeometry(0.03, 0.42, 0.5).translate(0, -0.3, 0.38), [smat('keysign', '#ffffff', { bump: 0.5 }), smat('keysign', '#ffffff', { bump: 0.5 }), bronze, bronze, bronze, bronze]));
+    const SGK = b.office === 'agency' ? 'handsign' : 'keysign', ADK = b.office === 'agency' ? 'jobboard' : 'adsboard';
+    const sg = grp(); sg.add(mk(new THREE.BoxGeometry(0.05, 0.05, 0.6).translate(0, 0, 0.3), bronze)); sg.add(mk(new THREE.BoxGeometry(0.03, 0.42, 0.5).translate(0, -0.3, 0.38), [smat(SGK, '#ffffff', { bump: 0.5 }), smat(SGK, '#ffffff', { bump: 0.5 }), bronze, bronze, bronze, bronze]));
     sg.position.set(dX + 0.95, 2.1, h + 0.02); o.add(sg);   // placa pendurada com a chave de bronze
     if (b.realDoor === 'W' || b.realDoor === 'N') { const s2 = sg.clone(); s2.rotation.y = Math.PI / 2; s2.position.set(w + 0.02, 2.1, h * 0.5); o.add(s2); }   // porta num lado escondido: placa também no lado que a câmera vê
-    const vt = grp(); vt.add(wbox(1.1, 0.9, 0.12, 0, 1.15, 0.06, bronze, 1)); vt.add(mk(new THREE.PlaneGeometry(0.98, 0.78).translate(0, 1.15, 0.125), smat('adsboard', '#ffffff', { rough: 0.6, emissive: night ? '#3a2a10' : '#000000', ei: night ? 0.6 : 0 })));
+    const vt = grp(); vt.add(wbox(1.1, 0.9, 0.12, 0, 1.15, 0.06, bronze, 1)); vt.add(mk(new THREE.PlaneGeometry(0.98, 0.78).translate(0, 1.15, 0.125), smat(ADK, '#ffffff', { rough: 0.6, emissive: night ? '#3a2a10' : '#000000', ei: night ? 0.6 : 0 })));
     vt.add(wbox(1.2, 0.08, 0.22, 0, 0.66, 0.1, stone, 1)); vt.position.set(dX - 1.55 < 0.6 ? dX + 1.6 : dX - 1.55, 0, h + 0.01); o.add(vt); if (b.realDoor === 'W' || b.realDoor === 'N') { const v2 = vt.clone(); v2.rotation.y = Math.PI / 2; v2.position.set(w + 0.01, 0, h * 0.25 + 0.4); o.add(v2); }   // vitrine com anúncios de imóveis
     for (const sx of [-0.62, 0.62]) { const lp = grp(mk(new THREE.BoxGeometry(0.04, 0.04, 0.2).translate(0, 0, 0.1), bronze), mk(new THREE.BoxGeometry(0.13, 0.19, 0.13).translate(0, -0.11, 0.2), smat(null, '#ffd890', { emissive: '#ffbb60', ei: night ? 1.6 : 0.5 }))); lp.position.set(dX + sx, 1.55, h + 0.02); lp.scale.setScalar(0.7); o.add(lp); }
   }
@@ -2392,6 +2414,23 @@ function mInterior(b, fl = 0) {
         g.add(mk(new THREE.CylinderGeometry(0.2, 0.16, 0.1, 16, 1, true).translate(0, 0.84, L / 4), cop)); g.add(mk(new THREE.CircleGeometry(0.17, 16).rotateX(-Math.PI / 2).translate(0, 0.81, L / 4), smat(null, '#7ac0c8', { rough: 0.05, metal: 0.3 })));
         for (let k = 0; k < 3; k++) g.add(mk(new THREE.CylinderGeometry(0.06, 0.04, 0.05, 10).translate(-0.25, 0.9, L / 4 - 0.15 + k * 0.14), smat(null, ['#e8e0d0', '#2a3a5a', '#8a3a2a'][k])));
         { const pl2 = new THREE.PointLight(0xff9a50, 0.35, 1.8); pl2.position.set(0, 1.0, -L / 4 + 0.3); g.add(pl2); } break; }
+      case 'jobboard': {   // quadro de candidatos na parede (fundo, ou parede lateral quando é mais alto que largo); a mobília tem a altura achatada: 1 un. = 0,55
+        const fr = smat('wood', '#3a2416', { bump: 0.8 }), side = f.h > f.w, L = side ? f.h : f.w, d0 = (side ? f.w : f.h), zb2 = -d0 / 2 + 0.2, jb = grp();
+        jb.add(wbox(L - 0.25, 1.5, 0.05, 0, 2.35, zb2, fr, 1)); jb.add(mk(new THREE.PlaneGeometry(L - 0.38, 1.36).translate(0, 2.35, zb2 + 0.03), smat('jobboard', '#ffffff', { bump: 0.4, rough: 0.8 })));
+        jb.add(wbox(L - 0.1, 0.1, 0.12, 0, 1.55, zb2 + 0.04, fr, 1)); jb.add(wbox(L - 0.1, 0.08, 0.1, 0, 3.12, zb2 + 0.03, fr, 1)); if (side) jb.rotation.y = -Math.PI / 2; g.add(jb); break; }
+      case 'agcounter': {   // balcão da agenciadora: livro de registros aberto, tinteiro com pena, sineta de latão, pilha de fichas e plaquinha
+        const side = f.h > f.w, L = side ? f.h : f.w, wd = smat('wood', '#3a2416', { bump: 1 }), top = smat('wood', '#6a4428', { bump: 0.6, rough: 0.4 }), brass = smat(null, '#c9a24a', { metal: 0.9, rough: 0.3 }), pap = smat(null, '#f2ead6'), cg = grp();
+        cg.add(wbox(L - 0.1, 1.6, 0.55, 0, 0.8, 0, wd, 1.4)); cg.add(wbox(L, 0.08, 0.7, 0, 1.64, 0.02, top, 1.4)); for (let k = 0; k < Math.round(L); k++) cg.add(wbox(0.8, 1.1, 0.02, -L / 2 + 0.5 + k, 0.8, 0.28, smat('wood', '#4a2e1a', { bump: 0.8 }), 1));   /* almofadas no painel */
+        cg.add(wbox(L - 0.06, 0.06, 0.04, 0, 0.12, 0.28, brass, 1));
+        cg.add(wbox(0.42, 0.04, 0.3, -0.5, 1.7, 0, pap)); cg.add(wbox(0.02, 0.05, 0.3, -0.5, 1.71, 0, smat(null, '#6a1e18'))); for (let k = 0; k < 4; k++) cg.add(wbox(0.16, 0.005, 0.01, -0.6 + (k % 2) * 0.2, 1.73, -0.08 + Math.floor(k / 2) * 0.08, smat(null, '#3a2a1a')));   /* livro aberto */
+        cg.add(mk(new THREE.CylinderGeometry(0.045, 0.05, 0.08, 10).translate(0.1, 1.72, -0.12), smat(null, '#1a1a22', { rough: 0.2 }))); { const pen = mk(new THREE.ConeGeometry(0.02, 0.32, 6).translate(0, 0.16, 0), smat(null, '#f4f0e6')); pen.position.set(0.1, 1.76, -0.12); pen.rotation.z = -0.5; cg.add(pen); }   /* tinteiro e pena */
+        cg.add(mk(new THREE.SphereGeometry(0.07, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2).translate(0.5, 1.68, 0.12), brass)); cg.add(mk(new THREE.CylinderGeometry(0.01, 0.01, 0.06, 6).translate(0.5, 1.77, 0.12), brass));   /* sineta */
+        for (let k = 0; k < 5; k++) cg.add(wbox(0.22, 0.012, 0.16, L / 2 - 0.3 + (k % 2) * 0.01, 1.69 + k * 0.014, -0.15, pap));   /* fichas */
+        cg.add(wbox(0.3, 0.14, 0.02, 0.35, 1.78, 0.22, smat(null, '#2e3a5a'))); if (side) cg.rotation.y = -Math.PI / 2; g.add(cg); break; }
+      case 'waitbench': {   // banco de espera de madeira escura com encosto (os candidatos sentam aqui)
+        const wd = smat('wood', '#5a3a22', { bump: 0.8 }), dk = smat('wood', '#2e1c10', { bump: 0.8 }), L = f.w - 0.15;
+        g.add(wbox(L, 0.07, 0.46, 0, 0.6, 0.02, wd, 1)); for (const sx of [-L / 2 + 0.08, 0, L / 2 - 0.08]) for (const sz of [-0.17, 0.2]) g.add(wbox(0.06, 0.58, 0.06, sx, 0.29, sz, dk, 1));
+        g.add(wbox(L, 0.5, 0.05, 0, 1.0, 0.25, wd, 1)); g.add(wbox(L + 0.04, 0.06, 0.08, 0, 1.27, 0.25, dk, 1)); for (const sx of [-L / 2 + 0.05, L / 2 - 0.05]) g.add(wbox(0.06, 0.4, 0.4, sx, 0.8, 0.03, dk, 1)); break; }
       case 'kakebar': { const dk = smat('wood', '#3a2212', { bump: 1 }); g.add(wbox(0.06, 1.5, 0.06, -0.05, 0.75, 0, dk, 1)); g.add(wbox(0.06, 1.5, 0.06, 0.55, 0.75, 0, dk, 1)); g.add(wbox(0.66, 0.05, 0.05, 0.25, 1.45, 0, dk, 1)); g.add(wbox(0.64, 0.06, 0.3, 0.25, 0.03, 0, dk, 1)); g.add(mk(new THREE.PlaneGeometry(0.3, 0.5).translate(0.4, 1.18, 0.03), smat('cloth', '#f4efe2', { bump: 0.3, side: THREE.DoubleSide }))); break; }
       case 'tokonoma': { const hin = smat('wood', '#d4a870', { bump: 0.7 }), dk = smat('wood', '#3a2212', { bump: 1 }); g.add(wbox(f.w - 0.05, 0.14, 0.7, 0, 0.07, -0.13, hin, 1)); g.add(wbox(0.12, Math.min(hw, 2.2), 0.12, f.w / 2 - 0.08, Math.min(hw, 2.2) / 2, 0.2, smat('bark', '#7a5a3a'), 1)); g.add(wbox(f.w - 0.05, 0.12, 0.1, 0, Math.min(hw, 2.2) - 0.3, 0.2, dk, 1));
         g.add(mk(new THREE.PlaneGeometry(0.5, 1.15).translate(-0.2, 1.05, -0.47), smat('kakejiku', '#ffffff', { bump: 0.3 }))); g.add(mk(new THREE.SphereGeometry(0.13, 12, 8).scale(1, 1.2, 1).translate(0.45, 0.28, -0.2), smat(null, '#2a3a4a', { rough: 0.3 })));

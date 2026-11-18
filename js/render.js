@@ -1175,6 +1175,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       if (s) pblit(ctx, s, inside.sx, inside.sy - flRaise(inside.b, f), a);
     }
     if (typeof drawAptDoors === 'function') try { drawAptDoors(ctx, (x, y) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy]; }, now); } catch (e) { }
+    if (typeof drawStaffFx === 'function') try { drawStaffFx(ctx, (x, y, z) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy - (z || 0) * FLOOR_PX]; }, now); } catch (e) { }   /* cama desarrumada */
     if (typeof drawOfuroFx === 'function') try { drawOfuroFx(ctx, (x, y, z) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy - (z || 0) * FLOOR_PX]; }, now); } catch (e) { }   /* bolhas e vapor do ofurô, por cima da água */
     for (const it of items) if (it.inside) drawItem(it);
     if (G.cellarDark) { cutL.length = 0; front.length = 0; }   // no porão não se vê os prédios da frente

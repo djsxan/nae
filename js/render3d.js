@@ -112,6 +112,12 @@ function buildHumanoid(L, opts = {}) {
     const lap = mesh(boxG(0.04 * S, 0.34 * S, 0.02 * S), mat('#d8d2c4', 'cloth'), 0.02 * S, 0.02 * S, 0.142 * S); lap.rotation.z = 0.45; chest.add(lap);
     const ob = mesh(cylG(0.178 * S, 0.178 * S, 0.07 * S), mat('#141414', 'cloth'), 0, -0.07 * S, 0); ob.scale.set(1.08, 1, 0.8); spine.add(ob); R.gi = gm; }
   if (L.armor === 'vest') { const ap = mesh(boxG(0.22 * S, 0.5 * S, 0.02 * S), body2M, 0, -0.12 * S, 0.12 * S); chest.add(ap); }
+  if (L.apron) {   /* avental de serviço: peitilho, saia até os joelhos e laço na cintura */
+    const am = mat(hx(L.apron), 'cloth'); chest.add(mesh(boxG(0.2 * S, 0.2 * S, 0.016 * S), am, 0, 0.0, 0.135 * S));
+    const sk = mesh(boxG(0.3 * S, 0.42 * S, 0.016 * S), am, 0, -0.3 * S, robe ? 0.2 * S : 0.15 * S); sk.rotation.x = robe ? -0.16 : -0.08; spine.add(sk);
+    const tie = mesh(cylG(0.172 * S, 0.172 * S, 0.03 * S), am, 0, -0.08 * S, 0); tie.scale.set(1.07, 1, 0.8); spine.add(tie);
+    for (const s of [-1, 1]) { const bw = mesh(sphG(0.03 * S), am, s * 0.035 * S, -0.08 * S, -0.15 * S); bw.scale.set(1.3, 0.8, 0.6); spine.add(bw); }
+    for (const s of [-1, 1]) { const st = mesh(boxG(0.018 * S, 0.22 * S, 0.012 * S), am, s * 0.075 * S, 0.12 * S, 0.1 * S); st.rotation.x = -0.35; chest.add(st); } }
   if (robe) {
     const pts = []; for (let i = 0; i <= 10; i++) { const t = i / 10; pts.push(new THREE.Vector2(0.17 + t * t * 0.17 + t * 0.05, -t * 0.82)); }
     const rg = geo('robe' + S, () => new THREE.LatheGeometry(pts.map(p => new THREE.Vector2(p.x * S, p.y * S)), 20));
@@ -197,6 +203,9 @@ function buildHead(head, L, S, skinM, accM, trimM) {
     cap.rotation.x = -0.42;   // inclina para trás: a franja sobe acima dos olhos e a nuca fica coberta
     if (L.hairStyle === 'long') { const back = mesh(capG(0.09 * S, 0.22 * S), hairM, 0, -0.12 * S, -0.05 * S); back.scale.set(1.1, 1, 0.6); head.add(back); }
   }
+  if (L.scarf) {   /* lenço amarrado na cabeça, com o nó atrás */
+    const scm = mat(hx(L.scarf), 'cloth'); const sc = mesh(sphG(0.118 * S), scm, 0, 0.025 * S, -0.01 * S); sc.geometry = geo('scarf' + S, () => new THREE.SphereGeometry(0.118 * S, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.5)); sc.rotation.x = -0.5; head.add(sc);
+    const kn = mesh(sphG(0.035 * S), scm, 0, -0.03 * S, -0.115 * S); head.add(kn); for (const s of [-1, 1]) { const tl = mesh(boxG(0.03 * S, 0.09 * S, 0.01 * S), scm, s * 0.025 * S, -0.08 * S, -0.115 * S); tl.rotation.z = s * 0.3; head.add(tl); } }
   if (L.beard && !L.braids) { const b = mesh(coneG(0.075 * S, L.beardLong ? 0.3 * S : 0.16 * S, 12), mat(hx(L.beard), 'hair'), 0, L.beardLong ? -0.19 * S : -0.12 * S, 0.05 * S); b.rotation.x = Math.PI; head.add(b); if (L.beardLong) head.add(mesh(capG(0.026 * S, 0.07 * S), mat(hx(L.beard), 'hair'), 0, -0.03 * S, 0.1 * S).rotateZ(Math.PI / 2)); }
   if (L.braids) {   /* barba cheia com duas tranças e argolas de ouro */
     const hm = mat(hx(L.beard), 'hair'), gold = mat('#d4a94a', 'metal'); const b = mesh(coneG(0.1 * S, 0.2 * S, 12), hm, 0, -0.12 * S, 0.055 * S); b.rotation.x = Math.PI; b.scale.set(1.1, 1, 0.8); head.add(b);

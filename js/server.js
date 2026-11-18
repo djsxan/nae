@@ -201,7 +201,7 @@ function hostOnClient(from, m) {
     });
     Net.toOne(from, { t: 'clk', g: gameNow(), rate: SIMCLK.rate, paused: SIMCLK.paused });
     Net.toOne(from, { t: 'welcome', you: from, x: np.x, y: np.y, z: np.z || 0, fl: np.fl || 0, fb: np.fb ?? -1, players: Object.values(S.players).map(pinfo), objs: S.objMods || {} });
-    tubSendAll(from);
+    tubSendAll(from); if (typeof empWelcome === 'function') empWelcome(from);
     Net.toOthers({ t: 'pinfo', p: pinfo(np) }, from);
     setTimeout(() => { if (S.players[from] && S.npcs) Net.toOne(from, { t: 'vlist', list: Object.values(S.npcs).filter(n => n.transient).map(visPublic) }); }, 600);
     sendStat(np);
@@ -379,7 +379,7 @@ function hostOnClient(from, m) {
       const k = o === O.BERRY ? 'berries' : 'herb', n = o === O.BERRY ? 2 + (Math.random() < 0.5 ? 1 : 0) : 1;
       if (!p.inv[k] && Object.keys(p.inv).length >= INV_SLOTS) { tell(p, 'Inventário cheio.'); break; }
       p.inv[k] = (p.inv[k] || 0) + n + (Math.random() < useBonus(p, 'skin') * 2 ? 1 : 0); useGain(p, 'skin', 1); profGain(p, 'herbalista', 3); gainXp(p, 2); setObj(i, o === O.BERRY ? O.BUSH : O.NONE); (S.objBack = S.objBack || []).push({ i, o, at: now_() + (o === O.BERRY ? 240000 : 300000) });
-      Net.toOne(p.id, { t: 'loot', k }); sendStat(p); break;
+      Net.toOne(p.id, { t: 'loot', k }); if (typeof empGather === 'function') empGather(p, k, x, y, 'gather'); sendStat(p); break;
     }
     case 'cook': cookOrDrink(p, 'cook'); break;
     case 'carve': carve(p, String(m.k)); break;
@@ -423,6 +423,7 @@ function hostOnClient(from, m) {
     }
     case 'bath': bathMsg(p, m); break;
     case 'tub': tubMsg(p, m); break;
+    case 'emp': if (typeof empMsg === 'function') empMsg(p, m); break;
     case 'duel': duelMsg(p, m); break;
     case 'hipthrow': hipThrow(p); break;
     case 'train': trainMsg(p, m); break;
@@ -950,7 +951,7 @@ function tubMsg(p, m) {
   const T = tubRec(p.fb), now = Date.now(), lv = tubLv(T, now);
   if (T.lever) { T.lever = 0; T.lv = lv; T.t = now; T.mode = lv > 0 ? 'drain' : ''; info(p, lv > 0 ? 'Alavanca para cima: as bicas fecham e o ofurô começa a esvaziar (1 min).' : 'Alavanca para cima: as bicas fecham.'); }
   else { T.lever = 1; T.lv = lv; T.t = now; T.mode = 'fill'; if (lv < 1) { T.fullG = 0; T.cold = false; } info(p, lv < 1 ? 'Alavanca para baixo: a água quente começa a encher o ofurô (2 min).' : 'Alavanca para baixo: as bicas voltam a correr.'); }
-  p.dir = dirFromVecS(O2.lever[0] - p.x, O2.lever[1] - p.y + 0.4); near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'punch', tx: O2.lever[0], ty: O2.lever[1] - 0.5, ms: 500 });
+  p.dir = dirFromVecS(O2.lever[0] - p.x, O2.lever[1] - p.y + 0.4); near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'lever', tx: O2.lever[0], ty: O2.lever[1] - 0.5, ms: 1100 });
   Net.toAll(tubPayload(p.fb)); estateSave();
 }
 function tubTick(now) {
@@ -1012,7 +1013,7 @@ function bathTick(now) {
     sendStat(p); }
 }
 function mageTick(now) {   /* brasa (animais recuam), flores (curam e acalmam) */
-  bathTick(now); tubTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
+  bathTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
   for (const p of Object.values(S.players)) {
     if (p.cls !== 'mage' || !buffOn(p, 'ember') || p.downed) continue;
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(p.x, p.y, m.x, m.y) > 3.5) continue; m.flee = { from: p.id, until: now + 1800 }; if (m.aggro === p.id) m.aggro = null; m.atk = null; }
@@ -1418,7 +1419,7 @@ function witnessCrime(p, x, y, kind) {
   Net.toAll({ t: 'wanted', id: p.id, ms: 300000 }); return true;
 }
 function pvpHit(p, q, A, now) {
-  const duel = p.duel && p.duel === q.duel; if (!duel) witnessCrime(p, p.x, p.y);
+  const duel = p.duel && p.duel === q.duel; if (!duel) witnessCrime(p, p.x, p.y); if (!duel && typeof segDefend === 'function') segDefend(p, q);
   if (q.duel && !duel) return;   /* ninguém de fora atrapalha o duelo */
   if (now < (q.dodgeUntil || 0)) { near(q.x, q.y, { t: 'whiff', id: q.id }); return; }
   const toP = Math.atan2(p.y - q.y, p.x - q.x);
@@ -1999,7 +2000,7 @@ function dragCleanup() {
 const NPC_HP = { guard: 260, executioner: 220, captain: 240 };
 function initNpcs() {
   if (S.npcs) return; S.npcs = {};
-  for (const n of NPCS) S.npcs[n.id] = { id: n.id, kind: n.kind, role: n.role, bi: n.bi, home: n.home, name: n.name, route: n.route, ri: 0, patrol: n.patrol, pairOf: n.pairOf, pairOff: n.pairOff, x: n.x, y: n.y, z: 0, postX: n.x, postY: n.y, hp: NPC_HP[n.kind] || 90, maxHp: NPC_HP[n.kind] || 90, downed: null, dead: false };
+  for (const n of NPCS) S.npcs[n.id] = { id: n.id, kind: n.kind, role: n.role, bi: n.bi, home: n.home, name: n.name, route: n.route, ri: 0, patrol: n.patrol, sitting: n.sitting ? true : undefined, pairOf: n.pairOf, pairOff: n.pairOff, x: n.x, y: n.y, z: 0, postX: n.x, postY: n.y, hp: NPC_HP[n.kind] || 90, maxHp: NPC_HP[n.kind] || 90, downed: null, dead: false };
 }
 const npcAlive = id => { const n = S.npcs && S.npcs[id]; return !n || (!n.dead && !n.downed); };
 function npcDamage(n, dmg, p) {
@@ -2009,6 +2010,7 @@ function npcDamage(n, dmg, p) {
   if (p) witnessCrime(p, n.x, n.y, n.downed ? 'murder' : 'assault');
   if (n.carrying) { npcDropCarried(n); n.mission = null; sys(n.name + ' largou o preso!'); }   // resgate: atacar o guarda que leva alguém
   if (n.kind === 'executioner') abortExecution('O carrasco foi atacado! A execução foi interrompida.');
+  if (n.seg) { n.hp -= dmg; sfx(n.x, n.y, '-' + dmg, '#ff8a6a'); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'hurt', ms: 300 }); if (n.hp <= 0 && typeof segKilled === 'function') { segKilled(n, p); return; } if (p && !n.fight) n.fight = { id: p.id, until: now + 20000 }; return; }   /* segurança atacado: revida (e pode morrer) */
   if (n.downed) { npcDie(n, p); return; }
   n.hp -= dmg; sfx(n.x, n.y, '-' + dmg, '#ff8a6a'); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'hurt', ms: 300 });
   if (n.kind === 'guard' && p) { n.aggro = p.id; p.wanted = Math.max(p.wanted || 0, now + 300000); Net.toAll({ t: 'wanted', id: p.id, ms: p.wanted - now }); }
@@ -2166,7 +2168,7 @@ function weaverFollow(n, now, dt) {
 function npcTick(now, dt) {
   initNpcs(); tavernTick(now); collectorSync(now); try { tonelTick(now); } catch (e) { console.warn('tonel', e); }
   if (now - (S.dispT || 0) > 3000) { S.dispT = now; try { dispatchCouriers(); } catch (e) { console.warn('entregas', e); } }   // mensageiros saem assim que ficam livres
-  if (now - (S.visT || 0) > 1500) { S.visT = now; const night = typeof dayInfoS === 'function' ? dayInfoS().night : false, want = night ? 5 : 15, have = Object.values(S.npcs).filter(n => n.transient && !n.bizWorker && !n.bard && !n.collector).length; if (have < want && Math.random() < 0.5 && Object.keys(S.players).length) visSpawn(now); for (const n of Object.values(S.npcs)) if (n.transient && (n.dead || now - n.born > 600000) && !n.dragBy) visGone(n); }
+  if (now - (S.visT || 0) > 1500) { S.visT = now; const night = typeof dayInfoS === 'function' ? dayInfoS().night : false, want = night ? 5 : 15, have = Object.values(S.npcs).filter(n => n.transient && !n.bizWorker && !n.bard && !n.collector && !n.emp && !n.seg).length; if (have < want && Math.random() < 0.5 && Object.keys(S.players).length) visSpawn(now); for (const n of Object.values(S.npcs)) if (n.transient && (n.dead || now - n.born > 600000) && !n.dragBy) visGone(n); }
   for (const n of Object.values(S.npcs)) {
     if (n.dead) continue;
     if (n.downed) { npcCrawl(n, now, dt); if (now > n.downed.until && !n.dragBy) { n.downed = null; n.hp = Math.round(n.maxHp * 0.3); n.goHome = n.id !== 'fruit'; sys(n.name + ' se levantou, ferido.'); } continue; }
@@ -2177,6 +2179,8 @@ function npcTick(now, dt) {
     if (n.collector) { collectorTick(n, now, dt); continue; }
     if (n.bizWorker) { workerTick(n, now, dt); continue; }
     if (n.bard) continue;   // o bardo fica tocando no canto
+    if (n.emp && typeof empNpcTick === 'function') { empNpcTick(n, now, dt); continue; }
+    if (n.seg && typeof segNpcTick === 'function') { segNpcTick(n, now, dt); continue; }   /* segurança contratado */   /* empregado doméstico */
     if (n.transient) { visitorTick(n, now, dt); continue; }
     if (n.goHome && !n.dragBy && !n.gripBy) { if (npcWalk(n, n.postX, n.postY, 1.3, dt)) { n.goHome = false; n.x = n.postX; n.y = n.postY; } continue; }
     if (n.route && !n.dragBy && !n.gripBy) { if (now >= (n.pauseT || 0)) { const wp = n.route[n.ri % n.route.length]; if (npcWalk(n, wp[0], wp[1], 0.9, dt)) { n.ri++; n.pauseT = now + 3000 + Math.random() * 5000; } } continue; }
@@ -2776,7 +2780,7 @@ function hostTick() {
     }
     const ch = []; for (const id in S.chests) { const c = S.chests[id]; if (Math.abs(c.x - r.x) <= VIEW_RADIUS && Math.abs(c.y - r.y) <= VIEW_RADIUS) ch.push([c.id, Math.round(c.x * 100), Math.round(c.y * 100), c.opened.has(r.id) ? 1 : 0, c.who.has(r.id) ? 1 : 0]); }
     const co = []; for (const id in S.corpses || {}) { const c = S.corpses[id]; if (Math.abs(c.x - r.x) <= VIEW_RADIUS && Math.abs(c.y - r.y) <= VIEW_RADIUS) co.push([c.id, MON_TYPES.indexOf(c.type), Math.round(c.x * 100), Math.round(c.y * 100), c.z, c.looted ? 1 : 0, Math.round(c.ix * 10), Math.round(c.iy * 10), c.lost || 0, c.onBack || 0]); }
-    const np = []; for (const n of Object.values(S.npcs || {})) { if (Math.abs(n.x - r.x) > VIEW_RADIUS + 4 || Math.abs(n.y - r.y) > VIEW_RADIUS + 4) continue; np.push([n.id, Math.round(n.x * 100), Math.round(n.y * 100), (n.downed ? 1 : 0) | (n.dead ? 2 : 0) | (n.dragBy && n.dragMode !== 'back' ? 4 : 0) | (n.dragMode === 'foot' ? 8 : 0) | (n.walk ? 32 : 0) | (n.lead && n.lead.phase === 'walk' ? 64 : 0) | (n.crawl ? 128 : 0) | (n.sleeping ? 256 : 0) | (n.job && n.job.st === 'levando' ? 512 : 0) | (n.drunkT > now ? 1024 : 0) | (n.arrest || n.aggro || n.fight || n.threat || n.chaseNpc || n.goFetch ? 2048 : 0) | (n.sitting ? 4096 : 0) | (n.sitting && n.doze ? 8192 : 0), n.onBack || 0, n.carrying || 0]); }
+    const np = []; for (const n of Object.values(S.npcs || {})) { if (Math.abs(n.x - r.x) > VIEW_RADIUS + 4 || Math.abs(n.y - r.y) > VIEW_RADIUS + 4) continue; np.push([n.id, Math.round(n.x * 100), Math.round(n.y * 100), (n.downed ? 1 : 0) | (n.dead ? 2 : 0) | (n.dragBy && n.dragMode !== 'back' ? 4 : 0) | (n.dragMode === 'foot' ? 8 : 0) | (n.walk ? 32 : 0) | (n.lead && n.lead.phase === 'walk' ? 64 : 0) | (n.crawl ? 128 : 0) | (n.sleeping ? 256 : 0) | (n.job && n.job.st === 'levando' ? 512 : 0) | (n.drunkT > now ? 1024 : 0) | (n.arrest || n.aggro || n.fight || n.threat || n.chaseNpc || n.goFetch ? 2048 : 0) | (n.sitting ? 4096 : 0) | (n.sitting && n.doze ? 8192 : 0), n.onBack || 0, n.carrying || 0, n.fl || 0, n.fl ? n.fb : -1]); }
     const sm = { t: 's', p: pl, m: ml, ch, co, np, jc: (S.cells || []).map(c => c.open ? 1 : 0) }; S.bw = S.bw || {}; if (r.id !== Net.myId && Date.now() - ((S.bw[r.id] || {}).t || 0) > 2000) S.bw[r.id] = { t: Date.now(), kb: JSON.stringify(sm).length * 10 / 1024 };
     Net.toOne(r.id, sm, true);
   }
@@ -2815,7 +2819,7 @@ const estDay = () => Math.floor(gameNow() / ESTATE_DAY_MS);
 const isBizProp = P => P && (P.kind === 'shop' || P.kind === 'workshop' || P.kind === 'bank' || P.kind === 'hotel') && P.npc !== 'a Guarda' && !(P.kind === 'workshop' && P.npc && !P.wk);
 function estateLoad() {
   if (S.estate) return S.estate; S.estate = { r: {}, lost: {} };
-  try { const j = hsGet(ESTATE_KEY); if (j && j.r) { S.estate = { r: j.r, lost: j.lost || {}, hotel: j.hotel || {}, npcb: j.npcb || {}, npcm: j.npcm || {}, tub: j.tub || {}, clk: j.clk || 0 }; if (j.clk && !SIMCLK.real) simSet(Date.now() + j.clk, 1, false); for (const pid in S.estate.r) { const P = PROPS_BY[pid]; if (!P || (P.kind !== 'house' && !isBizProp(P))) delete S.estate.r[pid]; } } } catch (e) { }
+  try { const j = hsGet(ESTATE_KEY); if (j && j.r) { S.estate = { r: j.r, lost: j.lost || {}, hotel: j.hotel || {}, npcb: j.npcb || {}, npcm: j.npcm || {}, tub: j.tub || {}, emp: j.emp || {}, seg: j.seg || {}, empN: j.empN || 0, clk: j.clk || 0 }; if (j.clk && !SIMCLK.real) simSet(Date.now() + j.clk, 1, false); for (const pid in S.estate.r) { const P = PROPS_BY[pid]; if (!P || (P.kind !== 'house' && !isBizProp(P))) { const r0 = S.estate.r[pid]; if (r0 && r0.owner && r0.chest && Object.keys(r0.chest).length) S.estate.lost[r0.owner] = Object.assign(S.estate.lost[r0.owner] || {}, r0.chest); delete S.estate.r[pid]; } }   /* imóvel que deixou de existir (a Casa 2 virou a agência): o baú volta para o dono */ } } catch (e) { }
   for (const pid in S.estate.r) bizLinkBank(S.estate.r[pid]);
   S.estateL = estateLocks(); return S.estate;
 }
@@ -3341,7 +3345,7 @@ function estateTick(now) {
   for (const p of Object.values(S.players)) {
     if (p.sleep == null || !(estHomeBed(p) || hotelBedOf(p) === p.sleep)) { p.homeSleep = 0; continue; }
     p.homeSleep = (p.homeSleep || 0) + dt;
-    if (p.homeSleep >= 20 && !buffOn(p, 'rested')) { p.buffs.rested = now + 600000; tell(p, 'Você dormiu bem na sua cama: Bem descansado (10 min, recupera vida e mana mais rápido).'); sendStat(p); }
+    if (p.homeSleep >= 20 && !buffOn(p, 'rested')) { const ms = typeof empSlept === 'function' ? empSlept(p) : 600000; p.buffs.rested = now + ms; tell(p, 'Você dormiu bem na sua cama: Bem descansado (' + Math.round(ms / 60000) + ' min' + (ms > 600000 ? ', a cama estava arrumada' : '') + '; recupera vida e mana mais rápido).'); sendStat(p); }
   }
 }
 function estHomeBed(p) { if (p.sleep == null) return false; const b = BEDS[p.sleep], pid = rentalOf(p); if (!b || !pid) return false; const P = PROPS_BY[pid]; return P.apt ? b.apt === P.apt : (P.bi === b.bi && !b.fl); }
@@ -3581,7 +3585,7 @@ function gather(p, m) {
   const lv = profLv((p.prof || {})[G0.prof]); if (lv < G0.min) return stop('Precisa de ' + PROFS[G0.prof] + ' nível ' + G0.min + ' para isso.');
   const rare = Math.random() < G0.rp + lv * 0.012, item = rare ? G0.rare : G0.item, n = 1 + (lv >= 5 && Math.random() < 0.3 ? 1 : 0);
   if (!p.inv[item] && Object.keys(p.inv).length >= INV_SLOTS) return stop('Sua mochila está cheia.');
-  p.gatherT = now + 1200; p.inv[item] = (p.inv[item] || 0) + n;
+  p.gatherT = now + 1200; p.inv[item] = (p.inv[item] || 0) + n; if (typeof empGather === 'function') empGather(p, item, x, y, COLL_ANIM[G0.tool]);
   if (o === O.TALLGRASS || o === O.FERN) { setObj(i, O.NONE); (S.objBack = S.objBack || []).push({ i, o, at: now + 120000 }); }
   else if (o === O.WHEAT) { setObj(i, O.WHEATSPROUT); (S.objBack = S.objBack || []).push({ i, o, at: now + 150000 }); }   // o trigo volta a crescer
   else {   // árvore e pedra aguentam alguns golpes; no último a árvore cai (vira toco) e a pedra se desfaz

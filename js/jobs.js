@@ -18,6 +18,8 @@ function jobsPrompt() {
   if (G.shiftUntil > performance.now()) return 'Trabalhando… saia do prédio para parar';
   if (typeof hotelChestNear === 'function' && hotelChestNear()) return me.hroom >= 0 ? 'F: abrir o baú da sua cabine' : 'Baú de hóspede — alugue uma cabine com Dona Ilsa';
   if (typeof estChestHere === 'function' && estChestHere()) return 'F: abrir o baú';
+  if (typeof empNear === 'function' && empNear()) return empPrompt();
+  if (typeof segNear === 'function' && segNear()) return segPrompt();   /* seus empregados: o F abre as ordens */
   { const t = typeof talkTarget === 'function' ? talkTarget() : null; if (t) return t.k === 'n' ? 'F: falar com ' + t.name : 'F: dar ouro ou itens para ' + t.name; }
   if (typeof estInBiz === 'function' && estInBiz()) return 'N: gerenciar o negócio';
   if (shiftHere()) return 'F: trabalhar um turno aqui';
