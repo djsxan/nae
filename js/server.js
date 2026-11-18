@@ -6,9 +6,9 @@
 // ============================================================
 const S = { players: {}, monsters: {}, nextMid: 1, nextSpawn: 0, lastRegen: 0, filled: false, lastTick: 0 };
 // ambiente do servidor: tudo o que ele usa de fora passa por aqui (permite rodar num Web Worker ou num servidor dedicado)
-const HOSTSTORE = { mem: {}, onSet: null,
-  get(k) { try { if (typeof localStorage !== 'undefined') return localStorage.getItem(k); } catch (e) { } return this.mem[k] ?? null; },
-  set(k, v) { try { if (typeof localStorage !== 'undefined') { localStorage.setItem(k, v); return; } } catch (e) { } this.mem[k] = v; if (this.onSet) this.onSet(k, v); } };
+const HOSTSTORE = { mem: {}, onSet: null, pre: '',   /* pre: prefixo do mundo aberto (cada mundo guardado tem o seu) */
+  get(k) { k = this.pre + k; try { if (typeof localStorage !== 'undefined') return localStorage.getItem(k); } catch (e) { } return this.mem[k] ?? null; },
+  set(k, v) { k = this.pre + k; try { if (typeof localStorage !== 'undefined') { localStorage.setItem(k, v); return; } } catch (e) { } this.mem[k] = v; if (this.onSet) this.onSet(k, v); } };
 const hsGet = k => { try { return JSON.parse(HOSTSTORE.get(k) || 'null'); } catch (e) { return null; } }, hsSet = (k, o) => HOSTSTORE.set(k, JSON.stringify(o));
 function weatherS() {   /* chuva igual à que os jogadores veem (mesma fórmula), com o ajuste do Tecelão */
   const ov = (typeof WTs === 'function' ? WTs().rain : null); if (ov != null) return { rain: ov };
@@ -2422,12 +2422,12 @@ function obsControl(p, m) {
 //  HISTÓRICO DO OBSERVATÓRIO — uma linha por hora do jogo (7 dias) e um resumo por dia (para sempre)
 // ============================================================
 const OBS_HKEY = 'nae-world-obs-v1', OBS_HEATKEY = 'nae-world-heat-v1', HEAT_N = 64;
-function obsLoadH() { if (S.obsH) return S.obsH; S.obsH = { hr: [], dy: [] }; try { const j = hsGet(OBS_HKEY); if (j && j.hr) S.obsH = { hr: j.hr, dy: j.dy || [] }; } catch (e) { } return S.obsH; }
-function obsSaveH(force) { if (!force && Date.now() - (S.ohSaveT || 0) < 30000) return; S.ohSaveT = Date.now(); try { hsSet(OBS_HKEY, obsLoadH()); } catch (e) { } }
+function obsLoadH() { if (!S.obsH) S.obsH = { hr: [], dy: [] }; return S.obsH; }   /* dados do Observatório: só desta sessão do anfitrião */
+function obsSaveH() { }
 function obsCount(k, x, y) { S.obsCnt = S.obsCnt || {}; S.obsCnt[k] = (S.obsCnt[k] || 0) + 1; if (x != null) obsHeatAdd(k, x, y, 1); }
-function obsHeatLoad() { if (S.heat) return S.heat; S.heat = {}; try { const j = hsGet(OBS_HEATKEY); if (j) S.heat = j; } catch (e) { } return S.heat; }
+function obsHeatLoad() { if (!S.heat) S.heat = {}; return S.heat; }
 function obsHeatAdd(k, x, y, v) { const H = obsHeatLoad(), a = H[k] || (H[k] = new Array(HEAT_N * HEAT_N).fill(0)), cx = Math.max(0, Math.min(HEAT_N - 1, Math.floor(x / MAP_W * HEAT_N))), cy = Math.max(0, Math.min(HEAT_N - 1, Math.floor(y / MAP_H * HEAT_N))); a[cy * HEAT_N + cx] += v; }
-function obsHeatSave() { try { hsSet(OBS_HEATKEY, obsHeatLoad()); } catch (e) { } }
+function obsHeatSave() { }
 function obsRoleS(n) { if (n.transient) return 'vis'; if (n.role === 'courier') return 'cou'; if (/^(guard|captain)/.test(n.kind)) return 'grd'; if (/artisan|clerk/.test(n.role || '') || n.bizWorker || /^st_|smith|innkeeper|merchant|banker|tavmaid|hotelkeeper|fruit|tailor|broker/.test(n.kind)) return 'art'; return 'res'; }
 function obsRecord(newDay) {
   const H = obsLoadH(), E = estateLoad(), N = npcbAll(), now = Date.now(), prev = S.obsPrev || (S.obsPrev = {}), row = { t: now, d: estDay(), h: Math.floor(resHour()), b: {}, g: [], c: {}, pop: {} };
@@ -2565,8 +2565,8 @@ function hostTick() {
 }
 
 // ---------- mundo único: cópia para todos (para quem assumir se o anfitrião cair) e recomeço pelo Tecelão ----------
-function worldSnap() { estateLoad(); bankLoad(); const succ = Object.values(S.players).filter(q => q.id !== Net.myId).sort((a, b) => (a.joinT || 0) - (b.joinT || 0)).map(q => q.id);   /* quem chegou primeiro assume */ const m = { t: 'wsnap', est: S.estate, bank: S.bank, succ, ver: VERSION }; if (Date.now() - (S.ohT || 0) > 60000) { S.ohT = Date.now(); m.oh = obsLoadH(); } return m; }
-function worldBroadcast() { if (!Net.isHost || Net.offline) return; try { const m = worldSnap(); for (const id in Net.rel) { const c = Net.rel[id]; if (c.open) c.send(m); } } catch (e) { console.warn('wsnap', e); } }
+function worldSnap() { estateLoad(); bankLoad(); const succ = Object.values(S.players).filter(q => q.id !== Net.myId).sort((a, b) => (a.joinT || 0) - (b.joinT || 0)).map(q => q.id);   /* quem chegou primeiro assume */ return { t: 'wsnap', est: S.estate, bank: S.bank, succ, ver: VERSION, wid: S.wid || 'legacy', wname: S.wname || 'Nae', host: (S.players[Net.myId] || {}).name || '' }; }
+function worldBroadcast() { if (!Net.isHost || Net.offline) return; try { if (S.wid && typeof worldTouch === 'function') worldTouch(S.wid, S.wname, (S.players[Net.myId] || {}).name || '', true); const m = worldSnap(); for (const id in Net.rel) { const c = Net.rel[id]; if (c.open) c.send(m); } } catch (e) { console.warn('wsnap', e); } }
 function worldReset(p) {
   S.estate = { r: {}, lost: {}, hotel: {}, npcb: {}, npcm: {} }; estateSave(); S.bank = { acc: {} }; bankSave(); HOTEL_R = null; S.obsH = { hr: [], dy: [] }; S.heat = null; obsSaveH(true);
   for (const id of Object.keys(S.npcs || {})) { const q = S.npcs[id]; if (q && (q.bizWorker || q.collector)) visGone(q); }

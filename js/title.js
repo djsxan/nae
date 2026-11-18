@@ -119,6 +119,22 @@ function titleScene() {
   };
   loop();
 }
+// ---------- Reinos Online: lista, mundos guardados ----------
+function realmScreen() { realmWorlds(); realmScan(); }
+function realmWorlds() {
+  const box = document.getElementById('nae-rworlds'); if (!box || typeof worldsList !== 'function') return; const L = worldsList(), esc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  const dt = t => { if (!t) return 'antigo'; const d = new Date(t); return d.toLocaleDateString('pt-BR') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
+  box.innerHTML = '<label class="nae-rw"><input type="radio" name="nae-rw" value="new" checked><span><b>Mundo novo</b><small>Cidade do zero: ninguém tem casa nem negócio, economia nova.</small></span></label>'
+    + L.map(w => `<label class="nae-rw"><input type="radio" name="nae-rw" value="${esc(w.id)}"><span><b>${esc(w.n)}</b><small>${w.own ? 'seu mundo' : 'cópia do reino de ' + esc(w.h || '?')} · salvo em ${dt(w.t)}</small></span>${w.id !== 'legacy' ? `<button class="nae-link" data-wdel="${esc(w.id)}" title="Apagar este mundo">apagar</button>` : ''}</label>`).join('');
+  box.querySelectorAll('[data-wdel]').forEach(b => b.onclick = e => { e.preventDefault(); if (b.dataset.sure) { worldDelete(b.dataset.wdel); realmWorlds(); } else { b.dataset.sure = 1; b.textContent = 'confirmar?'; } });
+}
+function realmScan() {
+  const box = document.getElementById('nae-rlist'); if (!box || typeof Net === 'undefined') return; box.innerHTML = '<div class="sv-empty">Procurando reinos...</div>';
+  Net.scan(list => { const esc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+    if (!list.length) { box.innerHTML = '<div class="sv-empty">Nenhum reino aberto agora. Crie o seu abaixo!</div>'; return; }
+    box.innerHTML = list.map(r => { const ok = !r.ver || r.ver === VERSION; return `<div class="nae-rrow${ok ? '' : ' off'}"><div><b>${esc(r.realm || 'Reino de ' + (r.name || '?'))}${r.lock ? ' 🔒' : ''}</b><small>anfitrião ${esc(r.name || '?')} · ${r.n || 0} jogador${r.n === 1 ? '' : 'es'} · código ${esc(r.code)}${ok ? '' : ' · versão ' + esc(r.ver) + ' (diferente da sua)'}</small></div><button class="btn" data-rjoin="${esc(r.code)}" ${ok ? '' : 'disabled'}>Entrar</button></div>`; }).join('');
+    box.querySelectorAll('[data-rjoin]').forEach(b => b.onclick = () => devGate(() => realmJoin(b.dataset.rjoin))); });
+}
 // ---------- menu minimalista ----------
 function titleMenu() {
   const lob = document.getElementById('lobby'); if (!lob) return;
@@ -165,11 +181,18 @@ function titleMenu() {
   opts.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { if (typeof SET !== 'undefined') { SET.quality = b.dataset.q; try { saveSettings(); } catch (e) { } } markQ(); }); markQ();
   // painel de heróis: depois de escolher, "Continuar" leva aos Reinos Online
   { const sc = lob.querySelector('.scroll'), cont = document.createElement('div'); cont.id = 'nae-cont'; cont.innerHTML = '<button class="btn gold" id="nae-contb">Continuar com este herói ▸</button><small id="nae-cont-st"></small>'; sc.appendChild(cont);
-    const rl = document.createElement('section'); rl.id = 'nae-realm'; rl.innerHTML = '<button class="nae-back" id="nae-rback">← Trocar de herói</button><h2>Reinos Online</h2><p class="hint">Todos jogam no mesmo mundo. Quem chegar primeiro abre o reino; se a conexão falhar, o jogo tenta de novo sozinho.</p><div class="nae-realm"><div><b><span class="nae-dot"></span>Nae</b><small id="nae-rwho"></small></div><button class="btn gold" id="nae-renter">Entrar no reino ▸</button></div>'; sc.appendChild(rl);
+    const rl = document.createElement('section'); rl.id = 'nae-realm'; rl.innerHTML = '<button class="nae-back" id="nae-rback">← Trocar de herói</button><h2>Reinos Online</h2><p class="hint" id="nae-rwho"></p><div id="nae-rmsg" class="nae-rmsg hidden"></div>'
+      + '<div class="nae-rsec"><div class="nae-rhead"><b>Reinos abertos</b><button class="nae-link" id="nae-rscan">Procurar de novo</button></div><div id="nae-rlist" class="nae-rlist"><div class="sv-empty">Procurando reinos...</div></div>'
+      + '<div class="nae-rcode"><input id="nae-rcode" maxlength="8" placeholder="Código do reino (ex.: S2)" autocomplete="off"><button class="btn" id="nae-rjoin">Entrar pelo código</button></div></div>'
+      + '<div class="nae-rsec"><div class="nae-rhead"><b>Criar reino</b></div><div class="nae-rform"><label>Nome do reino<input id="nae-rname" maxlength="28" placeholder="Reino de ..."></label><label>Senha (opcional)<input id="nae-rpw" maxlength="24" type="password" placeholder="sem senha: qualquer um entra" autocomplete="new-password"></label>'
+      + '<label>Mundo</label><div id="nae-rworlds" class="nae-rworlds"></div><button class="btn gold" id="nae-rcreate">Criar reino ▸</button></div></div>'; sc.appendChild(rl);
     cont.querySelector('#nae-contb').onclick = () => { const nm = (document.getElementById('name') || {}).value || ''; if (!nm.trim()) { document.getElementById('nae-cont-st').textContent = 'Escolha um herói ou crie um novo (dê um nome).'; return; }
-      const cn = typeof CLASSES !== 'undefined' && CLASSES[chosenClass] ? CLASSES[chosenClass].name : ''; document.getElementById('nae-rwho').textContent = 'Você entra como ' + nm.trim() + (cn ? ', ' + cn : '') + '.'; open('realm'); };
+      const cn = typeof CLASSES !== 'undefined' && CLASSES[chosenClass] ? CLASSES[chosenClass].name : ''; document.getElementById('nae-rwho').textContent = 'Você entra como ' + nm.trim() + (cn ? ', ' + cn : '') + '. Entre no reino de alguém ou crie o seu: cada reino tem o mundo do seu anfitrião.'; document.getElementById('nae-rname').placeholder = 'Reino de ' + nm.trim(); realmScreen(); open('realm'); };
     rl.querySelector('#nae-rback').onclick = () => open('heroes');
-    rl.querySelector('#nae-renter').onclick = () => { if (typeof devGate === 'function') devGate(enterWorld); }; }
+    rl.querySelector('#nae-rscan').onclick = () => realmScan();
+    rl.querySelector('#nae-rjoin').onclick = () => devGate(() => realmJoin(document.getElementById('nae-rcode').value));
+    rl.querySelector('#nae-rcreate').onclick = () => { const sel = document.querySelector('input[name=nae-rw]:checked'); devGate(() => realmCreate({ name: document.getElementById('nae-rname').value, pw: document.getElementById('nae-rpw').value, wid: sel && sel.value !== 'new' ? sel.value : null })); };
+    try { const msg = sessionStorage.getItem('nae-realm-msg'); if (msg) { sessionStorage.removeItem('nae-realm-msg'); const b = document.getElementById('nae-rmsg'); b.textContent = msg; b.classList.remove('hidden'); setTimeout(() => document.getElementById('nae-contb') && document.getElementById('name').value.trim() && document.getElementById('nae-contb').click(), 400); } } catch (e) { } }
   const open = k => {
     if (k === 'guide') { window.open('guia.html', '_blank', 'noopener'); return; }
     if (k === 'road') { window.open('roadmap.html', '_blank', 'noopener'); return; }

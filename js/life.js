@@ -172,7 +172,7 @@ function renderServers(list) {
     const row = document.createElement('div'); row.className = 'sv-row';
     const txt = document.createElement('span'); txt.textContent = 'Reino de ' + (s.name || '?') + ' · ' + (s.n || 0) + (s.n === 1 ? ' jogador' : ' jogadores') + (s.ver && s.ver !== VERSION ? ' · ' + s.ver : '') + (s.lock ? ' · 🔒' : '');
     const b = document.createElement('button'); b.className = 'btn'; b.textContent = 'Entrar';
-    b.onclick = () => { document.getElementById('code').value = s.code; joinRoom(); };
+    b.onclick = () => devGate(() => realmJoin(s.code));
     row.appendChild(txt); row.appendChild(b); box.appendChild(row);
   }
 }

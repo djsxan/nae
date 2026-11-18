@@ -204,7 +204,7 @@ function clientOnServer(m) {
     case 'hotel': G.hotel = m; if (G.dialog && G.dialog.id === 'hotelkeeper') setDialogText(m.room >= 0 ? 'Sua cabine é a ' + (m.room + 1) + ', por mais ' + m.until + ' dia(s). O baú fica ao lado do catre.' : 'Você não tem cabine. Vagas agora: ' + m.free + ' de 6.'); if ($('hchest') && !$('hchest').classList.contains('hidden')) hotelChestShow(); break;
     case 'wt': WT.ph = m.ph ?? null; WT.rain = m.rain ?? null; break;
     case 'denied': if (m.why === 'ver') { if (verNum(m.ver) > verNum(VERSION)) { netMsg('O reino está numa versão mais nova. Atualizando o jogo…'); saveUpdPos(); setTimeout(() => location.replace(location.pathname + '?v=' + Date.now()), 1200); } else { netMsg('O anfitrião está numa versão antiga do jogo. Esperando ele atualizar…'); Net.reset(); setTimeout(worldTry, 8000); } break; } askRoomPw(m.why === 'pwbad'); break;
-    case 'wsnap': if (!Net.isHost) { try { if (m.oh) localStorage.setItem('nae-world-obs-v1', JSON.stringify(m.oh)); localStorage.setItem('nae-world-estate-v1', JSON.stringify(m.est || {})); localStorage.setItem('nae-world-bank-v1', JSON.stringify(m.bank || {})); } catch (e) { } WN.succ = m.succ || []; } break;   // guarda a cópia do mundo
+    case 'wsnap': if (!Net.isHost) { try { const wp = worldPre(m.wid || 'legacy'); RLM.name = m.wname; worldTouch(m.wid || 'legacy', m.wname || 'Nae', m.host || '', null); localStorage.setItem(wp + 'nae-world-estate-v1', JSON.stringify(m.est || {})); localStorage.setItem(wp + 'nae-world-bank-v1', JSON.stringify(m.bank || {})); } catch (e) { } WN.succ = m.succ || []; } break;   // guarda a cópia do mundo
     case 'roompw': G.roomLocked = m.on; pzRoomRefresh(); break;
     case 'npc': if (G.dialog && G.dialog.id === m.n) { setDialogText(m.text); if (m.n === 'captain') later(50, () => G.dialog && buildDialogOptions('captain')); } break;
     case 'down': { const e = G.players[m.id]; if (e) { e.downed = true; e.downUntil = now + DOWNED_MS; } if (m.id === G.myId) { setTarget(null); G.path = null; } break; }
@@ -1357,16 +1357,55 @@ setInterval(() => {
   if (q > 12000 && now - WN.pingT > 6000 && now - WN.lostT > 8000) { WN.pingT = 0; worldLost(); }
 }, 1000);
 function worldLost() {
+  if (RLM.code) { realmLost(); return; }   /* reinos: sem troca de anfitrião */
   if (Net.isHost || WN.busy || (Date.now() - WN.lostT < 3000)) return; const i = WN.succ.indexOf(Net.myId); WN.rank = i < 0 ? 12 : i; WN.lostT = Date.now(); WN.tries = 0;
   netMsg('O anfitrião saiu. Reconectando…'); setTimeout(worldTry, 600 + Math.random() * 600);
 }
 function verNum(v) { return String(v || '').replace(/^v/, '').split('.').map(x => +x || 0).reduce((a, x) => a * 1000 + x, 0); }
 function quickEnter(btn) {
   if (!$('name').value.trim()) { setStatus('Crie ou escolha um herói em Personagens.', true); return; }
-  devGate(enterWorld); return;
+  { const b = document.getElementById('nae-contb'); if (b) { b.click(); return; } }   /* abre a tela de Reinos Online */
+  devGate(() => realmCreate({})); return;
   const old = btn.textContent; btn.disabled = true; btn.textContent = 'Procurando o reino...';
   const go = list => { btn.disabled = false; btn.textContent = old; const s = (list || []).find(r => !r.lock && (!r.ver || r.ver === VERSION)); if (s) { $('code').value = s.code; devGate(joinRoom); } else devGate(() => createRoom()); };
   const L = typeof LIFE !== 'undefined' && LIFE.lastScan; if (L && Date.now() - L.t < 15000) go(L.list); else Net.scan(list => { if (typeof LIFE !== 'undefined') LIFE.lastScan = { t: Date.now(), list }; go(list); });
+}
+// ============================================================
+//  REINOS — cada anfitrião abre o seu (nome, senha opcional, mundo novo ou um mundo guardado).
+//  Se o anfitrião sair, o reino fecha e todos voltam para a lista; o mundo fica guardado com quem jogava.
+// ============================================================
+const RLM = { code: null, tries: 0, closing: false, name: '' };
+const WORLDS_KEY = 'nae-worlds-v1';
+function worldsIndex() { try { return JSON.parse(localStorage.getItem(WORLDS_KEY) || '{}'); } catch (e) { return {}; } }
+function worldsSave(ix) { try { localStorage.setItem(WORLDS_KEY, JSON.stringify(ix)); } catch (e) { } }
+function worldPre(id) { return id === 'legacy' ? '' : 'nae-w-' + id + ':'; }
+function worldTouch(id, name, host, own) { const ix = worldsIndex(), o = ix[id] || {}; ix[id] = { n: name || o.n || 'Nae', t: Date.now(), h: host || o.h || '', own: own == null ? !!o.own : !!own || !!o.own }; worldsSave(ix); }
+function worldsList() { const ix = worldsIndex(), L = Object.entries(ix).map(([id, w]) => ({ id, ...w })); try { if (!ix.legacy && localStorage.getItem('nae-world-estate-v1')) L.push({ id: 'legacy', n: 'Mundo do reino único (até a v1.66)', t: 0, h: '', own: true }); } catch (e) { } return L.sort((a, b) => b.t - a.t); }
+function worldDelete(id) { try { const pre = worldPre(id); if (pre) for (const k of Object.keys(localStorage)) if (k.startsWith(pre)) localStorage.removeItem(k); const ix = worldsIndex(); delete ix[id]; worldsSave(ix); } catch (e) { } }
+function realmCreate(opt) {   /* opt: { name, pw, wid } — wid vazio = mundo novo */
+  if (!$('name').value.trim()) { setStatus('Escolha um herói ou crie um novo.', true); return; }
+  const hero = $('name').value.trim(), wid = opt.wid || ('w' + Date.now().toString(36) + randomCode().toLowerCase());
+  S.wid = wid; S.wname = (opt.name || '').trim().slice(0, 28) || 'Reino de ' + hero; HOSTSTORE.pre = worldPre(wid); RLM.name = S.wname;
+  S.estate = null; S.bank = null; S.obsH = null; S.heat = null; S.roomPw = opt.pw ? String(opt.pw).trim().toUpperCase().slice(0, 24) : null;
+  worldTouch(wid, S.wname, hero, true);
+  liveVersion(v => { if (v && verNum(v) > verNum(VERSION)) { updateNow(v); return; } createRoom('S1'); });
+}
+function realmJoin(code) { RLM.code = String(code || '').trim().toUpperCase(); if (!RLM.code) { setStatus('Digite o código do reino.', true); return; } $('code').value = RLM.code; joinRoom(); }
+function realmLost() {
+  if (RLM.closing || Net.isHost) return; if (RLM.busy) return; RLM.busy = true; RLM.tries = 0; WN.lostT = Date.now(); netMsg('A conexão com o reino caiu. Tentando voltar…'); setTimeout(realmRetry, 800);
+}
+function realmRetry() {
+  RLM.tries++; Net.reset(); Net.onServer = m => { WN.lastMsg = Date.now(); clientOnServer(m); }; Net.onDisconnected = realmLost;
+  Net.join(RLM.code, err => {
+    if (!err) { RLM.busy = false; RLM.tries = 0; WN.lastMsg = Date.now(); netMsg(''); Net.send(helloMsg()); return; }
+    if (RLM.tries < 4) { netMsg('A conexão com o reino caiu. Tentando voltar… (' + RLM.tries + ')'); setTimeout(realmRetry, 2500 * RLM.tries); return; }
+    realmClosed();
+  });
+}
+function realmClosed() {
+  RLM.closing = true; try { if (typeof saveChar === 'function') saveChar(); } catch (e) { }
+  try { sessionStorage.setItem('nae-realm-msg', 'O reino ' + (RLM.name ? '“' + RLM.name + '” ' : '') + 'fechou: o anfitrião saiu. O mundo ficou guardado com você: dá para reabri-lo em “Criar reino”.'); } catch (e) { }
+  G.leaving = true; location.reload();
 }
 function showRoom(code) { $('room-code').textContent = Net.offline ? 'offline' : code; pzRoomRefresh(); }
 function createRoom(code = 'S1', tries = 0) {
@@ -1378,8 +1417,8 @@ function createRoom(code = 'S1', tries = 0) {
       if (err.type === 'unavailable-id' && tries < Net.SLOTS + 3) { const sl = /^S(\d+)$/.exec(code); createRoom(sl && +sl[1] < Net.SLOTS ? 'S' + (+sl[1] + 1) : randomCode(), tries + 1); return; }
       setStatus('Não foi possível criar a sala: ' + (err.type || err), true); lockLobby(false); return;
     }
-    Net.infoFn = () => ({ name: (S.players[Net.myId] || {}).name || $('name').value.trim() || 'Aventureiro', n: Object.keys(S.players).length, ver: VERSION, lock: !!S.roomPw });
-    startHostLoop(); hostTick(); showRoom(code); Net.send(helloMsg());
+    Net.infoFn = () => ({ name: (S.players[Net.myId] || {}).name || $('name').value.trim() || 'Aventureiro', realm: S.wname || '', n: Object.keys(S.players).length, ver: VERSION, lock: !!S.roomPw });
+    startHostLoop(); hostTick(); showRoom(code); Net.send(helloMsg()); RLM.code = code; RLM.host = true;
     if (G.devPw) setTimeout(() => { if (!G.devAnswered) showToast('O pedido de criador não foi respondido. Recarregue a página (Ctrl+F5) e tente de novo.'); }, 6000);
   });
 }
@@ -1387,9 +1426,9 @@ function joinRoom() {
   if (!$('name').value.trim()) { setStatus('Escolha um nome para seu herói.', true); $('name').focus(); return; }
   const code = $('code').value.trim().toUpperCase();
   if (!code) { setStatus('Digite o código da sala.', true); return; }
-  lockLobby(true); setStatus('Cavalgando até a sala ' + code + '...');
-  Net.onServer = clientOnServer;
-  Net.onDisconnected = () => $('disconnected').classList.remove('hidden');
+  lockLobby(true); setStatus('Cavalgando até o reino ' + code + '...'); RLM.code = code;
+  Net.onServer = m => { WN.lastMsg = Date.now(); clientOnServer(m); }; WN.inWorld = true; WN.lastMsg = Date.now();
+  Net.onDisconnected = realmLost;
   Net.join(code, err => {
     if (err) {
       const msg = err.type === 'peer-unavailable' ? 'Sala não encontrada. Confira o código (quem criou precisa estar com o jogo aberto).'
@@ -1482,10 +1521,10 @@ function buildLobby() {
   refreshSkinLocks();
   const urlCode = new URLSearchParams(location.search).get('sala');
   if (urlCode) $('code').value = urlCode.toUpperCase();
-  $('btn-create').onclick = () => devGate(() => createRoom());
+  $('btn-create').onclick = () => devGate(() => realmCreate({}));
   $('pz-rpw-lock').onclick = () => { const v = $('pz-rpw').value.trim(); if (!v) { showToast('Digite uma senha para trancar.'); return; } Net.send({ t: 'roompw', pw: v }); };
   $('pz-rpw-open').onclick = () => { $('pz-rpw').value = ''; Net.send({ t: 'roompw', pw: '' }); };
-  $('btn-join').onclick = () => devGate(joinRoom);
+  $('btn-join').onclick = () => devGate(() => realmJoin($('code').value));
   $('code').addEventListener('keydown', e => { if (e.key === 'Enter') devGate(joinRoom); });
   $('btn-copy').onclick = () => { const link = location.origin + location.pathname + '?sala=' + Net.room; navigator.clipboard.writeText(link).then(() => showToast('Convite copiado. Mande para seus amigos.'), () => showToast(link)); };
   $('btn-help').onclick = () => $('help').classList.toggle('hidden');
