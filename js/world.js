@@ -209,7 +209,9 @@ function iwallCross(bi, fl, ax, ay, bx, by) { const L = iwallsWorld(bi, fl); if 
   return false; }
 function ofuroOf(b) { if (!b || b.kind !== 'dojo') return null; const [x, y] = localToWorld(b, 1, 1);   // banheira da suíte de luxo (último andar): um lugar em cada canto, bem juntinhos
   const seats = [[0.6, 0.6], [1.4, 0.6], [0.6, 1.4], [1.4, 1.4]].map(([u, v]) => localToWorld(b, u, v));
-  return { x, y, fl: floorsOf(b) - 1, seats, rack: localToWorld(b, 2.5, 0.5) }; }
+  const edges = [{ a: [1.86, 0.45], b: [1.86, 1.55], face: [-1, 0] }, { a: [0.45, 1.86], b: [1.55, 1.86], face: [0, -1] }].map(E => ({ a: localToWorld(b, ...E.a), b: localToWorld(b, ...E.b), cin: localToWorld(b, 1, 1) }));
+  return { x, y, fl: floorsOf(b) - 1, seats, edges, rack: localToWorld(b, 2.5, 0.5), water: [0.24, 1.76] }; }
+function inOfuroWater(b, fl, x, y) { const O = ofuroOf(b); if (!O || fl !== O.fl) return false; const [u, v] = worldToLocal(b, x, y); return u > O.water[0] && u < O.water[1] && v > O.water[0] && v < O.water[1]; }
 // varanda andável na fachada da rua (1 casa de fundo, fora do prédio), nos andares de cima: [u0, u1] no quadro local
 function balconyOf(b, fl) { if (!b || b.deco !== 'machiya' || fl < 1) return null; return fl < floorsOf(b) - 1 ? [0, bDims(b)[0]] : [0, 6]; }
 function worldToLocal(b, x, y) { const s = b.door || 'S', X0 = b.x - 0.5, Y0 = b.y - 0.5; if (s === 'S') return [x - X0, y - Y0]; if (s === 'N') return [X0 + b.w - x, Y0 + b.h - y]; if (s === 'E') return [Y0 + b.h - y, x - X0]; return [y - Y0, X0 + b.w - x]; }
@@ -312,8 +314,8 @@ function interiorLayout0(b, fl = 0) {
     } else {   // suíte de luxo
       put('plantpot', 7, 4, { block: false }); put('andon', 7, 2, { block: false }); keep(6, 3); keep(5, 3); keep(4, 3); keep(2, 4); keep(3, 4); keep(2, 3); keep(3, 3);   // porta do hall e porta de correr da varanda livres
       put('ofuro', 0, 0, { w: 2, h: 2, block: false }); put('kakebar', 2, 0, { block: false }); put('andon', 0, 2, { block: false });   /* ala do banho (a cortina separa da cama) */
-      put('jkitchen', 3, 1, { h: 2 }); put('tokonoma', 3, 0); put('platbed', 4, 0, { w: 2, h: 2, block: false }); put('andon', 5, 2, { block: false });
-      put('kotatsu', 4, 2, { block: false }); put('zengarden', 0, 3, { w: 2, h: 2 }); put('tansu', 5, 4); put('ikebana', 4, 4, { block: false });
+      put('tansu', 3, 1); put('ikebana', 3, 2, { block: false }); put('tokonoma', 3, 0); put('platbed', 4, 0, { w: 2, h: 2, block: false }); put('andon', 5, 2, { block: false });
+      put('kotatsu', 4, 2, { block: false }); put('zengarden', 0, 3, { w: 2, h: 2 }); put('jkitchen', 4, 4, { w: 2 });   /* cozinha no canto perto da varanda */
     }
   } else if (k === 'shop' && b.deco === 'greenhouse') {   // Boticário de Elva: gavetinhas e potes no fundo, alambique, balcão com balança e almofariz, canteiros, plantas que brilham, vasos pendurados, ervas secando e o tanque
     if (w === 5 && h === 5 && (b.realDoor || b.door) === 'N') {   /* porta no fundo da vista: o alto fica na parede direita, o baixo do lado da câmera */

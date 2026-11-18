@@ -153,7 +153,7 @@ function clientOnServer(m) {
       break;
     case 'fx': if (false) later(m.d, () => { const p = tileW(m.x, m.y); G.nums.push({ wx: p.x, wy: p.y - 24, text: m.text, color: m.color, small: !m.big, big: m.big, t0: performance.now(), vx: 0 }); }); break;
     case 'proj': later(m.delay || 0, () => { const e = G.players[m.id]; if (!e) return; const t = performance.now(), from = tileW(e.rx, e.ry, 20 + (e.z || 0) * FLOOR_PX); G.effects.push({ a: 'proj', kind: m.kind, from, tx: m.tx, ty: m.ty, x: m.tx, y: m.ty, t0: t, dur: Math.max(120, m.d) }); }); break;
-    case 'emote': { const e = G.players[m.id]; if (e) { e.emote = { k: m.k, t0: now }; e.anim = null; } break; }
+    case 'emote': { const e = G.players[m.id]; if (e) { if (m.k === 'smoke') { e.smokeT = performance.now(); break; } e.emote = { k: m.k, t0: now }; e.anim = null; } break; }
     case 'anim': {
       const e = (m.w === 'p' ? G.players : m.w === 'n' ? G.npcs : G.monsters)[m.id];
       if (!e) break;
@@ -326,7 +326,7 @@ function interp(e, now) {
   e.walkDist += d;
   e.speedEst = (e.speedEst || 0) * 0.8 + d * 60 * 0.2;
   e.walking = e.speedEst > 0.4;
-  if (d > 0.004) e.dir = dirFromVec(dx, dy, e.dir);
+  if (d > 0.004 && !e.bathing) e.dir = dirFromVec(dx, dy, e.dir); else if (e.srvDir != null && e !== G.me) e.dir = e.srvDir;   /* parado (ou no ofurô): a direção que o servidor manda */
 }
 
 // ---------------- movimento local ----------------
@@ -471,7 +471,6 @@ function updateLocal(now, dt) {
   }
   const stF = (me.crouch ? 1 : 0) | (me.slide ? 2 : 0);
   if (G.mouseS) G.mouseW = screenToWorld(G.mouseS[0], G.mouseS[1]);   // o cursor parado continua apontando para o mesmo lugar da TELA quando a câmera anda
-  if (me.bathing && G.mouseW && G.mouseS && (!G.bathMouse0 || Math.hypot(G.mouseS[0] - G.bathMouse0[0], G.mouseS[1] - G.bathMouse0[1]) > 24)) { G.bathMouse0 = null; const a = Math.atan2(G.mouseW.y - me.y, G.mouseW.x - me.x); me.dir = dirFromVec(Math.cos(a), Math.sin(a), me.dir); }   /* no ofurô: entra olhando para o centro; depois olha para onde o mouse aponta */
   if ((combatFacing() || G.parrying) && G.mouseW && !me.sit && me.sleep == null) { let a = Math.atan2(G.mouseW.y - me.y, G.mouseW.x - me.x);   /* sentado ou deitado: não gira com o mouse */
     { let best = null, bd = 3.4; for (const id in G.monsters) { const q = G.monsters[id]; if (q.dieAt || !q.visible || Math.abs((q.z || 0) - (me.z || 0)) > 0.5) continue; const d = dist(q.rx, q.ry, me.x, me.y), aq = Math.atan2(q.ry - me.y, q.rx - me.x); let df = Math.abs(aq - a) % (Math.PI * 2); if (df > Math.PI) df = Math.PI * 2 - df; if (d < bd && df < 0.95) { bd = d; best = aq; } }
       for (const id in G.players) { const q = G.players[id]; if (id === G.myId || !q.visible || q.downed || q.isNpc) continue; const d = dist(q.rx, q.ry, me.x, me.y), aq = Math.atan2(q.ry - me.y, q.rx - me.x); let df = Math.abs(aq - a) % (Math.PI * 2); if (df > Math.PI) df = Math.PI * 2 - df; if (d < bd && df < 0.95) { bd = d; best = aq; } }
@@ -1992,15 +1991,18 @@ const EMOTES = [{ k: 'toast', n: 'Brindar', i: '🍻' }, { k: 'salute', n: 'Saud
   window.addEventListener('mousemove', e => {
     if (!G.wheel) return;
     const dx = e.clientX - innerWidth / 2, dy = e.clientY - innerHeight / 2;
-    if (Math.hypot(dx, dy) < 40) { G.wheel.sel = -1; } else { const a = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360 + 60) % 360; G.wheel.sel = Math.floor(a / 120); }
+    const N = w.querySelectorAll('.ew-opt').length; if (Math.hypot(dx, dy) < 40) { G.wheel.sel = -1; } else { const a = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360) % 360; G.wheel.sel = Math.round(a / (360 / N)) % N; }
     w.querySelectorAll('.ew-opt').forEach(o => o.classList.toggle('on', +o.dataset.i === G.wheel.sel));
   });
 })();
-function openEmoteWheel() { if (!G.started || G.me.downed) return; G.wheel = { sel: -1 }; $('emote-wheel').classList.remove('hidden'); }
+function openEmoteWheel() { if (!G.started || G.me.downed) return; G.wheel = { sel: -1 }; const w = $('emote-wheel'), L = emoteList();
+  w.innerHTML = L.map((e, i) => '<div class="ew-opt" data-i="' + i + '" style="--a:' + (i * 360 / L.length - 90) + 'deg"><span>' + e.i + '</span><b>' + e.n + '</b></div>').join('') + '<div class="ew-hint">solte sobre um emoji</div>';
+  w.querySelectorAll('.ew-opt').forEach(o => o.addEventListener('click', () => { G.wheel && (G.wheel.sel = +o.dataset.i); closeEmoteWheel(true); })); w.classList.remove('hidden'); }
+function emoteList() { return G.me && G.me.bathing ? [{ k: 'smoke', n: 'Fumar', i: '🚬' }].concat(EMOTES.filter(e => ['toast', 'salute', 'cheer', 'surprise', 'adore', 'sad'].includes(e.k))) : EMOTES; }
 function closeEmoteWheel(fire) {
   const wl = G.wheel; G.wheel = null; $('emote-wheel').classList.add('hidden');
   document.querySelectorAll('#emote-wheel .ew-opt').forEach(o => o.classList.remove('on'));
-  if (fire && wl && wl.sel >= 0) { const k = EMOTES[wl.sel].k; if (G.me.sit) standUp(); G.me.emote = { k, t0: performance.now() }; Net.send({ t: 'emote', k }); }
+  if (fire && wl && wl.sel >= 0) { const k = emoteList()[wl.sel].k; if (k === 'smoke') { G.me.smokeT = performance.now(); Net.send({ t: 'emote', k }); return; } if (G.me.bathing) { Net.send({ t: 'emote', k }); return; } if (G.me.sit) standUp(); G.me.emote = { k, t0: performance.now() }; Net.send({ t: 'emote', k }); }
 }
 
 // ---------- mapa: zoom (roda do mouse / botões) e ícones minimalistas dos lugares ----------

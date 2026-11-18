@@ -401,6 +401,7 @@ function hostOnClient(from, m) {
     case 'emote': if (m.k === 'toast' && !p.downed) { const bi = WORLD.bld[tileAt(p.x, p.y)]; for (const q of Object.values(S.players)) { if (q.downed || dist(q.x, q.y, p.x, p.y) > 3.5 || WORLD.bld[tileAt(q.x, q.y)] !== bi) continue; near(q.x, q.y, { t: 'emote', id: q.id, k: 'cheer' }); }
         for (const n of Object.values(S.npcs || {})) if (!n.dead && !n.downed && dist(n.x, n.y, p.x, p.y) < 3.5 && WORLD.bld[tileAt(n.x, n.y)] === bi && bi >= 0) near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: 'Saúde! 🍻', ms: 1 });
         near(p.x, p.y, { t: 'chat', id: p.id, name: p.name, text: '🍻 Saúde!' }); break; }
+      if (m.k === 'smoke') { if (p.bath) near(p.x, p.y, { t: 'emote', id: p.id, k: 'smoke' }); break; }
       { const k = ['salute', 'dance', 'point', 'cheer', 'surprise', 'adore', 'anger', 'fear', 'sad'].includes(m.k) ? m.k : null; if (k && !p.downed) near(p.x, p.y, { t: 'emote', id: p.id, k });
       if (k === 'adore' && !p.dev && Object.values(S.players).some(w => w.dev && w.skin === 'weaver' && w !== p && dist(w.x, w.y, p.x, p.y) < 6)) { const had = now_() < (p.buffs.weaver || 0); p.buffs.weaver = now_() + 3600000; p.food = Math.max(p.food ?? 100, 80); p.water = Math.max(p.water ?? 100, 80); p.cold = 0; if (!had) tell(p, 'O Tecelão aceita a sua devoção: por 1 hora você não sente fome, sede nem frio.'); sendStat(p); }
       break; }
@@ -457,7 +458,7 @@ function handleMove(p, m) {
     if (lagOnly) return;   /* passo longo só por atraso: ignora (o próximo, com mais tempo passado, é aceito) em vez de puxar o jogador de volta */
     Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: p.z, fl: p.fl || 0, fb: p.fb ?? -1 }); return; }
   if (p.sit && dist(p.x, p.y, x, y) > 0.05) p.sit = null;
-  p.x = x; p.y = y; p.z = z; if (!p.sit || p.bath || p.walking || m.w) p.dir = m.d | 0; p.walking = !!m.w; p.running = !!m.r; p.crouch = !!m.c; if (m.sl && !p.slide) { p.cst = Math.max(0, (p.cst ?? 0) - SLIDE_COST); p.cstT = now; } p.slide = !!m.sl; p.tired = !!m.ti; p.lastMv = now;
+  p.x = x; p.y = y; p.z = z; if (!p.sit || p.walking || m.w) p.dir = m.d | 0; p.walking = !!m.w; p.running = !!m.r; p.crouch = !!m.c; if (m.sl && !p.slide) { p.cst = Math.max(0, (p.cst ?? 0) - SLIDE_COST); p.cstT = now; } p.slide = !!m.sl; p.tired = !!m.ti; p.lastMv = now;
   if (p.casting && dist(p.x, p.y, p.castX, p.castY) > 0.3) { p.casting = null; near(p.x, p.y, { t: 'castend', id: p.id }); }
   if (p.carrying) { const t = S.players[p.carrying]; if (t) { t.x = p.x; t.y = p.y; t.z = p.z; } }
 }
@@ -917,10 +918,24 @@ function bathMsg(p, m) {
   if (!m.on) { if (p.bath) bathEnd(p); return; }
   const b = BUILDINGS[p.fb], O2 = ofuroOf(b); if (!O2 || (p.fl || 0) !== O2.fl || p.downed || p.carrying || p.bath) return;
   if (dist(p.x, p.y, O2.x, O2.y) > 2.4) { tell(p, 'Chegue perto do ofurô.'); return; }
+  const others = Object.values(S.players).filter(q => q !== p && q.bath && q.bath.bi === p.fb);
+  if (m.mode === 'float') {   /* boiar de barriga para cima no meio: só sozinho na água */
+    if (others.some(q => q.bath.mode !== 'edge')) { tell(p, 'Para boiar no meio, você precisa estar sozinho na banheira.'); return; }
+    p.x = O2.x; p.y = O2.y; Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: 0, fl: p.fl, fb: p.fb }); bathBegin(p, O2, { mode: 'float', seat: -1 }, now); return; }
+  if (m.mode === 'edge') {   /* sentar na beira, no ponto escolhido de um dos dois lados livres */
+    let best = null, bd = 1e9; O2.edges.forEach((E, k) => { const ax = E.b[0] - E.a[0], ay = E.b[1] - E.a[1], L2 = ax * ax + ay * ay, t = clamp(((p.x - E.a[0]) * ax + (p.y - E.a[1]) * ay) / L2, 0, 1), x = E.a[0] + ax * t, y = E.a[1] + ay * t, d = dist(p.x, p.y, x, y); if (d < bd) { bd = d; best = { x, y, k, E }; } });
+    if (!best || bd > 1.6) { tell(p, 'Chegue perto da beira do ofurô.'); return; }
+    if (others.some(q => q.bath.mode === 'edge' && dist(q.x, q.y, best.x, best.y) < 0.5)) { tell(p, 'Esse lugar na beira está ocupado.'); return; }
+    p.x = best.x; p.y = best.y; Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: 0, fl: p.fl, fb: p.fb }); p.dir = dirFromVecS(best.E.cin[0] - best.x, best.E.cin[1] - best.y); bathBegin(p, O2, { mode: 'edge', seat: -2 - best.k }, now); return; }
+  for (const q of others) if (q.bath.mode === 'float') { const [sx3, sy3] = O2.seats[0]; q.x = sx3; q.y = sy3; q.bath.mode = 'seat'; q.bath.seat = 0; Net.toOne(q.id, { t: 'tp', x: q.x, y: q.y, z: 0, fl: q.fl, fb: q.fb }); near(q.x, q.y, { t: 'bath', id: q.id, on: 1, x: q.x, y: q.y, mode: 'seat', rx: O2.rack[0], ry: O2.rack[1], dir: dirFromVecS(O2.x - sx3, O2.y - sy3) }); tell(q, p.name + ' entrou na banheira: você para de boiar e senta num canto.'); }
   const used = new Set(Object.values(S.players).filter(q => q.bath && q.bath.bi === p.fb).map(q => q.bath.seat)), free = O2.seats.map((s0, k) => k).filter(k => !used.has(k)).sort((a, c) => dist(p.x, p.y, O2.seats[a][0], O2.seats[a][1]) - dist(p.x, p.y, O2.seats[c][0], O2.seats[c][1]));
   if (!free.length) { tell(p, 'O ofurô está cheio (4 pessoas).'); return; } const seat = free[0], [sx2, sy2] = O2.seats[seat];
-  p.x = sx2; p.y = sy2; p.dir = dirFromVecS(O2.x - sx2, O2.y - sy2); Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: 0, fl: p.fl, fb: p.fb }); p.sit = 'g'; p.walking = false; p.bath = { t0: now, bi: p.fb, tick: now, seat }; if (p.atk) p.atk = null; if (!p.sheathed) sheatheToggle(p, true, true);   /* a arma vai para o cabideiro */
-  near(p.x, p.y, { t: 'bath', id: p.id, on: 1, x: p.x, y: p.y, rx: O2.rack[0] + (seat % 2) * 0.3, ry: O2.rack[1] - (seat >> 1) * 0.3, dir: p.dir }); tell(p, 'Banho no ofurô: recupera vida e fôlego, tira o frio e limpa as feridas. Fique 15 s para sair bem descansado.');
+  p.x = sx2; p.y = sy2; p.dir = dirFromVecS(O2.x - sx2, O2.y - sy2); Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: 0, fl: p.fl, fb: p.fb }); bathBegin(p, O2, { mode: 'seat', seat }, now);
+}
+function bathBegin(p, O2, B, now) {
+  p.sit = 'g'; p.walking = false; p.bath = { t0: now, bi: p.fb, tick: now, seat: B.seat, mode: B.mode }; if (p.atk) p.atk = null; if (!p.sheathed) sheatheToggle(p, true, true);   /* a arma vai para o cabideiro */
+  const k = Math.max(0, B.seat); near(p.x, p.y, { t: 'bath', id: p.id, on: 1, x: p.x, y: p.y, mode: B.mode, rx: O2.rack[0] + (k % 2) * 0.3, ry: O2.rack[1] - (k >> 1) * 0.3, dir: p.dir });
+  tell(p, B.mode === 'float' ? 'Você boia de barriga para cima no meio do ofurô.' : B.mode === 'edge' ? 'Você senta na beira do ofurô, com as pernas na água quente.' : 'Banho no ofurô: recupera vida e fôlego, tira o frio e limpa as feridas. Fique 15 s para sair bem descansado.');
 }
 // ---------- Dojô do Punho de Ferro: diária e treino AFK nos bonecos (só o cavaleiro aprende) ----------
 function dojoRec() { const P = PROPS.find(q => q.wk === 'dojo'); if (!P) return null; const r = S.estate && S.estate.r[P.id]; return { P, r, B: r && r.biz, N: (!r && S.estate) ? npcbAll()[P.id] : null }; }
@@ -968,7 +983,7 @@ function bathTick(now) {
   for (const p of Object.values(S.players)) { const B = p.bath; if (!B) continue;
     if (!p.sit || p.downed || (p.fl || 0) === 0) { bathEnd(p); continue; }
     if (now - B.tick < 1000) continue; B.tick = now;
-    p.hp = Math.min(p.maxHp, p.hp + Math.max(1, Math.round(p.maxHp * 0.02))); p.cst = Math.min(cstMaxOf(p), (p.cst ?? 0) + 10); p.cold = 0;
+    const kk = B.mode === 'edge' ? 0.5 : 1; p.hp = Math.min(p.maxHp, p.hp + Math.max(1, Math.round(p.maxHp * 0.02 * kk))); p.cst = Math.min(cstMaxOf(p), (p.cst ?? 0) + 10 * kk); p.cold = 0;
     if (p.bleed) for (const k in p.bleed) p.bleed[k] = 0; if (p.infect === 1 && now - B.t0 > 5000) { p.infect = 0; p.infT = 0; tell(p, 'A água quente limpou as feridas: a febre passou.'); }
     sendStat(p); }
 }

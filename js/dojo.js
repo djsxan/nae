@@ -30,12 +30,18 @@ function ofuroNear() {
   const b = BUILDINGS[me.fb], O2 = typeof ofuroOf === 'function' && ofuroOf(b); if (!O2 || me.fl !== O2.fl) return null;
   return Math.hypot(me.x - O2.x, me.y - O2.y) < 2.3 ? O2 : null;
 }
-function bathEnter() {   /* o anfitrião escolhe um canto livre e leva o personagem até ele */
-  const O2 = ofuroNear(), me = G.me; if (!O2) return; G.path = null; G.pathGoal = null; me.walking = false;
-  Net.send({ t: 'bath', on: 1 });
+function bathEnter() {   /* menu: sentar num canto, sentar na beira (no ponto mais perto) ou boiar no meio (sozinho) */
+  const O2 = ofuroNear(), me = G.me; if (!O2) return; let d = document.getElementById('bathmenu'); if (d) d.remove();
+  const alone = !Object.values(G.players).some(q => q !== me && q.bathing && q.fb === me.fb && q.bathing.mode !== 'edge');
+  d = document.createElement('div'); d.id = 'bathmenu'; d.className = 'gpanel lift-panel';
+  const opt = (m, ic, t, sub, off) => '<button class="lift-btn' + (off ? ' here' : '') + '" data-m="' + m + '"' + (off ? ' disabled' : '') + '><span class="lift-n">' + ic + '</span><span><b>' + t + '</b><br><small>' + sub + '</small></span></button>';
+  d.innerHTML = '<div class="gp-head"><span>Ofurô</span><button class="gp-x" data-x>✕</button></div><div class="lift-list" style="padding-top:10px">' + opt('seat', '♨', 'Sentar num canto', 'Recostado na água quente, com os jatos.') + opt('edge', '⌒', 'Sentar na beira', 'Na beira mais perto de você, com as pernas na água.') + opt('float', '〰', 'Boiar no meio', alone ? 'De barriga para cima, sozinho na banheira.' : 'Só quando estiver sozinho na banheira.', !alone) + '</div>';
+  document.body.appendChild(d); d.querySelector('[data-x]').onclick = () => d.remove();
+  d.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { d.remove(); G.path = null; G.pathGoal = null; me.walking = false; Net.send({ t: 'bath', on: 1, mode: b.dataset.m }); });
 }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { const d = document.getElementById('bathmenu'); if (d) d.remove(); } });
 if (typeof progEvent === 'function') { const _peB = progEvent; progEvent = function (m, now) {
-  if (m.t === 'bath') { const e = G.players[m.id]; if (e) { e.bathing = m.on ? { t0: now, x: m.x, y: m.y, rx: m.rx, ry: m.ry } : null; if (m.on && m.dir != null) { e.dir = m.dir; if (e === G.me) G.bathMouse0 = G.mouseS ? G.mouseS.slice() : [0, 0]; } if (!m.on && e === G.me && G.me.sit && G.me.sit.bath) G.me.sit = null; } return true; }
+  if (m.t === 'bath') { const e = G.players[m.id]; if (e) { e.bathing = m.on ? { t0: now, x: m.x, y: m.y, rx: m.rx, ry: m.ry, mode: m.mode || 'seat' } : null; if (!m.on) e.smokeT = 0; if (m.on && m.dir != null) { e.dir = m.dir; if (e === G.me) G.bathMouse0 = G.mouseS ? G.mouseS.slice() : [0, 0]; } if (!m.on && e === G.me && G.me.sit && G.me.sit.bath) G.me.sit = null; } return true; }
   return _peB(m, now);
 }; }
 // ---------- o herói no ofurô: o próprio modelo 3D, sem camisa e de sunga, sentado na água ----------
@@ -49,14 +55,20 @@ const BATH_POSES = {   // tl = tronco (negativo: para trás), ht = cabeça (nega
 };
 const BATH_TRUNKS = { knight: '#2a3a6a', archer: '#2e5a34', mage: '#7a2626' };
 // sprite do banhista: mistura de duas poses (t de 0 a 4) e olhos abertos/fechados
-function batherSprite3D(e, pa, pb, t, closed) {
+const smokeArm = f => f >= 2 && f < 4 ? [1.6, 0.2, 2.45] : [0.75, 0.35, 1.3];   /* cachimbo: a mão vai à boca e volta */
+function smokePhase(e, now) { if (!e.smokeT) return -1; const t = performance.now() - e.smokeT; if (t > 9000) { e.smokeT = 0; return -1; } return Math.floor((t / 3000 % 1) * 8); }
+function batherSprite3D(e, pa, pb, t, closed, smk = -1, mode = 'seat') {
   const lk = e.cls + ':' + e.skin + ':' + e.color, A = BATH_POSES[pa] || BATH_POSES.A, Bp = BATH_POSES[pb] || A, dir = e.dir | 0, k = t / 4, mix = (x, y) => x + (y - x) * k, mixA = (x, y) => x.map((v, i) => mix(v, y[i]));
-  return cache3('bath|' + lk + '|' + pa + pb + t + (closed ? 'c' : 'o') + '|' + dir, () => {
+  return cache3('bath|' + lk + '|' + mode + pa + pb + t + (closed ? 'c' : 'o') + smk + '|' + dir, () => {
     const L = lookFor('bath:' + lk, () => { const L0 = heroLook(e.cls, e.skin, e.color); return Object.assign(L0, { hair: L0.hair || '#4a3424', armor: 'bare', body: L0.skin, body2: L0.skin, legs: L0.skin, boots: L0.skin, head: 'none', cape: false, weapon: null, shield: null, pauldron: null, quiver: false, extra: null, pattern: null, trunks: BATH_TRUNKS[e.cls] || '#2a3a5a' }); });
     let R = _rigs.get('bath:' + lk); if (!R) { R = buildHumanoid(L); _rigs.set('bath:' + lk, R); }
-    const Q = buildPose(e.cls, { dir, walk: -1, sit: 'g' }); Object.assign(Q, { tl: mix(A.tl, Bp.tl), ht: mix(A.ht, Bp.ht), hw: 0, tw: 0, aA: mixA(A.aA, Bp.aA), aB: mixA(A.aB, Bp.aB), lA: mixA(A.lA, Bp.lA), lB: mixA(A.lB, Bp.lB), sway: 0, yaw: 0 });
-    applyPose(R, Q, { dir, walk: -1, sit: 'g' }, 0); setEyesClosed(R, closed);
-    const sp = shoot3D(R, dir, 0, true); setEyesClosed(R, false); return sp;
+    const PP = { dir, walk: -1, sit: mode === 'edge' ? 'c' : 'g' }, Q = buildPose(e.cls, PP);
+    if (mode === 'float') Object.assign(Q, { tl: 0, ht: -0.25, hw: 0, tw: 0, aA: [0.25, 1.25, 0.35], aB: [0.25, 1.25, 0.35], lA: [0.08, -0.1], lB: [-0.04, -0.05], sway: 0, yaw: 0 });   /* boiando: braços abertos, pernas soltas */
+    else if (mode === 'edge') Object.assign(Q, { tl: -0.12, ht: 0.12, hw: 0, tw: 0, aA: [-0.25, 0.35, 0.2], aB: [-0.25, 0.35, 0.2], lA: [1.45, -1.25], lB: [1.35, -1.05], sway: 0, yaw: 0 });   /* sentado na beira: mãos apoiadas atrás, pernas para dentro da água */
+    else Object.assign(Q, { tl: mix(A.tl, Bp.tl), ht: mix(A.ht, Bp.ht), hw: 0, tw: 0, aA: mixA(A.aA, Bp.aA), aB: mixA(A.aB, Bp.aB), lA: mixA(A.lA, Bp.lA), lB: mixA(A.lB, Bp.lB), sway: 0, yaw: 0 });
+    if (smk >= 0) { Q.aA = smokeArm(smk); Q.pipe = 1; if (smk >= 2 && smk < 4) Q.ht = -0.12; }
+    applyPose(R, Q, PP, 0); setEyesClosed(R, closed);
+    const sp = mode === 'float' ? shoot3D(R, dir, -Math.PI / 2) : shoot3D(R, dir, 0, mode !== 'edge'); setEyesClosed(R, false); return sp;
   }, 'bath|' + e.id);
 }
 // o que o banhista está fazendo agora: a pose A é a padrão; de vez em quando passa por B, C ou D (com transição) e fecha os olhos
@@ -83,7 +95,11 @@ function bathState(e, now) {
 }
 // desenha: a parte de baixo apagada (vista através da água), a superfície com ondinhas e o corpo acima da água
 function drawBath(ctx, e, sx, sy, now) {
-  if (!R3.ok) return; const st = G.bathStudy && G.bathStudy.pose ? { pa: G.bathStudy.pose, pb: G.bathStudy.pose, t: 0, closed: !!G.bathStudy.closed, sink: G.bathStudy.sink || 0, phase: '', lift: (BATH_POSES[G.bathStudy.pose] || {}).lift || 0 } : bathState(e, now), s = batherSprite3D(e, st.pa, st.pb, st.t, st.closed);
+  if (!R3.ok) return; const mode = (e.bathing && e.bathing.mode) || 'seat', smk = smokePhase(e, now);
+  drawRack(ctx, e, sx, sy);   /* a roupa no cabideiro fica atrás do corpo */
+  if (mode === 'float') { drawFloat(ctx, e, sx, sy, now); return; }
+  if (mode === 'edge') { drawEdge(ctx, e, sx, sy, now, smk); return; }
+  const st = G.bathStudy && G.bathStudy.pose ? { pa: G.bathStudy.pose, pb: G.bathStudy.pose, t: 0, closed: !!G.bathStudy.closed, sink: G.bathStudy.sink || 0, phase: '', lift: (BATH_POSES[G.bathStudy.pose] || {}).lift || 0 } : bathState(e, now), s = batherSprite3D(e, smk >= 0 ? 'A' : st.pa, smk >= 0 ? 'A' : st.pb, smk >= 0 ? 0 : st.t, smk >= 0 ? false : st.closed, smk); if (smk >= 0) { st.sink = 0; st.phase = ''; st.lift = BATH_POSES.A.lift; }
   const br = Math.sin(now / 1100) * 0.6, wy = sy - 0.33 * HV, x0 = sx - s.ax, y0 = sy - s.ay + 0.25 * HV - st.lift + st.sink + br;   /* a água do ofurô fica fixa; o corpo sobe conforme a pose e afunda no mergulho */
   ctx.save(); ctx.imageSmoothingEnabled = true;
   ctx.save(); ctx.beginPath(); ctx.rect(x0 - 2, wy, s.w + 4, s.h); ctx.clip(); ctx.globalAlpha = st.sink > 20 ? 0.22 : 0.32; ctx.drawImage(s.c, x0, y0, s.w, s.h); ctx.restore();   /* debaixo d'água */
@@ -95,8 +111,43 @@ function drawBath(ctx, e, sx, sy, now) {
   if (e._splash && now - e._splash < 900) { const q = (now - e._splash) / 900; ctx.strokeStyle = 'rgba(255,255,255,' + (0.7 * (1 - q)).toFixed(2) + ')'; ctx.lineWidth = 0.5; ctx.beginPath(); ctx.ellipse(sx, wy + 1, 4 + q * 16, 1.5 + q * 5, 0, 0, 7); ctx.stroke(); }
   if (st.phase === 'under') { for (let k = 0; k < 6; k++) { const q = (now / 500 + k / 6) % 1; ctx.fillStyle = 'rgba(255,255,255,' + (0.8 * (1 - q)).toFixed(2) + ')'; ctx.beginPath(); ctx.arc(sx + Math.sin(k * 2.3 + now / 300) * 2.5, wy - q * 1.5, 0.35 + q * 0.4, 0, 7); ctx.fill(); } }
   if (st.phase === 'drip' && G.view && Math.random() < 0.25) spawnPart('sparkle', sx - G.view.ox + (Math.random() - 0.5) * 5, wy - G.view.oy - 14, { color: 'rgba(200,240,250,A)', vx: 0, vy: 0.04, life: 400 });
+  ctx.restore(); smokePuff(e, sx, y0 + 18, smk, now);
+}
+function smokePuff(e, sx, my, smk, now) { if (smk === 4 && e._puff !== Math.floor(now / 3000) && G.view) { e._puff = Math.floor(now / 3000); for (let k = 0; k < 4; k++) spawnPart('smoke', sx - G.view.ox + 5 + k, my - G.view.oy - k * 2, { color: '#e8e4dc' }); } }
+// boiando de barriga para cima: o corpo deitado na superfície, balançando e girando bem devagar, com ondinhas em volta
+function drawFloat(ctx, e, sx, sy, now) {
+  const age = now - e.bathing.t0, d0 = (e.dir | 0), dir = (d0 + Math.floor(age / 7000)) % 8, closed = (age % 9000) > 3000, s = batherSprite3D(Object.assign(Object.create(e), { dir }), 'A', 'A', 0, closed, -1, 'float');
+  const bob = Math.sin(now / 900) * 0.8, wy = sy - 0.33 * HV, x0 = sx - s.ax, y0 = wy - s.ay + 6 + bob;
+  ctx.save(); ctx.imageSmoothingEnabled = true; ctx.drawImage(s.c, x0, y0, s.w, s.h);
+  const g = ctx.createRadialGradient(sx, wy + 4, 2, sx, wy + 4, 22); g.addColorStop(0, 'rgba(120,200,200,0)'); g.addColorStop(0.55, 'rgba(120,200,200,0.28)'); g.addColorStop(1, 'rgba(120,200,200,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(sx, wy + 4, 22, 8, 0, 0, 7); ctx.fill();   /* água lambendo as bordas do corpo */
+  ctx.lineWidth = 0.35; for (let q = 0; q < 3; q++) { const ph = (now / 1800 + q / 3) % 1; ctx.strokeStyle = 'rgba(255,255,255,' + (0.5 * (1 - ph)).toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(sx, wy + 4, 10 + ph * 12, 3.5 + ph * 4, 0, 0, 7); ctx.stroke(); }
   ctx.restore();
-  // a roupa (na cor da vocação) e a arma penduradas no cabideiro
+}
+// sentado na beira: o corpo sobre a borda de hinoki e as canelas dentro da água
+function drawEdge(ctx, e, sx, sy, now, smk) {
+  const age = now - e.bathing.t0, closed = smk < 0 && ((age % 12000) > 8000 || (age % 4300) < 160), s = batherSprite3D(e, 'A', 'A', 0, closed, smk, 'edge'), sw = Math.sin(now / 700) * 0.4;
+  const lift = 0.3 * HV, wy = sy - 0.22 * HV, x0 = sx - s.ax, y0 = sy - s.ay - lift;
+  ctx.save(); ctx.imageSmoothingEnabled = true;
+  ctx.save(); ctx.beginPath(); ctx.rect(x0 - 2, wy, s.w + 4, s.h); ctx.clip(); ctx.globalAlpha = 0.4; ctx.drawImage(s.c, x0 + sw, y0, s.w, s.h); ctx.restore();   /* pernas debaixo d'água (balançando) */
+  ctx.save(); ctx.beginPath(); ctx.rect(x0 - 2, y0 - 4, s.w + 4, wy - y0 + 4); ctx.clip(); ctx.drawImage(s.c, x0, y0, s.w, s.h); ctx.restore();
+  ctx.lineWidth = 0.35; for (let q = 0; q < 2; q++) { const ph = (now / 1400 + q / 2) % 1; ctx.strokeStyle = 'rgba(255,255,255,' + (0.45 * (1 - ph)).toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(sx, wy + 2, 4 + ph * 7, 1.5 + ph * 2.5, 0, 0, 7); ctx.stroke(); }
+  ctx.restore(); smokePuff(e, sx, y0 + 18, smk, now);
+}
+// de pé dentro da água do ofurô: só de sunga, com a água pela coxa
+function drawWader(ctx, e, sx, sy, now) {
+  const P0 = heroPoseFor(e, now), lk = e.cls + ':' + e.skin + ':' + e.color, P1 = { dir: P0.dir | 0, walk: P0.walk, run: false };
+  const s = cache3('wade|' + lk + '|' + pose3Key(P1), () => { const L = lookFor('bath:' + lk, () => { const L0 = heroLook(e.cls, e.skin, e.color); return Object.assign(L0, { hair: L0.hair || '#4a3424', armor: 'bare', body: L0.skin, body2: L0.skin, legs: L0.skin, boots: L0.skin, head: 'none', cape: false, weapon: null, shield: null, pauldron: null, quiver: false, extra: null, pattern: null, trunks: BATH_TRUNKS[e.cls] || '#2a3a5a' }); });
+    let R = _rigs.get('bath:' + lk); if (!R) { R = buildHumanoid(L); _rigs.set('bath:' + lk, R); } const Q = buildPose(e.cls, P1); applyPose(R, Q, P1, P1.walk >= 0 ? P1.walk / 12 * Math.PI * 2 : 0); return shoot3D(R, P1.dir, 0, false); }, 'wade|' + e.id);
+  const wy = sy - 0.42 * HV, x0 = sx - s.ax, y0 = sy - s.ay;
+  ctx.save(); ctx.imageSmoothingEnabled = true;
+  ctx.save(); ctx.beginPath(); ctx.rect(x0 - 2, wy, s.w + 4, s.h); ctx.clip(); ctx.globalAlpha = 0.35; ctx.drawImage(s.c, x0, y0, s.w, s.h); ctx.restore();
+  ctx.save(); ctx.beginPath(); ctx.rect(x0 - 2, y0 - 4, s.w + 4, wy - y0 + 4); ctx.clip(); ctx.drawImage(s.c, x0, y0, s.w, s.h); ctx.restore();
+  ctx.lineWidth = 0.4; const ph = (now / (e.walking ? 600 : 1500)) % 1; ctx.strokeStyle = 'rgba(255,255,255,' + (0.55 * (1 - ph)).toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(sx, wy + 1, 5 + ph * 9, 1.8 + ph * 3, 0, 0, 7); ctx.stroke();
+  ctx.restore();
+}
+function wadingNow(e) { return R3.ok && !e.bathing && !e.downed && (e.fl || 0) > 0 && e.fb != null && typeof inOfuroWater === 'function' && inOfuroWater(BUILDINGS[e.fb], e.fl, e.rx, e.ry); }
+// a roupa (na cor da vocação) e a arma penduradas no cabideiro
+function drawRack(ctx, e, sx, sy) {
   const B = e.bathing; if (B && B.rx != null) { const p = iso(B.rx, B.ry), p0 = iso(e.rx, e.ry), cx = sx + p.sx - p0.sx, cy = sy + p.sy - p0.sy; const col = { knight: '#6a7a8a', archer: '#4a6a3a', mage: '#7a2a2a' }[e.cls] || '#6a5a4a';
     ctx.save(); ctx.fillStyle = col; ctx.beginPath(); ctx.moveTo(cx - 8, cy - 40); ctx.lineTo(cx + 8, cy - 40); ctx.lineTo(cx + 10, cy - 18); ctx.lineTo(cx - 10, cy - 18); ctx.closePath(); ctx.fill(); ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(cx - 1, cy - 40, 2, 22);
     ctx.strokeStyle = e.cls === 'mage' ? '#6a4a2a' : '#b8bcc4'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(cx + 13, cy - 44); ctx.lineTo(cx + 17, cy - 8); ctx.stroke(); ctx.restore(); }
