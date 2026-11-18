@@ -450,7 +450,7 @@ function handleMove(p, m) {
     if (lagOnly) return;   /* passo longo só por atraso: ignora (o próximo, com mais tempo passado, é aceito) em vez de puxar o jogador de volta */
     Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: p.z, fl: p.fl || 0, fb: p.fb ?? -1 }); return; }
   if (p.sit && dist(p.x, p.y, x, y) > 0.05) p.sit = null;
-  p.x = x; p.y = y; p.z = z; p.dir = m.d | 0; p.walking = !!m.w; p.running = !!m.r; p.crouch = !!m.c; if (m.sl && !p.slide) { p.cst = Math.max(0, (p.cst ?? 0) - SLIDE_COST); p.cstT = now; } p.slide = !!m.sl; p.tired = !!m.ti; p.lastMv = now;
+  p.x = x; p.y = y; p.z = z; if (!p.sit || p.walking || m.w) p.dir = m.d | 0; p.walking = !!m.w; p.running = !!m.r; p.crouch = !!m.c; if (m.sl && !p.slide) { p.cst = Math.max(0, (p.cst ?? 0) - SLIDE_COST); p.cstT = now; } p.slide = !!m.sl; p.tired = !!m.ti; p.lastMv = now;
   if (p.casting && dist(p.x, p.y, p.castX, p.castY) > 0.3) { p.casting = null; near(p.x, p.y, { t: 'castend', id: p.id }); }
   if (p.carrying) { const t = S.players[p.carrying]; if (t) { t.x = p.x; t.y = p.y; t.z = p.z; } }
 }
@@ -2865,7 +2865,8 @@ function estateMsg(p, m) {
       const r = E.r[m.pid], PP = PROPS_BY[m.pid]; if (!r || r.owner !== estOwner(p) || !tenantsOf(PP).length) return;
       E.evict = E.evict || {}; if (E.evict[m.pid]) return; E.evict[m.pid] = { day: estDay() + 1, owner: p.name };
       for (const id of tenantsOf(PP)) { const n = S.npcs && S.npcs[id]; if (n) { memAdd(n, p, 'evict'); n.angryAt = p.name.trim().toLowerCase(); near(n.x, n.y, { t: 'anim', w: 'n', id, a: 'talk', txt: 'Despejo?! Depois de tudo?', ms: 1 }); } }
-      tell(p, 'Aviso de despejo entregue em ' + PP.name + '. Os inquilinos saem em 1 dia do jogo (12 min)... e não vão gostar de você.'); estateChanged(); return;
+      repAdd(p, 'cidade', -10, 'despejou inquilinos');
+      tell(p, 'Aviso de despejo entregue em ' + PP.name + '. Os inquilinos saem em 1 dia do jogo (12 min) e depois a casa é sua para morar... mas a cidade não gostou: você perde reputação com os moradores e os comerciantes.'); estateChanged(); sendStat(p); return;
     }
     case 'collect': { const r = E.r[m.pid]; if (!r || r.owner !== estOwner(p) || !(r.box > 0)) return; p.gold += r.box; tell(p, 'Você recebeu ' + r.box + ' de ouro de aluguel dos inquilinos.'); r.box = 0; sendStat(p); estateChanged(); return; }
     case 'put': case 'take': {
@@ -3120,10 +3121,11 @@ function estateTick(now) {
   for (const pid of Object.keys(E.r)) {
     const r = E.r[pid], P = PROPS_BY[pid], owed = Math.floor((day - r.paid) / RENT_DAYS); if (owed <= 0) continue;   // semanas vencidas
     const due = (r.mode === 'own' ? 1 : P.rent) * RENT_DAYS, q = ownerOnline(r);
+    if (r.mode === 'own' && tenantsOf(P).length && !(E.evict || {})[pid] && r.tenPaid !== r.paid) { r.tenPaid = r.paid; const v = P.week * owed, BK = bankLoad(), A = BK.acc[r.owner] || (BK.acc[r.owner] = { g: 0, loan: 0, due: 0, wk: estDay() }); A.g += v; bankSave(); if (q) tell(q, 'Os inquilinos de ' + P.name + ' pagaram ' + v + ' de ouro de aluguel: foi direto para a sua conta no banco.'); }   /* aluguel dos inquilinos vai para o banco */
     if (!q) {   // dono fora do jogo: paga do banco e do cofre do negócio
       let pd = false; while (day - r.paid >= RENT_DAYS) { if (!debit(r.owner, null, due, r.biz)) break; r.paid += RENT_DAYS; pd = true; } if (pd) estateSave();
       if (r.mode !== 'own' && day - r.paid > ESTATE_ABANDON_DAYS) estateEnd(pid, ''); continue; }
-    if (r.mode === 'own' && tenantsOf(P).length && !(E.evict || {})[pid]) { r.box = (r.box || 0) + P.week * owed; tell(q, 'Os inquilinos de ' + P.name + ' pagaram ' + (P.week * owed) + ' de ouro de aluguel (receba no painel, L).'); }
+
     let paid = 0; const sum = { bank: 0, cofre: 0, gold: 0 }; while (day - r.paid >= RENT_DAYS) { const d = debit(r.owner, q, due, r.biz); if (!d) break; for (const k in sum) sum[k] += d[k]; r.paid += RENT_DAYS; paid++; }
     if (paid) { featAdd(q, 'rent', paid); sendStat(q); tell(q, (r.mode === 'own' ? 'Imposto' : 'Aluguel') + ' semanal de ' + P.name + ': -' + (due * paid) + ' de ouro' + (paid > 1 ? ' (' + paid + ' semanas)' : '') + ' — ' + debitTxt(sum) + '.'); estateSave(); if (q.estOpen) estateSend(q); }
     const still = Math.floor((day - r.paid) / RENT_DAYS);
