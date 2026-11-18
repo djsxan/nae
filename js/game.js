@@ -172,6 +172,8 @@ function clientOnServer(m) {
       }
       break;
     }
+    case 'hp': Net.send({ t: 'hpr', t0: m.t0 }); break;   /* ping do anfitrião */
+    case 'obs': if (typeof obsData === 'function') obsData(m); break;
     case 'tonelinv': G.tonelInv = { from: m.from, name: m.name, bet: m.bet, until: performance.now() + 60000 }; showToast('🍺 ' + m.name + ' te desafiou para o Tonel (aposta ' + m.bet + '). Fale com o Brom para aceitar.'); break;
     case 'aoe':
       if (m.a === 'boom' && m.big) { G.effects.push({ a: 'bigboom', x: m.x, y: m.y, t0: now, dur: 1100, seed: Math.floor(Math.random() * 1000) }); break; }   // explosão da Bola de Fogo
@@ -1061,6 +1063,7 @@ window.addEventListener('keydown', e => {
   if (/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '')) return;
   if (e.key === 'Enter' && !G.paused && !G.dialog) { chatOpen(); e.preventDefault(); return; }
   const k = e.key.toLowerCase();
+  if (typeof obsKey === 'function' && obsKey(k, e)) { e.preventDefault(); return; }
   if (G.paused) { if (typeof gmKey === 'function' && gmKey(k, e)) e.preventDefault(); return; }
   if (k === 'escape') { if (G.dialog) { closeDialog(); return; } for (const id of ['bankp', 'biz', 'jobboard', 'counterp', 'estate', 'bizhub', 'roompw-ask', 'tradep']) { const el = $(id); if (el && !el.classList.contains('hidden') && el.parentNode === document.body && getComputedStyle(el).display !== 'none') { if (id === 'biz' && typeof bizClose === 'function') bizClose(); else if (id === 'estate') estToggle(false); else if (id === 'bizhub') hubToggle(false); else el.classList.add('hidden'); return; } } if (typeof emToggle === 'function') emToggle(); else togglePause(); return; }
   if (k >= '1' && k <= '4') { castSkill(+k - 1); return; }

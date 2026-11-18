@@ -154,7 +154,7 @@ function hostOnClient(from, m) {
     let s = townSpot(), sz = 0, sfl = 0, sfb = -1;   /* reconexão: volta para onde estava (não para o Templo) */
     const ghost = /^[a-z0-9]{4,12}$/.test(m.uid || '') ? Object.values(S.players).find(q => q.uid === m.uid && q.id !== from && q.id !== Net.myId) : null;
     if (ghost && !ghost.downed && !ghost.jailUntil) { m.px = ghost.x; m.py = ghost.y; m.pz = ghost.z || 0; m.pfl = ghost.fl || 0; m.pfb = ghost.fb ?? -1; }
-    if (ghost) { hostOnLeave(ghost.id, true); try { if (Net.rel[ghost.id]) Net.rel[ghost.id].close(); } catch (e) { } delete Net.rel[ghost.id]; delete Net.fast[ghost.id]; }
+    if (ghost) { m._recon = (ghost.recon || 0) + 1; hostOnLeave(ghost.id, true); try { if (Net.rel[ghost.id]) Net.rel[ghost.id].close(); } catch (e) { } delete Net.rel[ghost.id]; delete Net.fast[ghost.id]; }
     if (isFinite(m.px) && isFinite(m.py) && !(+m.jailLeft > 0)) { const z0 = isFinite(m.pz) ? +m.pz : 0, f0 = m.pfl | 0, b0 = isFinite(m.pfb) ? m.pfb | 0 : -1; try { if (canStandZ(+m.px, +m.py, z0, 0.18, f0, b0)) { s = { x: +m.px, y: +m.py }; sz = z0; sfl = f0; sfb = b0; } } catch (e) { } }
     const np = {
       wandInfo: m.wandInfo && typeof m.wandInfo === 'object' && WANDS[m.wandInfo.k] ? { k: m.wandInfo.k, w: String(m.wandInfo.w || '').slice(0, 20), c: String(m.wandInfo.c || '').slice(0, 30), len: clamp(m.wandInfo.len | 0, 15, 40), feel: String(m.wandInfo.feel || '').slice(0, 24), dmg: clamp(+m.wandInfo.dmg || 0, -0.05, 0.08), mp: clamp(m.wandInfo.mp | 0, -5, 12) } : null,
@@ -182,7 +182,7 @@ function hostOnClient(from, m) {
     if (m.qdone) for (const q of QUESTS) if (m.qdone[q.id]) np.qdone[q.id] = m.qdone[q.id] | 0;
     np.hp = np.maxHp; np.mp = np.maxMp;
     if (!m.lvl) { np.gold = 30; np.pots.hp = 3; np.pots.mp = 2; np.pots.band = 3; } // kit inicial
-    np.joinT = Date.now(); S.players[from] = np;
+    np.joinT = Date.now(); np.recon = m._recon || 0; S.players[from] = np;
     estateJoin(np);
     if (m.dev && typeof crypto !== 'undefined' && crypto.subtle) crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(m.dev).trim().toUpperCase())).then(buf => {
       const h = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -250,6 +250,8 @@ function hostOnClient(from, m) {
     case 'gathering': { const tool = ['axe', 'pickaxe', 'sickle'].includes(m.tool) ? m.tool : 'axe'; p.taskT = now_(); near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: tool === 'axe' ? 'chop' : tool === 'pickaxe' ? 'pickswing' : 'reap', ms: 750, tool, i: m.i | 0 }); break; }
     case 'job': jobMsg(p, m); break;
     case 'wv': wvMsg(p, m); break;
+    case 'obs': if (p.dev || p.devPowers) Net.toOne(p.id, obsSnap()); break;   /* Observatório do Tecelão */
+    case 'hpr': if (isFinite(m.t0)) p.ping = Math.max(0, Date.now() - m.t0); break;   /* resposta do ping do anfitrião */
     case 'sheathe': p.autoShea = false; sheatheToggle(p); break;
     case 'hotel': hotelMsg(p, m); break;
     case 'trade': if (m.a === 'open') { const n = S.npcs && S.npcs[m.npc]; if (n && tradeCat(n) && dist(n.x, n.y, p.x, p.y) <= 3.6) Net.toOne(p.id, tradeView(n, p)); } else tradeMsg(p, m); break;
@@ -2282,6 +2284,29 @@ function zoneTick(now) {
 }
 
 // ---------------- laço principal (10x por segundo) ----------------
+function hostTickTimed() {
+  const pn = () => (typeof performance !== 'undefined' ? performance.now() : Date.now()), a = pn(), now = Date.now();
+  if (S.lastWall && now - S.lastWall > 1000) { (S.stalls = S.stalls || []).push([now, now - S.lastWall]); if (S.stalls.length > 200) S.stalls.shift(); }
+  S.lastWall = now;
+  hostTick();
+  const d = pn() - a; S.tickMs = S.tickMs == null ? d : S.tickMs * 0.95 + d * 0.05; S.tickMax = Math.max((S.tickMax || 0) * 0.999, d);
+  if (now - (S.pingT || 0) > 5000) { S.pingT = now; for (const id in S.players) if (id !== Net.myId) Net.toOne(id, { t: 'hp', t0: now }); }
+}
+// retrato da cidade para o Observatório (só o Tecelão pede, uma vez por segundo)
+function obsSnap() {
+  const E = (S.estate && S.estate.r) || {}, now = now_();
+  const npcs = Object.values(S.npcs || {}).map(n => { const J = n.job; const dest = n.walkTo || (J && J.wp && J.wp[J.i]) || (n.route && n.route.length ? n.route[(n.ri || 0) % n.route.length] : null);
+    return [n.id, n.name, n.kind, n.role || (n.bizWorker ? 'worker' : ''), +n.x.toFixed(1), +n.y.toFixed(1), n.act || (J ? J.st : '') || '', n.home ?? -1, n.bi ?? -1, dest ? [+(+dest[0]).toFixed(1), +(+dest[1]).toFixed(1)] : null, J && J.goods ? J.goods : null,
+      (n.sleeping ? 1 : 0) | (n.downed ? 2 : 0) | (n.dead ? 4 : 0) | (n.drunkT > now ? 8 : 0) | (n.transient ? 16 : 0) | (n.sitting ? 32 : 0) | (n.bard ? 64 : 0), n.need ? [Math.round(n.need.food), Math.round(n.need.rest), Math.round(n.need.social)] : null]; });
+  const players = Object.values(S.players).map(p => [p.id, p.name, +p.x.toFixed(1), +p.y.toFixed(1), p.lvl, p.dev ? 1 : 0, p.ping ?? null, p.recon || 0, p.id === Net.myId ? 1 : 0, p.downed ? 1 : 0]);
+  const biz = PROPS.filter(P => P.kind !== 'house').map(P => { const r = E[P.id], B = r && r.biz; let st = null, wait = null;
+    if (B) { const w = Object.entries(B.wait || {}).sort((a, b) => a[1] - b[1]); if (w.length) wait = [w[0][0].replace(/r$/, ''), Math.round((Date.now() - w[0][1]) / BIZ_HOUR_MS * 10) / 10];
+      const td = B.today || {}; st = B.closed ? 'idle' : wait && wait[1] >= 2 ? 'warn' : (td.cost || 0) > (td.rev || 0) + (td.xfer || 0) && (td.cost || 0) > 30 ? 'bad' : 'ok'; }
+    const st0 = B ? (P.kind === 'shop' ? B.stock : B.store) || {} : null;
+    return [P.id, P.name, P.kind, P.bi, r ? r.ownerName : (P.npcOwner || ''), st, st0 ? Math.round(Object.values(st0).reduce((a, v) => a + v, 0)) : null, B && B.today ? [Math.round(B.today.rev || 0), Math.round(B.today.cost || 0), Math.round(B.today.xfer || 0), B.today.sold || 0] : null, wait, B ? (B.staff || []).length : null, B ? Math.floor(B.cofre || 0) : null]; });
+  return { t: 'obs', at: Date.now(), hour: resHour(), day: estDay() - (S.day0 ?? (S.day0 = estDay())) + 1, host: (S.players[Net.myId] || {}).name || '', npcs, players, biz, ev: (S.events || []).slice(-120),
+    tech: { tick: +(S.tickMs || 0).toFixed(2), max: +(S.tickMax || 0).toFixed(1), stalls: (S.stalls || []).filter(q => Date.now() - q[0] < 3600000), mons: Object.keys(S.monsters).length, npcN: Object.keys(S.npcs || {}).length } };
+}
 function hostTick() {
   const now = now_();
   const dt = S.lastTick ? Math.min(0.25, (now - S.lastTick) / 1000) : 0.1;
@@ -2394,8 +2419,8 @@ function startHostLoop() {
   try {
     const src = 'setInterval(() => postMessage(0), 100);';
     const w = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
-    w.onmessage = hostTick;
-  } catch (e) { setInterval(hostTick, 100); }
+    w.onmessage = hostTickTimed;
+  } catch (e) { setInterval(hostTickTimed, 100); }
 }
 
 // ============================================================
