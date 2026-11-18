@@ -2360,7 +2360,7 @@ function npcbDayEnd() {
       if (B.debt > 0 && B.cofre > NPCB_START) { const pay = Math.min(B.debt, Math.floor(B.cofre - NPCB_START)); B.cofre -= pay; B.debt -= pay; td.cost += pay; npcbLog(B, 'Pagou ' + pay + ' do empréstimo.'); } }
     for (const w of Object.values(S.npcs || {})) if (!w.transient && !w.dead && w.bi === P.bi && w.home !== P.bi) { if (!B.closed) { w.gold = (w.gold || 0) + (td.wage || SALARY[P.kind] || 6); moodAdd(w, 2); } else moodAdd(w, -8); }   /* quem trabalha aqui recebe o salário (fechado: sem salário) */
     B.short = (B.shortH || 0) >= 3 ? (B.short || 0) + 1 : 0; B.shortH = 0;
-    B.hist.push({ d: estDay() - 1, rev: Math.round(td.rev), cost: Math.round(td.cost), sold: td.sold, buy: Math.round(td.buy), wage: td.wage, up: td.up, sup: td.sup, pl: Math.round(td.pl), mk: td.mk, cofre: Math.round(B.cofre) }); if (B.hist.length > 60) B.hist.shift();
+    if (B.hist.length >= 14) B.hist.splice(0, B.hist.length - 13); B.hist.push({ d: estDay() - 1, rev: Math.round(td.rev), cost: Math.round(td.cost), sold: td.sold, buy: Math.round(td.buy), wage: td.wage, up: td.up, sup: td.sup, pl: Math.round(td.pl), mk: td.mk, cofre: Math.round(B.cofre) }); if (B.hist.length > 60) B.hist.shift();
     if (B.closed) { if (--B.closed <= 0) { B.closed = 0; B.loss = 0; B.cofre += NPCB_LOAN; B.debt += NPCB_LOAN; npcbLog(B, 'Reabriu com um empréstimo de ' + NPCB_LOAN + ' do banco.'); sys('🔓 ' + P.name + ' reabriu as portas com um empréstimo do banco.'); } }
     else { B.loss = B.cofre < 0 ? (B.loss || 0) + 1 : 0; if (B.loss >= 3) { B.closed = 2; npcbLog(B, 'Fechou: 3 dias seguidos no vermelho.'); sys('🔒 ' + P.name + ' fechou as portas por dívidas (3 dias no vermelho).'); } }
     B.today = npcbDay(); }
@@ -2450,9 +2450,16 @@ function obsRecord(newDay) {
 // retrato da cidade para o Observatório (só o Tecelão pede, uma vez por segundo)
 function obsSnap() {
   const E = (S.estate && S.estate.r) || {}, now = now_();
+  const staffHomeBi = id => { const H = PROPS.filter(P => P.kind === 'house' && P.district !== 'Vila do Oeste' && !BUILDINGS[P.bi].extra); if (!H.length) return -1; const h = [...String(id)].reduce((a, c) => a * 31 + c.charCodeAt(0), 7) >>> 0; return H[h % H.length].bi; };
+  const workOf = n => n.bi != null ? n.bi : (n.transient ? -1 : WORLD.bld[tileAt(n.postX ?? n.x, n.postY ?? n.y)] ?? -1);
+  const bk = k => BUILDINGS.findIndex(b => b.kind === k), nearest = (n, k) => { let bi = -1, bd = 1e9; BUILDINGS.forEach((b, i) => { if (b.kind !== k) return; const d = dist(n.x, n.y, b.x + b.w / 2, b.y + b.h / 2); if (d < bd) { bd = d; bi = i; } }); return bi; };
+  const OUT_WORK = n => /^(guard|captain)/.test(n.kind) ? 'Patrulha da cidade' : n.kind === 'fruit' ? 'Banca de frutas da praça' : n.kind === 'executioner' ? 'Cadafalso da praça' : n.kind === 'supplier' ? 'Portão principal (fornecedor)' : n.role === 'courier' ? 'Entregas pela cidade' : n.kind === 'gardener' ? 'Jardins do bairro nobre' : /^noble/.test(n.kind) ? 'Bairro nobre (vida de nobre)' : '';
+  const homeOf = n => { if (n.home != null) return n.home; if (n.transient) return -1; if (/^(guard|captain)/.test(n.kind)) return bk('barracks'); if (n.kind === 'fruit') return bk('fruithouse'); if (/^noble/.test(n.kind)) return nearest(n, 'manor'); if (n.kind === 'executioner' || n.kind === 'jailer') return bk('jail');
+    if (n.bizWorker || n.collector || n.role === 'courier' || n.kind === 'supplier' || n.kind === 'gardener') return staffHomeBi(n.id); return workOf(n); };   /* fixos moram onde trabalham; funcionários, na casa sorteada */
+  const actOf = (n, J) => n.act || (J ? J.st : '') || (n.dead ? 'dead' : n.transient ? (n.bard ? 'bard' : 'visit') : /^(guard|captain)/.test(n.kind) ? 'patrol' : n.sleeping ? 'sleep' : n.fight ? 'fight' : (WORLD.bld[tileAt(n.x, n.y)] === workOf(n) && workOf(n) >= 0 ? 'work' : 'walk'));
   const npcs = Object.values(S.npcs || {}).map(n => { const J = n.job; const dest = n.walkTo || (J && J.wp && J.wp[J.i]) || (n.route && n.route.length ? n.route[(n.ri || 0) % n.route.length] : null);
-    return [n.id, n.name, n.kind, n.role || (n.bizWorker ? 'worker' : ''), +n.x.toFixed(1), +n.y.toFixed(1), n.act || (J ? J.st : '') || '', n.home ?? -1, n.bi ?? -1, dest ? [+(+dest[0]).toFixed(1), +(+dest[1]).toFixed(1)] : null, J && J.goods ? J.goods : null,
-      (n.sleeping ? 1 : 0) | (n.downed ? 2 : 0) | (n.dead ? 4 : 0) | (n.drunkT > now ? 8 : 0) | (n.transient ? 16 : 0) | (n.sitting ? 32 : 0) | (n.bard ? 64 : 0) | (n.skipDay === estDay() ? 128 : 0), n.need ? [Math.round(n.need.food), Math.round(n.need.rest), Math.round(n.need.social)] : null, n.mood != null ? Math.round(n.mood) : null, n.gold != null ? Math.round(n.gold) : null]; });
+    return [n.id, n.name, n.kind, n.role || (n.bizWorker ? 'worker' : ''), +n.x.toFixed(1), +n.y.toFixed(1), actOf(n, J), homeOf(n), workOf(n), dest ? [+(+dest[0]).toFixed(1), +(+dest[1]).toFixed(1)] : null, J && J.goods ? J.goods : null,
+      (n.sleeping ? 1 : 0) | (n.downed ? 2 : 0) | (n.dead ? 4 : 0) | (n.drunkT > now ? 8 : 0) | (n.transient ? 16 : 0) | (n.sitting ? 32 : 0) | (n.bard ? 64 : 0) | (n.skipDay === estDay() ? 128 : 0), n.need ? [Math.round(n.need.food), Math.round(n.need.rest), Math.round(n.need.social)] : null, n.mood != null ? Math.round(n.mood) : null, n.gold != null ? Math.round(n.gold) : null, workOf(n) < 0 ? OUT_WORK(n) || (n.transient ? 'Visitante' : '') : '']; });
   const players = Object.values(S.players).map(p => [p.id, p.name, +p.x.toFixed(1), +p.y.toFixed(1), p.lvl, p.dev ? 1 : 0, p.ping ?? null, p.recon || 0, p.id === Net.myId ? 1 : 0, p.downed ? 1 : 0, S.bw && S.bw[p.id] ? +S.bw[p.id].kb.toFixed(1) : null]);
   const NBs = npcbAll(), lastH = (obsLoadH().hr || []).slice(-1)[0];
   const biz = PROPS.filter(P => P.kind !== 'house').map(P => { const r = E[P.id], NB = !r && NBs[P.id]; if (NB) { const td = NB.today, yd = NB.hist[NB.hist.length - 1], st = NB.closed ? 'idle' : NB.loss >= 1 || NB.cofre < 0 || (yd && yd.cost > yd.rev) ? 'bad' : NB.short >= 2 ? 'warn' : 'ok';   /* status pelo resultado de ontem */
@@ -2566,7 +2573,9 @@ function hostTick() {
 
 // ---------- mundo único: cópia para todos (para quem assumir se o anfitrião cair) e recomeço pelo Tecelão ----------
 function worldSnap() { estateLoad(); bankLoad(); const succ = Object.values(S.players).filter(q => q.id !== Net.myId).sort((a, b) => (a.joinT || 0) - (b.joinT || 0)).map(q => q.id);   /* quem chegou primeiro assume */ return { t: 'wsnap', est: S.estate, bank: S.bank, succ, ver: VERSION, wid: S.wid || 'legacy', wname: S.wname || 'Nae', host: (S.players[Net.myId] || {}).name || '' }; }
-function worldBroadcast() { if (!Net.isHost || Net.offline) return; try { if (S.wid && typeof worldTouch === 'function') worldTouch(S.wid, S.wname, (S.players[Net.myId] || {}).name || '', true); const m = worldSnap(); for (const id in Net.rel) { const c = Net.rel[id]; if (c.open) c.send(m); } } catch (e) { console.warn('wsnap', e); } }
+function worldBroadcast() { if (!Net.isHost || Net.offline) return; try { if (S.wid && typeof worldTouch === 'function') worldTouch(S.wid, S.wname, (S.players[Net.myId] || {}).name || '', true);
+    const txt = JSON.stringify(worldSnap(), (k, v) => k === 'log' ? undefined : v), N = 16000, parts = Math.ceil(txt.length / N), id = Date.now();   /* em pedaços de 16 KB: mensagem grande demais trava ou derruba a conexão */
+    for (const pid in Net.rel) { const c = Net.rel[pid]; if (!c.open) continue; for (let i = 0; i < parts; i++) c.send({ t: 'wsp', id, i, n: parts, d: txt.slice(i * N, (i + 1) * N) }); } } catch (e) { console.warn('wsnap', e); } }
 function worldReset(p) {
   S.estate = { r: {}, lost: {}, hotel: {}, npcb: {}, npcm: {} }; estateSave(); S.bank = { acc: {} }; bankSave(); HOTEL_R = null; S.obsH = { hr: [], dy: [] }; S.heat = null; obsSaveH(true);
   for (const id of Object.keys(S.npcs || {})) { const q = S.npcs[id]; if (q && (q.bizWorker || q.collector)) visGone(q); }
@@ -2574,7 +2583,7 @@ function worldReset(p) {
 }
 function startHostLoop() {
   if (S.loopOn) return; S.loopOn = true;
-  setInterval(worldBroadcast, 10000);
+  setInterval(worldBroadcast, 60000);   /* a cópia do mundo só serve para reabri-lo depois: a cada minuto basta */
   if (typeof addEventListener === 'function') addEventListener('beforeunload', worldBroadcast);
   try {
     const src = 'setInterval(() => postMessage(0), 100);';

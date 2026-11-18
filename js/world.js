@@ -391,6 +391,9 @@ function interiorLayout0(b, fl = 0) {
 }
 // layout final: descarta móveis que fechariam algum canto do cômodo (todo tile livre precisa ser alcançável)
 const LAYOUT_MEMO = new Map();
+// móveis que continuam sólidos: paredes e divisórias, balcões, lareiras e fogões, prateleiras e armários de parede, camas, grades e cofres.
+// O resto (mesas, cadeiras, bancos, barris, caixotes, tapetes, decoração) não bloqueia a passagem.
+const FURN_SOLID = new Set(['blk', 'hpart', 'counter', 'bar', 'bankdesk', 'wandcounter', 'vault', 'bars', 'celldoor', 'fireplace', 'hearth', 'stove', 'forge', 'shelf', 'wandwall', 'fabricwall', 'taps', 'bottles', 'filing', 'jamshelf', 'pillar', 'throne', 'altar', 'still', 'bed', 'bunk', 'cot']);
 function interiorLayout(b, fl = 0) {
   const [w, h] = bDims(b), mk = [b.kind, w, h, b.v || 0, floorsOf(b), fl, b.office || '', JSON.stringify(b.stairs || 0), b.extSide || '', b.cellar ? b.cellar.join(',') : '', b.deco || ''].join('|');
   let L = LAYOUT_MEMO.get(mk); if (L) return L;
@@ -407,6 +410,7 @@ function interiorLayout(b, fl = 0) {
   };
   const F = [];
   for (const f of L.F) {
+    if (f.block && !FURN_SOLID.has(f.t)) f.block = false;   /* menos colisão: só o que é estrutura continua sólido */
     if (!f.block || f.t === 'blk') { F.push(f); if (f.block) blk[id(f.i, f.j)] = 1; continue; }
     const cells = []; for (let a = 0; a < f.w; a++) for (let c = 0; c < f.h; c++) cells.push(id(f.i + a, f.j + c));
     for (const n of cells) blk[n] = 1;
@@ -1177,7 +1181,7 @@ function placeFurniture(b, bi, f, obj, seats, idx) {
   }
   if (f.t === 'cot') { const [px, py] = bLocal(b, f.i, f.j), [fx, fy] = bLocal(b, f.i, f.j + f.h - 1); BEDS.push({ x: (px + fx) / 2, y: (py + fy) / 2, dx: fx - px, dy: fy - py, bi }); }
   if (f.t === 'stove') { const [x, y] = bLocal(b, f.i, f.j); KITCHENS.push({ x, y, bi }); }
-  if (f.t === 'chest' && b.kind === 'house' && !b.office) { const [x, y] = bLocal(b, f.i, f.j); CHESTS.push({ x, y, bi }); }
+  if (f.t === 'chest' && (b.kind === 'house' || b.kind === 'manor') && !b.office) { const [x, y] = bLocal(b, f.i, f.j); CHESTS.push({ x, y, bi }); }
   if (f.t === 'bed') { const [px, py] = bLocal(b, f.i + (f.w - 1) / 2, f.j), [fx, fy] = bLocal(b, f.i + (f.w - 1) / 2, f.j + f.h - 1); BEDS.push({ x: (px + fx) / 2, y: (py + fy) / 2, dx: fx - px, dy: fy - py, bi }); }
   for (let a = 0; a < f.w; a++) for (let c = 0; c < f.h; c++) { const [x, y] = bLocal(b, f.i + a, f.j + c); if (f.block) obj[idx(x, y)] = O.PART; }
   if (!f.seat) return;
@@ -1313,6 +1317,7 @@ const PROPS = [], PROPS_BY = {};
     let P = null;
     if (b.kind === 'house') n++;   // conta o escritório também: os números das outras casas não mudam
     if (b.kind === 'house' && !b.office) { P = { ...base, id: 'h' + bi, kind: 'house', name: 'Casa ' + n, rent: (4 + Math.round(area * 0.3) + (fl - 1) * 4) * 2 }; }   // casas 2x mais caras: a pousada é o começo
+    else if (b.kind === 'manor') P = { ...base, id: 'm' + bi, kind: 'house', manor: true, name: b.name || 'Casarão', rent: Math.round((4 + Math.round(area * 0.3) + (fl - 1) * 4) * 2 * 1.4) };   // casarões do bairro nobre: aluguel e venda
     else if (b.kind === 'tavern') P = { ...base, id: 's' + bi, kind: 'workshop', wk: 'tavern', name: b.name, npcOwner: 'Brom', rent: 20 + Math.round(area * 0.8) };
     else if (b.kind === 'smith') P = { ...base, id: 'w' + bi, kind: 'workshop', wk: 'forge', name: b.name, npcOwner: 'Hrodgar', rent: 16 + Math.round(area * 0.7) };
     else if (b.kind === 'shop' || b.kind === 'boutique') P = { ...base, id: 's' + bi, kind: 'shop', shopType: b.shopType, name: b.name || 'Loja', npc: b.shopType ? null : ownerOf(b), rent: 20 + Math.round(area * 0.8) + (fl - 1) * 6 };
@@ -1321,7 +1326,7 @@ const PROPS = [], PROPS_BY = {};
     else if (b.kind === 'workshop') P = { ...base, id: 'w' + bi, kind: 'workshop', wk: b.wk, name: b.name, rent: 16 + Math.round(area * 0.7) };
     else if (b.kind === 'smith' || b.kind === 'stable') P = { ...base, id: 'w' + bi, kind: 'workshop', name: b.name || (b.kind === 'stable' ? 'Estábulo' : 'Oficina'), npc: b.kind === 'stable' ? 'a Guarda' : ownerOf(b), rent: 16 + Math.round(area * 0.7) };
     if (P) { // localização: perto do castelo é área nobre (mais caro), na periferia e na vila é barato
-      const d = Math.hypot(b.x + b.w / 2 - C, b.y + b.h / 2 - (C - 14)); P.loc = clamp(1.75 - d / 30, 0.55, 1.75); P.locName = P.loc > 1.35 ? 'área nobre' : P.loc > 0.95 ? 'centro' : P.loc > 0.7 ? 'bairro' : 'periferia';
+      const d = Math.hypot(b.x + b.w / 2 - C, b.y + b.h / 2 - (C - 14)); P.loc = clamp(1.75 - d / 30, 0.55, 1.75); if (P.manor) P.loc = Math.max(P.loc, 1.5); P.locName = P.manor ? 'bairro nobre' : P.loc > 1.35 ? 'área nobre' : P.loc > 0.95 ? 'centro' : P.loc > 0.7 ? 'bairro' : 'periferia';
       P.rent = Math.max(3, Math.round(P.rent * P.loc)); P.week = P.rent * 7; P.buy = P.rent * 60; PROPS.push(P); PROPS_BY[P.id] = P; }
   });
   // todo negócio sem jogador tem um dono NPC (que vende o ponto; não aluga)
