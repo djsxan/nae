@@ -79,6 +79,7 @@ function npcReactions(now) {
 function drawNpcBubble(ctx, e, sx, sy, now) {
   if (e.custP && e.custP.doze && typeof drawZzz === 'function') drawZzz(ctx, sx, sy - 30, now);
   if (!e.bubble || now > e.bubble.until) return;
+  if (e.bubble.t.length > 3 && !e.npDown) { e.say = e.bubble.t; e.sayUntil = e.bubble.until; return; }   /* frases: o mesmo balão do chat dos jogadores (desenhado com os nomes) */
   const k = 1 - Math.max(0, (e.bubble.until - now - 200) / 1200), y = sy - (e.npDown ? 30 : 70) - Math.sin(Math.min(1, k * 3) * Math.PI) * 3, long = e.bubble.t.length > 3;
   ctx.save(); ctx.font = long ? 'italic bold 9px serif' : 'bold 12px serif'; ctx.textAlign = 'center'; ctx.fillStyle = 'rgba(255,248,225,0.95)'; ctx.strokeStyle = 'rgba(40,24,10,0.9)'; ctx.lineWidth = 3;
   ctx.strokeText(e.bubble.t, sx, y); ctx.fillText(e.bubble.t, sx, y); ctx.restore();
