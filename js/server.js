@@ -634,6 +634,7 @@ function useItem(p, k) {
   else if (k === 'elixir_breath') { take(); p.buffs.breath = now + 180000; p.cst = cstMaxOf(p); tell(p, 'Um frescor sobe pelo peito: o fôlego não acaba por 3 minutos.'); }
   else if (k === 'elixir_warm') { take(); p.buffs.warm = now + 600000; p.cold = 0; tell(p, 'Um calor de brasa corre nas veias: nada de frio por 10 minutos.'); }
   else if (k === 'elixir_swift') { take(); p.buffs.agile = now + 45000; tell(p, 'As pernas ficam leves: passos ligeiros por 45 segundos.'); }
+  else if (k === 'salve') { take(); if (p.body) for (const bp of BODY_PARTS) { if ((p.lost || 0) & (LOST[bp] || 0)) continue; p.body[bp] = Math.min(100, p.body[bp] + 45); if (p.bleed) p.bleed[bp] = 0; } near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'drinkb', ms: 1200 }); tell(p, 'A pomada da Elva esfria a pele: os ferimentos fecham e o sangue para.'); }
   else if (k === 'ointment') { take(); p.infect = 0; p.infT = 0; tell(p, 'O unguento arde, mas a febre baixa.'); }
   else if (k === 'ale') { take(); p.water = Math.min(100, (p.water ?? 100) + 20); p.cst = Math.min(cstMaxOf(p), (p.cst ?? 0) + 60);
     if (!aleDrink(p, now, 1)) tell(p, ['Gelada e espumante!', 'Desce bem.', 'Ahh, que cerveja!'][Math.min(2, p.aleT.length - 1)]); }
@@ -955,6 +956,24 @@ function npcAction(p, m) {
     p.infect = 0; p.infT = 0; p.cold = 0;
     aoe('heal', p.x, p.y, { id: p.id });
     say('Que a Aurora guarde seus passos. Suas feridas estão fechadas, e a bênção reduz o dano que você recebe por algum tempo.');
+  } else if (n.id === 'st_apoth' && m.a === 'consult') {   /* Boticário de Elva: consulta, chá e encomendas */
+    if (!pay(5)) return; const out = [];
+    for (const bp of BODY_PARTS) { if ((p.lost || 0) & (LOST[bp] || 0)) { out.push(BODY_NAMES[bp] + ': perdido' + ((p.pro || 0) & LOST[bp] ? ' (com prótese)' : ' — o ferreiro faz próteses')); continue; } const st = PART_STATE(p.body ? p.body[bp] : 100); if (st > 0 || (p.bleed && p.bleed[bp])) out.push(BODY_NAMES[bp] + ': ' + PART_STATE_NAMES[st] + (p.bleed && p.bleed[bp] ? ', sangrando' : '')); }
+    const tips = []; if (BODY_PARTS.some(bp => p.bleed && p.bleed[bp])) tips.push('estanque o sangue com bandagem (B) ou com a minha pomada'); if (BODY_PARTS.some(bp => PART_STATE(p.body ? p.body[bp] : 100) >= 1)) tips.push('a Pomada de Elva recupera os membros (encomende aqui)'); if (BODY_PARTS.some(bp => PART_STATE(p.body ? p.body[bp] : 100) >= 3)) tips.push('osso quebrado: descanse na cama ou peça à sacerdotisa'); if (p.infect) tips.push('você está com infecção: tome unguento ou chá'); if ((p.cold || 0) > 40) tips.push('está gelado: um chá quente resolve');
+    say(out.length || p.infect ? 'Deixa eu ver... ' + (out.join('; ') || 'nenhum ferimento') + (p.infect ? '; infecção' : '') + '. ' + (tips.length ? 'Meu conselho: ' + tips.join('; ') + '.' : '') : 'Você está inteiro! Volte quando a caça apertar.');
+  } else if (n.id === 'st_apoth' && m.a === 'tea') {
+    if (!pay(4)) return; p.infect = Math.max(0, (p.infect || 0) - 1); p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.2)); p.cst = Math.min(cstMaxOf(p), (p.cst ?? 0) + 80); p.cold = 0; p.buffs.warm = Math.max(p.buffs.warm || 0, now + 180000); near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'drinkb', ms: 1600 });
+    say('Camomila, sálvia e um tantinho de gengibre da estufa. Esquenta o corpo e acalma as feridas.');
+  } else if (n.id === 'st_apoth' && m.a === 'order') {
+    const R = { salve: { herb: 2, gold: 10, h: 2, n: 'Pomada de Elva', q: 2 }, elixir: { herb: 3, gold: 12, h: 3, n: 'Poções de vida', q: 2 } }[m.k]; if (!R) return; const E = estateLoad(), O = E.apoth || (E.apoth = {}), key = estOwner(p);
+    if (O[key]) { say('Já tenho uma encomenda sua no fogo: ' + O[key].n + '. Volte para buscar.'); return; } if ((p.inv.herb || 0) < R.herb) { say('Preciso de ' + R.herb + ' ervas medicinais para isso. A Horta da Vila tem, ou você colhe no mato.'); return; } if (!pay(R.gold)) return;
+    p.inv.herb -= R.herb; if (!p.inv.herb) delete p.inv.herb; O[key] = { k: m.k, n: R.n, q: R.q, at: gameNow() + R.h * BIZ_HOUR_MS }; estateSave(); sendStat(p);
+    say('Combinado! ' + R.n + ' fica pronto em ' + R.h + ' horas do jogo. Pode passear que eu cuido da destilação.');
+  } else if (n.id === 'st_apoth' && m.a === 'pickup') {
+    const E = estateLoad(), O = E.apoth || (E.apoth = {}), key = estOwner(p), J = O[key]; if (!J) { say('Não tenho nenhuma encomenda sua.'); return; }
+    if (gameNow() < J.at) { say('Ainda está no alambique: falta mais ou menos ' + Math.max(1, Math.ceil((J.at - gameNow()) / BIZ_HOUR_MS)) + ' hora(s) do jogo.'); return; }
+    if (J.k === 'salve') { if (!p.inv.salve && Object.keys(p.inv).length >= INV_SLOTS) { say('Sua mochila está cheia.'); return; } p.inv.salve = (p.inv.salve || 0) + J.q; } else p.pots.hp = (p.pots.hp || 0) + J.q;
+    delete O[key]; estateSave(); sendStat(p); say('Aqui está: ' + J.q + ' ' + J.n + '. Use com sabedoria!');
   } else if (n.id === 'innkeeper' && (m.a === 'mead' || m.a === 'firemead')) {
     if (!pay(12)) return; fireMead(p, now);
     say('Hidromel de Fogo! Feito com pimenta das montanhas, igual ao que o dragão bebeu. Segura a faísca!');
@@ -2669,6 +2688,7 @@ function offerClose(P, ok, why) {
 }
 function nearBroker(p) { const n = S.npcs && S.npcs.broker; return !!n && !n.dead && !n.downed && dist(p.x, p.y, n.x, n.y) < 4.5; }
 function nearPropDoor(p, P) { const [dx, dy] = doorTile(BUILDINGS[P.bi]); return dist(p.x, p.y, dx, dy) < 3.4 || WORLD.bld[tileAt(p.x, p.y)] === P.bi; }
+function bizRecipes(B, W) { if (!W || !W.recipes) return []; if (B.recipeUser && W.recipes[B.recipe]) return [B.recipe]; return Object.keys(W.recipes).sort((a, b) => (B.store[a] || 0) - (B.store[b] || 0)); }   /* receitas que a oficina faz agora */
 function bizInit(P) {
   if (P.kind === 'hotel') return { cofre: 0, up: { safe: 0 }, hist: [], today: { rev: 0, sold: 0, cost: 0 }, closed: false, log: [], store: {} };
   if (P.kind === 'shop') return { cofre: 0, stock: {}, margin: Object.fromEntries((SHOP_GOODS[P.shopType] || []).map(g => [g, 1])), up: { shelf: 0, vitrine: 0, safe: 0 }, orders: [], hist: [], today: { rev: 0, sold: 0, cost: 0 }, closed: false, frac: 0, log: [] };
@@ -2903,7 +2923,7 @@ function bizMsg(p, m) {
       B.staff.push({ ...c, id: 'wk_' + pid + '_' + (B.staffN = (B.staffN || 0) + 1) }); B.cands.splice(m.i | 0, 1); bizLog(B, c.n + ' foi contratad' + (c.g === 'f' ? 'a' : 'o') + ' (' + STAFF_TR[c.tr].n + ', ' + c.w + ' ouro/dia).'); staffSync(pid, r); break; }
     case 'fire': { B.staff = B.staff || []; const s = B.staff[m.i | 0]; if (!s) return; B.staff.splice(m.i | 0, 1); bizLog(B, s.n + ' foi dispensad' + (s.g === 'f' ? 'a' : 'o') + '.'); staffSync(pid, r); break; }
     case 'margin': { const g = String(m.g); if (P.kind !== 'shop' || !(g in B.margin)) return; B.margin[g] = clamp(m.v | 0, 0, 2); break; }
-    case 'recipe': { const W = WORKS[P.wk]; if (!W || !W.recipes || !W.recipes[m.v]) return; B.recipe = m.v; break; }
+    case 'recipe': { const W = WORKS[P.wk]; if (!W || !W.recipes) return; if (m.v === 'all') { B.recipeUser = false; break; } if (!W.recipes[m.v]) return; B.recipe = m.v; B.recipeUser = true; break; }
     case 'keep': { if (P.kind !== 'workshop') return; B.keep = m.v == null || m.v === '' ? null : clamp(m.v | 0, 0, 100); break; }
     case 'toggle': { if (P.kind !== 'workshop' || !['autobuy', 'sell'].includes(m.k)) return; B[m.k] = !B[m.k]; break; }
     case 'sell': { bizSellBack(p, pid); return; }   // vender pelo menu de gestão
@@ -2961,7 +2981,7 @@ function bizNeeds(owner) {   // o que cada negócio do dono precisa receber
   for (const pid in E.r) { const r = E.r[pid]; if (r.owner !== owner || !r.biz) continue; const P = PROPS_BY[pid], B = r.biz;
     if (P.kind === 'shop') { const room = shopCap(B) - stockSum(B.stock); for (const g of SHOP_GOODS[P.shopType] || []) if (room > 0) out.push({ pid, g, room });
       if (P.shopType === 'arcane') { const rr = BENCH_CAP - Math.floor((B.raw || {}).wood || 0); if (rr >= 4) out.push({ pid, g: 'wood', room: rr, raw: 1 }); } }   // madeira para a bancada de entalhe
-    else { const W = WORKS[P.wk]; if (W && W.recipes && B.recipe) { const want = new Set(Object.keys(W.recipes[B.recipe])); for (const r0 in W.recipes) for (const g in W.recipes[r0]) want.add(g);   // ingredientes de todas as receitas (a padaria também recebe frutas)
+    else { const W = WORKS[P.wk]; if (W && W.recipes) { const want = new Set(); for (const r0 in W.recipes) for (const g in W.recipes[r0]) want.add(g);   // ingredientes de todas as receitas (a padaria também recebe frutas)
       for (const g of want) { const room = WS_CAP - stockSum(B.store), mine = Math.floor(B.store[g] || 0); if (room > 0 && mine < WS_CAP / 3) out.push({ pid, g, room: Math.min(room, WS_CAP / 3 - mine, 40) }); } } } }
   return out.sort((x, y) => (PROPS_BY[x.pid].kind === 'workshop' ? 0 : 1) - (PROPS_BY[y.pid].kind === 'workshop' ? 0 : 1));   // oficinas que transformam primeiro
 }
@@ -3065,9 +3085,12 @@ function bizHour(now) {
       const sk = seasonNow().k, W = WORKS[P.wk] || {}, k = (workerAt(P.bi) ? 1.5 : 1) * ownerWorkMul(r, P) / (ownerWorkMul(r, P) > 1 ? 1.5 : 1) * staffMul(B) * (1 + 0.6 * (B.up.tools || 0)) * (P.wk === 'farm' ? (sk === 'winter' ? 0.4 : sk === 'summer' ? 1.25 : 1) : 1);
       if (!B.closed) {
         if (W.make && !COLL_TOOL[P.wk]) for (const g in W.make) { B.frac[g] = (B.frac[g] || 0) + W.make[g] * k; const q = Math.floor(B.frac[g]); B.frac[g] -= q; if (stockSum(B.store) + q <= WS_CAP) { B.store[g] = (B.store[g] || 0) + q; if (q) { const mk = B.today.mk || (B.today.mk = {}); mk[g] = (mk[g] || 0) + q; } } }
-        if (W.recipes && B.recipe) { const rec = W.recipes[B.recipe]; B.frac._b = (B.frac._b || 0) + k; let nb = Math.floor(B.frac._b); B.frac._b -= nb;
-          while (nb-- > 0) { let ok = true; for (const g in rec) if ((B.store[g] || 0) < rec[g]) { const miss = rec[g] - (B.store[g] || 0), cost = Math.ceil(GOODS[g].p * 1.2 * miss), worth = recipeGain(B.recipe) > 0; if (B.autobuy && !worth && B.noWorthDay !== estDay()) { B.noWorthDay = estDay(); bizLog(B, 'Comprar matéria-prima para ' + GOODS[B.recipe].n + ' não compensa: a oficina espera receber dos seus negócios.'); } if (B.autobuy && worth && B.cofre >= cost && !ownMaker(r.owner, g)) { B.cofre -= cost; B.today.cost += cost; B.store[g] = (B.store[g] || 0) + miss; } else ok = false; }
-            if (!ok || stockSum(B.store) >= WS_CAP) break; for (const g in rec) B.store[g] -= rec[g]; B.store[B.recipe] = (B.store[B.recipe] || 0) + 1; { const mk = B.today.mk || (B.today.mk = {}); mk[B.recipe] = (mk[B.recipe] || 0) + 1; } } }
+        if (W.recipes) { B.frac._b = (B.frac._b || 0) + k; let nb = Math.floor(B.frac._b); B.frac._b -= nb;   /* todas as receitas: a que tiver menos estoque primeiro (ou só a fixada pelo dono) */
+          while (nb-- > 0 && stockSum(B.store) < WS_CAP) { let made = null;
+            for (const rk of bizRecipes(B, W)) { const rec = W.recipes[rk]; let ok = true;
+              for (const g in rec) if ((B.store[g] || 0) < rec[g]) { const miss = rec[g] - (B.store[g] || 0), cost = Math.ceil(GOODS[g].p * 1.2 * miss), worth = recipeGain(rk) > 0; if (B.autobuy && worth && B.cofre >= cost && !ownMaker(r.owner, g)) { B.cofre -= cost; B.today.cost += cost; B.store[g] = (B.store[g] || 0) + miss; } else { ok = false; break; } }
+              if (!ok) continue; for (const g in rec) B.store[g] -= rec[g]; B.store[rk] = (B.store[rk] || 0) + 1; { const mk = B.today.mk || (B.today.mk = {}); mk[rk] = (mk[rk] || 0) + 1; } made = rk; break; }
+            if (!made) break; } }
         if (P.wk === 'bakery') { S.trade = S.trade || {}; const give = (npc, k, g) => { const n0 = S.npcs && S.npcs[npc]; if (!n0) return; const T = tradeStock(n0), have = Math.floor(B.store[g] || 0), room = Math.max(0, 40 - (T.stock[k] || 0)), q = Math.min(have - 5, room); if (q > 0) { B.store[g] -= q; T.stock[k] = (T.stock[k] || 0) + q; const v = Math.round(q * GOODS[g].p * 0.9); B.cofre += v; B.today.rev += v; B.today.sold += q; bizLog(B, q + ' ' + GOODS[g].n + ' entregues a ' + n0.name.split(',')[0] + ' (' + v + ' ouro).'); } }; give('merchant', 'bread', 'loaves'); give('innkeeper', 'pie', 'pies'); give('innkeeper', 'bread', 'loaves'); }
         if (B.sell) { const need = new Set(bizNeeds(r.owner).filter(x => x.pid !== pid).map(x => x.g)); for (const g in B.store) { if (g === 'serve') continue; const keep = B.keep != null ? B.keep : need.has(g) ? 40 : 10; if (B.store[g] > keep) { const ex = Math.floor(B.store[g] - keep), v = GOODS[g].p * SELL_K * ex; B.store[g] -= ex; B.cofre += v; B.today.rev += v; B.today.sold += ex; } } }
         if (P.wk === 'tavern') {   // taverna: cada freguês lá dentro gasta; mesas servidas (com linho) rendem mais

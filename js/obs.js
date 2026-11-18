@@ -75,7 +75,7 @@ function obsCss() {
 function obsBuild() {
   if (OBS.built) return; OBS.built = true; obsCss();
   const d = document.createElement('div'); d.id = 'obs'; d.className = 'hidden';
-  const tabs = [['map', 'Mapa'], ['alerts', 'Alertas'], ['dayclock', 'Relógio do dia'], ['people', 'Pessoas'], ['biz', 'Negócios'], ['charts', 'Gráficos'], ['events', 'Linha do tempo'], ['tech', 'Saúde técnica'], ['ctrl', 'Controles']];
+  const tabs = [['map', 'Mapa'], ['alerts', 'Alertas'], ['dayclock', 'Relógio do dia'], ['people', 'Pessoas'], ['biz', 'Negócios'], ['items', 'Itens'], ['charts', 'Gráficos'], ['events', 'Linha do tempo'], ['tech', 'Saúde técnica'], ['ctrl', 'Controles']];
   d.innerHTML = `<div class="ob-wrap"><header><div class="ob-logo">Observatório<small>Tecelão · visão da cidade · F9 fecha</small></div><div class="ob-clock" id="ob-clock"></div>
     <nav id="ob-tabs">${tabs.map(([k, n]) => `<button data-ot="${k}">${n}${k === 'alerts' ? '<span class="badge" id="ob-abadge">0</span>' : ''}</button>`).join('')}<button class="ob-x" data-ot="close">Fechar</button></nav></header>
     <section class="ob-view ob-mapv" data-ov="map"><aside class="box"><h3 id="ob-ptot">Pessoas</h3><div class="flt" id="ob-fp"></div><h3>Camadas</h3><div class="flt" id="ob-fl"></div></aside>
@@ -88,6 +88,7 @@ function obsBuild() {
     <section class="ob-view" data-ov="people"><div class="box tablebox" id="ob-people"></div></section>
     <section class="ob-view" data-ov="biz"><div class="box tablebox" id="ob-biz"></div></section>
     <section class="ob-view" data-ov="charts" style="gap:10px"><div class="box" id="ob-ctools"></div><div class="ob-cgrid" id="ob-charts"></div></section>
+    <section class="ob-view" data-ov="items"><div class="box tablebox" id="ob-items"></div></section>
     <section class="ob-view" data-ov="events"><div class="box" id="ob-events"></div></section>
     <section class="ob-view" data-ov="tech"><div class="box" id="ob-tech"></div></section>
     <section class="ob-view" data-ov="ctrl"><div class="box" id="ob-ctrl"></div></section></div><div class="ob-tip" id="ob-tip"></div>`;
@@ -110,8 +111,9 @@ function obsBuild() {
     const pf = e.target.closest('[data-pf]'); if (pf) { OBS.pf = pf.dataset.pf; obsPeople(); }
     const cs = e.target.closest('[data-cs]'); if (cs) { const [k, v] = cs.dataset.cs.split('|'); OBS[k] = v; if (k === 'dcRole') obsDayClock(); else obsCharts(); }
     if (e.target.closest('[data-csv]')) obsCsv();
+    const ic = e.target.closest('[data-icat]'); if (ic) { OBS.icat = ic.dataset.icat; obsItems(); }
     const oc = e.target.closest('[data-oc]'); if (oc) { const [a, v, g2] = oc.dataset.oc.split('|'); Net.send({ t: 'obsc', a, v, k: v, g: g2 }); } });
-  d.addEventListener('input', e => { if (e.target.id === 'ob-dch') { OBS.dcH = +e.target.value; obsDayClock(); } });
+  d.addEventListener('input', e => { if (e.target.id === 'ob-isearch') { OBS.iq = e.target.value; obsItems(true); return; } if (e.target.id === 'ob-dch') { OBS.dcH = +e.target.value; obsDayClock(); } });
   obsSegs(); obsTab(OBS.tab);
 }
 function obsSegs() { document.querySelectorAll('#ob-zoom [data-z]').forEach(b => b.classList.toggle('on', b.dataset.z === OBS.view)); }
@@ -244,6 +246,7 @@ function obsRender() {
   else if (OBS.tab === 'tech') obsTech();
   else if (OBS.tab === 'charts') obsCharts();
   else if (OBS.tab === 'ctrl') obsCtrl();
+  else if (OBS.tab === 'items') { if (!OBS.itemsDone) obsItems(); }
   else if (OBS.tab === 'dayclock') obsDayClock();
 }
 // ---------- gráficos ----------
@@ -300,6 +303,31 @@ function obsCsv() {
   const put = (kind, r) => { for (const pid in r.b) { const N = H.names[pid] || [pid, '', '', 0], b = r.b[pid]; lines.push([kind, r.d, r.h ?? '', new Date(r.t).toISOString(), N[0], N[1], N[3] ? 'sim' : 'nao', b[0], b[1], b[2], b[3], b[4]].join(';')); } };
   for (const r of H.dy) put('dia', r); for (const r of H.hr) put('hora', r);
   const blob = new Blob(['\ufeff' + lines.join('\n')], { type: 'text/csv;charset=utf-8' }), a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'nae-observatorio-' + new Date().toISOString().slice(0, 10) + '.csv'; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+// ---------- itens do jogo (lista pronta, sai dos dados do próprio jogo) ----------
+function obsItemRows() {
+  const rows = [], has = (k, o2) => o2 && Object.prototype.hasOwnProperty.call(o2, k), fmt = v => v == null ? '—' : '$ ' + v;
+  const makers = g => { const out = []; for (const wk in WORKS) { const W = WORKS[wk]; if (W.make && g in W.make) out.push(W.n + ' (' + W.make[g] + '/h)'); if (W.recipes && g in W.recipes) out.push(W.n + ' (' + Object.entries(W.recipes[g]).map(([a, q]) => q + ' ' + GOODS[a].n).join(' + ') + ')'); } return out; };
+  const shops = g => Object.entries(SHOP_GOODS).filter(([, L]) => L.includes(g)).map(([t]) => ({ witch: 'Elixires da Lua Prateada', apoth: 'Boticário de Elva', arcane: 'Arcanos & Varinhas', tailor: 'Alfaiataria Real', scroll: 'Pergaminhos & Mapas' })[t] || t);
+  const used = g => { const out = []; for (const wk in WORKS) { const W = WORKS[wk]; if (W.recipes) for (const r in W.recipes) if (g in W.recipes[r]) out.push(GOODS[r].n + ' (' + W.n + ')'); } return out; };
+  for (const k in LOOT) { const L = LOOT[k]; let cat = 'loot', eff = L.desc || '';
+    if (L.tool) cat = 'tool'; else if (has(k, FOOD) || ['ale', 'firemead', 'tea'].includes(k)) cat = 'food'; else if (/^(herb|salve|ointment|elixir_)/.test(k)) cat = 'med'; else if (/^wand/.test(k)) cat = 'wand'; else if (typeof CLOAK_BY_ITEM !== 'undefined' && CLOAK_BY_ITEM[k]) cat = 'wear'; else if (['log', 'hardwood', 'ore', 'flaxraw', 'silverleaf', 'wheat', 'firewood', 'gem', 'apple', 'berries'].includes(k)) cat = 'raw'; else if (['map', 'amulet_luck', 'pouch', 'trinket'].includes(k)) cat = 'special';
+    const extra = []; if (has(k, FOOD)) extra.push('+' + FOOD[k] + ' de comida'); if (typeof WANDS !== 'undefined' && WANDS[k]) extra.push('+' + Math.round(WANDS[k].dmg * 100) + '% de magia, +' + WANDS[k].mp + ' de mana'); if (typeof ITEM_GOOD !== 'undefined' && ITEM_GOOD[k]) extra.push('vira ' + ITEM_GOOD[k][1] + ' ' + GOODS[ITEM_GOOD[k][0]].n + ' nos negócios');
+    rows.push({ cat, k, ic: L.icon || '•', n: L.name, eff: eff + (extra.length ? ' · ' + extra.join(' · ') : ''), buy: L.price, from: '' }); }
+  for (const k in ITEMS) { const I = ITEMS[k]; rows.push({ cat: 'med', k: 'pot_' + k, ic: k === 'hp' ? '❤' : k === 'mp' ? '✦' : k === 'band' ? '🩹' : '💧', n: I.name, eff: I.desc, buy: I.price, from: 'Empório do Borin' }); }
+  for (const g in GOODS) { const G2 = GOODS[g], mk = makers(g), sh = shops(g), us = used(g); rows.push({ cat: 'good', k: g, ic: G2.ic || '▪', n: G2.n, eff: (mk.length ? 'Feito em: ' + mk.join(', ') : 'Comprado do fornecedor') + (us.length ? ' · usado para: ' + us.join(', ') : '') + (sh.length ? ' · vendido em: ' + sh.join(', ') : ''), buy: G2.p, from: 'venda ao fornecedor: $ ' + (G2.p * 0.85).toFixed(1) }); }
+  if (typeof WEAPONS !== 'undefined') for (const k in WEAPONS) { const Wp = WEAPONS[k]; rows.push({ cat: 'weapon', k, ic: k === 'halberd' ? '🔱' : '⚔', n: Wp.n, eff: 'Dano ' + Math.round(Wp.dmg * 100) + '% · alcance ' + Wp.reach + ' · velocidade ' + Math.round(Wp.spd * 100) + '% · arco ' + Math.round(Wp.arc * 100) + '%' + (k === 'halberd' ? ' · cavaleiro troca com a tecla da arma' : ''), buy: null, from: 'arma do cavaleiro' }); }
+  return rows;
+}
+const OBS_ICAT = { all: 'Todos', food: 'Comida e bebida', med: 'Remédios e poções', tool: 'Ferramentas', raw: 'Matérias-primas', good: 'Mercadorias dos negócios', wand: 'Varinhas', wear: 'Roupas e capas', weapon: 'Armas', special: 'Especiais', loot: 'Saque de monstros' };
+function obsItems(keepInput) {
+  const box = document.getElementById('ob-items'); if (!box) return; OBS.itemsDone = true; const cat = OBS.icat || 'all', q = (OBS.iq || '').trim().toLowerCase();
+  const all = obsItemRows(), rows = all.filter(r => (cat === 'all' || r.cat === cat) && (!q || (r.n + ' ' + r.eff + ' ' + r.k).toLowerCase().includes(q)));
+  const counts = {}; for (const r of all) counts[r.cat] = (counts[r.cat] || 0) + 1;
+  const head = `<div class="tools"><div class="seg">${Object.entries(OBS_ICAT).map(([k, n]) => `<button data-icat="${k}" class="${cat === k ? 'on' : ''}">${n}${k === 'all' ? ' (' + all.length + ')' : counts[k] ? ' (' + counts[k] + ')' : ''}</button>`).join('')}</div><input id="ob-isearch" placeholder="Procurar item…" value="${obsEsc(OBS.iq || '')}" style="background:#0f1114;border:1px solid var(--line);border-radius:6px;color:#e6e2d8;padding:6px 10px;min-width:220px"></div>`;
+  const table = `<table><tr><th></th><th>Item</th><th>Tipo</th><th>Efeito / uso</th><th class="num">Preço base</th><th>Onde / observação</th></tr>${rows.map(r => `<tr><td style="font-size:18px">${obsEsc(r.ic)}</td><td><b>${obsEsc(r.n)}</b><br><small style="color:var(--muted)">${obsEsc(r.k)}</small></td><td>${OBS_ICAT[r.cat]}</td><td style="white-space:normal;max-width:520px">${obsEsc(r.eff)}</td><td class="num">${r.buy != null ? '$ ' + r.buy : '—'}</td><td style="white-space:normal;color:var(--muted)">${obsEsc(r.from)}</td></tr>`).join('')}</table>${rows.length ? '' : '<div class="soon">Nenhum item com esse filtro.</div>'}`;
+  if (keepInput && document.getElementById('ob-isearch')) { const tb = box.querySelector('table'), next = document.createElement('div'); next.innerHTML = table; if (tb) tb.replaceWith(...next.childNodes); else box.insertAdjacentHTML('beforeend', table); return; }
+  box.innerHTML = head + `<div style="color:var(--muted);font-size:12px;margin-bottom:8px">Preço base: o valor de referência do item (lojas e moradores aplicam a margem e a opinião deles por cima). Mercadorias: o que os negócios produzem, compram e vendem.</div>` + table;
 }
 // ---------- controles de simulação ----------
 function obsCtrl() {

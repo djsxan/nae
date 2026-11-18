@@ -668,7 +668,7 @@ function updateInv() {
   if (me.pots && me.pots.hp) list.push({ k: 'hp', n: me.pots.hp, name: ITEMS.hp.name, icon: '🧪', color: '#e85a5a', desc: ITEMS.hp.desc + ' Clique para beber (Q).', use: () => drinkPot('hp') });
   list.push({ k: 'water', n: '∞', name: 'Cantil', icon: '💧', color: '#6ab8ff', desc: 'Um cantil que nunca seca. Você bebe sozinho quando a sede aperta; ou aperte 0 (ou clique) para beber.', use: () => Net.send({ t: 'use', k: 'water' }) });
   if (me.pots && me.pots.mp) list.push({ k: 'mp', n: me.pots.mp, name: ITEMS.mp.name, icon: '🧪', color: '#5a8ae8', desc: ITEMS.mp.desc + ' Clique para beber (E).', use: () => drinkPot('mp') });
-  for (const k in (me.inv || {})) { const it = LOOT[k]; if (it && me.inv[k] > 0) list.push({ k, n: me.inv[k], name: it.name, icon: it.icon, color: it.color, desc: it.desc + (WANDS[k] && me.wi && me.wi.k === k ? ' A sua: ' + me.wi.w + ', ' + me.wi.c + ', ' + me.wi.len + ' cm, ' + me.wi.feel + ' (dano ' + (me.wi.dmg >= 0 ? '+' : '') + Math.round(me.wi.dmg * 100) + '%, mana ' + (me.wi.mp >= 0 ? '+' : '') + me.wi.mp + ').' : '') + (CLOAK_BY_ITEM[k] && me.ck === CLOAK_BY_ITEM[k] ? ' (vestida)' : '') + ' Vale ' + it.price + ' de ouro cada no Empório.', use: FOOD[k] || k === 'ale' || k === 'firemead' || CLOAK_BY_ITEM[k] || k === 'ointment' || k === 'firewood' || k === 'herb' ? () => Net.send({ t: 'use', k }) : null }); }
+  for (const k in (me.inv || {})) { const it = LOOT[k]; if (it && me.inv[k] > 0) list.push({ k, n: me.inv[k], name: it.name, icon: it.icon, color: it.color, desc: it.desc + (WANDS[k] && me.wi && me.wi.k === k ? ' A sua: ' + me.wi.w + ', ' + me.wi.c + ', ' + me.wi.len + ' cm, ' + me.wi.feel + ' (dano ' + (me.wi.dmg >= 0 ? '+' : '') + Math.round(me.wi.dmg * 100) + '%, mana ' + (me.wi.mp >= 0 ? '+' : '') + me.wi.mp + ').' : '') + (CLOAK_BY_ITEM[k] && me.ck === CLOAK_BY_ITEM[k] ? ' (vestida)' : '') + ' Vale ' + it.price + ' de ouro cada no Empório.', use: FOOD[k] || k === 'ale' || k === 'firemead' || k === 'salve' || CLOAK_BY_ITEM[k] || k === 'ointment' || k === 'firewood' || k === 'herb' ? () => Net.send({ t: 'use', k }) : null }); }
   grid.innerHTML = '';
   for (let i = 0; i < INV_SLOTS; i++) {
     const s = document.createElement('div'), it = list[i]; s.className = 'inv-slot';
@@ -817,7 +817,7 @@ const NPC_DIALOG = {
   st_farm: { greet: "Ervas para o alambique, linho para o tear. A terra daqui é boa, só falta mão.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_carp: { greet: "Madeira boa vira varinha, cabo, caixa ou papel. Me dê toras e eu faço o resto.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_alch: { greet: "Cuidado com o caldeirão! Erva certa, fogo baixo, paciência… e sai um tônico que levanta defunto.", opts: [['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
-  st_apoth: { greet: "Bem-vindo ao Boticário. Poções, ervas secas, unguentos. Tudo fresquinho, quando o patrão abastece.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
+  st_apoth: { greet: "Bem-vinda, bem-vindo à estufa! Cuidado com o tanque. Ervas, remédios, chás... e eu mesma examino suas feridas.", opts: [['🩺 Consulta de ferimentos — 5 ouro', { a: 'consult' }], ['🍵 Chá medicinal — 4 ouro (cura, fôlego, sem frio)', { a: 'tea' }], ['⚗ Encomendar Pomada de Elva — 2 ervas + 10 ouro (2 h)', { a: 'order', k: 'salve' }], ['⚗ Encomendar 2 Poções de vida — 3 ervas + 12 ouro (3 h)', { a: 'order', k: 'elixir' }], ['📦 Buscar minha encomenda', { a: 'pickup' }], ['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_arcane: { greet: "Cristais, varinhas, coisas que zumbem. Não encoste no que brilha.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_tailor: { greet: "Linho, lã e linha. Se o patrão mandar tecido, eu deixo a loja cheia de cor.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
   st_witch: { greet: "Bem-vindo à Lua Prateada. Cada frasco aqui foi destilado sob a lua cheia. Não toque no que borbulha.", opts: [['Comprar no balcão', { counter: 1 }], ['Gerenciar o negócio', { open: 'biz' }], ['Quem é o dono daqui?', { owner: 1 }]] },
@@ -1719,6 +1719,7 @@ applySettings();
 // ---------- modo criador: O Tecelão ----------
 // a senha fica salva nas Configurações (localStorage 'nae-dev'); ao entrar no reino, pergunta como entrar
 function devGate(go) {
+  G.devPw = null; go(); return;   /* sem a escolha antes de entrar: o modo Tecelão é ligado no jogo, pelo comando */
   let pw = null; try { pw = localStorage.getItem('nae-dev'); } catch (e) { }
   if (!pw) { G.devPw = null; go(); return; }
   const old = document.getElementById('devask'); if (old) old.remove();

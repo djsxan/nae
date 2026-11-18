@@ -105,7 +105,7 @@ const BUILDINGS = TEST3D ? [] : [
   { x: C - 15, y: C + 10, ...BH('tavern', 6, 7, 3.6, 3.0, 'Ronco do Dragão', { door: 'E', floors: 2 }) },   // taverna: térreo e mezanino   // de frente para a praça do mercado (só térreo)
   { x: C - 19, y: C + 24, ...BH('barracks', 8, 5, 4.0, 2.6, 'Quartel da Guarda', { door: 'E', gen: { x: C + 5, y: C + 22, w: 8, h: 5, door: 'S' } }) },   // no antigo lugar da pousada, porta para o leste
   { x: C - 7, y: C + 22, ...BH('stable', 5, 4, 2.6, 2.4, 'Estábulo', { floors: 1, gen: { x: C - 28, y: C + 24, w: 5, h: 4, door: 'S' } }) },   // no antigo lugar do quartel, junto ao portão sul
-  { x: C - 29, y: C + 10, ...BH('shop', 5, 5, 2.4, 2.2, 'Boticário de Elva', { v: 1, door: 'N', floors: 1 }) },
+  { x: C - 29, y: C + 10, ...BH('shop', 5, 5, 2.5, 1.5, 'Boticário de Elva', { v: 1, door: 'N', floors: 1, deco: 'greenhouse' }) },   // pavilhão-estufa de vidro e ferro
   { x: C - 22, y: C - 8, ...BH('shop', 5, 5, 3.8, 2.4, 'Arcanos & Varinhas', { v: 2, door: 'W', floors: 1, deco: 'arcane' }) },   // alta, estreita e antiga
   { x: C - 22, y: C + 10, ...BH('shop', 5, 4, 3.2, 2.0, 'Alfaiataria Real', { v: 3, door: 'N', floors: 1, deco: 'tailor', gen: { x: C - 22, y: C + 10, w: 5, h: 5, door: 'N' } }) },   // uma linha mais curta: corredor até a loja de elixir   // roxo-ameixa e dourado
   { x: C - 30, y: C - 8, ...BH('shop', 5, 5, 3.6, 2.6, 'Pergaminhos & Mapas', { v: 4, door: 'E' }) },
@@ -113,7 +113,7 @@ const BUILDINGS = TEST3D ? [] : [
   { x: C - 27, y: C - 30, ...BH('bank', 8, 12, 5.6, 2.4, 'Banco de Nae', { floors: 1, door: 'S', gen: { x: C - 31, y: C - 23, w: 6, h: 12, door: 'S' } }) },   // no fim da rua oeste, porta para o sul
   { x: C + 22, y: C + 20, ...BH('jail', 6, 8, 3.2, 2.4, 'Cadeia de Nae', { floors: 1, door: 'W' }) },
   { x: C - 16, y: C, ...BH('boutique', 5, 4, 4.2, 3.0, 'Ateliê Real de Nae', { floors: 1, door: 'S' }) },
-  { x: C - 29, y: C + 15, ...BH('fruithouse', 5, 4, 2.9, 2.6, '', { floors: 1, door: 'S', gen: { x: C - 13, y: C + 18, w: 5, h: 4, door: 'E' } }) },   // atrás do Boticário, porta para a rua de baixo
+  { x: C - 29, y: C + 17, ...BH('fruithouse', 5, 4, 2.9, 2.6, '', { floors: 1, door: 'S', gen: { x: C - 13, y: C + 18, w: 5, h: 4, door: 'E' } }) },   // atrás do Boticário, porta para a rua de baixo
   // bairro nobre (à direita do castelo): casarões de pedra clara com jardins murados
   { x: C + 26, y: C - 21, ...BH('manor', 6, 6, 4.8, 3.2, 'Casa Valmont', { door: 'W', gen: { x: C + 24, y: C - 18, w: 6, h: 6, door: 'W' } }) },
   { x: C + 26, y: C - 13, ...BH('manor', 6, 6, 4.6, 3.0, 'Casa Aldren', { door: 'W', v: 1, gen: { x: C + 24, y: C - 6, w: 6, h: 6, door: 'W' } }) },
@@ -262,6 +262,13 @@ function interiorLayout0(b, fl = 0) {
     if (put('table', w - 2, h - 3)) { put('chair', w - 1, h - 3, { seat: 5 }); put('chair', w - 3, h - 3, { seat: 1 }); }
     put('shelf', 0, h - 2); if (h >= 5) put('crate', 0, h - 1);
     put('rug', dc, 1, { block: false });
+  } else if (k === 'shop' && b.deco === 'greenhouse') {   // Boticário de Elva: gavetinhas e potes no fundo, alambique, balcão com balança e almofariz, canteiros, plantas que brilham, vasos pendurados, ervas secando e o tanque
+    if (w === 5 && h === 5 && (b.realDoor || b.door) === 'N') {   /* porta no fundo da vista: o alto fica na parede direita, o baixo do lado da câmera */
+      put('drawers', w - 1, 0, { h: 3 }); npcAt(w - 2, 1); put('distill', w - 2, 0); put('apothcounter', w - 3, 2, { w: 2 });
+      put('planter', 0, 0, { h: 3 }); put('pond', 1, 1, { block: false }); put('herbrack', 1, 0, { w: 2, block: false }); put('hangpot', 1, 3, { block: false }); put('glowplant', 0, h - 1); put('glowplant', w - 1, h - 1); put('glowplant', w - 1, 3);
+    } else { npcAt(dc, 0); if (dc >= 1) put('drawers', 0, 0, { w: dc }); if (w - 2 - dc >= 1) put('drawers', dc + 1, 0, { w: w - 2 - dc }); put('distill', w - 1, 0);
+      if (dc >= 1) put('apothcounter', 0, 1, { w: dc }); if (w - 1 - dc >= 1) put('apothcounter', dc + 1, 1, { w: w - 1 - dc });
+      if (h >= 5) { put('herbrack', 1, 2, { w: w - 2, block: false }); put('planter', 0, 2, { h: 2 }); put('planter', w - 1, 2, { h: 2 }); put('hangpot', 1, 3, { block: false }); put('pond', w - 2, 3, { block: false }); put('glowplant', 0, h - 1); put('glowplant', w - 1, h - 1); } }
   } else if (k === 'shop' && b.deco === 'arcane') {   // Arcanos & Varinhas: paredes de caixinhas até o teto, escada de rodinhas, balcão de veludo e a bancada do artesão
     npcAt(dc, 0); for (let i = 0; i < w; i++) if (i !== dc) put('wandwall', i, 0); for (let j = 1; j < h - 1; j++) put('wandwall', 0, j);
     if (dc - 1 >= 1) put('wandcounter', 1, 1, { w: dc - 1 }); put('libladder', 1, 2, { block: false }); put('carvebench', w - 1, 2, { h: 2 }); if (w - 2 - dc >= 1) put('wandcounter', dc + 1, 1, { w: w - 2 - dc });
@@ -393,7 +400,7 @@ function interiorLayout0(b, fl = 0) {
 const LAYOUT_MEMO = new Map();
 // móveis que continuam sólidos: paredes e divisórias, balcões, lareiras e fogões, prateleiras e armários de parede, camas, grades e cofres.
 // O resto (mesas, cadeiras, bancos, barris, caixotes, tapetes, decoração) não bloqueia a passagem.
-const FURN_SOLID = new Set(['blk', 'hpart', 'counter', 'bar', 'bankdesk', 'wandcounter', 'vault', 'bars', 'celldoor', 'fireplace', 'hearth', 'stove', 'forge', 'shelf', 'wandwall', 'fabricwall', 'taps', 'bottles', 'filing', 'jamshelf', 'pillar', 'throne', 'altar', 'still', 'bed', 'bunk', 'cot']);
+const FURN_SOLID = new Set(['drawers', 'apothcounter', 'distill', 'blk', 'hpart', 'counter', 'bar', 'bankdesk', 'wandcounter', 'vault', 'bars', 'celldoor', 'fireplace', 'hearth', 'stove', 'forge', 'shelf', 'wandwall', 'fabricwall', 'taps', 'bottles', 'filing', 'jamshelf', 'pillar', 'throne', 'altar', 'still', 'bed', 'bunk', 'cot']);
 function interiorLayout(b, fl = 0) {
   const [w, h] = bDims(b), mk = [b.kind, w, h, b.v || 0, floorsOf(b), fl, b.office || '', JSON.stringify(b.stairs || 0), b.extSide || '', b.cellar ? b.cellar.join(',') : '', b.deco || ''].join('|');
   let L = LAYOUT_MEMO.get(mk); if (L) return L;

@@ -271,6 +271,16 @@ function canvasTex(kind) {
     x.fillStyle = '#1e2a1c'; x.fillRect(0, 0, S, S); x.fillStyle = '#c9a24a'; x.fillRect(0, 0, S, 14); x.fillRect(0, S - 14, S, 14);
     x.save(); x.scale(1, 9); x.fillStyle = '#e8c060'; x.font = 'bold 15px serif'; x.textAlign = 'center'; x.textBaseline = 'middle'; x.fillText('RONCO  DO  DRAGÃO', 128, S / 18); x.restore();
     y.fillStyle = gray(0.5); y.fillRect(0, 0, S, S);
+  } else if (kind === 'apothsign') {   // placa verde-garrafa com letras de latão e um almofariz
+    x.fillStyle = '#1c3626'; x.fillRect(0, 0, S, S); x.strokeStyle = '#c9a24a'; x.lineWidth = 8; x.strokeRect(8, 8, S - 16, S - 16); x.lineWidth = 2; x.strokeRect(18, 18, S - 36, S - 36);
+    x.fillStyle = '#d8b45a'; x.textAlign = 'center'; x.font = 'bold 34px serif'; x.fillText('BOTICÁRIO', 128, 170); x.font = 'italic 24px serif'; x.fillText('de Elva', 128, 204);
+    x.fillStyle = '#c9a24a'; x.beginPath(); x.moveTo(92, 70); x.lineTo(164, 70); x.quadraticCurveTo(160, 128, 128, 132); x.quadraticCurveTo(96, 128, 92, 70); x.fill(); x.fillRect(110, 132, 36, 8); x.strokeStyle = '#e8d090'; x.lineWidth = 7; x.beginPath(); x.moveTo(140, 82); x.lineTo(176, 44); x.stroke();
+    x.fillStyle = '#6aa84a'; for (const [a, b2] of [[60, 120], [196, 120], [70, 90], [186, 90]]) { x.beginPath(); x.ellipse(a, b2, 9, 18, a < 128 ? -0.5 : 0.5, 0, 7); x.fill(); }
+    y.fillStyle = gray(0.55); y.fillRect(0, 0, S, S);
+  } else if (kind === 'drawers') {   // gavetinhas de madeira com etiquetas e puxadores de latão
+    x.fillStyle = '#3a2416'; x.fillRect(0, 0, S, S);
+    for (let r = 0; r < 8; r++) for (let q = 0; q < 6; q++) { const X = 6 + q * 41, Y = 6 + r * 31; x.fillStyle = (r + q) % 3 ? '#5a3a22' : '#4e321e'; x.fillRect(X, Y, 37, 27); x.fillStyle = '#e8dcc0'; x.fillRect(X + 9, Y + 5, 19, 8); x.fillStyle = '#c9a24a'; x.beginPath(); x.arc(X + 18.5, Y + 19, 3, 0, 7); x.fill(); }
+    y.fillStyle = gray(0.5); y.fillRect(0, 0, S, S); for (let r = 0; r < 8; r++) for (let q = 0; q < 6; q++) { y.fillStyle = gray(0.7); y.fillRect(6 + q * 41, 6 + r * 31, 37, 27); }
   } else if (kind === 'dragsign') {
     x.fillStyle = '#6a4428'; x.fillRect(0, 0, S, S); for (let i = 0; i < 30; i++) { x.strokeStyle = 'rgba(0,0,0,0.12)'; x.beginPath(); const gy = R() * S; x.moveTo(0, gy); x.lineTo(S, gy + (R() - 0.5) * 8); x.stroke(); }
     x.strokeStyle = '#2a1a0c'; x.lineWidth = 10; x.strokeRect(5, 5, S - 10, S - 10);
@@ -1635,9 +1645,54 @@ function mTavernFacade(o, b, H, RH, night, trimM) {
   // feno e barris empilhados no canto
   { const hy = mHay(); hy.position.set(w + 0.45, 0, 0.7); o.add(hy); for (const [x, z, y] of [[-0.55, h - 0.25, 0], [-0.55, h - 0.8, 0], [-0.55, h - 0.52, 0.62]]) { const br = mBarrel(); br.scale.setScalar(0.7); br.position.set(x, y, z); o.add(br); } }
 }
+// Boticário de Elva: pavilhão-estufa vitoriano — mureta de pedra, paredes e abóbada de vidro esverdeado em ferro verde-garrafa, detalhes de latão,
+// lanterninha no alto, portas de vidro com bandeira em arco, placa, e as plantas aparecendo pelo vidro (canteiros, plantas que brilham, vasos pendurados, trepadeiras e o tanque)
+function mGreenhouse(b, night) {
+  const w = b.w, h = b.h, { H } = bldDims(b), o = grp(), dX = doorCol(b) + 0.5, B0 = 0.45;
+  const iron = smat(null, '#1f3d2c', { metal: 0.55, rough: 0.45 }), brass = smat(null, '#c9a24a', { metal: 0.9, rough: 0.3 }), stone = smat('stoneblock', '#7c847a', { bump: 1.3 });
+  const glass = smat(null, '#cfeedd', { rough: 0.05, metal: 0.25, transparent: true, opacity: 0.24, side: THREE.DoubleSide, emissive: night ? '#ffd890' : '#000000', ei: night ? 0.3 : 0 });
+  const leaf = smat(null, '#3e7a34', { rough: 0.85 }), leaf2 = smat(null, '#5a9a40', { rough: 0.85 }), soil = smat(null, '#3a2a1c', { rough: 1 }), woodD = smat('wood', '#3a2618', { bump: 1.2 });
+  o.add(wbox(w, 0.08, h, w / 2, 0.04, h / 2, smat('stoneblock', '#8e9286', { bump: 1 }), 1));
+  // mureta de pedra (com vão da porta na frente) e vidro acima dela
+  const seg = (x0, x1, z, side) => { const L = x1 - x0; if (L < 0.05) return; if (side) { o.add(wbox(0.14, B0, L, z, B0 / 2, (x0 + x1) / 2, stone, 1.2)); o.add(mk(new THREE.PlaneGeometry(L, H - B0).rotateY(Math.PI / 2).translate(z, B0 + (H - B0) / 2, (x0 + x1) / 2), glass, false)); o.add(wbox(0.2, 0.06, L + 0.04, z, B0 + 0.03, (x0 + x1) / 2, brass, 1)); }
+    else { o.add(wbox(L, B0, 0.14, (x0 + x1) / 2, B0 / 2, z, stone, 1.2)); o.add(mk(new THREE.PlaneGeometry(L, H - B0).translate((x0 + x1) / 2, B0 + (H - B0) / 2, z), glass, false)); o.add(wbox(L + 0.04, 0.06, 0.2, (x0 + x1) / 2, B0 + 0.03, z, brass, 1)); } };
+  seg(0, dX - 0.6, h, false); seg(dX + 0.6, w, h, false); seg(0, w, 0, false); seg(0, h, 0, true); seg(0, h, w, true);
+  // montantes de ferro a cada meia casa e travessas
+  for (let x = 0; x <= w + 0.001; x += 0.5) for (const z of [0, h]) if (z === 0 || Math.abs(x - dX) > 0.62 || Math.abs(x - dX) < 0.01) o.add(wbox(0.05, H, 0.05, x, H / 2, z, iron, 1));
+  for (let z = 0.5; z < h - 0.001; z += 0.5) for (const x of [0, w]) o.add(wbox(0.05, H, 0.05, x, H / 2, z, iron, 1));
+  for (const y of [B0 + (H - B0) * 0.55, H]) { o.add(wbox(w + 0.06, 0.05, 0.06, w / 2, y, 0, iron, 1)); o.add(wbox(0.06, 0.05, h + 0.06, 0, y, h / 2, iron, 1)); o.add(wbox(0.06, 0.05, h + 0.06, w, y, h / 2, iron, 1)); for (const [a, b2] of [[0, dX - 0.6], [dX + 0.6, w]]) o.add(wbox(b2 - a + 0.06, 0.05, 0.06, (a + b2) / 2, y, h, iron, 1)); }
+  // abóbada de vidro em meio-cilindro sobre o lado maior, com costelas de ferro, cumeeira e pontas de latão
+  const ridgeX = w >= h, R = (ridgeX ? h : w) / 2, L = ridgeX ? w : h;
+  { const vg = new THREE.CylinderGeometry(R, R, L, 26, 1, true, -Math.PI / 2, Math.PI).rotateX(-Math.PI / 2); if (ridgeX) vg.rotateY(Math.PI / 2); vg.translate(w / 2, H, h / 2); o.add(mk(vg, glass, false));
+    for (const e of [0, L]) { const cg = new THREE.CircleGeometry(R, 22, 0, Math.PI); if (ridgeX) cg.rotateY(Math.PI / 2).translate(e, H, h / 2); else cg.translate(w / 2, H, e); o.add(mk(cg, glass, false)); }
+    for (let k = 0; k <= L + 0.001; k += 0.5) { const rg = new THREE.TorusGeometry(R, 0.03, 5, 24, Math.PI); if (ridgeX) rg.rotateY(Math.PI / 2).translate(k, H, h / 2); else rg.translate(w / 2, H, k); o.add(mk(rg, iron)); }
+    const rb = ridgeX ? wbox(L + 0.1, 0.07, 0.07, w / 2, H + R, h / 2, iron, 1) : wbox(0.07, 0.07, L + 0.1, w / 2, H + R, h / 2, iron, 1); o.add(rb);
+    for (const e of [-0.05, L + 0.05]) { const p = ridgeX ? V3(e, H + R + 0.05, h / 2) : V3(w / 2, H + R + 0.05, e); o.add(mk(new THREE.ConeGeometry(0.06, 0.32, 8).translate(p.x, p.y + 0.16, p.z), brass)); o.add(mk(new THREE.SphereGeometry(0.06, 10, 8).translate(p.x, p.y + 0.36, p.z), brass)); }
+    // lanterninha de vidro no alto
+    const lx = w / 2, lz = h / 2, ly = H + R; o.add(mk(new THREE.CylinderGeometry(0.32, 0.32, 0.42, 8, 1, true).translate(lx, ly + 0.2, lz), glass, false)); for (let k = 0; k < 8; k++) { const a = k / 8 * Math.PI * 2; o.add(wbox(0.035, 0.42, 0.035, lx + Math.cos(a) * 0.32, ly + 0.2, lz + Math.sin(a) * 0.32, iron, 1)); }
+    o.add(mk(new THREE.ConeGeometry(0.4, 0.34, 8).translate(lx, ly + 0.58, lz), smat(null, '#2a5a3c', { metal: 0.6, rough: 0.35 }))); o.add(mk(new THREE.SphereGeometry(0.07, 10, 8).translate(lx, ly + 0.82, lz), brass)); }
+  // portas de vidro duplas com moldura de latão e bandeira em arco, placa em cima
+  { const g = grp(), dw = 1.05, dh = 1.75; for (const sx of [-1, 1]) { g.add(wbox(0.07, dh, 0.08, sx * dw / 2, dh / 2, 0.02, brass, 1)); g.add(wbox(0.04, dh, 0.05, sx * 0.02, dh / 2, 0.02, brass, 1)); g.add(mk(new THREE.PlaneGeometry(dw / 2 - 0.05, dh - 0.08).translate(sx * dw / 4, dh / 2, 0.01), glass, false)); g.add(mk(new THREE.SphereGeometry(0.03, 8, 6).translate(sx * 0.09, dh * 0.5, 0.06), brass)); }
+    g.add(mk(new THREE.TorusGeometry(dw / 2, 0.035, 5, 18, Math.PI).translate(0, dh, 0.02), brass)); g.add(mk(new THREE.CircleGeometry(dw / 2 - 0.03, 16, 0, Math.PI).translate(0, dh, 0.01), glass, false)); for (let k = 1; k < 5; k++) { const a = k / 5 * Math.PI; g.add(limb(V3(0, dh, 0.02), V3(Math.cos(a) * dw / 2, dh + Math.sin(a) * dw / 2, 0.02), 0.012, 0.012, brass, 3)); }
+    g.add(wbox(dw + 0.5, 0.08, 0.5, 0, 0.04, 0.25, stone, 1));
+    g.add(mk(new THREE.BoxGeometry(1.25, 0.5, 0.05).translate(0, dh + dw / 2 + 0.38, 0.05), [smat(null, '#1c3626'), smat(null, '#1c3626'), brass, brass, smat('apothsign', '#ffffff', { bump: 0.4 }), smat('apothsign', '#ffffff', { bump: 0.4 })]));
+    g.position.set(dX, 0, h + 0.02); o.add(g); }
+  // placa também nas faces que a câmera vê (a porta pode ficar do outro lado)
+  for (const f of camFaces(b)) { if (f === 'F') continue; const sg = grp(mk(new THREE.BoxGeometry(1.25, 0.5, 0.05).translate(0, 0, 0.06), [smat(null, '#1c3626'), smat(null, '#1c3626'), brass, brass, smat('apothsign', '#ffffff', { bump: 0.4 }), smat('apothsign', '#ffffff', { bump: 0.4 })]));
+    for (const sx of [-0.5, 0.5]) sg.add(wbox(0.04, 0.3, 0.04, sx, 0.38, 0.06, brass, 1)); onFace(o, sg, f, faceLen(f, w, h) / 2, w, h, H - 0.75); }
+  // lanternas de latão com luz esverdeada ao lado da porta e vasos com plantas medicinais
+  for (const sx of [-0.82, 0.82]) { const g = grp(wbox(0.04, 0.04, 0.24, 0, 0, 0.12, brass, 1), mk(new THREE.CylinderGeometry(0.08, 0.08, 0.2, 8).translate(0, -0.12, 0.24), smat(null, '#d8f0c0', { emissive: '#9ae0a0', ei: night ? 1.8 : 0.4 })), mk(new THREE.ConeGeometry(0.1, 0.1, 8).translate(0, 0.03, 0.24), brass)); g.position.set(dX + sx, 1.4, h + 0.02); o.add(g);
+    const p = grp(mk(new THREE.CylinderGeometry(0.17, 0.12, 0.3, 10).translate(0, 0.15, 0), smat(null, '#a8583a')), mk(new THREE.SphereGeometry(0.21, 12, 10).scale(1, 0.85, 1).translate(0, 0.46, 0), leaf2)); for (let k = 0; k < 5; k++) p.add(mk(new THREE.SphereGeometry(0.04, 6, 5).translate(Math.cos(k * 1.3) * 0.15, 0.6 + (k % 2) * 0.05, Math.sin(k * 1.3) * 0.15), smat(null, k % 2 ? '#9a6ad8' : '#f0e0f0'))); p.position.set(dX + sx * 1.45, 0, h + 0.35); o.add(p); }
+  // dentro, pelo vidro: os mesmos móveis do interior, nas mesmas posições (balcão, gavetinhas, alambique, canteiros, tanque, vasos e plantas)
+  { const I = mInterior({ ...b, realDoor: b.realDoor || 'N' }, 0); for (const c of [...I.children]) if (c.userData && c.userData.furn) o.add(c); }
+  for (const x of [0.25, w - 0.25]) for (let k = 0; k < 3; k++) o.add(limb(V3(x, B0 + 0.05, h - 0.06), V3(x + (k - 1) * 0.12, B0 + 0.7 + k * 0.35, h - 0.06), 0.022, 0.012, leaf2, 4));   /* trepadeiras subindo pelo vidro da frente */
+  if (false) { const px = w / 2, pz = h * 0.6; o.add(mk(new THREE.CylinderGeometry(0.42, 0.45, 0.16, 18).translate(px, 0.08, pz), stone)); o.add(mk(new THREE.CircleGeometry(0.36, 18).rotateX(-Math.PI / 2).translate(px, 0.15, pz), smat(null, '#2e6a7a', { rough: 0.05, metal: 0.3 }))); for (let k = 0; k < 4; k++) o.add(mk(new THREE.CircleGeometry(0.07, 10).rotateX(-Math.PI / 2).translate(px + Math.cos(k * 1.7) * 0.2, 0.16, pz + Math.sin(k * 1.7) * 0.2), leaf2)); }
+  return o;
+}
 function mBuildingRot(b, night) { return placeRot(b, mBuilding(localB(b), night)); }
 function mBuilding(b, night) {
   if (b.kind === 'castle') return mCastle(b, night);
+  if (b.deco === 'greenhouse') return mGreenhouse(b, night);
   if (b.kind === 'stairtower') return mStairTower(b, false);
   const w = b.w, h = b.h, { H, RH } = bldDims(b), o = grp(), R = rng(b.x * 31 + b.y * 7), seed = b.x * 0.37 + b.y;
   const st = styleOf(b);
@@ -1918,8 +1973,8 @@ function mInterior(b, fl = 0) {
   const [w, h] = bDims(b), { H } = bldDims(b), o = grp(), L = interiorLayout(b, fl), R = rng(b.x * 13 + b.y), nF = floorsOf(b);
   const stoneK = b.kind === 'bank' || b.kind === 'temple' || b.kind === 'castle' || b.kind === 'smith' || b.kind === 'barracks' || b.kind === 'jail' || b.kind === 'boutique' || b.kind === 'manor';
   const hotelI = b.kind === 'hotel';
-  const floorM = fl < 0 ? smat('stoneblock', '#5e584e', { bump: 1.5 }) : b.kind === 'tavern' ? smat('oldplank', '#6a4a2c', { bump: 1.3 }) : b.deco === 'arcane' ? smat('oldplank', '#5a3e28', { bump: 1.3 }) : b.deco === 'tailor' ? smat('oldplank', '#8a5a4a', { bump: 1 }) : b.kind === 'shop' && b.v === 6 ? smat('stoneblock', '#3a3644', { bump: 0.8 }) : hotelI ? smat('oldplank', '#8a6440', { bump: 1.3 }) : b.kind === 'bank' ? smat('marblechk', '#ffffff', { bump: 0.4, rough: 0.35 }) : stoneK ? smat('stoneblock', b.kind === 'castle' ? '#a8a092' : '#8e887c', { bump: 1 }) : smat('wood', b.kind === 'stable' ? '#8a6a3e' : '#7a5232', { bump: 1.2 });
-  const wallM = fl < 0 ? smat('brick', '#6e675c', { bump: 1.5 }) : b.kind === 'tavern' ? smat('oldplank', '#5e4028', { bump: 1.2 }) : b.deco === 'arcane' ? smat('oldplank', '#3a2a20', { bump: 1.2 }) : b.deco === 'tailor' ? smat('wallpaper', '#c89ac0', { bump: 0.5 }) : b.kind === 'shop' && b.v === 6 ? smat('stoneblock', '#4a4458', { bump: 1 }) : hotelI ? smat('wallpaper', '#ffffff', { bump: 0.5 }) : stoneK ? smat('brick', b.kind === 'castle' ? '#b4ad9c' : '#a29c90', { bump: 1.2 }) : smat('plaster', '#e2d6bc', { bump: 0.7 });
+  const floorM = fl < 0 ? smat('stoneblock', '#5e584e', { bump: 1.5 }) : b.deco === 'greenhouse' ? smat('stoneblock', '#8e9286', { bump: 1 }) : b.kind === 'tavern' ? smat('oldplank', '#6a4a2c', { bump: 1.3 }) : b.deco === 'arcane' ? smat('oldplank', '#5a3e28', { bump: 1.3 }) : b.deco === 'tailor' ? smat('oldplank', '#8a5a4a', { bump: 1 }) : b.kind === 'shop' && b.v === 6 ? smat('stoneblock', '#3a3644', { bump: 0.8 }) : hotelI ? smat('oldplank', '#8a6440', { bump: 1.3 }) : b.kind === 'bank' ? smat('marblechk', '#ffffff', { bump: 0.4, rough: 0.35 }) : stoneK ? smat('stoneblock', b.kind === 'castle' ? '#a8a092' : '#8e887c', { bump: 1 }) : smat('wood', b.kind === 'stable' ? '#8a6a3e' : '#7a5232', { bump: 1.2 });
+  const wallM = fl < 0 ? smat('brick', '#6e675c', { bump: 1.5 }) : b.deco === 'greenhouse' ? smat(null, '#cfeedd', { rough: 0.05, metal: 0.25, transparent: true, opacity: 0.3 }) : b.kind === 'tavern' ? smat('oldplank', '#5e4028', { bump: 1.2 }) : b.deco === 'arcane' ? smat('oldplank', '#3a2a20', { bump: 1.2 }) : b.deco === 'tailor' ? smat('wallpaper', '#c89ac0', { bump: 0.5 }) : b.kind === 'shop' && b.v === 6 ? smat('stoneblock', '#4a4458', { bump: 1 }) : hotelI ? smat('wallpaper', '#ffffff', { bump: 0.5 }) : stoneK ? smat('brick', b.kind === 'castle' ? '#b4ad9c' : '#a29c90', { bump: 1.2 }) : smat('plaster', '#e2d6bc', { bump: 0.7 });
   const trimM = smat('wood', '#4a2f17'), hw = Math.min(H / nF, b.kind === 'castle' || b.kind === 'temple' ? 5 : 2.3), t = 0.16;
   o.add(mk(wuv(new THREE.BoxGeometry(w, 0.06, h).translate(w / 2, 0.03, h / 2), 1), floorM));
   // quais paredes (no quadro local) ficam viradas para a câmera depende do lado da porta
@@ -1936,7 +1991,7 @@ function mInterior(b, fl = 0) {
   // janelas com luz entrando, só nas paredes inteiras
   // janelas de verdade (moldura, 4 vidros, travessas e parapeito) nas paredes inteiras
   const frameM = smat('wood', '#4a2f17'), glassW = smat(null, '#9fb4c0', { emissive: '#6a7a84', ei: 0.35, rough: 0.15, metal: 0.2 });
-  const win = (x, z, ry) => { if (fl < 0) return; const g = grp(), y = Math.min(hw * 0.58, 1.5); g.add(mk(new THREE.BoxGeometry(0.5, 0.66, 0.02).translate(0, y, 0.012), glassW, false)); for (const [ww, hh, xx, yy] of [[0.58, 0.05, 0, y + 0.33], [0.58, 0.05, 0, y - 0.33], [0.05, 0.7, -0.27, y], [0.05, 0.7, 0.27, y], [0.03, 0.66, 0, y], [0.5, 0.03, 0, y]]) g.add(mk(new THREE.BoxGeometry(ww, hh, 0.05).translate(xx, yy, 0.02), frameM)); g.add(mk(new THREE.BoxGeometry(0.66, 0.05, 0.12).translate(0, y - 0.37, 0.05), frameM)); g.rotation.y = ry; g.position.set(x, 0, z); o.add(g); };
+  const win = (x, z, ry) => { if (fl < 0 || b.deco === 'greenhouse') return;   /* estufa: as paredes já são de vidro */ const g = grp(), y = Math.min(hw * 0.58, 1.5); g.add(mk(new THREE.BoxGeometry(0.5, 0.66, 0.02).translate(0, y, 0.012), glassW, false)); for (const [ww, hh, xx, yy] of [[0.58, 0.05, 0, y + 0.33], [0.58, 0.05, 0, y - 0.33], [0.05, 0.7, -0.27, y], [0.05, 0.7, 0.27, y], [0.03, 0.66, 0, y], [0.5, 0.03, 0, y]]) g.add(mk(new THREE.BoxGeometry(ww, hh, 0.05).translate(xx, yy, 0.02), frameM)); g.add(mk(new THREE.BoxGeometry(0.66, 0.05, 0.12).translate(0, y - 0.37, 0.05), frameM)); g.rotation.y = ry; g.position.set(x, 0, z); o.add(g); };
   if (!knee.includes('back') && b.kind !== 'bank') for (let k = 0; k < Math.floor(w / 2); k++) win(1 + k * 2, t + 0.005, 0);
   if (!knee.includes('left')) for (let k = 0; k < Math.floor(h / 2); k++) win(t + 0.005, 1 + k * 2, Math.PI / 2);
   if (!knee.includes('right')) for (let k = 0; k < Math.floor(h / 2); k++) win(w - t - 0.005, 1 + k * 2, -Math.PI / 2);
@@ -1981,6 +2036,15 @@ function mInterior(b, fl = 0) {
     // ervas secando perto da lareira e teias de aranha nos cantos altos
     const fp = L.F.find(f => f.t === 'fireplace'); if (fp && !knee.includes('back')) for (let q = 0; q < 3; q++) { const hx = fp.i + 0.2 + q * 0.3; o.add(mk(new THREE.ConeGeometry(0.05, 0.22, 5).rotateX(Math.PI).translate(hx, Math.min(hw - 0.25, 1.9), t + 0.12), smat(null, ['#5a7a3a', '#7a6a3a', '#4a6a2a'][q], { rough: 1 }))); }
     if (!knee.includes('back') && !knee.includes('left') && hw > 1.6) o.add(mk(new THREE.CircleGeometry(0.28, 6, 0, Math.PI / 2).rotateY(Math.PI / 4).translate(t + 0.05, hw - 0.1, t + 0.05), smat(null, '#d8d4cc', { transparent: true, opacity: 0.35, side: THREE.DoubleSide }), false));
+  }
+  if (b.deco === 'greenhouse' && fl === 0) {   /* estufa por dentro igual por fora: mureta, ferro verde-garrafa e latão nas paredes de vidro */
+    const iron = smat(null, '#1f3d2c', { metal: 0.55, rough: 0.45 }), brass = smat(null, '#c9a24a', { metal: 0.9, rough: 0.3 }), stone = smat('stoneblock', '#7c847a', { bump: 1.3 }), B0 = 0.45;
+    const face = (f, x0, z0, x1, z1) => { const L = Math.hypot(x1 - x0, z1 - z0), tall = !knee.includes(f), hh = tall ? hw : KH, alongX = Math.abs(z1 - z0) < 0.01;
+      o.add(alongX ? wbox(L, Math.min(B0, hh), 0.18, (x0 + x1) / 2, Math.min(B0, hh) / 2, z0, stone, 1.2) : wbox(0.18, Math.min(B0, hh), L, x0, Math.min(B0, hh) / 2, (z0 + z1) / 2, stone, 1.2));
+      o.add(alongX ? wbox(L, 0.05, 0.22, (x0 + x1) / 2, Math.min(B0, hh) + 0.02, z0, brass, 1) : wbox(0.22, 0.05, L, x0, Math.min(B0, hh) + 0.02, (z0 + z1) / 2, brass, 1));
+      if (tall) for (let k = 0; k <= L + 0.001; k += 0.5) { const x = alongX ? x0 + k * Math.sign(x1 - x0 || 1) : x0, z = alongX ? z0 : z0 + k * Math.sign(z1 - z0 || 1); if (f === 'front' && Math.abs(x - dx) < 0.6) continue; o.add(wbox(0.06, hw, 0.06, x, hw / 2, z, iron, 1)); }
+      if (tall) o.add(alongX ? wbox(L, 0.05, 0.07, (x0 + x1) / 2, hw * 0.6, z0, iron, 1) : wbox(0.07, 0.05, L, x0, hw * 0.6, (z0 + z1) / 2, iron, 1)); };
+    face('back', 0, 0.05, w, 0.05); face('front', 0, h - 0.05, w, h - 0.05); face('left', 0.05, 0, 0.05, h); face('right', w - 0.05, 0, w - 0.05, h);
   }
   // móveis
   const W_ = () => smat('wood', '#7a5434', { bump: 1 }), DW = () => smat('wood', '#4e3420', { bump: 1 });
@@ -2206,6 +2270,49 @@ function mInterior(b, fl = 0) {
         for (const sx of [-1, 1]) { const m = grp(mk(new THREE.CylinderGeometry(0.05, 0.045, 0.12, 8), smat('wood', '#a8783a')), mk(new THREE.CylinderGeometry(0.05, 0.05, 0.025, 8).translate(0, 0.07, 0), smat(null, '#f4ead4'))); m.rotation.z = sx * 0.6; m.position.set(sx * 0.1, 1.86, -0.4); qg.add(m); }
         const side = f.j === 0 ? 'b' : f.i === 0 ? 'l' : 'r'; qg.rotation.y = side === 'b' ? 0 : side === 'l' ? Math.PI / 2 : -Math.PI / 2; g.add(qg); break;
       }
+      case 'drawers': {   // parede de gavetinhas até em cima, com potes de porcelana e frascos coloridos no alto
+        const L = Math.max(f.w || 1, f.h || 1) - 0.06, dg = grp(); dg.add(mk(new THREE.BoxGeometry(L, 1.75, 0.42).translate(0, 0.875, -0.27), [smat('wood', '#3a2416'), smat('wood', '#3a2416'), smat('wood', '#2e1c10'), smat('wood', '#3a2416'), smat('drawers', '#ffffff', { bump: 0.8 }), smat('wood', '#3a2416')]));
+        dg.add(wbox(L + 0.06, 0.05, 0.46, 0, 1.78, -0.27, smat('wood', '#2e1c10'), 1));
+        for (let k = 0; k < Math.round(L * 5); k++) { const x = -L / 2 + 0.1 + k * (L - 0.2) / Math.max(1, Math.round(L * 5) - 1); dg.add(k % 2 ? mk(new THREE.CylinderGeometry(0.06, 0.06, 0.16, 10).translate(x, 1.89, -0.27), smat(null, '#f4f4f0', { rough: 0.3 })) : mk(new THREE.CylinderGeometry(0.035, 0.05, 0.2, 8).translate(x, 1.91, -0.27), smat(null, ['#3a8a5a', '#8a3a6a', '#3a5aaa', '#c8a040'][k % 4], { rough: 0.1, emissive: ['#1a4a2a', '#4a1a3a', '#1a2a5a', '#5a4a10'][k % 4], ei: 0.4 }))); if (k % 2) dg.add(mk(new THREE.CylinderGeometry(0.062, 0.062, 0.03, 10).translate(x, 1.86, -0.27), smat(null, '#2a4a9a'))); }
+        dg.rotation.y = (f.h || 1) > 1 ? (f.i === 0 ? Math.PI / 2 : -Math.PI / 2) : f.j === 0 ? 0 : f.i === 0 ? Math.PI / 2 : -Math.PI / 2; g.add(dg); break;
+      }
+      case 'apothcounter': {   // balcão verde-garrafa com latão: balança de pratos, almofariz e pilão, livro de receitas e frascos
+        const L = (f.w || 1) - 0.08, brass = smat(null, '#c9a24a', { metal: 0.9, rough: 0.3 });
+        g.add(wbox(L, 0.9, 0.5, 0, 0.45, 0, smat('wood', '#1f3d2c', { bump: 1 }), 2)); g.add(wbox(L + 0.06, 0.05, 0.58, 0, 0.92, 0, smat('wood', '#4a2f1a'), 2)); g.add(wbox(L + 0.02, 0.04, 0.02, 0, 0.2, 0.26, brass, 1));
+        if (L > 1) { const bx = -L / 2 + 0.35; g.add(mk(new THREE.CylinderGeometry(0.015, 0.02, 0.36, 6).translate(bx, 1.12, 0), brass)); g.add(wbox(0.4, 0.015, 0.015, bx, 1.3, 0, brass, 1)); for (const s2 of [-1, 1]) { g.add(limb(V3(bx + s2 * 0.19, 1.3, 0), V3(bx + s2 * 0.19, 1.12, 0), 0.004, 0.004, brass, 2)); g.add(mk(new THREE.CylinderGeometry(0.08, 0.05, 0.02, 12).translate(bx + s2 * 0.19, 1.11, 0), brass)); } }
+        { const mx = L / 2 - 0.25; g.add(mk(new THREE.SphereGeometry(0.09, 12, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2).translate(mx, 1.04, 0.02), smat('stoneblock', '#b8b0a0', { side: THREE.DoubleSide }))); g.add(limb(V3(mx, 1.0, 0.02), V3(mx + 0.06, 1.18, -0.04), 0.018, 0.014, smat(null, '#d8d0c0'), 4)); }
+        g.add(mk(new THREE.BoxGeometry(0.26, 0.03, 0.18).translate(0.05, 0.96, -0.08), smat(null, '#e8dcc0'))); for (let k = 0; k < 3; k++) g.add(mk(new THREE.CylinderGeometry(0.03, 0.035, 0.12, 8).translate(-0.12 + k * 0.08, 1.0, 0.14), smat(null, ['#3ad878', '#d84a6a', '#5aa8f0'][k], { rough: 0.1 }))); break;
+      }
+      case 'distill': {   // bancada de destilação: alambique de cobre, serpentina, retorta de vidro e fogareiro aceso
+        const cu = smat(null, '#b8683a', { metal: 0.85, rough: 0.35 }); g.add(wbox(0.86, 0.8, 0.5, 0, 0.4, -0.15, smat('wood', '#3a2618'), 2));
+        g.add(mk(new THREE.SphereGeometry(0.17, 14, 10).translate(-0.18, 1.0, -0.18), cu)); g.add(limb(V3(-0.18, 1.15, -0.18), V3(0.12, 1.32, -0.18), 0.035, 0.02, cu, 5)); for (let k = 0; k < 4; k++) g.add(mk(new THREE.TorusGeometry(0.07, 0.012, 5, 12).rotateX(Math.PI / 2).translate(0.2, 1.22 - k * 0.07, -0.18), cu));
+        g.add(mk(new THREE.SphereGeometry(0.09, 12, 10).translate(0.2, 0.92, -0.05), smat(null, '#9af0b0', { transparent: true, opacity: 0.55, emissive: '#3ad878', ei: 0.9, rough: 0.05 })));
+        g.add(mk(new THREE.CylinderGeometry(0.13, 0.11, 0.12, 10).translate(-0.18, 0.86, -0.18), smat(null, '#2a2622', { metal: 0.6 }))); g.add(mk(new THREE.SphereGeometry(0.06, 8, 6).translate(-0.18, 0.88, -0.05), smat(null, '#ff8a3a', { emissive: '#ff5a10', ei: 2 }))); break;
+      }
+      case 'planter': {   // canteiro elevado de ervas medicinais com plaquinhas
+        const L = (f.h || 1) - 0.1; g.add(wbox(0.7, 0.4, L, 0, 0.2, 0, smat('wood', '#3a2618', { bump: 1.2 }), 2)); g.add(wbox(0.62, 0.04, L - 0.08, 0, 0.4, 0, smat(null, '#3a2a1c'), 1));
+        for (let k = 0; k < Math.round(L * 9); k++) { const z = -L / 2 + 0.08 + (k / Math.max(1, Math.round(L * 9) - 1)) * (L - 0.16), x = ((k * 37) % 5 - 2) * 0.1; g.add(mk(new THREE.SphereGeometry(0.07 + (k % 3) * 0.02, 7, 6).translate(x, 0.5, z), smat(null, ['#3e7a34', '#5a9a40', '#6a8a3a'][k % 3], { rough: 0.85 }))); if (k % 4 === 0) g.add(mk(new THREE.CylinderGeometry(0.01, 0.01, 0.26, 4).translate(x + 0.04, 0.6, z), smat(null, '#9a7ad8'))); }
+        for (let k = 0; k < Math.max(1, Math.floor(L)); k++) g.add(wbox(0.12, 0.08, 0.01, 0.3, 0.5, -L / 2 + 0.4 + k, smat(null, '#e8dcc0'), 1)); break;
+      }
+      case 'glowplant': {   // planta rara num vaso: flores que brilham de leve
+        const c = ['#7ae0e8', '#f08ad8', '#b8f07a'][(f.i + f.j) % 3]; g.add(mk(new THREE.CylinderGeometry(0.17, 0.13, 0.32, 10).translate(0, 0.16, 0), smat(null, '#2a5a3c', { metal: 0.4 })));
+        for (let k = 0; k < 4; k++) { const a = k * 1.6; g.add(limb(V3(0, 0.3, 0), V3(Math.cos(a) * 0.14, 0.7 + k * 0.05, Math.sin(a) * 0.14), 0.014, 0.01, smat(null, '#3e7a34'), 3)); g.add(mk(new THREE.SphereGeometry(0.06, 10, 8).translate(Math.cos(a) * 0.14, 0.74 + k * 0.05, Math.sin(a) * 0.14), smat(null, c, { emissive: c, ei: 1.4, rough: 0.3 }))); }
+        { const pl = new THREE.PointLight(new THREE.Color(c), 0.45, 2); pl.position.set(0, 0.8, 0); g.add(pl); } break;
+      }
+      case 'hangpot': {   // vaso pendurado no teto com folhas caindo
+        const y0 = hw - 0.75; g.add(limb(V3(0, hw - 0.02, 0), V3(0, y0, 0), 0.006, 0.006, smat(null, '#2a2622', { metal: 0.8 }), 3)); g.add(mk(new THREE.SphereGeometry(0.15, 10, 8, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2).translate(0, y0, 0), smat(null, '#a8583a', { side: THREE.DoubleSide })));
+        for (let k = 0; k < 7; k++) g.add(limb(V3(Math.cos(k) * 0.11, y0 - 0.02, Math.sin(k) * 0.11), V3(Math.cos(k) * 0.18, y0 - 0.35 - (k % 3) * 0.12, Math.sin(k) * 0.18), 0.022, 0.012, smat(null, '#4e8a3a'), 3)); break;
+      }
+      case 'herbrack': {   // vara perto do teto com maços de ervas, raízes e flores secando
+        const L = (f.w || 1) - 0.1, y0 = hw - 0.3; g.add(limb(V3(-L / 2, y0, 0), V3(L / 2, y0, 0), 0.02, 0.02, smat('wood', '#4a2f1a'), 4));
+        for (const sx of [-L / 2, L / 2]) g.add(limb(V3(sx, y0, 0), V3(sx, hw - 0.02, 0), 0.006, 0.006, smat(null, '#2a2622', { metal: 0.8 }), 2));
+        for (let k = 0; k < Math.round(L * 5); k++) { const x = -L / 2 + 0.12 + k * (L - 0.24) / Math.max(1, Math.round(L * 5) - 1); g.add(mk(new THREE.ConeGeometry(0.06, 0.28, 6).rotateX(Math.PI).translate(x, y0 - 0.16, 0), smat(null, ['#6a7a3a', '#8a6a3a', '#7a5a8a', '#5a7a4a'][k % 4], { rough: 0.95 }))); } break;
+      }
+      case 'pond': {   // tanque de pedra com plantas aquáticas e uma bica de latão
+        g.add(mk(new THREE.CylinderGeometry(0.42, 0.45, 0.22, 18).translate(0, 0.11, 0), smat('stoneblock', '#8a8e84', { bump: 1 }))); g.add(mk(new THREE.CircleGeometry(0.36, 18).rotateX(-Math.PI / 2).translate(0, 0.21, 0), smat(null, '#2e6a7a', { rough: 0.05, metal: 0.3, transparent: true, opacity: 0.85 })));
+        for (let k = 0; k < 5; k++) g.add(mk(new THREE.CircleGeometry(0.065, 10).rotateX(-Math.PI / 2).translate(Math.cos(k * 1.3) * 0.2, 0.215, Math.sin(k * 1.3) * 0.2), smat(null, '#5a9a40'))); g.add(mk(new THREE.SphereGeometry(0.035, 8, 6).translate(0.12, 0.23, -0.1), smat(null, '#f0d0e8')));
+        g.add(mk(new THREE.CylinderGeometry(0.03, 0.03, 0.3, 8).translate(0, 0.36, -0.3), smat(null, '#c9a24a', { metal: 0.9, rough: 0.3 }))); break;
+      }
       case 'mezzrail': {   // corrimão de madeira na beira do mezanino
         const L = (f.w || 1) - 0.1, wood2 = smat('wood', '#5a3a22'); g.add(wbox(L, 0.07, 0.07, 0, 0.92, 0.38, wood2, 2)); g.add(wbox(L, 0.05, 0.05, 0, 0.5, 0.38, wood2, 2)); for (let k = 0; k <= Math.round(L * 3); k++) g.add(wbox(0.05, 0.9, 0.05, -L / 2 + k * L / Math.round(L * 3), 0.45, 0.38, wood2, 1)); break;
       }
@@ -2351,7 +2458,7 @@ function mInterior(b, fl = 0) {
         g.add(mk(new THREE.BoxGeometry(Math.min(3, w - 1.4), 0.015, Math.min(h - 1.4, b.kind === 'castle' ? h - 3 : 2)).translate(0, 0.07, b.kind === 'castle' ? (h - 3) / 2 - 0.5 : 0.5), cloth(b.kind === 'castle' ? '#8a1a1c' : ['#7a3a2a', '#3a4a6a', '#5a6a3a'][f.i % 3]))); break;
     }
     g.position.set(cx, 0, cz); g.userData.furn = 1;
-    { const ST = f.t === 'taps' || f.t === 'bar' || f.t === 'bottles' || f.t === 'hearth' || f.t === 'stage' || f.t === 'wheel' || f.t === 'beamlamp' || f.t === 'mezzrail' || f.t === 'champs' || f.t === 'wandwall' || f.t === 'libladder' || f.t === 'wandcounter' || f.t === 'carvebench' || f.t === 'fabricwall' || f.t === 'fitstool' || f.t === 'gown' || f.t === 'mannequin2' || f.t === 'sewtable' || f.t === 'telescope' || f.t === 'stairup' || f.t === 'stairdown' || f.t === 'spiral' || f.t === 'spiraltop' || f.t === 'ladder' || f.t === 'laddertop' || f.t === 'extdoor', sx = f.w > 1 || f.h > 1 || f.t === 'rug' || ST ? 1 : 0.84; if (ST) { o.add(g); continue; } if (f.t === 'blk') continue; g.scale.set(sx, sx < 1 ? 0.68 : 0.55, sx); if (sx < 1) g.position.set(cx + (backX ? -0.06 : 0), 0, cz + (backZ ? -0.06 : 0)); }   /* móveis de 1 tile quase do tamanho do tile: o bloqueio bate com o que se vê */
+    { const ST = f.t === 'taps' || f.t === 'bar' || f.t === 'bottles' || f.t === 'hearth' || f.t === 'stage' || f.t === 'wheel' || f.t === 'beamlamp' || f.t === 'mezzrail' || f.t === 'champs' || f.t === 'drawers' || f.t === 'apothcounter' || f.t === 'distill' || f.t === 'planter' || f.t === 'glowplant' || f.t === 'hangpot' || f.t === 'herbrack' || f.t === 'pond' || f.t === 'wandwall' || f.t === 'libladder' || f.t === 'wandcounter' || f.t === 'carvebench' || f.t === 'fabricwall' || f.t === 'fitstool' || f.t === 'gown' || f.t === 'mannequin2' || f.t === 'sewtable' || f.t === 'telescope' || f.t === 'stairup' || f.t === 'stairdown' || f.t === 'spiral' || f.t === 'spiraltop' || f.t === 'ladder' || f.t === 'laddertop' || f.t === 'extdoor', sx = f.w > 1 || f.h > 1 || f.t === 'rug' || ST ? 1 : 0.84; if (ST) { o.add(g); continue; } if (f.t === 'blk') continue; g.scale.set(sx, sx < 1 ? 0.68 : 0.55, sx); if (sx < 1) g.position.set(cx + (backX ? -0.06 : 0), 0, cz + (backZ ? -0.06 : 0)); }   /* móveis de 1 tile quase do tamanho do tile: o bloqueio bate com o que se vê */
     o.add(g);
   }
   return o;
