@@ -315,8 +315,9 @@ function hostOnClient(from, m) {
       break;
     }
     case 'floor': {
-      const b = BUILDINGS[m.b | 0], to = m.to | 0, fl = p.fl || 0; if (!b || p.downed || p.carriedBy || Math.abs(to - fl) !== 1 || to < minFl(b) || to >= floorsOf(b)) break;
-      const sw = stairWorld(b, Math.min(fl, to)); if (dist(p.x, p.y, (sw.L[0] + sw.U[0]) / 2, (sw.L[1] + sw.U[1]) / 2) > 2.2) break;
+      const b = BUILDINGS[m.b | 0], to = m.to | 0, fl = p.fl || 0, lift = b && stairKind(b, 0) === 'lift'; if (!b || p.downed || p.carriedBy || (lift ? to === fl : Math.abs(to - fl) !== 1) || to < minFl(b) || to >= floorsOf(b)) break;   /* elevador: qualquer andar */
+      if (lift && fl === 0 && WORLD.bld[tileAt(p.x, p.y)] !== (m.b | 0)) break;
+      const sw = stairWorld(b, lift ? 0 : Math.min(fl, to)); if (dist(p.x, p.y, (sw.L[0] + sw.U[0]) / 2, (sw.L[1] + sw.U[1]) / 2) > 2.2) break;
       const [ax, ay] = to > fl ? sw.arrive : sw.entry; p.x = ax; p.y = ay; p.fl = to; p.fb = to !== 0 ? (m.b | 0) : -1; p.lastMv = now_(); p.sit = null;
       if (p.carrying) { const t = S.players[p.carrying]; if (t) { t.x = p.x; t.y = p.y; t.fl = p.fl; t.fb = p.fb; } }
       Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: 0, fl: p.fl, fb: p.fb });
@@ -416,6 +417,7 @@ function hostOnClient(from, m) {
       if (BUILDINGS[b.bi] && BUILDINGS[b.bi].kind === 'hotel' && hotelBedOf(p) !== (m.b | 0)) { tell(p, 'Essa cabine não é sua. Fale com Dona Ilsa, no balcão, para alugar um (3 de ouro por dia).'); break; }
       p.x = b.x; p.y = b.y; p.dir = dirFromVecS(b.dx, b.dy); p.sleep = m.b | 0; p.sit = null; p.walking = false; break;
     }
+    case 'bath': bathMsg(p, m); break;
     case 'sit': {
       if (!m.on || p.downed || p.carrying || p.carriedBy) { p.sit = null; break; }
       const st = m.s != null ? WORLD.seats[m.s | 0] : null;
@@ -554,6 +556,7 @@ function questCredit(p, type) {
 }
 
 function gainXp(p, amount, delay = 0) {
+  if (buffOn(p, 'rested') && amount > 0) amount = Math.round(amount * 1.1);   // bem descansado: +10% de experiência
   p.xp += amount;
   sfx(p.x, p.y, `+${amount} xp`, '#b9a8f0', delay);
   let up = false;
@@ -903,7 +906,30 @@ function emberBurn(p, q) {   /* o golpe com a mão em brasa deixa o alvo queiman
   if (!S.monsters[q.id]) return; near(q.x, q.y, { t: 'mburn', id: q.id, ms: 3000 });
   for (let k = 1; k <= 3; k++) setTimeout(() => { const m = S.monsters[q.id], pp = S.players[p.id]; if (!m || !pp) return; pp._el = 'fire'; hitMonster(pp, m, 0.18 * (1 + treeEff(pp, 'fire')), 0); pp._el = null; }, k * 1000);
 }
+// ---------- ofurô da suíte: aquece, recupera vida e fôlego, limpa feridas; ao sair (depois de 15 s), "bem descansado" ----------
+function bathMsg(p, m) {
+  const now = now_();
+  if (!m.on) { if (p.bath) bathEnd(p); return; }
+  const b = BUILDINGS[p.fb], O2 = ofuroOf(b); if (!O2 || (p.fl || 0) !== O2.fl || p.downed || p.carrying || p.bath) return;
+  if (dist(p.x, p.y, O2.x, O2.y) > 1.7) { tell(p, 'Chegue perto do ofurô.'); return; }
+  p.x = O2.x; p.y = O2.y; p.sit = 'g'; p.walking = false; p.bath = { t0: now, bi: p.fb, tick: now }; if (p.atk) p.atk = null; if (!p.sheathed) sheatheToggle(p, true, true);   /* a arma vai para o cabideiro */
+  near(p.x, p.y, { t: 'bath', id: p.id, on: 1, x: p.x, y: p.y, rx: O2.rack[0], ry: O2.rack[1] }); tell(p, 'Banho no ofurô: recupera vida e fôlego, tira o frio e limpa as feridas. Fique 15 s para sair bem descansado.');
+}
+function bathEnd(p) {
+  const B = p.bath; if (!B) return; p.bath = null; if (p.sit === 'g') p.sit = null; const now = now_(), secs = (now - B.t0) / 1000;
+  near(p.x, p.y, { t: 'bath', id: p.id, on: 0 });
+  if (secs >= 15) { p.buffs.rested = now + 600000; p.buffs.warm = Math.max(p.buffs.warm || 0, now + 300000); tell(p, 'Banho tomado: Bem descansado (10 min: recupera vida e mana mais rápido e ganha um pouco mais de experiência) e quentinho por 5 minutos.'); sendStat(p); }
+}
+function bathTick(now) {
+  for (const p of Object.values(S.players)) { const B = p.bath; if (!B) continue;
+    if (!p.sit || p.downed || (p.fl || 0) === 0) { bathEnd(p); continue; }
+    if (now - B.tick < 1000) continue; B.tick = now;
+    p.hp = Math.min(p.maxHp, p.hp + Math.max(1, Math.round(p.maxHp * 0.02))); p.cst = Math.min(cstMaxOf(p), (p.cst ?? 0) + 10); p.cold = 0;
+    if (p.bleed) for (const k in p.bleed) p.bleed[k] = 0; if (p.infect === 1 && now - B.t0 > 5000) { p.infect = 0; p.infT = 0; tell(p, 'A água quente limpou as feridas: a febre passou.'); }
+    sendStat(p); }
+}
 function mageTick(now) {   /* brasa (animais recuam), flores (curam e acalmam) */
+  bathTick(now);
   for (const p of Object.values(S.players)) {
     if (p.cls !== 'mage' || !buffOn(p, 'ember') || p.downed) continue;
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(p.x, p.y, m.x, m.y) > 3.5) continue; m.flee = { from: p.id, until: now + 1800 }; if (m.aggro === p.id) m.aggro = null; m.atk = null; }
@@ -3079,6 +3105,7 @@ function dispatchCouriers() {
     const SB = E.r[c.from].biz, goods = {}; let tot = 0;
     for (const o of cands) if (o.from === c.from && o.pid === c.pid && !!o.raw === !!c.raw && tot < 60) { const q = Math.min(Math.floor(SB.store[o.g] || 0), o.room, 60 - tot); if (q > 0) { goods[o.g] = (goods[o.g] || 0) + q; tot += q; } }   // leva tudo o que esse destino precisa dessa oficina
     if (!tot) continue;
+    { let roomTot = 0; for (const o of cands) if (o.from === c.from && o.pid === c.pid && !!o.raw === !!c.raw) roomTot += o.room; if (tot < Math.min(20, roomTot)) continue; }   /* leva no mínimo 20 (ou tudo o que o destino ainda cabe): espera a oficina juntar */
     const n = free.sort((a, b) => dist(a.x, a.y, BUILDINGS[PROPS_BY[c.from].bi].x, BUILDINGS[PROPS_BY[c.from].bi].y) - dist(b.x, b.y, BUILDINGS[PROPS_BY[c.from].bi].x, BUILDINGS[PROPS_BY[c.from].bi].y)).shift();   // o mensageiro mais perto da oficina
     n.job = { owner: c.owner, from: c.from, to: c.pid, goods, raw: c.raw ? 1 : 0, wp: [[n.x, n.y], ...routeBetween(PROPS_BY[c.from], PROPS_BY[c.pid])], i: 1, st: 'indo buscar', back: [] }; pair.add(key);
   }
@@ -3088,7 +3115,7 @@ function cartReserve() {
   const E = S.estate; if (!E) return; const now = gameNow(), owners = new Set(Object.values(E.r).filter(r => r.biz).map(r => r.owner));
   for (const ow of owners) for (const need of bizNeeds(ow)) {
     const DR = E.r[need.pid], DB = DR && DR.biz; if (!DB || !DB.wait) continue; const wk = need.g + (need.raw ? 'r' : ''); if (!DB.wait[wk] || now - DB.wait[wk] < BIZ_HOUR_MS * 3) continue;
-    for (const sp in E.r) { const r = E.r[sp], SP = PROPS_BY[sp]; if (sp === need.pid || r.owner !== ow || !r.biz || !SP || SP.kind !== 'workshop') continue; const q = Math.min(Math.floor(r.biz.store[need.g] || 0), need.room, 30); if (q < 1) continue;
+    for (const sp in E.r) { const r = E.r[sp], SP = PROPS_BY[sp]; if (sp === need.pid || r.owner !== ow || !r.biz || !SP || SP.kind !== 'workshop') continue; const q = Math.min(Math.floor(r.biz.store[need.g] || 0), need.room, 30); if (q < Math.min(20, need.room)) continue;
       r.biz.store[need.g] -= q; r.biz.today.xfer = (r.biz.today.xfer || 0) + q * GOODS[need.g].p * SELL_K;
       const tgt = need.raw ? (DB.raw = DB.raw || {}) : PROPS_BY[need.pid].kind === 'shop' ? DB.stock : DB.store; tgt[need.g] = (tgt[need.g] || 0) + q; delete DB.wait[wk];
       bizLog(DB, 'A carroça da vila trouxe ' + q + ' ' + GOODS[need.g].n + ' de ' + SP.name + ' (os mensageiros estavam ocupados).'); break; }

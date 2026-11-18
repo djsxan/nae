@@ -769,3 +769,13 @@ body.em-on #hud, body.em-on #chat, body.em-on .hotbar { opacity: .25; transition
 .grim-use { margin-left: auto; font: 600 12px 'Alegreya Sans SC', sans-serif; color: #6a5232; } .grim-use::before { content: 'uso '; }
 .grim-foot { margin: auto 0 0; font: italic 13px/1.35 'IM Fell English', serif; color: #6a5232; }
 @media (max-width: 900px) { .grim-book { grid-template-columns: 1fr; } .grim-spine { display: none; } .grim-r { border-left: 0; border-top: 1px solid rgba(90,60,25,.2); } }
+
+/* ---------- elevador do Dojô do Punho de Ferro ---------- */
+.lift-panel { position: fixed; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(380px, calc(100vw - 32px)); z-index: 40; padding-bottom: 10px; }
+.lift-dial { display: block; width: 150px; margin: 6px auto 0; }
+.lift-note { text-align: center; font-style: italic; color: #c9b99a; margin: 2px 12px 8px; font-size: 14px; }
+.lift-list { display: grid; gap: 6px; padding: 0 12px; }
+.lift-btn { display: flex; align-items: center; gap: 10px; text-align: left; padding: 8px 10px; border-radius: 6px; border: 1px solid rgba(201,162,74,.35); background: rgba(255,255,255,.04); color: #f1e6c8; font: 500 15px 'Alegreya', serif; cursor: pointer; }
+.lift-btn:hover:not([disabled]) { background: rgba(201,162,74,.18); }
+.lift-btn.here { opacity: .55; cursor: default; }
+.lift-n { display: inline-grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: #2a1e12; border: 2px solid #c9a24a; color: #e8c060; font: 700 14px 'Cinzel', serif; flex: none; }

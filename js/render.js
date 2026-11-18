@@ -977,7 +977,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     const p = iso(e.rx, e.ry), sx = p.sx + ox, sy = p.sy + oy - (e.z || 0) * FLOOR_PX;
     if (sx < -100 || sx > vw + 100 || sy < -40 || sy > vh + 200) return;
     const efl = e.fl || 0, ebi = (e.z || 0) < 0.5 ? (e === G.me && G.climbing ? G.climbing.bi : efl !== 0 ? (e.fb ?? bldAt(e.rx, e.ry)) : bldAt(e.rx, e.ry)) : -1;   // subindo a escada (até a externa, do lado de fora): altura do prédio da escada
-    if (efl !== 0 && !(ebi === inB0 && efl === myFl)) return;       // quem está em outro andar não aparece
+    if (efl !== 0 && !(ebi === inB0 && efl === myFl) && !(ebi >= 0 && BUILDINGS[ebi] && BUILDINGS[ebi].deco === 'machiya' && WORLD.bld[Math.round(e.ry) * MAP_W + Math.round(e.rx)] !== ebi)) return;       // quem está em outro andar não aparece (quem está numa varanda aparece, na altura do andar)
     const stH = typeof stageLift === 'function' ? stageLift(e.rx, e.ry) : 0;
     const it = { d: e.exec && e.exec.T ? STAGE.x + STAGE.y - 0.4 : stH ? Math.max(e.rx + e.ry, STAGE.x + STAGE.y + 0.6) : e.rx + e.ry + ((e.sit || (e.custP && e.custP.sit)) ? 0.15 : 0), k: kind, e, sx, sy: sy - stH - (ebi >= 0 ? flRaise(BUILDINGS[ebi], efl) + (e.lift ? e.lift * flRaise(BUILDINGS[ebi], 1) : 0) : 0), tx: e.rx, ty: e.ry };
     if ((e.z || 0) < 0.5 && inB0 >= 0 && ebi === inB0 && efl === myFl) { it.inside = true; e._inC = now; }
@@ -1124,12 +1124,13 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       labels.push({ sx: it.sx, sy: it.sy - (R3.ok ? 56 : 78), name: e.name, color: '#b8e0a8', npc: e, e });
     } else {
       ctx.imageSmoothingEnabled = true; drawAuras(ctx, e, it.sx, it.sy, now); ctx.imageSmoothingEnabled = false;
-      drawHeroEntity(ctx, e, it.sx, it.sy, now); if (e.arrows) drawStuck(ctx, e, it.sx, it.sy, now);
+      if (e.bathing && typeof drawBather === 'function') drawBather(ctx, e, it.sx, it.sy, now); else drawHeroEntity(ctx, e, it.sx, it.sy, now); if (e.arrows) drawStuck(ctx, e, it.sx, it.sy, now);
       if (typeof drawPlayerBubble === 'function') drawPlayerBubble(ctx, e, it.sx, it.sy, now);
       if (e.dragMode === 'back' && typeof drawBackCorpse === 'function') { drawBackCorpse(ctx, e, it.sx, it.sy, now); drawNpcOnBack(ctx, e, it.sx, it.sy); }
       heroExtras(e, it.sx, it.sy);
       if (e.burnUntil > now && typeof drawOnFire === 'function') drawOnFire(ctx, it.sx, it.sy, now, (e.x || 0) * 7.1);
       if (e.emberUntil > now && !e.downed && typeof drawEmberHand === 'function') drawEmberHand(ctx, e, it.sx, it.sy, now);
+      if (e.bathing && typeof drawBath === 'function') drawBath(ctx, e, it.sx, it.sy, now);
       if (e.carrying && G.players[e.carrying]) drawCarried(ctx, G.players[e.carrying], it.sx, it.sy);
       if (e.lifted) { const os = objSprite(e.lifted); if (os) pblit(ctx, os, it.sx, it.sy - 58); }
       G.lights.push({ x: it.sx, y: it.sy - 30, r: 34, c: '255,240,220', a: 0.4 });
