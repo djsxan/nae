@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.64.0';
-const VERSION_NAME = 'Nae · Contas da Cidade';
+const VERSION = 'v1.65.0';
+const VERSION_NAME = 'Nae · Ânimo dos Moradores';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)

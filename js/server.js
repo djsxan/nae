@@ -2325,12 +2325,12 @@ function npcbHour() {
   for (const pid in N) { const B = N[pid], P = PROPS_BY[pid]; if (B.closed) continue; B.frac = B.frac || {};
     if (P.kind === 'hotel') { const H = hotelData(), d0 = estDay(), occ = Object.values(H.rooms || {}).filter(x => x && ((x.who && x.until > d0) || (x.npc && S.npcs && S.npcs[x.npc]))).length; const v = occ * 2 + 1; B.cofre += v; B.today.rev += v; B.today.sold += occ; continue; }   /* hóspedes + viajantes de passagem (refeições, banho) */
     const tav = P.wk === 'tavern'; if (tav ? !(hr >= 10) : !open) continue;   /* a taverna abre às 10 e vai até a meia-noite */
-    const k = npcbStaffHere(P) ? 1.2 : 0.7;
+    const k = npcbStaffHere(P) ? 1.2 * npcbMoodMul(P) : 0.7;
     if (P.kind === 'workshop') { const W = WORKS[P.wk];
       if (W.make) for (const g in W.make) { B.frac[g] = (B.frac[g] || 0) + W.make[g] * k * NPCB_EXTRACT * ((P.wk === 'wheat' || P.wk === 'farm') ? (sk === 'winter' ? 0.4 : sk === 'summer' ? 1.25 : 1) : 1); const q = Math.floor(B.frac[g]); B.frac[g] -= q; if (q) { B.store[g] = (B.store[g] || 0) + q; B.today.mk[g] = (B.today.mk[g] || 0) + q; } }
       if (W.recipes) { const rk = Object.keys(W.recipes).sort((a, b) => (B.store[a] || 0) - (B.store[b] || 0))[0], rec = W.recipes[rk]; B.frac._b = (B.frac._b || 0) + k * 1.5; let nb = Math.floor(B.frac._b); B.frac._b -= nb;
         while (nb-- > 0) { if ((B.store[rk] || 0) >= (rk === 'serve' ? 20 : NPCB_KEEP)) break; for (const g in rec) { const miss = rec[g] - Math.floor(B.store[g] || 0); if (miss > 0) npcbBuy(pid, B, g, rec[g] * 3); } if (Object.keys(rec).some(g => (B.store[g] || 0) < rec[g])) break; for (const g in rec) B.store[g] -= rec[g]; B.store[rk] = (B.store[rk] || 0) + 1; B.today.mk[rk] = (B.today.mk[rk] || 0) + 1; } }
-      if (P.wk === 'tavern') { const pat = Object.values(S.npcs).filter(q => !q.dead && !/^(guard|captain)/.test(q.kind) && WORLD.bld[tileAt(q.x, q.y)] === P.bi && q.role !== 'clerk' && q.kind !== 'innkeeper' && q.kind !== 'tavmaid').length, served = Math.min(pat, Math.floor(B.store.serve || 0)), v = (pat + 1) * 3 + served * 4; B.store.serve = (B.store.serve || 0) - served; if (v) { B.cofre += v; B.today.rev += v; B.today.sold += pat; } }
+      if (P.wk === 'tavern') { const pat = Object.values(S.npcs).filter(q => !q.dead && !/^(guard|captain)/.test(q.kind) && WORLD.bld[tileAt(q.x, q.y)] === P.bi && q.role !== 'clerk' && q.kind !== 'innkeeper' && q.kind !== 'tavmaid').length, served = Math.min(pat, Math.floor(B.store.serve || 0)), v = npcbTavernTake(P) + 3 + served * 4; B.store.serve = (B.store.serve || 0) - served; if (v) { B.cofre += v; B.today.rev += v; B.today.sold += pat; } }
       { const IN = S.npcbIn || (S.npcbIn = npcbInputs()); for (const g in B.store) { if (g === 'serve') continue; const fin = !IN.has(g), ex = Math.floor(B.store[g] - (fin ? 0 : NPCB_KEEP)); if (ex > 0) { const v = ex * GOODS[g].p * (fin ? 1 : SELL_K); B.store[g] -= ex; B.cofre += v; B.today.rev += v; B.today.sold += ex; } } }   /* produto final: vendido aos moradores no balcão; insumo: guarda 30 para os outros negócios e o excesso vai para as caravanas */
     } else if (P.kind === 'shop') { const GS = SHOP_GOODS[P.shopType];
       for (const g of GS) { const have = Math.floor(B.store[g] || 0); if (have < 6) npcbBuy(pid, B, g, 12 - have); }
@@ -2340,15 +2340,52 @@ function npcbHour() {
 }
 function npcbDayEnd() {
   const N = npcbAll();
+  try { npcDayEnd(); } catch (e) { console.warn('moradores', e); }
   for (const pid in N) { const B = N[pid], P = PROPS_BY[pid], td = B.today;
     if (!B.closed) { const wage = SALARY[P.kind] || 6, up = Math.max(2, Math.round((P.rent || 10) * 0.25)); B.cofre -= wage + up; td.cost += wage + up; td.wage = wage; td.up = up;
       { const gs = Object.keys(B.store).filter(g => B.store[g] >= 3); if (gs.length && Math.random() < THEFT[0]) { const g = gs[Math.floor(Math.random() * gs.length)], lost = Math.max(1, Math.floor(B.store[g] * 0.2)); B.store[g] -= lost; npcbLog(B, 'Ladrões levaram ' + lost + ' ' + GOODS[g].n + ' durante a noite.'); } }
       if (B.debt > 0 && B.cofre > NPCB_START) { const pay = Math.min(B.debt, Math.floor(B.cofre - NPCB_START)); B.cofre -= pay; B.debt -= pay; td.cost += pay; npcbLog(B, 'Pagou ' + pay + ' do empréstimo.'); } }
+    for (const w of Object.values(S.npcs || {})) if (!w.transient && !w.dead && w.bi === P.bi && w.home !== P.bi) { if (!B.closed) { w.gold = (w.gold || 0) + (td.wage || SALARY[P.kind] || 6); moodAdd(w, 2); } else moodAdd(w, -8); }   /* quem trabalha aqui recebe o salário (fechado: sem salário) */
     B.short = (B.shortH || 0) >= 3 ? (B.short || 0) + 1 : 0; B.shortH = 0;
     B.hist.push({ d: estDay() - 1, rev: Math.round(td.rev), cost: Math.round(td.cost), sold: td.sold, buy: Math.round(td.buy), wage: td.wage, up: td.up, sup: td.sup, pl: Math.round(td.pl), mk: td.mk, cofre: Math.round(B.cofre) }); if (B.hist.length > 60) B.hist.shift();
     if (B.closed) { if (--B.closed <= 0) { B.closed = 0; B.loss = 0; B.cofre += NPCB_LOAN; B.debt += NPCB_LOAN; npcbLog(B, 'Reabriu com um empréstimo de ' + NPCB_LOAN + ' do banco.'); sys('🔓 ' + P.name + ' reabriu as portas com um empréstimo do banco.'); } }
     else { B.loss = B.cofre < 0 ? (B.loss || 0) + 1 : 0; if (B.loss >= 3) { B.closed = 2; npcbLog(B, 'Fechou: 3 dias seguidos no vermelho.'); sys('🔒 ' + P.name + ' fechou as portas por dívidas (3 dias no vermelho).'); } }
     B.today = npcbDay(); }
+}
+// ============================================================
+//  HUMOR E CARTEIRA DOS MORADORES — o dinheiro circula: salário sai do caixa do negócio e volta quando o morador gasta
+//  (almoço na Padaria, bebida na taverna, compras nas lojas). O humor sobe e desce com o que acontece e muda o comportamento.
+// ============================================================
+const MOOD_SAD = ['Que fase...', 'Hoje não estou bem.', 'Nada dá certo ultimamente.', 'Ando tão cansado de tudo.', 'Preciso de uma folga.'];
+const MOOD_HAPPY = ['Que dia bonito!', 'As coisas estão indo bem!', 'Hoje eu pago a rodada!', 'Ganhei bem essa semana.'];
+const MOOD_BROKE = ['O dinheiro não dá para nada.', 'Tô sem um tostão.', 'Vou ter que comer em casa de novo.'];
+function npcMoodInit(n) { const M = (estateLoad().npcm || {})[n.id]; if (M) { n.mood = M[0]; n.gold = M[1]; } else { n.mood = 55 + Math.random() * 15; n.gold = Math.round(30 + Math.random() * 50); } }
+function moodAdd(n, d) { if (!n || n.transient) return; if (n.mood == null) npcMoodInit(n); n.mood = Math.max(0, Math.min(100, n.mood + d)); }
+function npcSpend(n, kindOrWk, v) {   /* paga um negócio de NPC aberto (pelo tipo de oficina ou loja) */
+  const N = npcbAll(); const pid = Object.keys(N).find(id => { const Pq = PROPS_BY[id]; return !N[id].closed && (Pq.wk === kindOrWk || Pq.shopType === kindOrWk || id === kindOrWk); }); if (!pid || (n.gold || 0) < v) return false;
+  const B = N[pid]; n.gold -= v; B.cofre += v; B.today.rev += v; B.today.sold++; B.today.res = (B.today.res || 0) + v; return true;
+}
+function npcbTavernTake(P) {   /* cada freguês na taverna paga 3 da própria carteira por hora */
+  let v = 0; for (const q of Object.values(S.npcs || {})) { if (q.dead || /^(guard|captain)/.test(q.kind) || q.role === 'clerk' || q.kind === 'innkeeper' || q.kind === 'tavmaid' || WORLD.bld[tileAt(q.x, q.y)] !== P.bi) continue;
+    if (q.transient) { v += 3; continue; } if ((q.gold || 0) >= 3) { q.gold -= 3; v += 3; moodAdd(q, 1.5); } } return v;
+}
+function npcbMoodMul(P) { const W = Object.values(S.npcs || {}).filter(n => !n.dead && !n.transient && n.bi === P.bi && n.mood != null); if (!W.length) return 1; const m = W.reduce((a, n) => a + n.mood, 0) / W.length; return m < 30 ? 0.8 : m > 75 ? 1.1 : 1; }
+function npcMoodHour() {   /* uma vez por hora do jogo */
+  const E = estateLoad(), M = E.npcm || (E.npcm = {}), rain = typeof weatherNow === 'function' ? (weatherNow().rain || 0) : 0;
+  const NB = npcbAll();
+  for (const n of Object.values(S.npcs || {})) { if (n.transient || n.dead || /^(guard|captain)/.test(n.kind || '') || n.bizWorker || n.collector) continue; if (n.mood == null) npcMoodInit(n);
+    const own = n.bi != null && Object.keys(NB).find(id => PROPS_BY[id].bi === n.bi), B = own && NB[own];   /* donos e balconistas fixos: o humor segue a saúde do negócio */
+    const N = n.need || { food: 60, rest: 60, social: 60 }, avg = (N.food + N.rest + N.social) / 3; let d = (n.need ? (avg - 50) / 25 : 0) + (60 - n.mood) * 0.03 + (B ? (B.closed ? -2 : B.loss ? -1 : B.cofre > 600 ? 0.4 : 0) : 0);
+    if ((n.gold || 0) < 10) d -= 0.6; if (rain > 0.5 && WORLD.bld[tileAt(n.x, n.y)] < 0) d -= 0.5; if (n.downed) d -= 3;
+    n.mood = Math.max(0, Math.min(100, n.mood + d)); M[n.id] = [Math.round(n.mood), Math.round(n.gold || 0)]; }
+}
+function npcDayEnd() {   /* fim do dia: decisão de faltar amanhã, compras nas lojas, salário dos mensageiros */
+  const today = estDay() + 0, shops = Object.keys(npcbAll()).filter(id => PROPS_BY[id].kind === 'shop');
+  for (const n of Object.values(S.npcs || {})) { if (n.transient || n.dead || !n.role || n.home == null) continue; if (n.mood == null) npcMoodInit(n);
+    if (n.role === 'courier') { n.gold = (n.gold || 0) + 6; moodAdd(n, 1); }
+    n.skipDay = n.mood < 25 && Math.random() < 0.35 ? today : -1;
+    const want = n.mood > 75 ? 0.8 : n.mood < 30 ? 0.2 : 0.5; if ((n.gold || 0) > 40 && shops.length && Math.random() < want) { const id = shops[Math.floor(Math.random() * shops.length)], B = npcbAll()[id], GS = (SHOP_GOODS[PROPS_BY[id].shopType] || []).filter(g => (B.store[g] || 0) >= 1);
+      if (GS.length && !B.closed) { const g = GS[Math.floor(Math.random() * GS.length)], v = Math.round(GOODS[g].p * NPCB_SHOP_K); if (n.gold >= v) { n.gold -= v; B.store[g]--; B.cofre += v; B.today.rev += v; B.today.sold++; B.today.res = (B.today.res || 0) + v; moodAdd(n, 2); } } } }
 }
 // ============================================================
 //  HISTÓRICO DO OBSERVATÓRIO — uma linha por hora do jogo (7 dias) e um resumo por dia (para sempre)
@@ -2369,11 +2406,13 @@ function obsRecord(newDay) {
   for (const pid in E.r) { const B = E.r[pid].biz, P = PROPS_BY[pid]; if (!B || !B.today) continue; take(pid, { rev: (B.today.rev || 0) + (B.today.xfer || 0), cost: B.today.cost || 0, sold: B.today.sold || 0, mk: B.today.mk || {} }, Object.values((P.kind === 'shop' ? B.stock : B.store) || {}).reduce((a, v) => a + v, 0), false); }
   const BK = bankLoad(); row.g = [Math.round(Object.values(S.players).reduce((a, p) => a + (p.gold || 0), 0)), Math.round(Object.values(BK.acc).reduce((a, A) => a + Math.max(0, A.g || 0), 0)), Math.round(Object.values(N).reduce((a, B) => a + B.cofre, 0))];
   row.c = Object.assign({}, S.obsCnt || {}); S.obsCnt = {};
+  { const R = Object.values(S.npcs || {}).filter(n => !n.transient && !n.dead && n.mood != null); row.m = R.length ? [Math.round(R.reduce((a, n) => a + n.mood, 0) / R.length), Math.round(R.reduce((a, n) => a + (n.gold || 0), 0)), R.filter(n => n.mood < 30).length] : null; }
   for (const n of Object.values(S.npcs || {})) { if (n.dead) continue; const r = obsRoleS(n), bi = WORLD.bld[tileAt(n.x, n.y)], Pq = bi >= 0 ? PROPS.find(q => q.bi === bi) : null; const place = n.sleeping || (bi >= 0 && bi === n.home) ? 0 : bi >= 0 && bi === n.bi ? 1 : BUILDINGS[bi] && BUILDINGS[bi].kind === 'tavern' ? 2 : Pq && Pq.kind !== 'house' ? 3 : 4; const a = row.pop[r] || (row.pop[r] = [0, 0, 0, 0, 0]); a[place]++; }
   for (const pid in row.b) { const Pq = PROPS_BY[pid], b = BUILDINGS[Pq.bi]; if (b && row.b[pid][2] > 0) obsHeatAdd('sale', b.x + b.w / 2, b.y + b.h / 2, row.b[pid][2]); }
   H.hr.push(row);
   if (newDay) { const yd = row.d - 1, rows = H.hr.filter(q => q.d === yd); if (rows.length) { const dd = { t: rows[rows.length - 1].t, d: yd, b: {}, g: rows[rows.length - 1].g, c: {}, pop: {} };
       for (const q of rows) { for (const pid in q.b) { const a = dd.b[pid] || (dd.b[pid] = [0, 0, 0, 0, 0, q.b[pid][5]]); a[0] += q.b[pid][0]; a[1] += q.b[pid][1]; a[2] += q.b[pid][2]; a[3] = q.b[pid][3]; a[4] += q.b[pid][4]; } for (const k in q.c) dd.c[k] = (dd.c[k] || 0) + q.c[k]; }
+      { const ms = rows.filter(q => q.m); dd.m = ms.length ? [Math.round(ms.reduce((a, q) => a + q.m[0], 0) / ms.length), ms[ms.length - 1].m[1], Math.max(...ms.map(q => q.m[2]))] : null; }
       H.dy.push(dd); } }
   const cut = row.d - 7; H.hr = H.hr.filter(q => q.d > cut); obsSaveH(newDay);
 }
@@ -2382,7 +2421,7 @@ function obsSnap() {
   const E = (S.estate && S.estate.r) || {}, now = now_();
   const npcs = Object.values(S.npcs || {}).map(n => { const J = n.job; const dest = n.walkTo || (J && J.wp && J.wp[J.i]) || (n.route && n.route.length ? n.route[(n.ri || 0) % n.route.length] : null);
     return [n.id, n.name, n.kind, n.role || (n.bizWorker ? 'worker' : ''), +n.x.toFixed(1), +n.y.toFixed(1), n.act || (J ? J.st : '') || '', n.home ?? -1, n.bi ?? -1, dest ? [+(+dest[0]).toFixed(1), +(+dest[1]).toFixed(1)] : null, J && J.goods ? J.goods : null,
-      (n.sleeping ? 1 : 0) | (n.downed ? 2 : 0) | (n.dead ? 4 : 0) | (n.drunkT > now ? 8 : 0) | (n.transient ? 16 : 0) | (n.sitting ? 32 : 0) | (n.bard ? 64 : 0), n.need ? [Math.round(n.need.food), Math.round(n.need.rest), Math.round(n.need.social)] : null]; });
+      (n.sleeping ? 1 : 0) | (n.downed ? 2 : 0) | (n.dead ? 4 : 0) | (n.drunkT > now ? 8 : 0) | (n.transient ? 16 : 0) | (n.sitting ? 32 : 0) | (n.bard ? 64 : 0) | (n.skipDay === estDay() ? 128 : 0), n.need ? [Math.round(n.need.food), Math.round(n.need.rest), Math.round(n.need.social)] : null, n.mood != null ? Math.round(n.mood) : null, n.gold != null ? Math.round(n.gold) : null]; });
   const players = Object.values(S.players).map(p => [p.id, p.name, +p.x.toFixed(1), +p.y.toFixed(1), p.lvl, p.dev ? 1 : 0, p.ping ?? null, p.recon || 0, p.id === Net.myId ? 1 : 0, p.downed ? 1 : 0, S.bw && S.bw[p.id] ? +S.bw[p.id].kb.toFixed(1) : null]);
   const NBs = npcbAll(), lastH = (obsLoadH().hr || []).slice(-1)[0];
   const biz = PROPS.filter(P => P.kind !== 'house').map(P => { const r = E[P.id], NB = !r && NBs[P.id]; if (NB) { const td = NB.today, yd = NB.hist[NB.hist.length - 1], st = NB.closed ? 'idle' : NB.loss >= 1 || NB.cofre < 0 || (yd && yd.cost > yd.rev) ? 'bad' : NB.short >= 2 ? 'warn' : 'ok';   /* status pelo resultado de ontem */
@@ -2497,7 +2536,7 @@ function hostTick() {
 function worldSnap() { estateLoad(); bankLoad(); const succ = Object.values(S.players).filter(q => q.id !== Net.myId).sort((a, b) => (a.joinT || 0) - (b.joinT || 0)).map(q => q.id);   /* quem chegou primeiro assume */ const m = { t: 'wsnap', est: S.estate, bank: S.bank, succ, ver: VERSION }; if (Date.now() - (S.ohT || 0) > 60000) { S.ohT = Date.now(); m.oh = obsLoadH(); } return m; }
 function worldBroadcast() { if (!Net.isHost || Net.offline) return; try { const m = worldSnap(); for (const id in Net.rel) { const c = Net.rel[id]; if (c.open) c.send(m); } } catch (e) { console.warn('wsnap', e); } }
 function worldReset(p) {
-  S.estate = { r: {}, lost: {}, hotel: {}, npcb: {} }; estateSave(); S.bank = { acc: {} }; bankSave(); HOTEL_R = null; S.obsH = { hr: [], dy: [] }; S.heat = null; obsSaveH(true);
+  S.estate = { r: {}, lost: {}, hotel: {}, npcb: {}, npcm: {} }; estateSave(); S.bank = { acc: {} }; bankSave(); HOTEL_R = null; S.obsH = { hr: [], dy: [] }; S.heat = null; obsSaveH(true);
   for (const id of Object.keys(S.npcs || {})) { const q = S.npcs[id]; if (q && (q.bizWorker || q.collector)) visGone(q); }
   sys('O Tecelão recomeçou o mundo: imóveis, negócios e contas do banco voltaram ao zero.'); estateChanged(); worldBroadcast();
 }
@@ -2524,7 +2563,7 @@ const estDay = () => Math.floor(Date.now() / ESTATE_DAY_MS);
 const isBizProp = P => P && (P.kind === 'shop' || P.kind === 'workshop' || P.kind === 'bank' || P.kind === 'hotel') && P.npc !== 'a Guarda' && !(P.kind === 'workshop' && P.npc && !P.wk);
 function estateLoad() {
   if (S.estate) return S.estate; S.estate = { r: {}, lost: {} };
-  try { const j = typeof localStorage !== 'undefined' && JSON.parse(localStorage.getItem(ESTATE_KEY) || 'null'); if (j && j.r) { S.estate = { r: j.r, lost: j.lost || {}, hotel: j.hotel || {}, npcb: j.npcb || {} }; for (const pid in S.estate.r) { const P = PROPS_BY[pid]; if (!P || (P.kind !== 'house' && !isBizProp(P))) delete S.estate.r[pid]; } } } catch (e) { }
+  try { const j = typeof localStorage !== 'undefined' && JSON.parse(localStorage.getItem(ESTATE_KEY) || 'null'); if (j && j.r) { S.estate = { r: j.r, lost: j.lost || {}, hotel: j.hotel || {}, npcb: j.npcb || {}, npcm: j.npcm || {} }; for (const pid in S.estate.r) { const P = PROPS_BY[pid]; if (!P || (P.kind !== 'house' && !isBizProp(P))) delete S.estate.r[pid]; } } } catch (e) { }
   for (const pid in S.estate.r) bizLinkBank(S.estate.r[pid]);
   S.estateL = estateLocks(); return S.estate;
 }
@@ -2955,7 +2994,7 @@ function courierRobbed(n) { const J = n.job; if (!J || J.st !== 'levando') retur
 function bizHour(now) {
   try { npcLoansHour(); } catch (e) { }
   const E = estateLoad(), day = estDay(), newDay = S.bizDay != null && S.bizDay !== day; S.bizDay = day;
-  try { npcbHour(); if (newDay) npcbDayEnd(); } catch (e) { console.warn('negócios de NPC', e); }
+  try { npcMoodHour(); npcbHour(); if (newDay) npcbDayEnd(); } catch (e) { console.warn('negócios de NPC', e); }
   try { obsRecord(newDay); } catch (e) { console.warn('histórico', e); }
   for (const pid in E.r) {
     const r = E.r[pid], P = PROPS_BY[pid], B = r.biz; if (!B) continue;
@@ -3161,15 +3200,19 @@ function tavernTick(now) {
 function residentTick(n, now, dt) {
   if (now - (n.meetT || 0) > 1000) { n.meetT = now; memMeet(n, now); bodyReact(n, now); }
   const hr = resHour(), N = n.need || (n.need = { food: 70 + Math.random() * 30, rest: 90, social: 40 + Math.random() * 40 }), perDay = 24 / (ESTATE_DAY_MS / 1000);
+  if (n.mood == null) npcMoodInit(n);
   N.food = Math.max(0, N.food - dt * perDay * 4); N.social = Math.max(0, N.social - dt * perDay * 3); if (!n.sleeping) N.rest = Math.max(0, N.rest - dt * perDay * 5);
   let act = hr >= 22 || hr < 6 ? 'sleep' : N.rest < 12 ? 'sleep' : N.food < 25 ? 'eat' : hr < 7 ? 'home' : hr < 12 ? 'work' : hr < 13 ? 'eat' : hr < 18 ? 'work' : N.social < 75 ? 'social' : 'home';
   if (n.role === 'courier' && act === 'work') act = 'work';
+  if (act === 'work' && n.role !== 'courier' && n.skipDay === estDay()) act = 'social';   /* triste: faltou ao trabalho e foi para a taverna */
+  if (act === 'social' && n.gold < 3) act = 'home';   /* sem dinheiro, nada de taverna */
   if (act !== n.act) { if (n.act === 'social' && (act === 'home' || act === 'sleep') && hr >= 20.5 && Math.random() < 0.4) n.drunkT = now + 150000; seatFree(n); n.act = act; n.sleeping = false; const [tx, ty] = resSpot(n, act); n.rpath = planRoute(n, tx, ty); n.arrived = false; }
   if (n.rpath && n.rpath.length) { const [wx, wy] = n.rpath[0]; if (npcWalk(n, wx, wy, 1.15, dt) || dist(n.x, n.y, wx, wy) < 0.45 || (n.seatK != null && n.rpath.length === 1 && dist(n.x, n.y, wx, wy) < 1.3)) { n.rpath.shift(); if (!n.rpath.length) { n.arrived = true; n.x = wx; n.y = wy; if (n.seatK != null) { const s = WORLD.seats[n.seatK]; n.x = s.x; n.y = s.y; n.dir = s.dir; n.sitting = true; } } } return; }
   if (n.sitting) n.doze = n.drunkT > now && hr >= 21;   // bêbado cochila na mesa
   // chegou: efeito da atividade
   if (act === 'sleep') { n.sleeping = true; N.rest = Math.min(100, N.rest + dt * perDay * 14); }
   if (act === 'eat' || act === 'home') N.food = Math.min(100, N.food + dt * perDay * 60);
+  if (act === 'eat' && hr >= 11 && hr < 14 && n.mealDay !== estDay()) { n.mealDay = estDay(); if (n.gold >= 3 && npcSpend(n, 'bakery', 3)) moodAdd(n, 1); else moodAdd(n, -1); }   /* almoço comprado na Padaria (sem dinheiro: marmita de casa) */
   if (act === 'social') N.social = Math.min(100, N.social + dt * perDay * 18);
   // conversa: quem está junto (taverna, pracinha, almoço) troca umas palavras de vez em quando
   if ((act === 'social' || act === 'eat') && now > (n.talkT || 0)) {
@@ -3177,6 +3220,7 @@ function residentTick(n, now, dt) {
     let mate = Object.values(S.npcs).find(o => o !== n && o.role && o.arrived && (o.act === 'social' || o.act === 'eat') && !o.sleeping && dist(o.x, o.y, n.x, n.y) < 3);
     if (mate) { const own = RES_LINES[n.id] || [], pool = n.sitting && Math.random() < 0.6 ? TAV_LINES : Math.random() < 0.55 && own.length ? own : RES_LINES.any; let txt = pool[Math.floor(Math.random() * pool.length)];
       { const X = S.execGossip; if (X && now < X.until && Math.random() < 0.4) { const o = S.op && S.op[n.id] && S.op[n.id][X.key], v = o ? o.v : 0, nm = X.name.split(' ')[0]; txt = (v >= 15 ? ['Ainda não acredito no que fizeram com ' + nm + '.', 'Pobre ' + nm + '... não merecia.', 'Chorei na execução de ' + nm + '.'] : v <= -15 ? [nm + ' teve o que mereceu.', 'Viu a cabeça de ' + nm + ' rolar? Bem feito.', 'A cidade está melhor sem ' + nm + '.'] : ['Viu a execução de ' + nm + '?', 'Não consigo tirar a guilhotina da cabeça.', 'Dizem que ' + nm + ' nem chorou.', 'Que dia aquele da praça...'])[Math.floor(Math.random() * 3)]; } }
+      if (n.mood < 30 && Math.random() < 0.5) txt = pick(MOOD_SAD); else if (n.mood > 80 && Math.random() < 0.3) txt = pick(MOOD_HAPPY); else if (n.gold < 5 && Math.random() < 0.4) txt = pick(MOOD_BROKE);
       n.dir = dirFromVecS(mate.x - n.x, mate.y - n.y); mate.dir = dirFromVecS(n.x - mate.x, n.y - mate.y);
       const T0 = S.op[n.id]; let gossip = null; if (T0 && Math.random() < 0.6) { let b2 = null; for (const k in T0) if (!T0[k].heard && T0[k].kind && (!b2 || T0[k].mag > b2.mag)) { b2 = T0[k]; gossip = k; } if (b2) { memGossip(n, mate); const who = gossip.charAt(0).toUpperCase() + gossip.slice(1); txt = MEM_DELTA[b2.kind] > 0 ? ['Sabe ' + who + '? Gente boa.', who + ' ' + MEM_TXT[b2.kind] + '!', 'Gostei de ' + who + '.'][Math.floor(Math.random() * 3)] : ['Cuidado com ' + who + '...', who + ' ' + MEM_TXT[b2.kind] + '!', 'Não confio em ' + who + '.'][Math.floor(Math.random() * 3)]; } }
       near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt, ms: 1 });
@@ -3199,6 +3243,7 @@ function opOf(n, p) { const o = S.op[n.id] && S.op[n.id][memKey(p)]; return o ? 
 function opLevel(v) { return v >= 50 ? { k: 'amigo', n: 'Amigo' } : v >= 15 ? { k: 'simpatico', n: 'Simpático' } : v > -15 ? { k: 'neutro', n: 'Neutro' } : v > -50 ? { k: 'desconfiado', n: 'Desconfiado' } : { k: 'inimigo', n: 'Inimigo' }; }
 function memAdd(n, p, kind, heard, from) {
   if (!n || n.kind === 'guard' || n.kind === 'captain' || n.transient || !p || p.dev) return; const k = memKey(p);
+  if (!heard && /^(assault|assault_me|murder|body|executed)$/.test(kind)) moodAdd(n, kind === 'murder' || kind === 'assault_me' ? -8 : -4);
   const T = (S.op[n.id] = S.op[n.id] || {}), o = T[k] || (T[k] = { v: 0, why: '', mag: 0, heard: false });
   if (!heard && o.lk === kind && now_() - (o.lt || 0) < 6000) return; if (!heard) { o.lk = kind; o.lt = now_(); }   // vários golpes seguidos contam como uma vez
   const d = (MEM_DELTA[kind] || 0) * (heard ? 0.5 : 1); o.v = clamp(o.v + d, -100, 100); repAdd(p, npcGroup(n.id, n.kind), d * (heard ? 0.1 : 0.2));
