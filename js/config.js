@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.71.0';
-const VERSION_NAME = 'Nae · Mil Socos';
+const VERSION = 'v1.72.0';
+const VERSION_NAME = 'Nae · Hajime';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -455,6 +455,14 @@ const USE = {
   aid:    { name: 'Socorro', cat: 'Sobrevivência', K: 60, desc: 'Poções, bandagens e ervas: curam mais.' },
 };
 const USE_MAX_BONUS = 0.15;
+// golpes de mão nua ensinados pelo sensei do Dojô do Punho de Ferro (qualquer vocação, com a arma guardada)
+const SENSEI_MOVES = {
+  combo: { n: 'Soco em sequência', p: 40, req: 0, d: 'Três socos rápidos seguidos: o terceiro sai mais forte e atordoa.' },
+  sweep: { n: 'Rasteira', p: 60, req: 15, d: 'Esquiva (C) colado no oponente: um chute baixo que derruba.' },
+  kamae: { n: 'Postura de defesa', p: 80, req: 30, d: 'Segurando o botão direito de mãos nuas: defesa perfeita mais fácil e um contragolpe quando acerta o tempo.' },
+  throw: { n: 'Arremesso de quadril', p: 120, req: 45, d: 'Segurando o oponente (agarrão), aperte F: joga ele no chão por cima do quadril. No duelo basta estar colado nele.' },
+};
+const hasMove = (p, k) => !!(p && p.feats && p.feats.mv && p.feats.mv[k]);
 const useLvl = (p, k) => Math.floor(100 * (1 - Math.exp(-((p.use && p.use[k]) || 0) / USE[k].K)));
 const useBonus = (p, k) => useLvl(p, k) / 100 * USE_MAX_BONUS;
 const MELEE_USE = { knight: 'sword', archer: 'dagger', mage: 'staff' }, RANGED_USE = { knight: 'sword', archer: 'bow', mage: 'magic' };

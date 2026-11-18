@@ -132,3 +132,55 @@ function drawOfuroFx(ctx, P, now) {
   if (G.view && Math.random() < 0.5) { const [vx, vy] = at(0.5 + Math.random() * 2.0, 0.5 + Math.random() * 2.0); spawnPart('smoke', vx - G.view.ox, vy - G.view.oy - 2, { color: '#ffffff' }); }   /* vapor */
 }
 
+
+// ============================================================
+//  DUELOS NO TATAME e AULAS DO SENSEI (lado do jogador)
+// ============================================================
+const dojoBiC = () => BUILDINGS.findIndex(b => b.kind === 'dojo');
+const inDojoC = e => e && !(e.fl) && bldAt(e.rx != null ? e.rx : e.x, e.ry != null ? e.ry : e.y) === dojoBiC();
+const myMove = k => !!(G.me && G.me.feats && G.me.feats.mv && G.me.feats.mv[k]);
+function duelPlayerNear() { const me = G.me; if (!me || G.duel || !inDojoC(me) || me.downed) return null; let best = null, bd = 1.7; for (const id in G.players) { const q = G.players[id]; if (q === me || q.downed || !inDojoC(q)) continue; const d = Math.hypot(q.rx - me.x, q.ry - me.y); if (d < bd) { bd = d; best = q; } } return best; }
+// F: no duelo = arremesso; segurando alguém = arremesso; perto de outro jogador no dojô = desafiar
+function dojoF() {
+  const me = G.me; if (!me) return false;
+  if (myMove('throw') && ((G.duel && G.duel.st === 'fight') || me.dragMode === 'grip')) { Net.send({ t: 'hipthrow' }); return true; }
+  const q = duelPlayerNear(); if (q) { duelBetMenu(q.name, bet => Net.send({ t: 'duel', a: 'invite', id: q.id, bet })); return true; }
+  return false;
+}
+function dojoPrompt() { const me = G.me; if (!me) return ''; if (G.duel && G.duel.st === 'fight') return myMove('throw') ? 'Duelo! Mãos nuas · F colado no oponente: arremesso' : 'Duelo! Mãos nuas · perde quem cair de joelhos ou sair do tatame'; const q = duelPlayerNear(); return q ? 'F: desafiar ' + q.name + ' para um duelo' : ''; }
+function duelBetMenu(name, cb) {
+  let d = document.getElementById('duelmenu'); if (d) d.remove(); d = document.createElement('div'); d.id = 'duelmenu'; d.className = 'gpanel lift-panel';
+  d.innerHTML = '<div class="gp-head"><span>Duelo no tatame</span><button class="gp-x" data-x>✕</button></div><div class="lift-note">Desafiar ' + name + '. Mãos nuas; perde quem cair de joelhos ou sair do tatame. Ninguém se machuca de verdade. Quanto apostar?</div><div class="lift-list">' + [10, 25, 50, 100, 200].map(v => '<button class="lift-btn" data-v="' + v + '"><span class="lift-n">' + v + '</span><span>' + v + ' de ouro (o vencedor leva ' + Math.floor(v * 2 * 0.95) + ')</span></button>').join('') + '</div>';
+  document.body.appendChild(d); d.querySelector('[data-x]').onclick = () => d.remove(); d.querySelectorAll('[data-v]').forEach(b => b.onclick = () => { d.remove(); cb(+b.dataset.v); });
+}
+function duelHud(m) {
+  let h = document.getElementById('duelhud'); if (m.st === 'end') { if (h) h.remove(); G.duel = null; const bp = document.getElementById('duelbet'); if (bp) bp.remove(); return; }
+  const mine = G.me && (m.ai === G.myId || m.bi === G.myId); if (mine && !G.duel && G.dialog && typeof closeDialog === 'function') closeDialog(); G.duel = mine ? m : null;
+  if (!h) { h = document.createElement('div'); h.id = 'duelhud'; document.body.appendChild(h); }
+  const bar = (v, c) => '<div class="du-bar"><i style="width:' + v + '%;background:' + c + '"></i></div>';
+  h.innerHTML = '<div class="du-t">' + (m.st === 'bow' ? 'Apostas abertas · ' + m.left + ' s' : 'Duelo · ' + m.left + ' s') + '</div><div class="du-row"><b>' + m.a + '</b>' + bar(m.ha, '#d8a040') + '<span class="du-vs">×</span>' + bar(m.hb, '#5a9ad8') + '<b>' + m.b + '</b></div><div class="du-s">Aposta ' + m.bet + ' cada · plateia: ' + m.sa + ' em ' + m.a + ', ' + m.sb + ' em ' + m.b + '</div>';
+  if (m.st === 'bow' && !mine && !document.getElementById('duelbet') && G.duelBetDone !== m.id) { const d = document.createElement('div'); d.id = 'duelbet'; d.className = 'gpanel lift-panel'; d.style.top = '62%';
+    d.innerHTML = '<div class="gp-head"><span>Apostar no duelo</span><button class="gp-x" data-x>✕</button></div><div class="lift-list">' + ['a', 'b'].map(sd => [10, 25, 50].map(v => '<button class="lift-btn" data-s="' + sd + '" data-v="' + v + '"><span class="lift-n">' + v + '</span><span>' + v + ' em ' + m[sd] + '</span></button>').join('')).join('') + '</div>';
+    document.body.appendChild(d); d.querySelector('[data-x]').onclick = () => { d.remove(); G.duelBetDone = m.id; }; d.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { Net.send({ t: 'duel', a: 'bet', id: m.id, side: b.dataset.s, v: +b.dataset.v }); d.remove(); G.duelBetDone = m.id; }); }
+  if (m.st === 'fight') { const bp = document.getElementById('duelbet'); if (bp) bp.remove(); }
+}
+if (typeof progEvent === 'function') { const _peD = progEvent; progEvent = function (m, now) {
+  if (m.t === 'duelinv') { gameAsk(m.name + ' desafia você para um duelo no tatame (aposta ' + m.bet + ' de ouro cada). Aceita?', { yes: 'Aceitar' }).then(ok => Net.send({ t: 'duel', a: ok ? 'accept' : 'decline' })); return true; }
+  if (m.t === 'duelst') { duelHud(m); return true; }
+  return _peD(m, now);
+}; }
+// praticantes do dojô: dá para conversar e desafiar
+if (typeof NPC_DIALOG !== 'undefined') { const opts = [['Desafiar para um duelo (aposta 10)', { duel: 10 }], ['Desafiar para um duelo (aposta 25)', { duel: 25 }], ['Desafiar para um duelo (aposta 50)', { duel: 50 }]];
+  NPC_DIALOG.v_gymm = { greet: 'Treino aqui todo dia antes do trabalho. Quer testar?', opts }; NPC_DIALOG.v_gymf = { greet: 'O Mestre diz que o golpe nasce no pé. Quer ver?', opts }; NPC_DIALOG.v_offguard = { greet: 'Folga de serviço, mas os punhos não descansam. Encara?', opts };
+  if (NPC_DIALOG.st_dojo) NPC_DIALOG.st_dojo.opts[1] = ['Aulas de golpes', { local: 'Escolha o golpe.' }]; }
+// aulas do sensei: painel com os quatro golpes
+if (typeof buildDialogOptions === 'function') { const _bdo = buildDialogOptions; buildDialogOptions = function (id) { const r = _bdo.apply(this, arguments);
+  if (id === 'st_dojo') for (const b of document.querySelectorAll('#dlg-opts button')) if (b.textContent.includes('Aulas de golpes')) b.onclick = () => dojoLessons();
+  return r; }; }
+function dojoLessons() {
+  let d = document.getElementById('lessons'); if (d) d.remove(); d = document.createElement('div'); d.id = 'lessons'; d.className = 'gpanel lift-panel'; const fl = typeof useLvl === 'function' ? useLvl(G.me, 'fist') : 0;
+  d.innerHTML = '<div class="gp-head"><span>Aulas do Mestre Tetsuo</span><button class="gp-x" data-x>✕</button></div><div class="lift-note">Golpes de mão nua (com a arma guardada). Seus Punhos: ' + fl + '.</div><div class="lift-list">' + Object.entries(SENSEI_MOVES).map(([k, M]) => { const got = myMove(k), ok = fl >= M.req;
+    return '<button class="lift-btn' + (got ? ' here' : '') + '" data-k="' + k + '"' + (got ? ' disabled' : '') + '><span class="lift-n">' + (got ? '✓' : M.p) + '</span><span><b>' + M.n + '</b>' + (got ? ' <small>(aprendido)</small>' : ' · ' + M.p + ' de ouro' + (M.req ? ' · Punhos ' + M.req : '') + (ok ? '' : ' <small style="color:#ff9a8a">(treine mais)</small>')) + '<br><small>' + M.d + '</small></span></button>'; }).join('') + '</div>';
+  document.body.appendChild(d); d.querySelector('[data-x]').onclick = () => d.remove(); d.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { Net.send({ t: 'npc', n: 'st_dojo', a: 'learn', k: b.dataset.k }); d.remove(); });
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') for (const id of ['duelmenu', 'duelbet', 'lessons']) { const d = document.getElementById(id); if (d) d.remove(); } });

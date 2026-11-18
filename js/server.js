@@ -183,7 +183,7 @@ function hostOnClient(from, m) {
     if (+m.jailLeft > 0) setTimeout(() => { if (S.players[np.id]) jailPlayer(np, Math.min(900000, +m.jailLeft)); }, 1500);
     np.sheathed = true;   // nasce com a arma guardada (sentinelas não implicam)
     np.freeLimb = !!m.freeLimb; np.shieldHp = isFinite(m.shieldHp) ? clamp(+m.shieldHp, 0, 100) : 100;
-    np.feats = {}; if (m.feats && typeof m.feats === 'object') { for (const k of ['thief', 'jobs', 'shifts', 'rent']) if (isFinite(m.feats[k])) np.feats[k] = clamp(+m.feats[k], 0, 1e5); if (m.feats.rg && typeof m.feats.rg === 'object') { np.feats.rg = {}; for (const g in REP_G) if (isFinite(m.feats.rg[g])) np.feats.rg[g] = clamp(+m.feats.rg[g], -100, 100); } }
+    np.feats = {}; if (m.feats && typeof m.feats === 'object' && m.feats.mv && typeof m.feats.mv === 'object') { np.feats.mv = {}; for (const k in SENSEI_MOVES) if (m.feats.mv[k]) np.feats.mv[k] = 1; } if (m.feats && typeof m.feats === 'object') { for (const k of ['thief', 'jobs', 'shifts', 'rent']) if (isFinite(m.feats[k])) np.feats[k] = clamp(+m.feats[k], 0, 1e5); if (m.feats.rg && typeof m.feats.rg === 'object') { np.feats.rg = {}; for (const g in REP_G) if (isFinite(m.feats.rg[g])) np.feats.rg[g] = clamp(+m.feats.rg[g], -100, 100); } }
     np.prof = {}; if (m.prof && typeof m.prof === 'object') for (const k in PROFS) if (isFinite(m.prof[k])) np.prof[k] = clamp(+m.prof[k], 0, 1e6);
     np.tree = cleanTree(cls, lvl, m.tree); if (cls === 'mage' && m.tree && typeof m.tree === 'object' && Object.keys(m.tree).some(k => m.tree[k] && !String(k).startsWith('w_'))) setTimeout(() => { if (S.players[np.id]) info(np, 'O mago mudou: agora você estuda o Pentagrama dos cinco elementos (Fogo, Ar, Terra, Luz e Água), com uma magia de cada nas teclas 1 a 5. Seus pontos de talento voltaram: abra o Grimório (K) para gastar de novo.'); }, 5000); np.use = {}; if (m.use && typeof m.use === 'object') for (const k in USE) if (isFinite(m.use[k])) np.use[k] = clamp(+m.use[k], 0, 1e6);
     np.maxHp = maxHpOf(np); np.maxMp = maxMpOf(np);
@@ -220,7 +220,7 @@ function hostOnClient(from, m) {
       { const rh = p.hp / Math.max(1, p.maxHp), rm = p.mp / Math.max(1, p.maxMp); p.maxHp = maxHpOf(p); p.maxMp = maxMpOf(p); if (!p.downed) { p.hp = Math.max(1, Math.round(p.maxHp * rh)); p.mp = Math.round(p.maxMp * rm); } }
       sendStat(p); break;
     }
-    case 'tskill': treeSkill(p, m.b | 0, m); break;
+    case 'tskill': if (!p.duel) treeSkill(p, m.b | 0, m); break;
     case 'draw': if (p.sheathed) { if (m.on) tell(p, 'Saque o arco primeiro (G).'); break; } bowDraw(p, !!m.on); break;
     case 'loose': if (p.sheathed) break; bowLoose(p, m); break;
     case 'pullarrow': pullArrow(p); break;
@@ -236,7 +236,7 @@ function hostOnClient(from, m) {
     case 'struggle': if (p.bound) { boundStruggle(p); break; } if (!tiedStruggle(p)) struggle(p); break;
     case 'lastwords': case 'execbail': lawMsg(p, m); break;
     case 'untie': untie(p, m); break;
-    case 'shoot': { if (p.sheathed && p.cls === 'archer') break;
+    case 'shoot': { if (p.duel || (p.sheathed && p.cls === 'archer')) break;
       const now = now_(); if (p.cls === 'knight' || p.cls === 'mage' || p.downed || p.carrying || p.lifted || p.atk || p.casting || p.grabbed || now < p.nextAtk) break;
       const rng = CLASSES[p.cls].range + treeEff(p, 'range'), a = +m.a || 0, ok = q => q && Math.abs((q.z || 0) - (p.z || 0)) < 0.5 && (q.alt || 0) < 1.2 && dist(p.x, p.y, q.x, q.y) <= rng + (MON[q.type].rad || 0);
       let q = S.monsters[m.id]; if (!ok(q)) q = null;
@@ -253,7 +253,7 @@ function hostOnClient(from, m) {
         else { p.dev = false; p.devHidden = false; p.skin = p._skin0 && p._skin0 !== 'weaver' ? p._skin0 : SKINS[p.cls][0].id; Net.toOne(from, { t: 'dev', off: 1, skin: p.skin }); }
         Net.toAll({ t: 'pinfo', p: pinfo(p) }); sendStat(p); break; }
       if (text) Net.toAll({ t: 'chat', id: from, name: p.name, text }); break; }
-    case 'skill': if (p.sheathed && p.cls !== 'mage') { tell(p, 'Saque a arma (G) para usar habilidades.'); break; } if (!p.downed) useSkill(p, m.i | 0, m); break;
+    case 'skill': if (p.duel) break; if (p.sheathed && p.cls !== 'mage') { tell(p, 'Saque a arma (G) para usar habilidades.'); break; } if (!p.downed) useSkill(p, m.i | 0, m); break;
     case 'pot': if (!p.downed) usePot(p, m.k); break;
     case 'npc': npcAction(p, m); break;
     case 'gather': sheatheToggle(p, true, true); gather(p, m); break;
@@ -264,7 +264,7 @@ function hostOnClient(from, m) {
     case 'obsc': if (p.dev || p.devPowers) obsControl(p, m); break;   /* controles de simulação */
     case 'obsh': if (p.dev || p.devPowers) { const H = obsLoadH(); Net.toOne(p.id, { t: 'obsh', hr: H.hr, dy: H.dy, heat: S.heat || obsHeatLoad(), names: Object.fromEntries(PROPS.filter(q => q.kind !== 'house').map(q => [q.id, [q.name, q.kind, q.wk || q.shopType || '', q.npcOwner && !(S.estate && S.estate.r[q.id]) ? 1 : 0]])) }); } break;
     case 'hpr': if (isFinite(m.t0)) p.ping = Math.max(0, Date.now() - m.t0); break;   /* resposta do ping do anfitrião */
-    case 'sheathe': p.autoShea = false; sheatheToggle(p); break;
+    case 'sheathe': if (p.duel) { tell(p, 'No duelo é só de mãos nuas.'); break; } p.autoShea = false; sheatheToggle(p); break;
     case 'hotel': hotelMsg(p, m); break;
     case 'trade': if (m.a === 'open') { const n = S.npcs && S.npcs[m.npc]; if (n && tradeCat(n) && dist(n.x, n.y, p.x, p.y) <= 3.6) Net.toOne(p.id, tradeView(n, p)); } else tradeMsg(p, m); break;
     case 'pgive': {   // doar ouro/itens para outro jogador por perto
@@ -365,6 +365,7 @@ function hostOnClient(from, m) {
     case 'parrya': if (p.parry && isFinite(+m.a)) p.parry.a = +m.a; break;   // virar o escudo não reinicia o tempo da defesa perfeita
     case 'sbash': shieldBash(p, +m.a || 0, now_()); break;
     case 'dodge': { const now = now_(); const lg = (p.lost || 0) & ~(p.pro || 0) & 24; if (lg || now < (p.knockUntil || 0) || p.downed || now < (p.dodgeCd || 0) || p.cst < DODGE.cost * Math.max(0.4, 1 - treeEff(p, 'dodgeCost') - useBonus(p, 'dodge')) || now < (p.stunUntil || 0)) break; p.cst -= DODGE.cost * Math.max(0.4, 1 - treeEff(p, 'dodgeCost') - useBonus(p, 'dodge')); useGain(p, 'dodge', 1); p.dodgeCd = now + DODGE.cd; p.dodgeUntil = now + DODGE.iframe; p.dodgeAllow = now + DODGE.ms + 400; p.parry = null; if (p.atk && !p.atk.done) p.atk = null; near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'dash', ms: DODGE.ms + 120 }); sendStat(p);
+      if ((p.sheathed || p.duel) && hasMove(p, 'sweep')) dojoSweep(p, now);
       if (p.burnUntil > now) { p.burnUntil -= 3000; if (p.burnUntil <= now + 400) extinguish(p, 'Você rola no chão e apaga o fogo.'); else near(p.x, p.y, { t: 'burn', id: p.id, ms: p.burnUntil - now }); }
       break; }
     case 'kick': playerKick(p, +m.a || 0, now_()); break;
@@ -418,6 +419,8 @@ function hostOnClient(from, m) {
       p.x = b.x; p.y = b.y; p.dir = dirFromVecS(b.dx, b.dy); p.sleep = m.b | 0; p.sit = null; p.walking = false; break;
     }
     case 'bath': bathMsg(p, m); break;
+    case 'duel': duelMsg(p, m); break;
+    case 'hipthrow': hipThrow(p); break;
     case 'train': trainMsg(p, m); break;
     case 'sit': {
       if (!m.on || p.downed || p.carrying || p.carriedBy) { p.sit = null; break; }
@@ -968,7 +971,7 @@ function bathTick(now) {
     sendStat(p); }
 }
 function mageTick(now) {   /* brasa (animais recuam), flores (curam e acalmam) */
-  bathTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now);
+  bathTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
   for (const p of Object.values(S.players)) {
     if (p.cls !== 'mage' || !buffOn(p, 'ember') || p.downed) continue;
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(p.x, p.y, m.x, m.y) > 3.5) continue; m.flee = { from: p.id, until: now + 1800 }; if (m.aggro === p.id) m.aggro = null; m.atk = null; }
@@ -1040,6 +1043,10 @@ function usePot(p, k) {
 
 // ---------------- NPCs ----------------
 function npcAction(p, m) {
+  if (m.duel) { duelMsg(p, { a: 'invite', id: m.n, bet: m.duel }); return; }
+  if (m.n === 'st_dojo' && m.a === 'learn') { const M = SENSEI_MOVES[m.k], sen = S.npcs && S.npcs.st_dojo; if (!M || !sen || dist(p.x, p.y, sen.x, sen.y) > 3.5) return; p.feats = p.feats || {}; p.feats.mv = p.feats.mv || {};
+    if (p.feats.mv[m.k]) { tell(p, 'Você já sabe ' + M.n + '.'); return; } if (useLvl(p, 'fist') < M.req) { tell(p, 'Mestre Tetsuo: "Seus punhos ainda não estão prontos. Treine no makiwara (Punhos ' + M.req + ')."'); return; } if (!canPay(p, M.p)) { tell(p, 'A aula custa ' + M.p + ' de ouro.'); return; }
+    payCity(p, M.p); p.feats.mv[m.k] = 1; dojoEarn(M.p, p.name + ' aprendeu ' + M.n + ' (' + M.p + ').'); near(sen.x, sen.y, { t: 'anim', w: 'n', id: 'st_dojo', a: 'kata', ms: 2600 }); near(sen.x, sen.y, { t: 'anim', w: 'n', id: 'st_dojo', a: 'talk', txt: 'Observe... e repita mil vezes.', ms: 1 }); tell(p, 'Você aprendeu ' + M.n + ': ' + M.d); sendStat(p); return; }
   const n = NPCS.find(q => q.id === m.n);
   { const sn = S.npcs && S.npcs[m.n]; if (sn && (sn.dead || sn.downed)) { tell(p, sn.dead ? sn.name + ' está morto.' : sn.name + ' está caído e não responde.'); return; } }
   const inJail = n && n.id === 'jailer' && WORLD.bld[tileAt(p.x, p.y)] === BUILDINGS.findIndex(b => b.kind === 'jail');
@@ -1345,11 +1352,12 @@ function playerStrike(p, k, a, now, c = 0) {
   } else if (p.cst < B.st) { tell(p, 'Sem fôlego.'); return; }
   else { p.cst -= B.st; useGain(p, 'breath', B.st / 10); }
   if (now < (p.sheT || 0)) return;
-  const fist = p.sheathed && p.cls !== 'mage';
+  const fist = (p.sheathed && p.cls !== 'mage') || !!p.duel;
   const M = MELEE[p.cls] || MELEE.knight, rip = now < (p.ripUntil || 0);
   const WP = fist ? FIST : p.cls === 'knight' ? WEAPONS[p.wpn || 'sword'] : WEAPONS.sword, ch = isFinite(c) ? clamp(c, 0, 1) : 0;
+  let comboHit = false; if (fist && hasMove(p, 'combo')) { p.combo = (p.combo || []).filter(t => now - t < 1400); p.combo.push(now); if (p.combo.length >= 3) { comboHit = true; p.combo = []; sfx(p.x, p.y, 'Sequência!', '#f0c060', 200); } }
   const W = Math.round(B.W * M.spd * WP.spd * (rip ? 0.55 : 1) * (ch > 0.05 ? 0.55 : 1)), R = B.R, C = Math.round(B.C * M.spd * WP.spd);   // o golpe carregado já foi preparado segurando o botão
-  p.atk = { k, t0: now, a: isFinite(a) ? a : 0, W, R, C, reach: B.reach * M.reach * WP.reach, arc: B.arc * WP.arc, rip, c: ch, wdmg: WP.dmg, wpn: fist ? 'fist' : p.cls === 'knight' ? (p.wpn || 'sword') : 'other' }; p.parry = null; p.ripUntil = 0; p.lastCombat = now;
+  p.atk = { k, t0: now, a: isFinite(a) ? a : 0, W, R, C, reach: B.reach * M.reach * WP.reach, arc: B.arc * WP.arc, rip, c: comboHit ? Math.max(ch, HEAVY) : ch, wdmg: WP.dmg, wpn: fist ? 'fist' : p.cls === 'knight' ? (p.wpn || 'sword') : 'other' }; p.parry = null; p.ripUntil = 0; p.lastCombat = now;
   anim('p', p, fist ? 'punch' : 'atk_' + k, p.x + Math.cos(p.atk.a), p.y + Math.sin(p.atk.a), { ms: W + R + C, W, ang: p.atk.a, reach: p.atk.reach, arc: B.arc });
   sendStat(p);
 }
@@ -1369,13 +1377,15 @@ function witnessCrime(p, x, y, kind) {
   Net.toAll({ t: 'wanted', id: p.id, ms: 300000 }); return true;
 }
 function pvpHit(p, q, A, now) {
-  witnessCrime(p, p.x, p.y);
+  const duel = p.duel && p.duel === q.duel; if (!duel) witnessCrime(p, p.x, p.y);
+  if (q.duel && !duel) return;   /* ninguém de fora atrapalha o duelo */
   if (now < (q.dodgeUntil || 0)) { near(q.x, q.y, { t: 'whiff', id: q.id }); return; }
   const toP = Math.atan2(p.y - q.y, p.x - q.x);
   const BK = blockEval(q, A.k, p.x, p.y, A.a, now, A.W);
   if (BK && BK.okZ && !BK.shield && (A.c || 0) >= HEAVY && !BK.perfect) { guardBreak(q, now); near(q.x, q.y, { t: 'clang', x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 }); }   // sem escudo, golpe carregado fora do tempo quebra a guarda
   else if (BK && BK.okZ) {
     if (BK.shield) shieldWear(q, (A.c || 0) >= HEAVY ? 8 : 3);
+    if (BK.perfect && q.sheathed && hasMove(q, 'kamae')) { const d = Math.max(1, Math.min(rint(4, 8), Math.floor(p.hp) - 1)); damagePlayer(p, d, { x: q.x, y: q.y, name: q.name }, 120, 'torso'); near(q.x, q.y, { t: 'anim', w: 'p', id: q.id, a: 'punch', tx: p.x, ty: p.y, ms: 520 }); sfx(q.x, q.y, 'Contragolpe!', '#f0c060', 0); }
     if (BK.perfect) { p.stunUntil = now + 750; q.ripUntil = now + RIPOSTE_MS; q.cst = Math.min(cstMaxOf(q), q.cst + 5); near(q.x, q.y, { t: 'clang', x: (p.x + q.x) / 2, y: (p.y + q.y) / 2, perfect: 1 }); near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'hurt', ms: 750 }); sendStat(p); }
     else { q.cst -= BK.shield ? 6 : 14; near(q.x, q.y, { t: 'clang', x: (p.x + q.x) / 2, y: (p.y + q.y) / 2 }); if (q.cst <= 0) guardBreak(q, now); }
     sendStat(q); return;
@@ -1394,6 +1404,7 @@ function resolvePlayerStrike(p, A, now) { p._melee = true; try { resolvePlayerSt
 function resolvePlayerStrike0(p, A, now) {
   { const B0 = STRIKES[A.k]; let n = 0; for (const q of Object.values(S.players)) { if (n >= (B0.multi || 1) || !pvpOk(p, q) || !inArc(p.x, p.y, A.a, q.x, q.y, A.reach, A.arc, 0.3)) continue; pvpHit(p, q, A, now); n++; } if (n) return; }
   for (const n of Object.values(S.npcs || {})) { if (n.dead || n.onBack || n.carriedBy || !inArc(p.x, p.y, A.a, n.x, n.y, A.reach, A.arc, 0.3)) continue;
+    if (n.duel || p.duel) { if (n.duel && n.duel === p.duel) duelNpcHit(n, p, rint(7, 12) + ((A.c || 0) >= HEAVY ? 8 : 0), A.c >= HEAVY); continue; }
     if (A.wpn === 'fist') { if (!n.downed) npcDamage(n, rint(3, 7) + (A.c >= HEAVY ? 6 : 0), p); continue; }   /* a soco ninguém morre: caído não toma mais */ const B1 = STRIKES[A.k], M1 = MELEE[p.cls] || MELEE.knight; if ((A.c || 0) >= HEAVY && B1.zone === 'head' && Math.random() < 0.85) { npcDamage(n, 9999, p); if (!n.dead) npcDamage(n, 9999, p); near(n.x, n.y, { t: 'blood', x: n.x, y: n.y, n: 14 }); continue; } npcDamage(n, roll(p, B1.mult * M1.dmg * (A.wdmg || 1) * (1 + 0.6 * (A.c || 0))).dmg, p); break; }
   const B = STRIKES[A.k], M = MELEE[p.cls] || MELEE.knight;
   const targets = Object.values(S.monsters).filter(q => Math.abs((q.z || 0) - (p.z || 0)) < 0.5 && (q.alt || 0) < 1.2 && inArc(p.x, p.y, A.a, q.x, q.y, A.reach, A.arc, MON[q.type].rad || 0.3)).sort((a, b) => dist(a.x, a.y, p.x, p.y) - dist(b.x, b.y, p.x, p.y)).slice(0, B.multi || 1);
@@ -3689,6 +3700,113 @@ function dojoNpcTrain(n, st, now) {   /* o visitante treina: paga a diária ao c
   if (d) { n.dir = dirFromVecS(d.x - n.x, d.y - n.y); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'punch', tx: d.x, ty: d.y, ms: 700 }); near(d.x, d.y, { t: 'dummyhit', i: st.dojo, d: 260 }); }
   else dojoSpar(n, now);
 }
+// ============================================================
+//  DUELOS NO TATAME (convite, mãos nuas, apostas dos lutadores, da plateia e dos moradores) e GOLPES DO SENSEI
+// ============================================================
+const DUEL_BETS = [10, 25, 50, 100, 200];
+const dojoBi = () => BUILDINGS.findIndex(b => b.kind === 'dojo');
+function onTatami(x, y) { const b = BUILDINGS[dojoBi()]; if (!b) return false; const [u, v] = worldToLocal(b, x, y); return u >= 0.9 && u <= 5.1 && v >= 0.9 && v <= 5.1; }
+const inDojo = o => o && !(o.fl) && WORLD.bld[tileAt(o.x, o.y)] === dojoBi();
+const duelEnt = r => r.k === 'p' ? S.players[r.id] : S.npcs && S.npcs[r.id];
+const duelName = r => { const e = duelEnt(r); return e ? e.name.split(',')[0] : '?'; };
+function duelMsg(p, m) {
+  const now = now_(); S.duels = S.duels || {}; S.duelInv = S.duelInv || {};
+  if (m.a === 'invite') {
+    if (p.duel || p.downed || !inDojo(p)) { tell(p, 'Duelos só no tatame do Dojô do Punho de Ferro.'); return; }
+    const bet = DUEL_BETS.includes(m.bet | 0) ? m.bet | 0 : 10; if (p.gold < bet) { tell(p, 'Você precisa de ' + bet + ' de ouro na bolsa para apostar.'); return; }
+    const q = S.players[m.id], n = !q && S.npcs && S.npcs[m.id];
+    if (q) { if (q === p || q.duel || q.downed || !inDojo(q)) { tell(p, 'Essa pessoa não pode duelar agora.'); return; } S.duelInv[q.id] = { from: p.id, bet, until: now + 20000 }; Net.toOne(q.id, { t: 'duelinv', from: p.id, name: p.name, bet }); tell(p, 'Desafio enviado a ' + q.name + ' (aposta ' + bet + ').'); return; }
+    if (n && (n.vtype === 'gym' || n.vtype === 'offg') && !n.duel && inDojo(n)) { const busy = Object.values(S.duels).length; if (busy) { tell(p, 'Já tem uma luta no tatame. Espere terminar.'); return; } near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: ['Aceito! ' + bet + ' de ouro.', 'Vamos ver do que é capaz!', 'Pode vir!'][Math.floor(Math.random() * 3)], ms: 1 }); duelStart({ k: 'p', id: p.id }, { k: 'n', id: n.id }, bet); return; }
+    tell(p, 'Só dá para desafiar jogadores e praticantes no dojô.'); return;
+  }
+  if (m.a === 'accept' || m.a === 'decline') { const I = S.duelInv[p.id]; delete S.duelInv[p.id]; const q = I && S.players[I.from]; if (!I || !q || now > I.until) return;
+    if (m.a === 'decline') { tell(q, p.name + ' recusou o duelo.'); return; }
+    if (Object.values(S.duels).length) { tell(p, 'Já tem uma luta no tatame.'); tell(q, 'Já tem uma luta no tatame.'); return; }
+    if (p.gold < I.bet || q.gold < I.bet) { tell(p, 'Alguém não tem ouro para a aposta.'); tell(q, 'Alguém não tem ouro para a aposta.'); return; }
+    if (!inDojo(p) || !inDojo(q)) return; duelStart({ k: 'p', id: q.id }, { k: 'p', id: p.id }, I.bet); return; }
+  if (m.a === 'bet') { const D = S.duels[m.id]; if (!D || D.st !== 'bow' || !inDojo(p) || p.duel) return; const v = [10, 25, 50].includes(m.v | 0) ? m.v | 0 : 10, side = m.side === 'b' ? 'b' : 'a';
+    if (D.bets.some(x => x.who === p.id)) { tell(p, 'Você já apostou nesta luta.'); return; } if (p.gold < v) { tell(p, 'Ouro insuficiente.'); return; }
+    p.gold -= v; D.bets.push({ who: p.id, name: p.name, side, v }); sendStat(p); duelSend(D); tell(p, 'Aposta de ' + v + ' em ' + duelName(D[side]) + '.'); return; }
+}
+function duelStart(a, b, bet) {
+  const now = now_(), id = 'du' + (S.duelN = (S.duelN || 0) + 1), T = tatamiSpots(), D = { id, a, b, bet, st: 'bow', t0: now, bets: [], hp0: {} };
+  for (const [r, sp] of [[a, T[0]], [b, T[1]]]) { const e = duelEnt(r); e.duel = id; e.x = sp.x; e.y = sp.y; if (r.k === 'p') { D.hp0[e.id] = e.hp; e.sit = null; e.train && trainEnd(e); if (!e.sheathed) sheatheToggle(e, true, true); e.gold -= bet; Net.toOne(e.id, { t: 'tp', x: e.x, y: e.y, z: 0, fl: 0, fb: -1 }); sendStat(e); } else { e.duelHp = 100; e.stops && (e.wait = now + 600000); } }
+  const A = duelEnt(a), B = duelEnt(b); A.dir = dirFromVecS(B.x - A.x, B.y - A.y); B.dir = dirFromVecS(A.x - B.x, A.y - B.y);
+  S.duels[id] = D; for (const r of [a, b]) { const e = duelEnt(r); near(e.x, e.y, { t: 'anim', w: r.k === 'p' ? 'p' : 'n', id: e.id, a: 'bow', ms: 1600 }); }
+  // moradores presentes apostam e torcem
+  for (const n of Object.values(S.npcs)) { if (n.duel || !inDojo(n) || n.id === 'st_dojo' || Math.random() < 0.3) continue; const side = Math.random() < 0.5 ? 'a' : 'b', v = 5 + Math.floor(Math.random() * 4) * 5; D.bets.push({ who: n.id, name: n.name.split(',')[0], side, v, npc: 1 }); setTimeout(() => { if (S.npcs[n.id]) near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: v + ' em ' + duelName(D[side]) + '!', ms: 1 }); }, 400 + Math.random() * 2500); }
+  const sen = S.npcs.st_dojo; if (sen && inDojo(sen)) near(sen.x, sen.y, { t: 'anim', w: 'n', id: 'st_dojo', a: 'talk', txt: 'Rei! Saudação... e em guarda.', ms: 1 });
+  sys('Duelo no Dojô do Punho de Ferro: ' + duelName(a) + ' × ' + duelName(b) + ' (aposta ' + bet + '). Apostas abertas por 8 segundos!'); duelSend(D);
+}
+function duelSend(D) { const pot = D.bet * 2, sa = D.bets.filter(x => x.side === 'a').reduce((s0, x) => s0 + x.v, 0), sb = D.bets.filter(x => x.side === 'b').reduce((s0, x) => s0 + x.v, 0);
+  const A = duelEnt(D.a), B = duelEnt(D.b), hp = (r, e) => !e ? 0 : r.k === 'p' ? Math.max(0, Math.round((e.hp / e.maxHp - KNEEL_HP) / (1 - KNEEL_HP) * 100)) : Math.max(0, Math.round(e.duelHp));
+  const msg = { t: 'duelst', id: D.id, st: D.st, a: duelName(D.a), b: duelName(D.b), ai: D.a.id, bi: D.b.id, bet: D.bet, pot, sa, sb, ha: hp(D.a, A), hb: hp(D.b, B), left: D.st === 'bow' ? Math.max(0, Math.ceil((D.t0 + 8000 - now_()) / 1000)) : Math.max(0, Math.ceil((D.t0 + 98000 - now_()) / 1000)) };
+  for (const q of Object.values(S.players)) if (inDojo(q) || q.duel === D.id) Net.toOne(q.id, msg); }
+function duelEnd(D, winner, why) {
+  if (D.st === 'end') return; D.st = 'end'; const W = winner ? D[winner] : null, Lr = winner ? D[winner === 'a' ? 'b' : 'a'] : null;
+  for (const r of [D.a, D.b]) { const e = duelEnt(r); if (!e) continue; e.duel = null; if (r.k === 'p') { e.hp = Math.max(e.hp, D.hp0[e.id] || e.hp); e.stunUntil = 0; e.knockUntil = 0; sendStat(e); } else { e.duelHp = null; e.wait = now_() + 15000; } }
+  const cut = x => Math.floor(x * 0.95); let house = 0;
+  if (W) { const we = duelEnt(W); if (W.k === 'p' && we) { we.gold += cut(D.bet * 2); sendStat(we); } house += D.bet * 2 - cut(D.bet * 2); }
+  else for (const r of [D.a, D.b]) { const e = duelEnt(r); if (r.k === 'p' && e) { e.gold += D.bet; sendStat(e); } }
+  const win = D.bets.filter(x => winner && x.side === winner), lose = D.bets.filter(x => !winner || x.side !== winner), lt = lose.reduce((s0, x) => s0 + x.v, 0), wt = win.reduce((s0, x) => s0 + x.v, 0);
+  if (!winner) for (const x of D.bets) { const q = S.players[x.who]; if (q) { q.gold += x.v; sendStat(q); } }
+  else if (!wt) { house += Math.round(lt * 0.05); for (const x of lose) { const q = S.players[x.who]; if (q) { q.gold += cut(x.v); sendStat(q); } } }
+  else { house += Math.round(lt * 0.05); for (const x of win) { const q = S.players[x.who], v = x.v + Math.floor(lt * 0.95 * x.v / wt); if (q) { q.gold += v; tell(q, 'Sua aposta em ' + duelName(W) + ' rendeu ' + v + ' de ouro!'); sendStat(q); } else if (S.npcs[x.who]) near(S.npcs[x.who].x, S.npcs[x.who].y, { t: 'anim', w: 'n', id: x.who, a: 'cheer', ms: 1400 }); }
+    for (const x of lose) { const q = S.players[x.who]; if (q) tell(q, 'Você perdeu a aposta de ' + x.v + '.'); } }
+  if (house > 0) dojoEarn(house, 'Taxa das apostas do duelo (' + house + ').');
+  for (const r of [D.a, D.b]) { const e = duelEnt(r); if (e) near(e.x, e.y, { t: 'anim', w: r.k === 'p' ? 'p' : 'n', id: e.id, a: 'bow', ms: 1600 }); }
+  const sen = S.npcs.st_dojo; if (sen && inDojo(sen)) near(sen.x, sen.y, { t: 'anim', w: 'n', id: 'st_dojo', a: 'talk', txt: W ? 'Vitória de ' + duelName(W) + '!' : 'Empate. Bom combate.', ms: 1 });
+  sys(W ? duelName(W) + ' venceu ' + duelName(Lr) + ' no tatame do Punho de Ferro' + (why ? ' (' + why + ')' : '') + '.' : 'O duelo no Punho de Ferro terminou empatado.');
+  D.st = 'end'; duelSend(D); delete S.duels[D.id];
+}
+function duelNpcHit(n, by, dmg, heavy) {
+  const D = S.duels && S.duels[n.duel]; if (!D || D.st !== 'fight') return; n.duelHp -= dmg; sfx(n.x, n.y, '-' + dmg, '#ff8a6a'); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: heavy ? 'hurt_head' : 'hurt', ms: 400 }); if (heavy) n.duelStun = now_() + 1200; duelSend(D);
+}
+function duelTick(now) {
+  for (const D of Object.values(S.duels || {})) {
+    const A = duelEnt(D.a), B = duelEnt(D.b);
+    if (!A || !B) { duelEnd(D, A ? 'a' : B ? 'b' : null, 'o oponente saiu'); continue; }
+    if (D.st === 'bow') { if (now - D.t0 >= 8000) { D.st = 'fight'; D.t0 = now - 8000; sys('Hajime! Começa o duelo: ' + duelName(D.a) + ' × ' + duelName(D.b) + '.'); duelSend(D); } continue; }
+    const lost = (r, e) => r.k === 'p' ? (e.hp < e.maxHp * KNEEL_HP || e.downed || !onTatami(e.x, e.y) || (e.fl || 0) !== 0) : e.duelHp <= 0;
+    const la = lost(D.a, A), lb = lost(D.b, B);
+    if (la || lb) { duelEnd(D, la && lb ? null : la ? 'b' : 'a', (la ? (D.a.k === 'p' && !onTatami(A.x, A.y) ? 'saiu do tatame' : 'caiu de joelhos') : (D.b.k === 'p' && !onTatami(B.x, B.y) ? 'saiu do tatame' : 'caiu de joelhos'))); continue; }
+    if (now - D.t0 > 98000) { const pa = D.a.k === 'p' ? A.hp / A.maxHp : A.duelHp / 100, pb = D.b.k === 'p' ? B.hp / B.maxHp : B.duelHp / 100; duelEnd(D, Math.abs(pa - pb) < 0.05 ? null : pa > pb ? 'a' : 'b', 'tempo esgotado'); continue; }
+    for (const [r, e, o] of [[D.a, A, B], [D.b, B, A]]) if (r.k === 'n') duelNpcAi(e, o, now);
+    if (now - (D.sendT || 0) > 700) { D.sendT = now; duelSend(D); }
+  }
+}
+function duelNpcAi(n, foe, now) {   /* o praticante luta: chega perto, soca, chuta, às vezes derruba */
+  if (now < (n.duelStun || 0) || now < (n.duelT || 0)) return; const d = dist(n.x, n.y, foe.x, foe.y); n.dir = dirFromVecS(foe.x - n.x, foe.y - n.y);
+  if (d > 1.1) { const k = Math.min(1, 0.09 / d); const nx = n.x + (foe.x - n.x) * k, ny = n.y + (foe.y - n.y) * k; if (onTatami(nx, ny)) { n.x = nx; n.y = ny; } n.duelT = now + 60; return; }
+  const r = Math.random(), a = r < 0.55 ? 'punch' : r < 0.85 ? 'kick' : 'shove'; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a, tx: foe.x, ty: foe.y, ms: 560 }); n.duelT = now + 1200 + Math.random() * 700;
+  setTimeout(() => { if (!S.players[foe.id] || !foe.duel || foe.duel !== n.duel) return; const t = now_();
+    if (t < (foe.dodgeUntil || 0)) { near(foe.x, foe.y, { t: 'whiff', id: foe.id }); return; }
+    if (foe.parry && Math.abs(angDiff(foe.parry.a, Math.atan2(n.y - foe.y, n.x - foe.x))) < PARRY_ARC) { const perfect = t - foe.parry.t0 < (hasMove(foe, 'kamae') ? 900 : 300); near(foe.x, foe.y, { t: 'clang', x: (n.x + foe.x) / 2, y: (n.y + foe.y) / 2, perfect: perfect ? 1 : 0 }); foe.cst = Math.max(0, foe.cst - 8);
+      if (perfect && hasMove(foe, 'kamae')) { duelNpcHit(n, foe, rint(6, 10), false); near(foe.x, foe.y, { t: 'anim', w: 'p', id: foe.id, a: 'punch', tx: n.x, ty: n.y, ms: 520 }); sfx(foe.x, foe.y, 'Contragolpe!', '#f0c060', 0); } sendStat(foe); return; }
+    if (a === 'shove' && Math.random() < 0.5) { knockPlayer(foe, n, t); }
+    const dmg = Math.min(rint(4, 7) + Math.floor(foe.lvl * 0.4), Math.max(0, Math.floor(foe.hp) - 1)); if (dmg > 0) damagePlayer(foe, dmg, { x: n.x, y: n.y, name: n.name }, 0, a === 'kick' ? 'legs' : 'torso'); }, 300);
+}
+// rasteira: na esquiva, colado no oponente
+function dojoSweep(p, now) {
+  const a = p.fa || 0; let best = null, bd = 1.45;
+  for (const q of Object.values(S.players)) { if (!pvpOk(p, q) || (q.duel && q.duel !== p.duel)) continue; const d = dist(p.x, p.y, q.x, q.y); if (d < bd) { bd = d; best = { k: 'p', e: q }; } }
+  for (const n of Object.values(S.npcs || {})) { if (n.dead || n.downed) continue; const d = dist(p.x, p.y, n.x, n.y); if (d < bd && (n.duel ? n.duel === p.duel : !p.duel)) { bd = d; best = { k: 'n', e: n }; } }
+  for (const q of Object.values(S.monsters)) { const d = dist(p.x, p.y, q.x, q.y); if (d < bd && !p.duel && !MON[q.type].big) { bd = d; best = { k: 'm', e: q }; } }
+  if (!best) return; const e = best.e; near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'kick', tx: e.x, ty: e.y, ms: 520 }); sfx(p.x, p.y, 'Rasteira!', '#f0c060', 150);
+  setTimeout(() => { const t = now_(); if (best.k === 'p') { if (!(p.duel && p.duel === e.duel)) witnessCrime(p, p.x, p.y); knockPlayer(e, p, t); }
+    else if (best.k === 'n') { if (e.duel) duelNpcHit(e, p, 14, true); else { npcDamage(e, 2, p); near(e.x, e.y, { t: 'anim', w: 'n', id: e.id, a: 'getup', ms: 900 }); } }
+    else if (S.monsters[e.id]) knockMon(e, p, t); }, 220);
+}
+// arremesso de quadril: segurando o oponente (ou colado nele, no duelo), F
+function hipThrow(p) {
+  if (!hasMove(p, 'throw') || p.downed || !(p.sheathed || p.duel)) return; const now = now_(); if (now < (p.throwT || 0)) return;
+  let t = null, k = null;
+  if (p.drag && p.drag.mode === 'grip') { k = p.drag.k; t = dragTarget(k, p.drag.id); stopDrag(p); }
+  else if (p.duel) { const D = S.duels[p.duel]; if (D && D.st === 'fight') { const r = D.a.id === p.id ? D.b : D.a, e = duelEnt(r); if (e && dist(p.x, p.y, e.x, e.y) < 1.35) { t = e; k = r.k; } } }
+  if (!t) return; p.throwT = now + 3000; near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'shove', tx: t.x, ty: t.y, ms: 700 }); sfx(p.x, p.y, 'Arremesso!', '#f0c060', 0);
+  setTimeout(() => { if (k === 'p' && S.players[t.id]) { if (!(p.duel && p.duel === t.duel)) witnessCrime(p, p.x, p.y); const d = Math.min(rint(8, 14), Math.max(0, Math.floor(t.hp) - 1)); flingPlayer(t, p.x, p.y, 1.4); if (d > 0) damagePlayer(t, d, { x: p.x, y: p.y, name: p.name }, 0, 'torso'); }
+    else if (k === 'n' && S.npcs[t.id]) { if (t.duel) duelNpcHit(t, p, 25, true); else npcDamage(t, 4, p); near(t.x, t.y, { t: 'anim', w: 'n', id: t.id, a: 'hurt', ms: 600 }); setTimeout(() => { if (S.npcs[t.id]) near(t.x, t.y, { t: 'anim', w: 'n', id: t.id, a: 'getup', ms: 900 }); }, 700); } }, 350);
+}
 // luta no tatame: dois em volta se encaram e trocam golpes; de vez em quando um derruba o outro
 function dojoSpar(n, now) {
   const b = BUILDINGS.find(q => q.kind === 'dojo'), foe = Object.values(S.npcs).find(o => o !== n && !o.dead && WORLD.bld[tileAt(o.x, o.y)] === (b && BUILDINGS.indexOf(b)) && ((o.stops && o.stops[o.si] && o.stops[o.si].dojo === -1) || o.sparring) && dist(o.x, o.y, n.x, n.y) < 3.2);
@@ -3760,6 +3878,7 @@ function visBuy(n, pid) {   // comprar de verdade numa loja de jogador (o ouro v
 }
 function visGone(n, why) { delete S.npcs[n.id]; Net.toAll({ t: 'vgone', id: n.id }); if (why) sys(why); }
 function visitorTick(n, now, dt) {
+  if (n.duel) return;   /* lutando no tatame */
   if (hotelNight(n, now, dt)) return;
   if (n.wantedT > now) { // fugindo para o portão mais próximo
     const g = visGates().sort((a, b) => dist(a[0], a[1], n.x, n.y) - dist(b[0], b[1], n.x, n.y))[0]; if (npcWalk(n, g[0], g[1], 2.6, dt)) visGone(n, n.name.split(',')[0] + ' fugiu da cidade com o que roubou.'); return; }
@@ -3767,6 +3886,7 @@ function visitorTick(n, now, dt) {
   const st = n.stops[n.si]; if (!st) { n.leaving = true; n.rpath = null; return; }
   if (!n.rpath) n.rpath = (dist(n.x, n.y, VIS_HUB[0], VIS_HUB[1]) > 14 ? [VIS_HUB] : []).concat(planRoute({ x: dist(n.x, n.y, VIS_HUB[0], VIS_HUB[1]) > 14 ? VIS_HUB[0] : n.x, y: dist(n.x, n.y, VIS_HUB[0], VIS_HUB[1]) > 14 ? VIS_HUB[1] : n.y }, st.x, st.y));
   if (n.rpath.length) { const [wx, wy] = n.rpath[0]; if (npcWalk(n, wx, wy, 1.05, dt) || dist(n.x, n.y, wx, wy) < 0.5) n.rpath.shift(); if (!n.rpath.length) { n.wait = now + st.w; if (st.shop) setTimeout(() => { if (S.npcs[n.id]) visBuy(n, st.shop); }, 2500); if (st.bank) setTimeout(() => { if (S.npcs[n.id]) npcBankVisit(n, st.bank); }, 2200); } return; }
+  if (n.duel) return;
   if (st.dojo != null) dojoNpcTrain(n, st, now);
   if (n.vtype === 'thug') thugTick(n, now);
   if (now > n.wait) { if (n.dojoDummy != null) n.dojoDummy = null; n.si++; n.rpath = null; }
@@ -4305,6 +4425,7 @@ function reqZone(k, ax, ay, aa, def) {
   return null;   // mordida e golpes sem direção: qualquer bloqueio serve
 }
 function blockEval(def, k, ax, ay, aa, now, W) {
+  if (def.parry && def.sheathed && hasMove(def, 'kamae')) W = (W || 400) + 900;   /* postura de defesa: janela perfeita maior */
   if (!def.parry || Math.abs(angDiff(def.parry.a, Math.atan2(ay - def.y, ax - def.x))) > PARRY_ARC) return null;
   const okZ = true, shield = hasShield(def);   // só a direção importa: o escudo aponta para o mouse (sem as zonas alto/esquerda/direita/baixo)
   const perfect = okZ && now - def.parry.t0 <= PARRY_PERFECT + (W || 400) * 0.25 + treeEff(def, 'parry') + useLvl(def, 'parry') * 0.6 + (k === 'over' ? 80 : 0);
