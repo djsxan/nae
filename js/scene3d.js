@@ -2044,7 +2044,7 @@ function mInterior(b, fl = 0) {
       o.add(alongX ? wbox(L, 0.05, 0.22, (x0 + x1) / 2, Math.min(B0, hh) + 0.02, z0, brass, 1) : wbox(0.22, 0.05, L, x0, Math.min(B0, hh) + 0.02, (z0 + z1) / 2, brass, 1));
       if (tall) for (let k = 0; k <= L + 0.001; k += 0.5) { const x = alongX ? x0 + k * Math.sign(x1 - x0 || 1) : x0, z = alongX ? z0 : z0 + k * Math.sign(z1 - z0 || 1); if (f === 'front' && Math.abs(x - dx) < 0.6) continue; o.add(wbox(0.06, hw, 0.06, x, hw / 2, z, iron, 1)); }
       if (tall) o.add(alongX ? wbox(L, 0.05, 0.07, (x0 + x1) / 2, hw * 0.6, z0, iron, 1) : wbox(0.07, 0.05, L, x0, hw * 0.6, (z0 + z1) / 2, iron, 1)); };
-    face('back', 0, 0.05, w, 0.05); face('front', 0, h - 0.05, w, h - 0.05); face('left', 0.05, 0, 0.05, h); face('right', w - 0.05, 0, w - 0.05, h);
+    face('back', 0, 0.05, w, 0.05); if (dx - 0.6 > 0.05) face('front', 0, h - 0.05, dx - 0.6, h - 0.05); if (w - dx - 0.6 > 0.05) face('front', dx + 0.6, h - 0.05, w, h - 0.05); /* vão da porta livre */ face('left', 0.05, 0, 0.05, h); face('right', w - 0.05, 0, w - 0.05, h);
   }
   // móveis
   const W_ = () => smat('wood', '#7a5434', { bump: 1 }), DW = () => smat('wood', '#4e3420', { bump: 1 });

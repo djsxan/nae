@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.68.1';
-const VERSION_NAME = 'Nae · Estufa da Elva';
+const VERSION = 'v1.69.0';
+const VERSION_NAME = 'Nae · Pentagrama';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -42,12 +42,33 @@ const CLASSES = {
   },
   mage: {
     name: 'Mago', role: 'Magia / Cura',
-    desc: 'Erudito das artes antigas. Domina fogo e gelo e mantém os aliados de pé.',
+    desc: 'Estudioso dos cinco elementos: fogo, ar, terra, luz e água. Começa com uma magia de cada e luta de perto com o cajado.',
     hp: [90, 11], mp: [100, 13], armor: 0, range: 5.5, atkMs: 1250, crit: 0.05,
     dmg: [[3, 1.0], [6, 1.6]], stats: { vida: 2, mana: 5, dano: 5, alcance: 4 },
     passive: { name: 'Mente Arcana', desc: 'Regenera mana duas vezes mais rápido.' },
   },
 };
+// ---------- o Pentagrama do mago: 5 elementos nas pontas (ordem wicca, Luz em cima, sentido horário) ----------
+const MAGE_EL = [
+  { k: 'holy', n: 'Luz', ic: '☀', c: '#d9a92e', ink: '#8a6410' },
+  { k: 'water', n: 'Água', ic: '💧', c: '#3f86b8', ink: '#1f4f72' },
+  { k: 'fire', n: 'Fogo', ic: '🔥', c: '#c4432a', ink: '#7e2414' },
+  { k: 'earth', n: 'Terra', ic: '🌿', c: '#5b8a36', ink: '#34561c' },
+  { k: 'wind', n: 'Ar', ic: '🌬', c: '#7aa6ae', ink: '#3e6870' },
+];
+// combinações de dois elementos (no meio do Pentagrama, ainda trancadas: em breve)
+const MAGE_COMBOS = [
+  { a: 'fire', b: 'wind', n: 'Tornado de Fogo', d: 'Um redemoinho de chamas que anda pelo campo e arrasta os inimigos.' },
+  { a: 'holy', b: 'wind', n: 'Campo de Defesa', d: 'Uma cúpula de vento e luz que segura flechas e golpes dos aliados lá dentro.' },
+  { a: 'fire', b: 'water', n: 'Vapor Escaldante', d: 'Névoa fervente que esconde os aliados e queima quem entra nela.' },
+  { a: 'fire', b: 'earth', n: 'Chão de Brasas', d: 'A terra racha e vira brasa: quem pisa queima e anda devagar.' },
+  { a: 'fire', b: 'holy', n: 'Chama Sagrada', d: 'Fogo que aquece e cura os aliados e queima os mortos-vivos.' },
+  { a: 'water', b: 'earth', n: 'Lodaçal', d: 'A terra vira lama funda e prende os inimigos no lugar.' },
+  { a: 'water', b: 'wind', n: 'Tempestade', d: 'Nuvem de chuva e raios sobre a área: molha, apaga fogo e atordoa.' },
+  { a: 'water', b: 'holy', n: 'Água Benta', d: 'Água abençoada que limpa infecção e veneno de quem estiver perto.' },
+  { a: 'earth', b: 'wind', n: 'Tempestade de Areia', d: 'Areia e folhas no ar: os inimigos erram os golpes e perdem você de vista.' },
+  { a: 'earth', b: 'holy', n: 'Bosque Sagrado', d: 'Flores e brotos de luz que curam bastante quem descansa sobre eles.' },
+];
 
 // Skins (visuais) de cada vocação
 const SKINS = {
@@ -90,15 +111,17 @@ const SKILLS = {
     { id: 'agile', name: 'Passo Ágil', mp: 10, cd: 15000, el: 'wind',
       desc: 'Por 6s: anda 60% mais rápido, ataca 2x mais rápido e +10% de crítico.' },
   ],
-  mage: [
-    { id: 'fireball', name: 'Bola de Fogo', mp: 10, cd: 2500, tgt: true, range: 6.5, cast: 700, el: 'fire',
-      desc: 'Conjura uma bola de fogo: 260% de dano.' },
-    { id: 'nova', name: 'Nova de Gelo', mp: 18, cd: 9000, el: 'ice',
-      desc: 'Explosão gélida ao redor (2,5 tiles): 140% de dano e lentidão por 4s.' },
-    { id: 'heal', name: 'Luz Curativa', mp: 20, cd: 6000, el: 'holy',
-      desc: 'Cura você e os aliados em 4 tiles. Reanima aliados caídos.' },
-    { id: 'meteor', name: 'Chuva de Meteoros', mp: 35, cd: 18000, tgt: true, range: 6.5, cast: 1500, el: 'fire',
-      desc: 'Meteoros caem na área do alvo (2,5 tiles): 320% de dano.' },
+  mage: [   // as 5 magias base do Pentagrama (teclas 1 a 5)
+    { id: 'ember', name: 'Brasa na Mão', mp: 8, cd: 14000, el: 'fire',
+      desc: 'A mão pega fogo por 12s: os golpes de cajado queimam (+40% e o alvo arde por 3s), a mão ilumina como uma tocha, acende fogueiras apagadas e os animais recuam do fogo.' },
+    { id: 'windstep', name: 'Passo do Vento', mp: 6, cd: 5000, el: 'wind',
+      desc: 'Uma lufada leva você 3,5 casas para onde está andando (ou para onde olha). No meio do passo nada te acerta.' },
+    { id: 'bloom', name: 'Florescer', mp: 10, cd: 9000, el: 'earth',
+      desc: 'Flores brotam na grama em volta e ficam 3 minutos: quem está nelas recupera um pouco de vida e de fôlego, e os animais ali ficam calmos.' },
+    { id: 'faith', name: 'Fé Inabalável', mp: 12, cd: 8000, el: 'holy',
+      desc: 'Cura um pouco (8% da vida) você e o aliado mais perto, até 3 casas.' },
+    { id: 'spring', name: 'Fonte', mp: 8, cd: 10000, el: 'water',
+      desc: 'Água brota das suas mãos: enche o seu odre e o de quem está perto, todos bebem um gole, apaga quem estiver pegando fogo e as fogueiras, e rega as flores (duram e curam mais).' },
   ],
 };
 
@@ -362,26 +385,37 @@ const TREE = {
       { id: 'a_cst', name: 'Respiração Calma', max: 3, eff: { cst: 0.08 }, desc: '+8% de fôlego de combate por ponto.' },
       { id: 'smoke', name: 'Bomba de Fumaça', skill: true, max: 1, mp: 12, cd: 20000, desc: 'Nuvem de fumaça: os inimigos perdem você de vista por 4s e você anda mais rápido.' }] },
   ],
-  mage: [
-    { name: 'Fogo', icon: '🔥', nodes: [
-      { id: 'm_fire', name: 'Chama Viva', max: 3, eff: { fire: 0.08 }, desc: '+8% de dano das magias de fogo por ponto.' },
-      { id: 'm_dmg', name: 'Foco Arcano', max: 3, eff: { dmg: 0.04 }, desc: '+4% de dano por ponto.' },
-      { id: 'm_crit', name: 'Faísca', max: 3, eff: { crit: 0.02 }, desc: '+2% de chance de crítico por ponto.' },
-      { id: 'm_cast', name: 'Palavras Rápidas', max: 3, eff: { castSpeed: 0.08 }, desc: 'Conjura 8% mais rápido por ponto.' },
-      { id: 'firewall', name: 'Muralha de Chamas', skill: true, max: 1, mp: 25, cd: 16000, desc: 'Ergue uma muralha de fogo à sua frente por 5s: queima os inimigos que estiverem nela.' }] },
-    { name: 'Gelo', icon: '❄', nodes: [
-      { id: 'm_ice', name: 'Frio Cortante', max: 3, eff: { ice: 0.08 }, desc: '+8% de dano das magias de gelo por ponto.' },
-      { id: 'm_slow', name: 'Inverno Longo', max: 3, eff: { slowDur: 0.15 }, desc: 'A lentidão dura 15% mais por ponto.' },
-      { id: 'm_ward', name: 'Pele de Geada', max: 3, eff: { armor: 0.03 }, desc: '-3% de dano recebido por ponto.' },
-      { id: 'm_mp', name: 'Poço de Mana', max: 3, eff: { mp: 0.06 }, desc: '+6% de mana máxima por ponto.' },
-      { id: 'icejail', name: 'Prisão de Gelo', skill: true, max: 1, mp: 18, cd: 12000, desc: 'Congela o alvo por 3s e causa 150% de dano de gelo.' }] },
-    { name: 'Luz', icon: '✚', nodes: [
-      { id: 'm_holy', name: 'Graça', max: 3, eff: { holy: 0.1 }, desc: '+10% de cura por ponto.' },
-      { id: 'm_mreg', name: 'Meditação', max: 3, eff: { mregen: 0.15 }, desc: '+15% de recuperação de mana por ponto.' },
-      { id: 'm_hp', name: 'Fé Inabalável', max: 3, eff: { hp: 0.05 }, desc: '+5% de vida máxima por ponto.' },
-      { id: 'm_regen', name: 'Bênção Serena', max: 3, eff: { regen: 0.12 }, desc: '+12% de recuperação de vida por ponto.' },
-      { id: 'sanct', name: 'Santuário', skill: true, max: 1, mp: 30, cd: 30000, desc: 'Círculo sagrado por 8s: aliados dentro recuperam vida e recebem 25% menos dano.' },
-      { id: 'restore', name: 'Restauração', skill: true, key: 8, max: 1, mp: 0, cd: 60000, desc: 'Devolve um membro perdido a um aliado ao seu lado (ou a você). Gasta TODA a mana e deixa você exausto por 1 minuto: anda devagar, sem fôlego e a mana não volta.' }] },
+  mage: [   // Pentagrama: Luz (em cima), Água, Fogo, Terra, Ar — a magia base fica na ponta; os talentos e evoluções descem para o centro
+    { name: 'Luz', icon: '☀', el: 'holy', base: 'faith', nodes: [
+      { id: 'w_grace', name: 'Graça', max: 3, eff: { holy: 0.1 }, desc: '+10% de cura por ponto.' },
+      { id: 'w_well', name: 'Poço de Mana', max: 3, eff: { mp: 0.06 }, desc: '+6% de mana máxima por ponto.' },
+      { id: 'w_handlight', name: 'Mãos de Luz', soon: 1, max: 0, desc: 'A Fé cura um aliado à distância, mais forte, e levanta quem está de joelhos.' },
+      { id: 'w_prayer', name: 'Prece Coletiva', soon: 1, max: 0, desc: 'A cura alcança todos os aliados em volta.' },
+      { id: 'w_restore', name: 'Restauração', soon: 1, max: 0, desc: 'Devolve um membro perdido a um aliado ao seu lado.' }] },
+    { name: 'Água', icon: '💧', el: 'water', base: 'spring', nodes: [
+      { id: 'w_medit', name: 'Meditação', max: 3, eff: { mregen: 0.15 }, desc: '+15% de recuperação de mana por ponto.' },
+      { id: 'w_serene', name: 'Bênção Serena', max: 3, eff: { regen: 0.12 }, desc: '+12% de recuperação de vida por ponto.' },
+      { id: 'w_mist', name: 'Névoa', soon: 1, max: 0, desc: 'Uma nuvem fresca que esconde você e os aliados dos inimigos.' },
+      { id: 'w_tide', name: 'Correnteza', soon: 1, max: 0, desc: 'Uma onda que empurra os inimigos e apaga incêndios grandes.' },
+      { id: 'w_frost', name: 'Gelo Eterno', soon: 1, max: 0, desc: 'A água congela: prende os inimigos no gelo.' }] },
+    { name: 'Fogo', icon: '🔥', el: 'fire', base: 'ember', nodes: [
+      { id: 'w_flame', name: 'Chama Viva', max: 3, eff: { fire: 0.08 }, desc: '+8% de dano de fogo por ponto.' },
+      { id: 'w_focus', name: 'Foco Arcano', max: 3, eff: { dmg: 0.04 }, desc: '+4% de dano por ponto.' },
+      { id: 'w_sparks', name: 'Faíscas', soon: 1, max: 0, desc: 'Arremessa as brasas da mão nos inimigos à distância.' },
+      { id: 'w_fireball', name: 'Bola de Fogo', soon: 1, max: 0, desc: 'Uma bola de fogo que explode no alvo e queima em volta.' },
+      { id: 'w_meteor', name: 'Chuva de Meteoros', soon: 1, max: 0, desc: 'Pedras em chamas caem do céu sobre uma área.' }] },
+    { name: 'Terra', icon: '🌿', el: 'earth', base: 'bloom', nodes: [
+      { id: 'w_roots', name: 'Raízes Fundas', max: 3, eff: { hp: 0.05 }, desc: '+5% de vida máxima por ponto.' },
+      { id: 'w_bark', name: 'Casca de Carvalho', max: 3, eff: { armor: 0.03 }, desc: '-3% de dano recebido por ponto.' },
+      { id: 'w_sapling', name: 'Muda', soon: 1, max: 0, desc: 'Planta uma muda que cresce com o tempo e com água.' },
+      { id: 'w_thorns', name: 'Espinheiro', soon: 1, max: 0, desc: 'Uma cerca de espinhos brota do chão e prende quem passar.' },
+      { id: 'w_ent', name: 'Despertar do Ent', soon: 1, max: 0, desc: 'A muda vira um Ent que luta ao seu lado e depois volta a dormir como árvore.' }] },
+    { name: 'Ar', icon: '🌬', el: 'wind', base: 'windstep', nodes: [
+      { id: 'w_feather', name: 'Pés de Pluma', max: 3, eff: { speed: 0.04 }, desc: 'Anda 4% mais rápido por ponto.' },
+      { id: 'w_eye', name: 'Olho do Vento', max: 3, eff: { crit: 0.02 }, desc: '+2% de chance de crítico por ponto.' },
+      { id: 'w_gust', name: 'Rajada', soon: 1, max: 0, desc: 'Um sopro forte que empurra os inimigos e os faz tropeçar.' },
+      { id: 'w_shield', name: 'Escudo de Vento', soon: 1, max: 0, desc: 'Um redemoinho em volta de você que desvia flechas.' },
+      { id: 'w_glide', name: 'Voo da Pluma', soon: 1, max: 0, desc: 'Salta alto e plana por cima de muros e rios.' }] },
   ],
 };
 const treePts = p => { let n = 0; for (const k in p.tree || {}) n += p.tree[k] | 0; return n; };
@@ -405,6 +439,11 @@ const USE = {
   staff:  { name: 'Cajado', cat: 'Armas', K: 450, desc: 'Golpes de cajado: mais dano corpo a corpo.' },
   bow:    { name: 'Arco', cat: 'Armas', K: 500, desc: 'Flechas disparadas: mais dano à distância.' },
   magic:  { name: 'Magia', cat: 'Armas', K: 500, desc: 'Feitiços lançados: mais dano das magias.' },
+  el_fire:  { name: 'Fogo', cat: 'Magias', K: 300, desc: 'Brasa na Mão: mais dano do fogo.' },
+  el_wind:  { name: 'Ar', cat: 'Magias', K: 300, desc: 'Passo do Vento: vai mais longe.' },
+  el_earth: { name: 'Terra', cat: 'Magias', K: 300, desc: 'Florescer: mais flores e curam mais.' },
+  el_holy:  { name: 'Luz', cat: 'Magias', K: 300, desc: 'Fé Inabalável: cura mais.' },
+  el_water: { name: 'Água', cat: 'Magias', K: 300, desc: 'Fonte: alcança mais longe.' },
   parry:  { name: 'Aparar', cat: 'Defesa', K: 160, desc: 'Defesas bem-sucedidas: janela perfeita maior e menos fôlego gasto ao bloquear.' },
   dodge:  { name: 'Esquiva', cat: 'Defesa', K: 160, desc: 'Esquivas: gastam menos fôlego.' },
   vigor:  { name: 'Vigor', cat: 'Defesa', K: 700, desc: 'Apanhar endurece: mais vida máxima.' },

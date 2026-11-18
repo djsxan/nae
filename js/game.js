@@ -6,7 +6,7 @@
 const G = {
   myId: null, me: null, players: {}, monsters: {}, npcs: {},
   nums: [], effects: [], parts: [], lights: [], timers: [], shake: 0, throws: [], teles: [], fires: [], breaths: [], blood: [],
-  target: null, hover: null, path: null, pathGoal: null, keys: new Set(), cdEnd: [0, 0, 0, 0],
+  target: null, hover: null, path: null, pathGoal: null, keys: new Set(), cdEnd: [0, 0, 0, 0, 0],
   started: false, view: { ox: 0, oy: 0 }, dialog: null, pendingNpc: null, reviving: null, zoomUser: false,
 };
 const INTERP_MS = 110;
@@ -179,7 +179,7 @@ function clientOnServer(m) {
     case 'tonelinv': G.tonelInv = { from: m.from, name: m.name, bet: m.bet, until: performance.now() + 60000 }; showToast('🍺 ' + m.name + ' te desafiou para o Tonel (aposta ' + m.bet + '). Fale com o Brom para aceitar.'); break;
     case 'aoe':
       if (m.a === 'boom' && m.big) { G.effects.push({ a: 'bigboom', x: m.x, y: m.y, t0: now, dur: 1100, seed: Math.floor(Math.random() * 1000) }); break; }   // explosão da Bola de Fogo
-      G.effects.push({ a: m.a, x: m.x, y: m.y, x2: m.x2, y2: m.y2, k: m.k, id: m.id, t0: now + (m.d || 0), dur: { whirl: 520, warcry: 800, wall: 600, agile: 600, potion: 500, pierce: 500, rain: 900, boom: 500, nova: 700, heal: 1000, lvlup: 1600, meteor: 1600 }[m.a] || 600, seed: Math.floor(Math.random() * 1000) });
+      G.effects.push({ a: m.a, x: m.x, y: m.y, x2: m.x2, y2: m.y2, k: m.k, id: m.id, t0: now + (m.d || 0), dur: { wind: 520, bloom: 1300, spring: 1400, whirl: 520, warcry: 800, wall: 600, agile: 600, potion: 500, pierce: 500, rain: 900, boom: 500, nova: 700, heal: 1000, lvlup: 1600, meteor: 1600 }[m.a] || 600, seed: Math.floor(Math.random() * 1000) });
 
       break;
     case 'cast': { const e = G.players[m.id]; if (e) { e.cast = { start: now, end: now + m.ms, el: m.el }; } break; }
@@ -217,6 +217,7 @@ function clientOnServer(m) {
     case 'dev': G.devAnswered = true; if (m.off) { G.dev = false; G.noclip = false; G.devTools = false; if (G.me) G.me.skin = m.skin || G.me.skin; const dp = $('devpanel'); if (dp) dp.classList.add('hidden'); showBanner('De volta ao herói', 'O Tecelão adormece'); break; } if (m.ok && m.mode === 'normal') { G.devTools = true; showBanner('Modo criador', 'Vocação normal · F2 abre o painel'); buildDevPanel(); $('devpanel').classList.add('hidden'); /* vocação normal: painel fechado até apertar F2 */ } else if (m.ok) { G.dev = true; G.noclip = true; G.me.skin = 'weaver'; showBanner('O Tecelão desperta', 'F2 abre o painel do criador'); buildDevPanel(); } else showToast('Senha do criador incorreta.'); break;
     case 'shake': G.shake = Math.max(G.shake, m.s || 6); break;
     case 'tele': G.teles.push({ ...m, t0: now }); break;
+    case 'fireout': if (G.fires) G.fires = G.fires.filter(f => !m.l.some(([x, y]) => Math.abs(f.x - x) < 0.6 && Math.abs(f.y - y) < 0.6)); break;
     case 'fires': for (const [x, y, r, ms] of m.l) { const t = Math.round(y) * MAP_W + Math.round(x); G.fires.push({ x, y, r, z: m.z != null ? m.z : (WORLD.ground[t] === T.CLIFF && WORLD.fl1[t] > 0 ? 1 : 0), t0: now + (m.ms || 0), until: now + ms }); } if (!m.nb) G.breaths.push({ t0: now, ms: 650 }); break;
 
     case 'wanted': { const e = G.players[m.id]; if (e) e.wantedUntil = m.ms ? now + m.ms : 0; break; }
@@ -386,7 +387,7 @@ function updateLocal(now, dt) {
   if (G.slide) v = G.slide.v;
   me.slide = !!G.slide; me.crouch = crouchKey && !G.slide;
   if (now < (G.stunUntil || 0) || now < (G.knockUntil || 0)) v = null;   // atordoado / guarda quebrada / derrubado
-  if (G.dodge) { const kd = (now - G.dodge.t0) / DODGE.ms; if (kd >= 1) G.dodge = null; else v = G.dodge.v; }
+  if (G.dodge) { const kd = (now - G.dodge.t0) / (G.dodge.ms || DODGE.ms); if (kd >= 1 && !(G.dodge.dist && (G.dodge.k || 0) < 1)) G.dodge = null; else v = G.dodge.v; }   /* o Passo do Vento termina o trajeto mesmo com poucos quadros */
   if (G.push) { const kp = (now - G.push.t0) / 260; if (kp >= 1) G.push = null; else v = G.push.v; }
   const running = !!v && !kneel && !((me.lost || 0) & 24) && !(me.body && Math.max(PART_STATE(me.body.legL), PART_STATE(me.body.legR)) >= 3) && G.keys.has('shift') && !crouchKey && !G.tired && !me.downed && !me.carrying && G.stam > 0;
   if (running) { G.stam = Math.max(0, G.stam - STAM_DRAIN * dt); G.stamT = now; if (G.stam <= 0) G.tired = true; }
@@ -408,7 +409,7 @@ function updateLocal(now, dt) {
     if (now < (G.slowUntil || 0)) sp *= 0.5;   // rugido do dragão
     if (me.anim && /^atk_/.test(me.anim.a) && now - me.anim.t0 < (me.anim.ms || 900)) sp *= 0.45;
     if (G.parrying) sp *= 0.55;
-    if (G.dodge) sp = DODGE.dist / (DODGE.ms / 1000);
+    if (G.dodge) sp = (G.dodge.dist || DODGE.dist) / ((G.dodge.ms || DODGE.ms) / 1000);
     if (G.push) sp = G.push.d / 0.26;
     if (G.dev) sp = PLAYER_SPEED * (G.keys.has('shift') ? 10 : 4);   // Tecelão: voo livre ultrarrápido
     if (G.slide) { const k = (now - G.slide.t0) / SLIDE_MS; sp = PLAYER_SPEED * RUN_MUL * 1.5 * (1 - k * 0.65); if (Math.random() < 0.5) { const w = tileW(me.x, me.y, 0); spawnPart('dust', w.x, w.y); } }
@@ -417,11 +418,15 @@ function updateLocal(now, dt) {
     if (WORLD.ground[tileAt(me.x, me.y)] === T.SHALLOW) sp *= 0.65;
     if (stairH(me.x, me.y) >= 0) sp *= 0.8;
     if (me.buffs && me.buffs.tipsy > now && !G.dev) { const a = Math.sin(now / 420) * 0.55 + Math.sin(now / 170) * 0.15, c = Math.cos(a), s = Math.sin(a); v = [v[0] * c - v[1] * s, v[0] * s + v[1] * c]; sp *= 0.85; }   /* tonto: anda em zigue-zague */
-    const step = sp * dt, nx = me.x + v[0] * step, ny = me.y + v[1] * step;
     const ox = me.x, oy = me.y;
+    if (G.dodge && G.dodge.dist) {   /* Passo do Vento: anda pelo tempo real, em passinhos (não atravessa parede) */
+      const k1 = Math.min(1, (now - G.dodge.t0) / G.dodge.ms); let left = Math.max(0, G.dodge.dist * (k1 - (G.dodge.k || 0))); G.dodge.k = k1;
+      while (left > 0.0001) { const st = Math.min(0.2, left); left -= st; const nx = me.x + v[0] * st, ny = me.y + v[1] * st; if (freeAt(nx, ny, me.z)) { me.x = nx; me.y = ny; } else if (freeAt(nx, me.y, me.z)) me.x = nx; else if (freeAt(me.x, ny, me.z)) me.y = ny; else { G.dodge.k = 1; break; } }
+    } else {
+    const step = sp * dt, nx = me.x + v[0] * step, ny = me.y + v[1] * step;
     if (freeAt(nx, ny, me.z)) { me.x = nx; me.y = ny; }
     else if (freeAt(nx, me.y, me.z)) me.x = nx;
-    else if (freeAt(me.x, ny, me.z)) me.y = ny;
+    else if (freeAt(me.x, ny, me.z)) me.y = ny; }
     moved = Math.hypot(me.x - ox, me.y - oy);
     if (!combatFacing()) me.dir = dirFromVec(v[0], v[1], me.dir);
     if (!moved && G.path) { G.path = null; G.pathGoal = null; }
@@ -546,6 +551,7 @@ function castSkill(i) {
   }
   const slot = $('slot' + i);
   slot.classList.remove('pressed'); void slot.offsetWidth; slot.classList.add('pressed');
+  if (sk.id === 'windstep') { const iv = myInput(), v = iv || (me.fa != null ? [Math.cos(me.fa), Math.sin(me.fa)] : [0, 1]), L = Math.hypot(v[0], v[1]) || 1; G.dodge = { t0: now, v: [v[0] / L, v[1] / L], dist: 3.5 * (1 + useBonus(me, 'el_wind')), ms: 320 }; G.cdEnd[i] = now + sk.cd; Net.send({ t: 'skill', i, a: Math.atan2(v[1], v[0]) }); return; }
   Net.send({ t: 'skill', i });
 }
 function drinkPot(k) {
@@ -729,7 +735,7 @@ function updateTargetFrame() {
   rs.className = !safe && d <= r ? 'ok' : 'far';
 }
 function updateSlots(now) {
-  for (let i = 0; i < 4; i++) {
+  for (let i = 0; i < SKILLS[G.me.cls].length; i++) {
     const T = slotTreeNode(i), left = Math.max(0, T ? (G.tcdEnd[i] || 0) - now : G.cdEnd[i] - now), sk = T ? T.nd : SKILLS[G.me.cls][i], el = $('slot' + i);
     el.style.setProperty('--cd', left > 0 ? (left / sk.cd * 360) + 'deg' : '0deg');
     $('slot' + i + '-t').textContent = left > 0 ? (left / 1000).toFixed(left < 1000 ? 1 : 0) : '';
@@ -899,7 +905,7 @@ function buildDialogOptions(id) {
     add('Como funciona a cadeia?', () => setDialogText('Quem é pego pelas sentinelas fica aqui o tempo da pena: agressão 2 minutos, ataque à traição 3, assassinato 6. Dormir no catre faz o tempo passar mais rápido. Fiança: 30 de ouro por minuto que falta. E nada de mexer nas fechaduras, ouviu?'));
   } else {
     const def = NPC_DIALOG[n.kind];
-    { const ent = G.npcs[id], P0 = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null, playerShop = P0 && G.est && G.est.st && G.est.st[P0.id];
+    { const ent = G.npcs[id], P0 = n.bi != null ? PROPS.find(q => q.bi === n.bi) : null, playerShop = P0 && G.est && G.est.st && G.est.st[P0.id] && def && def.opts && def.opts.some(o => o[1] && o[1].counter);   /* só some quando a loja tem balcão próprio (padaria, forja, taverna continuam negociando) */
       if ((TRADE_KINDS.has(n.kind) || (ent && ent.trader)) && !playerShop) add(ent && ent.trader ? '🧳 Ver as mercadorias do viajante' : '⚖ Negociar (comprar e vender)', () => { closeDialog(); Net.send({ t: 'trade', a: 'open', npc: id }); }, 'active'); }
     if (typeof shiftHere === 'function' && shiftHere() && !(G.shiftUntil > performance.now()) && !(typeof estInBiz === 'function' && estInBiz())) add('Trabalhar um turno aqui (1 min e 15 s)', () => { closeDialog(); Net.send({ t: 'shift', a: 'start' }); });
     if (id === 'innkeeper') {   /* Desafio do Tonel contra pessoas */
@@ -1070,6 +1076,7 @@ window.addEventListener('keydown', e => {
   if (G.paused) { if (typeof gmKey === 'function' && gmKey(k, e)) e.preventDefault(); return; }
   if (k === 'escape') { if (G.dialog) { closeDialog(); return; } for (const id of ['bankp', 'biz', 'jobboard', 'counterp', 'estate', 'bizhub', 'roompw-ask', 'tradep']) { const el = $(id); if (el && !el.classList.contains('hidden') && el.parentNode === document.body && getComputedStyle(el).display !== 'none') { if (id === 'biz' && typeof bizClose === 'function') bizClose(); else if (id === 'estate') estToggle(false); else if (id === 'bizhub') hubToggle(false); else el.classList.add('hidden'); return; } } if (typeof emToggle === 'function') emToggle(); else togglePause(); return; }
   if (k >= '1' && k <= '4') { castSkill(+k - 1); return; }
+  if (k === '5' && G.me && SKILLS[G.me.cls].length > 4) { if (!e.repeat) castSkill(4); return; }
   if (k === 'q') { drinkPot('hp'); return; }
   if (k === 'e') { drinkPot('mp'); return; }
   if (k === 'r' && !G.me.downed && !e.repeat) { if (G.me.cls === 'knight') Net.send({ t: 'sbash', a: G.me.fa ?? 0 }); return; }
@@ -1105,6 +1112,7 @@ window.addEventListener('keydown', e => {
   if (k === 'k' && !e.repeat) { togglePanel('tree'); return; }
   if (k === 'l' && !e.repeat) { GM.biz = 'est'; gmToggle('biz'); return; }
   if (k === 'n' && !e.repeat) { const ib = typeof estInBiz === 'function' && estInBiz(); if (ib) { if (GM.on) gmClose(); bizOpen(ib.pid); return; } GM.biz = 'hub'; gmToggle('biz'); return; }
+  if ((k === '5' || k === '6' || k === '7' || k === '8') && G.me && G.me.cls === 'mage') return;
   if ((k === '5' || k === '6' || k === '7') && !e.repeat) { Net.send({ t: 'tskill', b: +k - 5, a: G.me.fa ?? 0, id: G.target || 0 }); return; }
   if (k === '8' && !e.repeat) { Net.send({ t: 'tskill', b: 2, n: 5, a: G.me.fa ?? 0 }); return; }
   if (k === 'm' && !e.repeat) { toggleWorldMap(); return; }

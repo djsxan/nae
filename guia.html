@@ -105,8 +105,8 @@
       <tr><td>Botão direito (segurar)</td><td>Erguer o escudo (ou a guarda) na direção do mouse. Erguido logo antes do golpe: defesa perfeita e contra-ataque.</td></tr>
       <tr><td><kbd>R</kbd> (cavaleiro com escudo)</td><td>Empurrão de escudo: desequilibra quem está na frente.</td></tr>
       <tr><td><kbd>C</kbd></td><td>Esquiva (em combate).</td></tr><tr><td><kbd>Espaço</kbd></td><td>Trocar o alvo: cada toque passa para o próximo monstro, do mais perto ao mais longe. Amarrado ou agarrado: martele para se soltar. Na gazua: acerte o tempo.</td></tr>
-      <tr><td><kbd>X</kbd></td><td>Atacar o inimigo mais próximo (arqueiro e mago atiram sozinhos no alvo).</td></tr>
-      <tr><td><kbd>1</kbd>–<kbd>4</kbd> (e <kbd>5</kbd>–<kbd>8</kbd>)</td><td>Habilidades da vocação (e as da árvore de constelações; a 8 é a Restauração do Mago). Na árvore (<kbd>K</kbd>), clique numa habilidade já aprendida para <b>equipá-la num espaço da barra (1–4)</b>; clique de novo para tirar.</td></tr>
+      <tr><td><kbd>X</kbd></td><td>Atacar o inimigo mais próximo (o arqueiro atira sozinho no alvo).</td></tr>
+      <tr><td><kbd>1</kbd>–<kbd>4</kbd> (e <kbd>5</kbd>–<kbd>7</kbd>)</td><td>Habilidades da vocação (e as da árvore de constelações do cavaleiro e do atirador). O mago usa <kbd>1</kbd>–<kbd>5</kbd> para as cinco magias do Pentagrama. Na árvore (<kbd>K</kbd>), clique numa habilidade já aprendida para <b>equipá-la num espaço da barra (1–4)</b>; clique de novo para tirar.</td></tr>
       <tr><td><kbd>Q</kbd> · <kbd>E</kbd> · <kbd>0</kbd> · <kbd>B</kbd></td><td>Poção de vida · poção de mana · beber do cantil · bandagem.</td></tr>
       <tr><td><kbd>G</kbd></td><td>Guardar / sacar a arma.</td></tr>
       <tr><td><kbd>H</kbd></td><td>Toque: pegar, carregar ou largar (objetos e caídos). Segurar: menu de agarrar (puxar pelos braços/pés, carregar nas costas, mata-leão, amarrar).</td></tr>
@@ -146,14 +146,24 @@
       <tr><th>Vocação</th><th>Vida (nv 1)</th><th>Mana</th><th>Arma corpo a corpo</th><th>Aptidão</th></tr>
       <tr><td><b>Cavaleiro</b></td><td>150 (+24/nível)</td><td>30</td><td>Espada e escudo, ou alabarda (<kbd>O</kbd>)</td><td>Pele de Aço: 30% menos dano.</td></tr>
       <tr><td><b>Atirador</b></td><td>105 (+15)</td><td>50</td><td>Adaga; arco à distância (alcance 6)</td><td>Olho de Águia: 20% de crítico (×1,8).</td></tr>
-      <tr><td><b>Mago</b></td><td>90 (+11)</td><td>100</td><td>Cajado; magia à distância (5,5). Com uma <b>varinha</b> na mochila, magia mais forte e mais mana.</td><td>Mente Arcana: mana volta 2× mais rápido.</td></tr>
+      <tr><td><b>Mago</b></td><td>90 (+11)</td><td>100</td><td>Cajado de perto e as cinco magias do Pentagrama. Com uma <b>varinha</b> na mochila, magia mais forte e mais mana.</td><td>Mente Arcana: mana volta 2× mais rápido.</td></tr>
     </table>
     <h3>Habilidades</h3>
     <ul>
       <li><b>Cavaleiro</b>: Golpe Brutal (220% e atordoa 1,4 s) · Grito de Guerra (atrai inimigos em 5 tiles, −20% de dano por 6 s) · Redemoinho (160% em volta) · Muralha de Ferro (−60% de dano por 6 s).</li>
       <li><b>Atirador</b>: Tiro Duplo · Flecha Perfurante (atravessa a fila, 180%) · Chuva de Flechas (130% na área) · Passo Ágil (60% mais rápido, ataca 2× por 6 s).</li>
-      <li><b>Mago</b>: Bola de Fogo (260% no alvo; ao conjurar, o mago ergue o cajado sobre um círculo de runas de fogo e, ao lançar, aponta o cajado; onde ela bate, <b>explode</b> num raio de 2 tiles: dano em volta, empurra, deixa o chão queimando por 3 s e <b>fere todo mundo por perto, inclusive o próprio mago</b>). Com o <b>cajado na mão</b> (sacado com <kbd>G</kbd>), toda magia faz <b>+50% de dano</b> — mas na cidade, arma sacada chama as sentinelas · Nova de Gelo (140% em volta + lentidão) · Luz Curativa (cura e reanima aliados) · Chuva de Meteoros (320% na área). Na árvore, ramo da Luz, a <b>Restauração</b> (tecla 8, 10 pontos no ramo) devolve um membro perdido a um aliado ao lado ou a você — gasta toda a mana e deixa o mago exausto por 1 minuto.</li>
+      <li><b>Mago — o Pentagrama dos cinco elementos</b>: o mago nasce com uma magia de cada elemento, nas teclas <kbd>1</kbd> a <kbd>5</kbd>, e luta de perto com o cajado (não atira mais à distância).
+        <ul>
+          <li><kbd>1</kbd> <b>Brasa na Mão</b> (Fogo): a mão pega fogo por 12 s — golpes de cajado +40% e o alvo arde por 3 s; a mão ilumina como tocha, acende fogueiras apagadas e os animais recuam do fogo.</li>
+          <li><kbd>2</kbd> <b>Passo do Vento</b> (Ar): uma lufada leva você 3,5 casas para onde está andando (ou para onde olha); no meio do passo nada te acerta.</li>
+          <li><kbd>3</kbd> <b>Florescer</b> (Terra): flores brotam na grama em volta e ficam 3 minutos; quem está nelas recupera um pouco de vida e fôlego, e os animais ali ficam calmos.</li>
+          <li><kbd>4</kbd> <b>Fé Inabalável</b> (Luz): cura 8% da vida de você e do aliado mais perto (até 3 casas).</li>
+          <li><kbd>5</kbd> <b>Fonte</b> (Água): enche o seu odre e o de quem está perto, todos bebem um gole, apaga quem está pegando fogo e as fogueiras, e rega as flores (duram mais e curam o dobro).</li>
+        </ul>
+        Cada magia fica mais forte com o <b>uso</b> (aba Progresso, grupo Magias). As varinhas continuam dando mais dano de magia e mana.</li>
     </ul>
+    <h3>O Grimório do mago (tecla K)</h3>
+    <p>No lugar das constelações, o mago tem um <b>grimório</b>: um livro aberto com o Pentagrama desenhado em tinta e ouro. Cada ponta é um elemento — <b>Luz</b> em cima, <b>Água</b>, <b>Fogo</b>, <b>Terra</b> e <b>Ar</b> — com um selo de cera da sua magia base. Descendo pela ponta até o centro ficam 2 talentos (1 ponto por nível, até 3 em cada) e 3 evoluções que ainda estão para chegar (Bola de Fogo, Despertar do Ent, Restauração e outras). No meio do Pentagrama ficam as <b>combinações de dois elementos</b> (Tornado de Fogo, Campo de Defesa, Lodaçal…), também em breve. Passe o mouse para ler as anotações na página da direita.</p>
     <p class="muted">Aparências: comum no nível 1, rara no 10, lendária no 20.</p>
   </section>
 
@@ -269,6 +279,8 @@
       <li><b>Entalhe à mão</b> (Esc → Receitas e ofícios, precisa de um machado): 2 toras = <b>Varinha entalhada</b>; 1 madeira nobre + 1 tora = <b>Varinha de carvalho</b> (Artesão 3); 1 madeira nobre + 1 gema = <b>Varinha arcana</b> (Artesão 5). Sobe o ofício de Artesão.</li>
       <li><b>Varinha é a arma do mago</b>: ele usa sozinho a melhor que estiver na mochila. Entalhada +10% de dano mágico e +10 de mana; de carvalho +20% e +20; arcana +30% e +35. Para outras vocações, é mercadoria (a Arcanos compra).</li>
       <li><b>Quadro de avisos</b> na praça: bicos (água para o Brom, caixas para o Borin, varrer a praça) e entregas.</li>
+      <li><b>Turno no seu próprio negócio</b>: sem salário, mas o negócio vende e produz 80% mais enquanto você trabalha e, ao fim de cada turno, você mesmo faz mercadoria: na oficina, a produção de 2 horas e meia (ou receitas com o que está no depósito); na loja, até 3 itens da prateleira (a matéria-prima sai do cofre pela metade do preço).</li>
+      <li><b>Comprar do próprio negócio</b>: o dono compra a <b>preço de custo</b> (o ouro vai para o cofre) no balcão das lojas e também negociando na padaria, na forja e na taverna.</li>
       <li><b>Salário na tela</b>: ao terminar um turno, o valor ganho sobe em cima do seu personagem com uma moedinha (no seu próprio negócio, mostra quanto ele rendeu).</li>
       <li><b>Turnos</b>: fale com quem trabalha no negócio (<kbd>F</kbd>) e escolha “Trabalhar um turno aqui”, ou aperte <kbd>F</kbd> numa bancada vazia; dura 1 min e 15 s e, ao terminar, <b>outro começa sozinho</b> — os turnos seguem enquanto você estiver no prédio. No seu próprio negócio não há salário (o dinheiro já é seu), mas ele vende e produz <b>80% a mais</b> enquanto você trabalha, e no fim de cada turno o chat diz quanto rendeu. O turno é o botão “Trabalhar um turno” no painel de gestão. Todo fim de turno aparece no chat. Saia do prédio para parar. Uniforme automático.</li>
       <li><b>Ofícios</b> (nível 1 a 10): Lenhador, Minerador, Herbalista, Artesão, Comerciante, Mensageiro, Biscateiro. Cada nível de coleta deixa o trabalho 6% mais rápido.</li>
@@ -481,7 +493,7 @@
   </section>
 
   <div class="empty" id="empty">Nada encontrado para essa busca.</div>
-  <p class="muted" style="margin-top:40px">Guia da versão 1.68.1 · atualizado a cada versão do jogo. Veja também o <a href="roadmap.html">Roadmap</a>, com a história de todas as versões.</p>
+  <p class="muted" style="margin-top:40px">Guia da versão 1.69 · atualizado a cada versão do jogo. Veja também o <a href="roadmap.html">Roadmap</a>, com a história de todas as versões.</p>
 </main>
 </div>
 <script>

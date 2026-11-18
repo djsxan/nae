@@ -196,6 +196,7 @@ input[type=text]:focus { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(2
 #slot1 { right: 118px; bottom: 82px; }
 #slot2 { right: 76px; bottom: 152px; }
 #slot3 { right: 4px; bottom: 178px; }
+#slot4 { right: 84px; bottom: 228px; }
 #pot-hp { right: 196px; bottom: 26px; }
 #pot-mp { right: 196px; bottom: 84px; }
 .slot .key { position: absolute; top: 50%; left: 50%; transform: translate(-50%, 70%); font-family: 'Cinzel', serif; font-weight: 900; font-size: 11px; color: #fff; text-shadow: 0 1px 2px #000, 0 0 3px #000; opacity: .85; }
@@ -704,7 +705,12 @@ body.em-on #hud, body.em-on #chat, body.em-on .hotbar { opacity: .25; transition
 #nae-realm .nae-rrow b { color: #f3e9d2; font: 700 16px 'Alegreya Sans', sans-serif; } #nae-realm .nae-rrow small, #nae-realm .nae-rw small { display: block; color: #c9b99a; font-size: 12.5px; }
 #nae-realm .nae-rcode { display: flex; gap: 8px; margin-top: 10px; } #nae-realm .nae-rcode input { flex: 1; text-transform: uppercase; }
 #nae-realm .nae-rform { display: grid; gap: 8px; } #nae-realm .nae-rform label { display: grid; gap: 4px; color: #c9b99a; font: 600 13px 'Alegreya Sans', sans-serif; }
-#nae-realm .nae-rworlds { display: grid; gap: 5px; max-height: 200px; overflow: auto; }
+#nae-realm .nae-rworlds { display: grid; gap: 5px; max-height: 240px; overflow: auto; }
+#nae-realm .nae-rwh { color: #c9a24a; font: 700 11px 'Alegreya Sans', sans-serif; letter-spacing: .1em; text-transform: uppercase; margin: 4px 0 0; }
+#nae-realm .nae-rw.last { border: 1px solid rgba(201,162,74,.45); }
+#nae-realm .nae-rwnew { border: 1px dashed rgba(201,162,74,.4); margin-top: 4px; }
+#nae-rwnewbox { margin: 4px 0 10px; }
+#nae-realm .nae-rwtag { font: 600 11px 'Alegreya Sans', sans-serif; font-style: normal; color: #1a140c; background: #c9a24a; border-radius: 3px; padding: 1px 5px; margin-left: 6px; vertical-align: 1px; }
 #nae-realm .nae-rw { display: flex !important; grid-template-columns: none; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 5px; background: rgba(255,255,255,.04); cursor: pointer; }
 #nae-realm .nae-rw span { flex: 1; } #nae-realm .nae-rw b { color: #f3e9d2; font: 700 15px 'Alegreya Sans', sans-serif; }
 #nae-realm .nae-rmsg { margin-top: 8px; padding: 9px 12px; border-radius: 5px; background: rgba(200,140,40,.18); border: 1px solid rgba(220,170,80,.4); color: #f3e2b8; } #nae-realm .nae-rmsg.hidden { display: none; }
@@ -712,3 +718,54 @@ body.em-on #hud, body.em-on #chat, body.em-on .hotbar { opacity: .25; transition
 #nae-realm input::placeholder { color: rgba(201,185,154,.6); text-transform: none; }
 #nae-realm input:focus { outline: none; border-color: #d8c08a; }
 #nae-realm .nae-rw input[type=radio] { accent-color: #c9a24a; }
+
+/* ---------- Grimório do mago (Pentagrama dos cinco elementos) ---------- */
+#pause .gm-pane #tree.grim-on, #tree.grim-on { background: #1a120b !important; padding: 6px !important; }
+#tree.grim-on .gp-head { font-family: 'IM Fell English SC', serif; }
+.grim-book { position: relative; display: grid; grid-template-columns: minmax(0, 1.25fr) 14px minmax(0, 1fr); border-radius: 6px; overflow: hidden;
+  background: radial-gradient(ellipse at 22% 30%, rgba(255,250,230,.55), transparent 55%), radial-gradient(ellipse at 80% 70%, rgba(120,80,30,.16), transparent 60%), radial-gradient(circle at 70% 18%, rgba(140,90,40,.12) 0 40px, transparent 41px), linear-gradient(180deg, #ecdfbd, #dcc79a);
+  box-shadow: inset 0 0 60px rgba(90,55,20,.45), inset 0 0 6px rgba(60,35,10,.6), 0 8px 24px rgba(0,0,0,.6); color: #3b2a17; font-family: 'IM Fell English', Georgia, serif; }
+.grim-spine { background: linear-gradient(90deg, rgba(70,40,15,0), rgba(70,40,15,.38) 45%, rgba(40,22,8,.55) 50%, rgba(70,40,15,.38) 55%, rgba(70,40,15,0)); }
+.grim-page { padding: 14px 16px; min-width: 0; }
+.grim-l { display: flex; align-items: center; justify-content: center; }
+.grim-svg { width: 100%; max-width: 560px; height: auto; display: block; }
+.grim-svg .g-ink { fill: none; stroke: #3b2a17; }
+.grim-svg .g-gold { fill: none; stroke: #b08a34; stroke-linejoin: round; opacity: .85; }
+.grim-svg .g-goldfill { fill: #b08a34; stroke: #3b2a17; stroke-width: .8; }
+.grim-svg .g-pent { fill: rgba(176,138,52,.12); stroke: #3b2a17; stroke-width: 1; stroke-dasharray: 3 3; }
+.grim-svg .g-runes { font: 15px 'IM Fell English', serif; fill: #5a4122; letter-spacing: 2.5px; }
+.grim-svg .g-lab { font: 20px 'IM Fell English SC', serif; text-anchor: middle; letter-spacing: 1px; }
+.grim-svg .g-seal { cursor: help; filter: drop-shadow(0 2px 1.5px rgba(40,20,5,.55)); transition: transform .15s; }
+.grim-svg .g-seal.on, .grim-svg .g-seal:hover { filter: drop-shadow(0 0 8px rgba(255,220,140,.9)) drop-shadow(0 2px 1.5px rgba(40,20,5,.55)); }
+.grim-svg .g-glyph { fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+.grim-svg .g-node { cursor: pointer; }
+.grim-svg .g-node .g-disc { fill: #efe3c2; stroke: #3b2a17; stroke-width: 1.6; }
+.grim-svg .g-node .g-halo { opacity: 0; transition: opacity .15s; }
+.grim-svg .g-node.can .g-halo { opacity: .28; animation: grimPulse 1.6s ease-in-out infinite; }
+.grim-svg .g-node.on .g-halo, .grim-svg .g-node:hover .g-halo { opacity: .45; }
+.grim-svg .g-node.got .g-disc { stroke: #2a1c0e; }
+.grim-svg .g-node.got .g-rank { fill: #fff6dc; }
+.grim-svg .g-node.locked { opacity: .55; }
+.grim-svg .g-node.soon .g-disc { fill: rgba(239,227,194,.7); stroke-dasharray: 2.5 2; }
+.grim-svg .g-rank { font: 700 9px 'Alegreya Sans SC', sans-serif; fill: #3b2a17; text-anchor: middle; pointer-events: none; }
+.grim-svg .g-lock { fill: none; stroke: #6a5232; stroke-width: 1.3; }
+.grim-svg .g-combo { cursor: help; opacity: .55; transition: opacity .15s; }
+.grim-svg .g-combo.on, .grim-svg .g-combo:hover { opacity: 1; filter: drop-shadow(0 0 5px rgba(255,220,140,.9)); }
+.grim-svg .g-lockdot { fill: #efe3c2; stroke: #3b2a17; stroke-width: .8; }
+@keyframes grimPulse { 50% { opacity: .5; } }
+.grim-r { display: flex; flex-direction: column; gap: 8px; border-left: 1px solid rgba(90,60,25,.15); }
+.grim-h { font: 34px 'IM Fell English SC', serif; color: #5a1e10; line-height: 1; text-align: center; margin-top: 4px; }
+.grim-sub { font: italic 15px 'IM Fell English', serif; color: #6a5232; text-align: center; margin-top: -4px; }
+.grim-pts { align-self: center; font: 700 13px 'Alegreya Sans SC', sans-serif; letter-spacing: .08em; color: #f6ecd2; background: #7a2a18; padding: 3px 12px; border-radius: 3px; box-shadow: inset 0 0 0 1px rgba(255,220,160,.35); }
+.grim-det { min-height: 128px; padding: 10px 12px; border: 1px solid rgba(90,60,25,.35); border-radius: 3px; background: rgba(255,250,232,.35); }
+.grim-det h4 { margin: 0 0 6px; font: 21px 'IM Fell English', serif; } .grim-det h4 small { font-size: 14px; color: #6a5232; font-style: italic; }
+.grim-det p { margin: 0 0 6px; font-size: 15.5px; line-height: 1.35; }
+.grim-det .grim-meta { font: 600 12.5px 'Alegreya Sans SC', sans-serif; color: #6a5232; letter-spacing: .03em; margin: 0; }
+.grim-hint { font-style: italic; color: #6a5232; }
+.grim-h2 { font: 19px 'IM Fell English SC', serif; color: #5a1e10; border-bottom: 1px solid rgba(90,60,25,.35); padding-bottom: 2px; }
+.grim-spells { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.grim-spells li { display: flex; align-items: center; gap: 8px; font-size: 16px; }
+.grim-key { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: #3b2a17; color: #f1e6c8; font: 700 12px 'Alegreya Sans SC', sans-serif; }
+.grim-use { margin-left: auto; font: 600 12px 'Alegreya Sans SC', sans-serif; color: #6a5232; } .grim-use::before { content: 'uso '; }
+.grim-foot { margin: auto 0 0; font: italic 13px/1.35 'IM Fell English', serif; color: #6a5232; }
+@media (max-width: 900px) { .grim-book { grid-template-columns: 1fr; } .grim-spine { display: none; } .grim-r { border-left: 0; border-top: 1px solid rgba(90,60,25,.2); } }

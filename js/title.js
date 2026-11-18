@@ -124,8 +124,12 @@ function realmScreen() { realmWorlds(); realmScan(); }
 function realmWorlds() {
   const box = document.getElementById('nae-rworlds'); if (!box || typeof worldsList !== 'function') return; const L = worldsList(), esc = s => String(s || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const dt = t => { if (!t) return 'antigo'; const d = new Date(t); return d.toLocaleDateString('pt-BR') + ' ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0'); };
-  box.innerHTML = '<label class="nae-rw"><input type="radio" name="nae-rw" value="new" checked><span><b>Mundo novo</b><small>Cidade do zero: ninguém tem casa nem negócio, economia nova.</small></span></label>'
-    + L.map(w => `<label class="nae-rw"><input type="radio" name="nae-rw" value="${esc(w.id)}"><span><b>${esc(w.n)}</b><small>${w.own ? 'seu mundo' : 'cópia do reino de ' + esc(w.h || '?')} · salvo em ${dt(w.t)}</small></span>${w.id !== 'legacy' ? `<button class="nae-link" data-wdel="${esc(w.id)}" title="Apagar este mundo">apagar</button>` : ''}</label>`).join('');
+  /* o último mundo jogado fica no topo (e já vem marcado); "Mundo novo" fica separado embaixo */
+  box.innerHTML = (L.length ? '<div class="nae-rwh">Mundos guardados</div>' : '')
+    + L.map((w, i) => `<label class="nae-rw${i === 0 ? ' last' : ''}"><input type="radio" name="nae-rw" value="${esc(w.id)}"${i === 0 ? ' checked' : ''}><span><b>${esc(w.n)}${i === 0 ? ' <em class="nae-rwtag">último jogado</em>' : ''}</b><small>${w.own ? 'seu mundo' : 'cópia do reino de ' + esc(w.h || '?')} · salvo em ${dt(w.t)}</small></span>${w.id !== 'legacy' ? `<button class="nae-link" data-wdel="${esc(w.id)}" title="Apagar este mundo">apagar</button>` : ''}</label>`).join('')
+    ;
+  let nw = document.getElementById('nae-rwnewbox'); if (!nw) { nw = document.createElement('div'); nw.id = 'nae-rwnewbox'; box.after(nw); }   /* "Mundo novo" fora da lista rolável, sempre à vista */
+  nw.innerHTML = '<div class="nae-rwh">' + (L.length ? 'Ou comece do zero' : 'Mundo') + '</div><label class="nae-rw nae-rwnew"><input type="radio" name="nae-rw" value="new"' + (L.length ? '' : ' checked') + '><span><b>✦ Mundo novo</b><small>Cidade do zero: ninguém tem casa nem negócio, economia nova.</small></span></label>';
   box.querySelectorAll('[data-wdel]').forEach(b => b.onclick = e => { e.preventDefault(); if (b.dataset.sure) { worldDelete(b.dataset.wdel); realmWorlds(); } else { b.dataset.sure = 1; b.textContent = 'confirmar?'; } });
 }
 function realmScan() {

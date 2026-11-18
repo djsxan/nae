@@ -8,7 +8,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IM+Fell+English+SC&family=IM+Fell+English:ital@0;1&family=Cinzel:wght@500;700;900&family=Cinzel+Decorative:wght@700;900&family=Alegreya:ital,wght@0,400;0,500;0,700;1,400;1,500&family=Alegreya+Sans+SC:wght@500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="css/style.css?v=1.68.1">
+<link rel="stylesheet" href="css/style.css?v=1.69.0">
 </head>
 <body class="nae">
 <canvas id="game"></canvas>
@@ -107,6 +107,7 @@
     <div class="slot round skill" id="slot1"><canvas width="96" height="96"></canvas><span class="key">2</span><span class="cost"></span><span class="cd"></span><span class="cdt" id="slot1-t"></span></div>
     <div class="slot round skill" id="slot2"><canvas width="96" height="96"></canvas><span class="key">3</span><span class="cost"></span><span class="cd"></span><span class="cdt" id="slot2-t"></span></div>
     <div class="slot round skill" id="slot3"><canvas width="96" height="96"></canvas><span class="key">4</span><span class="cost"></span><span class="cd"></span><span class="cdt" id="slot3-t"></span></div>
+    <div class="slot round skill" id="slot4" style="display:none"><canvas width="96" height="96"></canvas><span class="key">5</span><span class="cost"></span><span class="cd"></span><span class="cdt" id="slot4-t"></span></div>
     <button id="btn-attack" data-tip="Atacar&#10;Mira no inimigo mais próximo. Tecla X (Espaço troca o alvo)"><span>⚔</span></button>
     <div id="passive"></div>
   </div>
@@ -222,34 +223,35 @@
 </div>
 
 <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<script src="js/config.js?v=1.68.1"></script>
-<script src="js/world.js?v=1.68.1"></script>
-<script src="js/net.js?v=1.68.1"></script>
-<script src="js/pixel.js?v=1.68.1"></script>
-<script src="js/paint.js?v=1.68.1"></script>
-<script src="js/sprites.js?v=1.68.1"></script>
-<script src="js/props.js?v=1.68.1"></script>
-<script src="js/terrain.js?v=1.68.1"></script>
+<script src="js/config.js?v=1.69.0"></script>
+<script src="js/world.js?v=1.69.0"></script>
+<script src="js/net.js?v=1.69.0"></script>
+<script src="js/pixel.js?v=1.69.0"></script>
+<script src="js/paint.js?v=1.69.0"></script>
+<script src="js/sprites.js?v=1.69.0"></script>
+<script src="js/props.js?v=1.69.0"></script>
+<script src="js/terrain.js?v=1.69.0"></script>
 <script src="https://unpkg.com/three@0.149.0/build/three.min.js"></script>
-<script src="js/render.js?v=1.68.1"></script>
-<script src="js/render3d.js?v=1.68.1"></script>
-<script src="js/dragon.js?v=1.68.1"></script>
-<script src="js/ragdoll.js?v=1.68.1"></script>
-<script src="js/scene3d.js?v=1.68.1"></script>
-<script src="js/server.js?v=1.68.1"></script>
-<script src="js/game.js?v=1.68.1"></script>
-<script src="js/life.js?v=1.68.1"></script>
-<script src="js/progress.js?v=1.68.1"></script>
-<script src="js/bow.js?v=1.68.1"></script>
-<script src="js/drag.js?v=1.68.1"></script>
-<script src="js/npclife.js?v=1.68.1"></script>
-<script src="js/kitchen.js?v=1.68.1"></script>
-<script src="js/jail.js?v=1.68.1"></script>
-<script src="js/showcase.js?v=1.68.1"></script>
-<script src="js/estate.js?v=1.68.1"></script>
-<script src="js/jobs.js?v=1.68.1"></script>
-<script src="js/gmenu.js?v=1.68.1"></script>
-<script src="js/obs.js?v=1.68.1"></script>
-<script src="js/title.js?v=1.68.1"></script>
+<script src="js/render.js?v=1.69.0"></script>
+<script src="js/render3d.js?v=1.69.0"></script>
+<script src="js/dragon.js?v=1.69.0"></script>
+<script src="js/ragdoll.js?v=1.69.0"></script>
+<script src="js/scene3d.js?v=1.69.0"></script>
+<script src="js/server.js?v=1.69.0"></script>
+<script src="js/game.js?v=1.69.0"></script>
+<script src="js/life.js?v=1.69.0"></script>
+<script src="js/progress.js?v=1.69.0"></script>
+<script src="js/bow.js?v=1.69.0"></script>
+<script src="js/drag.js?v=1.69.0"></script>
+<script src="js/npclife.js?v=1.69.0"></script>
+<script src="js/kitchen.js?v=1.69.0"></script>
+<script src="js/jail.js?v=1.69.0"></script>
+<script src="js/showcase.js?v=1.69.0"></script>
+<script src="js/magic.js?v=1.69.0"></script>
+<script src="js/estate.js?v=1.69.0"></script>
+<script src="js/jobs.js?v=1.69.0"></script>
+<script src="js/gmenu.js?v=1.69.0"></script>
+<script src="js/obs.js?v=1.69.0"></script>
+<script src="js/title.js?v=1.69.0"></script>
 </body>
 </html>

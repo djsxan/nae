@@ -221,6 +221,27 @@ function drawEffects1(ctx, ox, oy, now) {
         G.lights.push({ x: cx, y: cy, r: 70 * (1 - t * 0.5), c: '186,230,253', a: 0.9 * (1 - t) });
         break;
       }
+      case 'wind': {   /* Passo do Vento: rastro de vento e folhas do ponto de partida ao de chegada */
+        const b = tileW1(e.x2, e.y2), ex = b.x + ox, ey = b.y + oy, fa = 1 - t;
+        for (let q = 0; q < 4; q++) { const off = (q - 1.5) * 5; ctx.strokeStyle = 'rgba(220,240,240,' + (0.75 * fa) + ')'; ctx.lineWidth = 1.6 - q * 0.25; ctx.beginPath(); ctx.moveTo(cx, cy - 14 + off); ctx.quadraticCurveTo((cx + ex) / 2, (cy + ey) / 2 - 22 + off * 2, ex, ey - 14 + off); ctx.stroke(); }
+        ring(ctx, cx, cy, 6 + t * 18, 'rgba(200,235,235,' + fa + ')', 1);
+        if (!e.sp) { e.sp = 1; for (let q = 0; q < 14; q++) spawnPart('dust', c.x + (Math.random() - 0.5) * 16, c.y - Math.random() * 6); for (let q = 0; q < 6; q++) spawnPart('sparkle', c.x + (Math.random() - 0.5) * 20, c.y - 10 - Math.random() * 14, { color: 'rgba(170,220,150,A)' }); }
+        break;
+      }
+      case 'bloom': {   /* Florescer: anel verde que se abre e pétalas subindo */
+        const R = (e.k || 16) / 10 * 32 * easeOut(Math.min(1, t * 1.6)), fa = Math.sin(Math.min(1, t) * Math.PI);
+        ctx.fillStyle = 'rgba(140,200,90,' + (0.16 * fa) + ')'; ctx.beginPath(); ctx.ellipse(cx, cy, R, R / 2, 0, 0, 7); ctx.fill(); ring(ctx, cx, cy, R, 'rgba(190,235,140,' + (0.8 * fa) + ')', 1);
+        if (Math.random() < 0.8) { const a = Math.random() * 6.28, rr = Math.random() * R; spawnPart('sparkle', c.x + Math.cos(a) * rr, c.y + Math.sin(a) * rr * 0.5, { color: ['rgba(255,170,200,A)', 'rgba(255,240,150,A)', 'rgba(220,180,255,A)', 'rgba(255,255,255,A)'][Math.floor(Math.random() * 4)] }); }
+        G.lights.push({ x: cx, y: cy - 8, r: R * 0.8 + 20, c: '200,240,150', a: 0.45 * fa });
+        break;
+      }
+      case 'spring': {   /* Fonte: jorro de água das mãos e anel molhado no chão */
+        const R = (e.k || 30) / 10 * 32 * easeOut(Math.min(1, t * 1.4)), fa = 1 - t;
+        ctx.fillStyle = 'rgba(120,180,230,' + (0.14 * fa) + ')'; ctx.beginPath(); ctx.ellipse(cx, cy, R, R / 2, 0, 0, 7); ctx.fill(); ring(ctx, cx, cy, R, 'rgba(170,215,250,' + fa + ')', 1); ring(ctx, cx, cy, R * 0.6, 'rgba(170,215,250,' + (0.6 * fa) + ')', 1);
+        if (t < 0.7) for (let q = 0; q < 3; q++) { const a = Math.random() * 6.28, sp = 1.2 + Math.random(); spawnPart('sparkle', c.x + Math.cos(a) * 4, c.y - 30, { color: 'rgba(150,205,255,A)', vx: Math.cos(a) * sp * 0.04, vy: -0.05 - Math.random() * 0.04 }); }
+        G.lights.push({ x: cx, y: cy - 20, r: 50, c: '150,200,255', a: 0.5 * fa });
+        break;
+      }
       case 'heal': case 'lvlup': {
         const gold = e.a === 'lvlup', alpha = Math.sin(t * Math.PI), w = gold ? 14 : 10, col = gold ? '240,210,110' : '150,230,150';
         const g = ctx.createLinearGradient(0, cy - 60, 0, cy);
@@ -1093,7 +1114,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     const e = it.e;
     ctx.imageSmoothingEnabled = false;
     if (it.k === 1) {
-      drawMonsterEntity(ctx, e, it.sx, it.sy, now); if (e.carrying && G.players[e.carrying]) drawCarried(ctx, G.players[e.carrying], it.sx, it.sy - (MON[e.type].big ? 20 : 0)); if (e.arrows && !FALLS['m' + e.id]) drawStuck(ctx, e, it.sx, it.sy, now);
+      drawMonsterEntity(ctx, e, it.sx, it.sy, now); if (e.burnUntil > now && typeof drawOnFire === 'function') drawOnFire(ctx, it.sx, it.sy, now, (e.rx || 0) * 7.1); if (e.carrying && G.players[e.carrying]) drawCarried(ctx, G.players[e.carrying], it.sx, it.sy - (MON[e.type].big ? 20 : 0)); if (e.arrows && !FALLS['m' + e.id]) drawStuck(ctx, e, it.sx, it.sy, now);
     } else if (it.k === 3) {
       if (typeof drawNpcState === 'function' && drawNpcState(ctx, e, it.sx, it.sy, now)) { if (e.npDead && !e.onBackBy) labels.push({ sx: it.sx, sy: it.sy - 22, name: e.name + ' (morto)', color: '#8a8a8a', npc: e, e }); return; }
       if (typeof drawPackage === 'function' && (e.isNpc || (e.stb & 16))) drawPackage(ctx, e.isNpc ? e : { pkg: true, walking: e.walking, walkDist: e.walkDist }, it.sx, it.sy, now);
@@ -1108,6 +1129,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       if (e.dragMode === 'back' && typeof drawBackCorpse === 'function') { drawBackCorpse(ctx, e, it.sx, it.sy, now); drawNpcOnBack(ctx, e, it.sx, it.sy); }
       heroExtras(e, it.sx, it.sy);
       if (e.burnUntil > now && typeof drawOnFire === 'function') drawOnFire(ctx, it.sx, it.sy, now, (e.x || 0) * 7.1);
+      if (e.emberUntil > now && !e.downed && typeof drawEmberHand === 'function') drawEmberHand(ctx, e, it.sx, it.sy, now);
       if (e.carrying && G.players[e.carrying]) drawCarried(ctx, G.players[e.carrying], it.sx, it.sy);
       if (e.lifted) { const os = objSprite(e.lifted); if (os) pblit(ctx, os, it.sx, it.sy - 58); }
       G.lights.push({ x: it.sx, y: it.sy - 30, r: 34, c: '255,240,220', a: 0.4 });
