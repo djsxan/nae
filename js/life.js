@@ -141,7 +141,7 @@ function drawZzz(ctx, x, y, now) {
 // ---------- dormir numa cama (jogadores) ----------
 function bedUnderMouse(cx, cy) {
   const w = screenToWorld(cx, cy); let best = -1, bd = 1.1;
-  BEDS.forEach((b, k) => { const d = Math.hypot(b.x - w.x, b.y - w.y); if (d < bd) { bd = d; best = k; } });
+  BEDS.forEach((b, k) => { if ((b.fl || 0) !== ((G.me && G.me.fl) || 0)) return; const d = Math.hypot(b.x - w.x, b.y - w.y); if (d < bd) { bd = d; best = k; } });
   return best;
 }
 function lieDown(k) {

@@ -25,6 +25,11 @@ const BEDS = [];
 const KITCHENS = [];
 const CHESTS = [];   // baús dentro das casas: { x, y, bi } (baú seguro de quem aluga)
 const HOTEL_CABS = [];   // cabines da pousada: { k, bi, bedIdx, chest:{x,y}, door:[x,y], di, spot:[x,y], tiles:Set }
+const APTS = [], APT_CHESTS = [], SUITE_OPEN = true;   // apartamentos do prédio do dojô (a suíte fica destrancada por enquanto, para testar o ofurô)
+function aptAt(bi, fl, x, y) { if (!fl) return null; const b = BUILDINGS[bi]; if (!b) return null; const [u, v] = worldToLocal(b, x, y); return APTS.find(a => a.bi === bi && a.fl === fl && u > a.u0 && u < a.u1 && v > a.v0 && v < a.v1) || null; }
+function aptBlocked(name, bi, fl, ox, oy, x, y, L) {   /* entrar num apartamento trancado (de fora para dentro) */
+  const A = aptAt(bi, fl, x, y); if (!A || (A.suite && SUITE_OPEN) || !L) return false; if (aptAt(bi, fl, ox, oy) === A) return false;
+  const a = L['apt:' + A.key]; return !!a && !a.includes(String(name || '').trim().toLowerCase()); }
 const DUMMIES = [];   // bonecos de treino: { x, y, bi, t: 'makiwara' | 'mokujin', fx, fy } (fx/fy: onde fica quem treina)
 const DOJO_FEE = [3, 5, 8];   // diária: barata, justa, cara
 const HOTEL_DOORS = new Map();   // índice do tile da porta → cabine
@@ -202,9 +207,9 @@ function iwallHit(bi, fl, x, y, r) { const L = iwallsWorld(bi, fl); if (!L) retu
 function iwallCross(bi, fl, ax, ay, bx, by) { const L = iwallsWorld(bi, fl); if (!L) return false;   /* passo de tile a tile atravessa uma parede fina? */
   for (const [x0, y0, x1, y1] of L) { if (Math.abs(x0 - x1) < 0.01) { if ((ax - x0) * (bx - x0) < 0 && Math.max(ay, by) > Math.min(y0, y1) && Math.min(ay, by) < Math.max(y0, y1)) return true; } else if ((ay - y0) * (by - y0) < 0 && Math.max(ax, bx) > Math.min(x0, x1) && Math.min(ax, bx) < Math.max(x0, x1)) return true; }
   return false; }
-function ofuroOf(b) { if (!b || b.kind !== 'dojo') return null; const [x, y] = localToWorld(b, 1.5, 1.5);   // banheira da suíte de luxo (último andar): água 2×2 com um lugar em cada canto
-  const seats = [[0.82, 0.82], [2.18, 0.82], [0.82, 2.18], [2.18, 2.18]].map(([u, v]) => localToWorld(b, u, v));
-  return { x, y, fl: floorsOf(b) - 1, seats, rack: localToWorld(b, 3.5, 1.5) }; }
+function ofuroOf(b) { if (!b || b.kind !== 'dojo') return null; const [x, y] = localToWorld(b, 1, 1);   // banheira da suíte de luxo (último andar): um lugar em cada canto, bem juntinhos
+  const seats = [[0.6, 0.6], [1.4, 0.6], [0.6, 1.4], [1.4, 1.4]].map(([u, v]) => localToWorld(b, u, v));
+  return { x, y, fl: floorsOf(b) - 1, seats, rack: localToWorld(b, 2.5, 0.5) }; }
 // varanda andável na fachada da rua (1 casa de fundo, fora do prédio), nos andares de cima: [u0, u1] no quadro local
 function balconyOf(b, fl) { if (!b || b.deco !== 'machiya' || fl < 1) return null; return fl < floorsOf(b) - 1 ? [0, bDims(b)[0]] : [0, 6]; }
 function worldToLocal(b, x, y) { const s = b.door || 'S', X0 = b.x - 0.5, Y0 = b.y - 0.5; if (s === 'S') return [x - X0, y - Y0]; if (s === 'N') return [X0 + b.w - x, Y0 + b.h - y]; if (s === 'E') return [Y0 + b.h - y, x - X0]; return [y - Y0, X0 + b.w - x]; }
@@ -306,10 +311,9 @@ function interiorLayout0(b, fl = 0) {
       put('futon', 0, 0, { h: 2, block: false }); put('kakejiku', 1, 0, { block: false }); put('tansu', 2, 0); put('andon', 1, 1, { block: false }); put('irori', 1, 2, { block: false }); put('chabudai', 2, 3, { block: false }); put('ikebana', 0, 4, { block: false }); put('byobu', 2, 2, { block: false });
     } else {   // suíte de luxo
       put('plantpot', 7, 4, { block: false }); put('andon', 7, 2, { block: false }); keep(6, 3); keep(5, 3); keep(4, 3); keep(2, 4); keep(3, 4); keep(2, 3); keep(3, 3);   // porta do hall e porta de correr da varanda livres
-      put('ofuro', 0, 0, { w: 3, h: 3, block: false }); put('kakebar', 3, 1, { block: false });
-      put('tokonoma', 3, 0); put('platbed', 4, 0, { w: 2, h: 2, block: false }); put('andon', 5, 2, { block: false });
-      put('kotatsu', 4, 2, { block: false }); put('byobu', 3, 2, { block: false });
-      put('zengarden', 0, 3, { w: 2, h: 2 }); put('tansu', 5, 4); put('ikebana', 4, 4, { block: false });
+      put('ofuro', 0, 0, { w: 2, h: 2, block: false }); put('kakebar', 2, 0, { block: false }); put('andon', 0, 2, { block: false });   /* ala do banho (a cortina separa da cama) */
+      put('jkitchen', 3, 1, { h: 2 }); put('tokonoma', 3, 0); put('platbed', 4, 0, { w: 2, h: 2, block: false }); put('andon', 5, 2, { block: false });
+      put('kotatsu', 4, 2, { block: false }); put('zengarden', 0, 3, { w: 2, h: 2 }); put('tansu', 5, 4); put('ikebana', 4, 4, { block: false });
     }
   } else if (k === 'shop' && b.deco === 'greenhouse') {   // Boticário de Elva: gavetinhas e potes no fundo, alambique, balcão com balança e almofariz, canteiros, plantas que brilham, vasos pendurados, ervas secando e o tanque
     if (w === 5 && h === 5 && (b.realDoor || b.door) === 'N') {   /* porta no fundo da vista: o alto fica na parede direita, o baixo do lado da câmera */
@@ -1052,6 +1056,14 @@ function generateWorld() {
       placeFurniture(b, bi, f, obj, seats, idx);
     }
   });
+  BUILDINGS.forEach((b, bi) => { if (b.kind !== 'dojo') return; const nF = floorsOf(b);   /* apartamentos: futon/cama, tansu e irori dos andares de cima */
+    for (let fl = 1; fl < nF; fl++) { const top = fl === nF - 1, list = top ? [{ key: fl + '01', name: 'Suíte ' + fl + '01', u0: 0, u1: 6, suite: 1 }] : [{ key: fl + '01', name: 'Apto ' + fl + '01', u0: 3, u1: 6 }, { key: fl + '02', name: 'Apto ' + fl + '02', u0: 0, u1: 3 }];
+      for (const a of list) APTS.push({ ...a, bi, fl, v0: 0, v1: bDims(b)[1] });
+      for (const f of interiorLayout(b, fl).F) { const cx = f.i + f.w / 2, cz = f.j + f.h / 2, [x, y] = localToWorld(b, cx, cz), A = aptAt(bi, fl, x, y); if (!A) continue;
+        if (f.t === 'futon' || f.t === 'platbed') { const [x0, y0] = localToWorld(b, cx, f.j + 0.3), [x1, y1] = localToWorld(b, cx, f.j + f.h - 0.3); BEDS.push({ x, y, dx: x1 - x0, dy: y1 - y0, bi, fl, apt: A.key }); }
+        if (f.t === 'tansu') APT_CHESTS.push({ x, y, bi, fl, apt: A.key });
+        if (f.t === 'irori' || f.t === 'jkitchen') KITCHENS.push({ x, y, bi, fl });
+        if (f.t === 'zengarden') { const [dx, dy] = localToWorld(b, f.i + 1.45, f.j + 0.6), [tx, ty] = localToWorld(b, f.i + 2.5, f.j + 0.6); DUMMIES.push({ x: dx, y: dy, bi, fl, t: 'makiwara', fx: tx, fy: ty, apt: A.key, priv: 1 }); } } } });
   // ---- chão da cidade: pedra gasta, terra nas vielas, grama nos cantos, lajes na avenida ----
   for (let y = y0 + 2; y <= y1 - 2; y++) for (let x = x0 + 2; x <= x1 - 2; x++) {
     const i = idx(x, y);
@@ -1392,6 +1404,7 @@ const PROPS = [], PROPS_BY = {};
   });
   // todo negócio sem jogador tem um dono NPC (que vende o ponto; não aluga)
   const OWN = ['Mestre Aurélio Vaz', 'Dona Brígida Sal', 'Seu Custódio Pena', 'Dona Filomena Rocha', 'Mestre Gaspar Lume', 'Dona Henriqueta Mós', 'Seu Inácio Ferraz', 'Dona Joana Trigo', 'Mestre Lauro Brasa', 'Dona Matilde Cera', 'Seu Norberto Funil', 'Dona Odete Lã', 'Mestre Prudêncio Faia', 'Dona Quitéria Junco'];
+  for (const A of APTS) { const b = BUILDINGS[A.bi], rent = A.suite ? 86 : 23; const P = { bi: A.bi, area: (A.u1 - A.u0) * 5, w: A.u1 - A.u0, h: 5, floors: 1, district: district(b), id: 'ap' + A.key, kind: 'house', apt: A.key, fl: A.fl, suite: A.suite ? 1 : 0, name: A.name + ' · Punho de Ferro', rent, loc: 1, locName: A.suite ? 'suíte de luxo' : 'apartamento' }; P.week = rent * 7; P.buy = rent * 60; PROPS.push(P); PROPS_BY[P.id] = P; }   // apartamentos do prédio do dojô (aluguel vai para o dono do dojô)
   let oi = 0; for (const P of PROPS) if (P.npcOwner) continue; else if ((P.kind === 'shop' || P.kind === 'workshop') && !P.npc) P.npcOwner = OWN[oi++ % OWN.length]; else if (P.kind === 'hotel') P.npcOwner = 'Dona Ilsa';
 })();
 // ---------- moradores: cada um mora numa casa da cidade ou da vila (as casas com inquilino não ficam para alugar, mas podem ser compradas) ----------

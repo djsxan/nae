@@ -1167,13 +1167,14 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     const ck = ff ? (ff.to < 0 ? fk : 0) + (ff.from < 0 ? 1 - fk : 0) : (myFl < 0 ? 1 : 0); G.cellarDark = ck > 0.5;
     ctx.fillStyle = 'rgba(' + Math.round(8 - 6 * ck) + ',' + Math.round(5 - 4 * ck) + ',' + Math.round(2 - 1 * ck) + ',' + (0.6 + 0.4 * ck) + ')'; ctx.fillRect(-20, -20, vw + 40, vh + 40);
     // cada andar tem uma opacidade (o seu = 1, o de baixo = 0.55); ao trocar de andar, mistura as duas situações
-    const A = (st, f) => f === st ? 1 : f === st - 1 && f >= 0 ? 0.55 : 0;   // o porão só aparece quando você está nele
+    const tall = inside.b.deco === 'machiya', A = (st, f) => f === st ? 1 : (f === st - 1 || (tall && f < st)) && f >= 0 ? 0.55 : 0;   // o porão só aparece quando você está nele; no prédio do dojô dá para ver todos os andares de baixo
     if (ff && fk >= 1) G.flFade = null;
     for (let f = minFl(inside.b); f < floorsOf(inside.b); f++) {
       const a = ff ? A(ff.from, f) * (1 - fk) + A(ff.to, f) * fk : A(myFl, f); if (a < 0.02) continue;
       const s = interiorSprite(inside.b, f) || (f === 0 ? buildingSprite(inside.b, false) : null);
       if (s) pblit(ctx, s, inside.sx, inside.sy - flRaise(inside.b, f), a);
     }
+    if (typeof drawAptDoors === 'function') try { drawAptDoors(ctx, (x, y) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy]; }, now); } catch (e) { }
     if (typeof drawOfuroFx === 'function') try { drawOfuroFx(ctx, (x, y, z) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy - (z || 0) * FLOOR_PX]; }, now); } catch (e) { }   /* bolhas e vapor do ofurô, por cima da água */
     for (const it of items) if (it.inside) drawItem(it);
     if (G.cellarDark) { cutL.length = 0; front.length = 0; }   // no porão não se vê os prédios da frente

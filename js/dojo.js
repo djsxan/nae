@@ -35,7 +35,7 @@ function bathEnter() {   /* o anfitrião escolhe um canto livre e leva o persona
   Net.send({ t: 'bath', on: 1 });
 }
 if (typeof progEvent === 'function') { const _peB = progEvent; progEvent = function (m, now) {
-  if (m.t === 'bath') { const e = G.players[m.id]; if (e) { e.bathing = m.on ? { t0: now, x: m.x, y: m.y, rx: m.rx, ry: m.ry } : null; if (!m.on && e === G.me && G.me.sit && G.me.sit.bath) G.me.sit = null; } return true; }
+  if (m.t === 'bath') { const e = G.players[m.id]; if (e) { e.bathing = m.on ? { t0: now, x: m.x, y: m.y, rx: m.rx, ry: m.ry } : null; if (m.on && m.dir != null) { e.dir = m.dir; if (e === G.me) G.bathMouse0 = G.mouseS ? G.mouseS.slice() : [0, 0]; } if (!m.on && e === G.me && G.me.sit && G.me.sit.bath) G.me.sit = null; } return true; }
   return _peB(m, now);
 }; }
 // ---------- o herói no ofurô: o próprio modelo 3D, sem camisa e de sunga, sentado na água ----------
@@ -103,7 +103,7 @@ function drawBath(ctx, e, sx, sy, now) {
 }
 
 // ---------- bonecos de treino: F perto de um makiwara ou mokujin; o boneco balança quando apanha ----------
-function dummyNear() { const me = G.me; if (!me || me.downed || (me.fl || 0) !== 0 || me.bathing || G.training) return null; let best = null, bd = 1.7; for (const q of DUMMIES) { const dd = Math.hypot(me.x - q.x, me.y - q.y); if (dd < bd) { bd = dd; best = q; } } return best; }
+function dummyNear() { const me = G.me; if (!me || me.downed || me.bathing || G.training) return null; let best = null, bd = 1.7; for (const q of DUMMIES) { if ((q.fl || 0) !== (me.fl || 0)) continue; const dd = Math.hypot(me.x - q.x, me.y - q.y); if (dd < bd) { bd = dd; best = q; } } return best; }
 if (typeof progEvent === 'function') { const _peT = progEvent; progEvent = function (m, now) {
   if (m.t === 'train') { G.training = !!m.on; return true; }
   if (m.t === 'dummyhit') { const q = DUMMIES[m.i]; if (q) setTimeout(() => { const w = tileW(q.x, q.y, 22); for (let k = 0; k < 4; k++) spawnPart('dust', w.x + (Math.random() - 0.5) * 6, w.y + (Math.random() - 0.5) * 4); if (q.t === 'makiwara') for (let k = 0; k < 2; k++) spawnPart('sparkle', w.x, w.y, { color: 'rgba(230,200,120,A)', life: 350 }); }, m.d || 0); return true; }
@@ -115,21 +115,22 @@ function drawOfuroFx(ctx, P, now) {
   const me = G.me; if (!me || !me.fl) return; const b = BUILDINGS[me.fb], O2 = typeof ofuroOf === 'function' && ofuroOf(b); if (!O2 || me.fl !== O2.fl) return;
   const raise = me.fl * (bldDims(b).H / floorsOf(b)) * HV + 0.33 * HV, at = (u, v) => { const [x, y] = localToWorld(b, u, v), q = P(x, y, 0); return [q[0], q[1] - raise]; };
   const hsh = (k, s) => { const x = Math.sin(k * 127.1 + s * 311.7) * 43758.5453; return x - Math.floor(x); };
+  drawCascade(ctx, b, me.fl, P, now, raise);
   const busy = Object.values(G.players).some(q => q.bathing && q.fb === me.fb && q.fl === O2.fl); if (busy && !G.ofuroOn) G.ofuroOn = now; if (!busy) G.ofuroOn = 0;   /* os jatos ligam quando alguém entra e ficam ligados enquanto houver gente */
-  if (!busy) { if (G.view && Math.random() < 0.15) { const [vx, vy] = at(0.5 + Math.random() * 2.0, 0.5 + Math.random() * 2.0); spawnPart('smoke', vx - G.view.ox, vy - G.view.oy - 2, { color: '#ffffff' }); } return; }
+  if (!busy) { if (G.view && Math.random() < 0.15) { const [vx, vy] = at(0.3 + Math.random() * 1.4, 0.3 + Math.random() * 1.4); spawnPart('smoke', vx - G.view.ox, vy - G.view.oy - 2, { color: '#ffffff' }); } return; }
   const on = Math.min(1, (now - G.ofuroOn) / 1500);
   ctx.save(); ctx.globalAlpha = on;
-  const jets = [[0.55, 1.0], [0.55, 2.0], [2.45, 1.0], [2.45, 2.0], [1.5, 0.55], [1.5, 2.45]];   /* bicos nas quatro paredes */
+  const jets = [[0.35, 0.75], [0.35, 1.25], [1.65, 0.75], [1.65, 1.25], [1.0, 1.65]];   /* bicos nas paredes (a do fundo tem a cascata) */
   jets.forEach(([u, v], j) => { const [jx, jy] = at(u, v), pulse = 0.65 + 0.35 * Math.sin(now / 260 + j * 1.9);
     for (let k = 0; k < 5; k++) { const a = now / 700 + k * 1.26 + j, rx = 2.2 + hsh(k, j) * 1.6;   /* água revolta: manchas claras que giram em cima do jato */
       ctx.fillStyle = 'rgba(240,252,252,' + (0.3 * pulse).toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(jx + Math.cos(a) * 1.4, jy + Math.sin(a) * 0.6, rx, rx * 0.45, 0, 0, 7); ctx.fill(); }
     for (let k = 0; k < 20; k++) { const ph = (now / 380 + hsh(k, j)) % 1, ang = hsh(k + 5, j) * 6.28, rr = ph * (2.5 + hsh(k + 2, j) * 2.5);   /* microbolhas espalhando a partir do jato */
       ctx.fillStyle = 'rgba(255,255,255,' + (0.9 * (1 - ph)).toFixed(2) + ')'; ctx.fillRect(jx + Math.cos(ang) * rr, jy + Math.sin(ang) * rr * 0.45 - ph * 0.6, 0.55, 0.55); } });
-  for (let k = 0; k < 40; k++) { const ph = (now / 900 + hsh(k, 21)) % 1, u = 0.5 + hsh(k, 22) * 2.0, v = 0.5 + hsh(k, 23) * 2.0, [bx, by] = at(u, v);   /* bolhinhas pela água toda, estourando */
+  for (let k = 0; k < 26; k++) { const ph = (now / 900 + hsh(k, 21)) % 1, u = 0.32 + hsh(k, 22) * 1.36, v = 0.32 + hsh(k, 23) * 1.36, [bx, by] = at(u, v);   /* bolhinhas pela água toda, estourando */
     if (ph < 0.85) { ctx.fillStyle = 'rgba(255,255,255,' + (0.25 + 0.5 * ph).toFixed(2) + ')'; ctx.fillRect(bx, by - ph * 0.5, 0.45, 0.45); }
     else { const q = (ph - 0.85) / 0.15; ctx.strokeStyle = 'rgba(255,255,255,' + (0.5 * (1 - q)).toFixed(2) + ')'; ctx.lineWidth = 0.18; ctx.beginPath(); ctx.ellipse(bx, by, 0.4 + q * 1.4, 0.2 + q * 0.6, 0, 0, 7); ctx.stroke(); } }
   ctx.restore();
-  if (G.view && Math.random() < 0.5) { const [vx, vy] = at(0.5 + Math.random() * 2.0, 0.5 + Math.random() * 2.0); spawnPart('smoke', vx - G.view.ox, vy - G.view.oy - 2, { color: '#ffffff' }); }   /* vapor */
+  if (G.view && Math.random() < 0.5) { const [vx, vy] = at(0.3 + Math.random() * 1.4, 0.3 + Math.random() * 1.4); spawnPart('smoke', vx - G.view.ox, vy - G.view.oy - 2, { color: '#ffffff' }); }   /* vapor */
 }
 
 
@@ -172,7 +173,7 @@ if (typeof progEvent === 'function') { const _peD = progEvent; progEvent = funct
 // praticantes do dojô: dá para conversar e desafiar
 if (typeof NPC_DIALOG !== 'undefined') { const opts = [['Desafiar para um duelo (aposta 10)', { duel: 10 }], ['Desafiar para um duelo (aposta 25)', { duel: 25 }], ['Desafiar para um duelo (aposta 50)', { duel: 50 }]];
   NPC_DIALOG.v_gymm = { greet: 'Treino aqui todo dia antes do trabalho. Quer testar?', opts }; NPC_DIALOG.v_gymf = { greet: 'O Mestre diz que o golpe nasce no pé. Quer ver?', opts }; NPC_DIALOG.v_offguard = { greet: 'Folga de serviço, mas os punhos não descansam. Encara?', opts };
-  if (NPC_DIALOG.st_dojo) NPC_DIALOG.st_dojo.opts[1] = ['Aulas de golpes', { local: 'Escolha o golpe.' }]; }
+  if (NPC_DIALOG.st_dojo) { NPC_DIALOG.st_dojo.opts[1] = ['Aulas de golpes', { local: 'Escolha o golpe.' }]; NPC_DIALOG.st_dojo.opts.splice(2, 0, ['Alugar um apartamento do prédio', { open: 'estate' }]); } }
 // aulas do sensei: painel com os quatro golpes
 if (typeof buildDialogOptions === 'function') { const _bdo = buildDialogOptions; buildDialogOptions = function (id) { const r = _bdo.apply(this, arguments);
   if (id === 'st_dojo') for (const b of document.querySelectorAll('#dlg-opts button')) if (b.textContent.includes('Aulas de golpes')) b.onclick = () => dojoLessons();
@@ -184,3 +185,44 @@ function dojoLessons() {
   document.body.appendChild(d); d.querySelector('[data-x]').onclick = () => d.remove(); d.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { Net.send({ t: 'npc', n: 'st_dojo', a: 'learn', k: b.dataset.k }); d.remove(); });
 }
 document.addEventListener('keydown', e => { if (e.key === 'Escape') for (const id of ['duelmenu', 'duelbet', 'lessons']) { const d = document.getElementById(id); if (d) d.remove(); } });
+
+// cascata decorativa: lâmina d'água saindo da bica de bronze dourado na parede oeste e caindo na banheira (animação constante)
+function drawCascade(ctx, b, fl, P, now, raise) {
+  const at = (u, v, h) => { const [x, y] = localToWorld(b, u, v), q = P(x, y, 0); return [q[0], q[1] - raise - (h || 0) * HV]; };
+  const u0 = 0.72, u1 = 1.28, v0 = 0.08, top = 1.05, wy = 0;
+  ctx.save();
+  for (let k = 0; k <= 10; k++) { const u = u0 + (u1 - u0) * k / 10, [x1, y1] = at(u, v0 + 0.02, top), [x2, y2] = at(u, v0 + 0.16, wy + 0.02), sh = 0.35 + 0.25 * Math.sin(now / 140 + k * 1.7);
+    const g = ctx.createLinearGradient(x1, y1, x2, y2); g.addColorStop(0, 'rgba(210,240,250,' + (0.55 * sh).toFixed(2) + ')'); g.addColorStop(1, 'rgba(240,255,255,' + (0.85 * sh).toFixed(2) + ')');
+    ctx.strokeStyle = g; ctx.lineWidth = 0.55; ctx.beginPath(); ctx.moveTo(x1, y1); ctx.quadraticCurveTo(x1 + (x2 - x1) * 0.15, y1 + (y2 - y1) * 0.55, x2, y2); ctx.stroke(); }
+  for (let k = 0; k < 7; k++) { const q = (now / 520 + k / 7) % 1, u = u0 + (u1 - u0) * ((k * 0.37) % 1), [x1, y1] = at(u, v0 + 0.02, top), [x2, y2] = at(u, v0 + 0.16, wy); ctx.fillStyle = 'rgba(255,255,255,' + (0.7 * (1 - q * 0.5)).toFixed(2) + ')'; ctx.fillRect(x1 + (x2 - x1) * q, y1 + (y2 - y1) * q * q, 0.45, 1.2); }   /* fios d'água descendo */
+  const [cx, cy] = at(1.0, v0 + 0.2, 0); for (let k = 0; k < 3; k++) { const q = (now / 600 + k / 3) % 1; ctx.strokeStyle = 'rgba(255,255,255,' + (0.6 * (1 - q)).toFixed(2) + ')'; ctx.lineWidth = 0.3; ctx.beginPath(); ctx.ellipse(cx, cy, 2 + q * 7, 0.9 + q * 2.6, 0, 0, 7); ctx.stroke(); }   /* anéis onde a água bate */
+  ctx.restore();
+  if (G.view && Math.random() < 0.35) spawnPart('sparkle', cx - G.view.ox + (Math.random() - 0.5) * 5, cy - G.view.oy - 1, { color: 'rgba(220,245,255,A)', vx: (Math.random() - 0.5) * 0.04, vy: -0.03 - Math.random() * 0.03, life: 380 });   /* respingos */
+}
+
+// ---------- portas de correr dos apartamentos: abrem deslizando quando alguém chega perto e fecham sozinhas ----------
+const APT_DOOR_K = {};
+function drawAptDoors(ctx, P, now) {
+  const me = G.me; if (!me || !me.fl) return; const b = BUILDINGS[me.fb]; if (!b || b.deco !== 'machiya') return;
+  const nF = floorsOf(b), fl = me.fl, D = bDims(b)[1], raise = fl * (bldDims(b).H / nF) * HV;
+  const doors = fl < nF - 1 ? [[1, 2, 'f'], [4, 5, 'f']] : [[2, 4, 'f'], [3, 4, 's']];   /* fachada: [u0, u1]; 's' = porta lateral da suíte para o hall (u = 6, v 3..4) */
+  const at = (u, v, h) => { const [x, y] = localToWorld(b, u, v), q = P(x, y); return [q[0], q[1] - raise - h * HV]; };
+  const people = Object.values(G.players).filter(q => (q.fl || 0) === fl && q.fb === me.fb);
+  if (fl === nF - 1) { const night = G.devTime === 'night' || (typeof dayInfo === 'function' && dayInfo().night); const glow = [[1.0, 1.2, 0, 1.7, 120], [4.5, 2.6, 0, 1.5, 110], [4.9, 0.6, 0, 0.6, 90], [3.2, 1.6, 0, 1.0, 70], [1.0, 0.9, 0, 0.6, 80], [5.4, 4.2, 0, 0.5, 70]];   /* luz quente e aconchegante: lanternas, andons, kamado e banheira */
+    for (const [u, v, , h, r] of glow) { const [x, y] = at(u, v, h); G.lights.push({ x, y, r: night ? r * 0.9 : r * 0.5, c: '255,160,70', a: night ? 0.45 : 0.15, flick: 1 }); } }
+  doors.forEach(([a, c, kind], i) => {
+    const key = me.fb + ':' + fl + ':' + i, mid = kind === 'f' ? localToWorld(b, (a + c) / 2, D) : localToWorld(b, 6, (a + c) / 2);
+    const open = people.some(q => Math.hypot(q.rx - mid[0], q.ry - mid[1]) < 1.15), k0 = APT_DOOR_K[key] ?? 0, k = APT_DOOR_K[key] = k0 + ((open ? 1 : 0) - k0) * 0.12;   /* desliza suave */
+    const len = c - a, panels = len > 1.5 ? 2 : 1, pw = len / panels;
+    for (let pnl = 0; pnl < panels; pnl++) {
+      const dir = panels === 2 ? (pnl === 0 ? -1 : 1) : 1, s0 = a + pnl * pw + dir * k * pw * 0.95, s1 = s0 + pw;   /* cada folha corre para o lado, por cima da parede */
+      const quad = kind === 'f' ? [at(s0, D - 0.05, 0.03), at(s1, D - 0.05, 0.03), at(s1, D - 0.05, 0.34), at(s0, D - 0.05, 0.34)] : [at(6.02, s0, 0.03), at(6.02, s1, 0.03), at(6.02, s1, 1.95), at(6.02, s0, 1.95)];
+      ctx.save(); ctx.beginPath(); quad.forEach(([x, y], j) => j ? ctx.lineTo(x, y) : ctx.moveTo(x, y)); ctx.closePath(); ctx.fillStyle = 'rgba(246,238,220,0.93)'; ctx.fill();
+      ctx.strokeStyle = '#4a2c18'; ctx.lineWidth = 0.7; ctx.stroke(); ctx.lineWidth = 0.35;
+      const lerp = (p, q, t) => [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t];
+      for (let r = 1; r < (kind === 'f' ? 2 : 5); r++) { const L1 = lerp(quad[0], quad[3], r / 5), L2 = lerp(quad[1], quad[2], r / 5); ctx.beginPath(); ctx.moveTo(L1[0], L1[1]); ctx.lineTo(L2[0], L2[1]); ctx.stroke(); }
+      for (let r = 1; r < 3; r++) { const T1 = lerp(quad[0], quad[1], r / 3), T2 = lerp(quad[3], quad[2], r / 3); ctx.beginPath(); ctx.moveTo(T1[0], T1[1]); ctx.lineTo(T2[0], T2[1]); ctx.stroke(); }
+      { const hp = lerp(lerp(quad[0], quad[3], 0.5), lerp(quad[1], quad[2], 0.5), dir > 0 ? 0.12 : 0.88); ctx.fillStyle = '#c9a24a'; ctx.beginPath(); ctx.arc(hp[0], hp[1], 0.7, 0, 7); ctx.fill(); }   /* puxador de latão */
+      ctx.restore(); }
+  });
+}

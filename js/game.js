@@ -334,7 +334,7 @@ function monsterNear(x, y, r = 0.5) {
   for (const id in G.monsters) { const m = G.monsters[id]; if (!m.dieAt && dist(m.rx, m.ry, x, y) < r) return true; }
   return false;
 }
-function freeAt(x, y, z) { if (G.dev && G.noclip) return true; if (HOTEL_DOORS.size && G.me && !G.dev) { const q = HOTEL_DOORS.get(Math.round(y) * MAP_W + Math.round(x)); if (q != null && G.me.hroom !== q) return false; } if (typeof estLockedFor === 'function' && G.me && estLockedFor(G.me.x, G.me.y, x, y)) return false; if (typeof jailBlock === 'function' && JAILCELLS.length && jailBlock(x, y)) return false; const me = G.me; if (me && (me.fl || 0) !== 0) return canStandFloor(x, y, me.fb, me.fl, 0.22); return canStandZ(x, y, z, 0.22) && (z >= 0.5 || G.slide || !monsterNear(x, y)); }
+function freeAt(x, y, z) { if (G.dev && G.noclip) return true; if (HOTEL_DOORS.size && G.me && !G.dev) { const q = HOTEL_DOORS.get(Math.round(y) * MAP_W + Math.round(x)); if (q != null && G.me.hroom !== q) return false; } if (typeof estLockedFor === 'function' && G.me && estLockedFor(G.me.x, G.me.y, x, y)) return false; if (typeof jailBlock === 'function' && JAILCELLS.length && jailBlock(x, y)) return false; const me = G.me; if (me && (me.fl || 0) !== 0) return canStandFloor(x, y, me.fb, me.fl, 0.22) && !(typeof aptBlocked === 'function' && G.est && aptBlocked(me.name, me.fb, me.fl, me.x, me.y, x, y, G.est.L)); return canStandZ(x, y, z, 0.22) && (z >= 0.5 || G.slide || !monsterNear(x, y)); }
 
 function myInput() {
   const k = G.keys;
@@ -471,7 +471,7 @@ function updateLocal(now, dt) {
   }
   const stF = (me.crouch ? 1 : 0) | (me.slide ? 2 : 0);
   if (G.mouseS) G.mouseW = screenToWorld(G.mouseS[0], G.mouseS[1]);   // o cursor parado continua apontando para o mesmo lugar da TELA quando a câmera anda
-  if (me.bathing && G.mouseW) { const a = Math.atan2(G.mouseW.y - me.y, G.mouseW.x - me.x); me.dir = dirFromVec(Math.cos(a), Math.sin(a), me.dir); }   /* no ofurô: olha para onde o mouse aponta */
+  if (me.bathing && G.mouseW && G.mouseS && (!G.bathMouse0 || Math.hypot(G.mouseS[0] - G.bathMouse0[0], G.mouseS[1] - G.bathMouse0[1]) > 24)) { G.bathMouse0 = null; const a = Math.atan2(G.mouseW.y - me.y, G.mouseW.x - me.x); me.dir = dirFromVec(Math.cos(a), Math.sin(a), me.dir); }   /* no ofurô: entra olhando para o centro; depois olha para onde o mouse aponta */
   if ((combatFacing() || G.parrying) && G.mouseW && !me.sit && me.sleep == null) { let a = Math.atan2(G.mouseW.y - me.y, G.mouseW.x - me.x);   /* sentado ou deitado: não gira com o mouse */
     { let best = null, bd = 3.4; for (const id in G.monsters) { const q = G.monsters[id]; if (q.dieAt || !q.visible || Math.abs((q.z || 0) - (me.z || 0)) > 0.5) continue; const d = dist(q.rx, q.ry, me.x, me.y), aq = Math.atan2(q.ry - me.y, q.rx - me.x); let df = Math.abs(aq - a) % (Math.PI * 2); if (df > Math.PI) df = Math.PI * 2 - df; if (d < bd && df < 0.95) { bd = d; best = aq; } }
       for (const id in G.players) { const q = G.players[id]; if (id === G.myId || !q.visible || q.downed || q.isNpc) continue; const d = dist(q.rx, q.ry, me.x, me.y), aq = Math.atan2(q.ry - me.y, q.rx - me.x); let df = Math.abs(aq - a) % (Math.PI * 2); if (df > Math.PI) df = Math.PI * 2 - df; if (d < bd && df < 0.95) { bd = d; best = aq; } }

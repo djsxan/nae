@@ -414,7 +414,8 @@ function hostOnClient(from, m) {
     }
     case 'sleep': {
       if (!m.on || p.downed || p.carrying || p.carriedBy) { p.sleep = null; break; }
-      const b = BEDS[m.b | 0]; if (!b || dist(p.x, p.y, b.x, b.y) > 2.6) break;
+      const b = BEDS[m.b | 0]; if (!b || dist(p.x, p.y, b.x, b.y) > 2.6 || (b.fl || 0) !== (p.fl || 0)) break;
+      if (b.apt) { const AP = PROPS_BY['ap' + b.apt], r = AP && estateLoad().r[AP.id]; if (!(AP.suite && SUITE_OPEN) && (!r || (r.owner !== estOwner(p) && !(r.auth || []).includes(p.name.trim().toLowerCase())))) { tell(p, 'Esse futon é de quem mora aqui.'); break; } }
       if (BUILDINGS[b.bi] && BUILDINGS[b.bi].kind === 'hotel' && hotelBedOf(p) !== (m.b | 0)) { tell(p, 'Essa cabine não é sua. Fale com Dona Ilsa, no balcão, para alugar um (3 de ouro por dia).'); break; }
       p.x = b.x; p.y = b.y; p.dir = dirFromVecS(b.dx, b.dy); p.sleep = m.b | 0; p.sit = null; p.walking = false; break;
     }
@@ -451,7 +452,7 @@ function handleMove(p, m) {
   const dt = Math.min(3, (now - p.lastMv) / 1000);   /* tolera até 3 s de atraso da rede */
   const maxStep = PLAYER_SPEED * (m.sl || now < (p.dodgeAllow || 0) ? RUN_MUL * 2.6 : m.r ? RUN_MUL * 1.5 : 1.7) * (dt + 0.25) + 0.4;
   const ok = dist(p.x, p.y, x, y) <= maxStep && canStandZ(x, y, z, 0.18, p.fl || 0, p.fb ?? -1) && Math.abs(z - (+m.z || 0)) < 0.45;
-  if (!ok || estateBlocked(p.name, p.x, p.y, x, y, S.estateL)) {
+  if (!ok || estateBlocked(p.name, p.x, p.y, x, y, S.estateL) || ((p.fl || 0) !== 0 && p.fb >= 0 && !p.dev && aptBlocked(p.name, p.fb, p.fl, p.x, p.y, x, y, S.estateL))) {
     const far = dist(p.x, p.y, x, y), lagOnly = far > maxStep && far < 10 && canStandZ(x, y, z, 0.18, p.fl || 0, p.fb ?? -1) && Math.abs(z - (+m.z || 0)) < 0.45 && !estateBlocked(p.name, p.x, p.y, x, y, S.estateL);
     if (lagOnly) return;   /* passo longo só por atraso: ignora (o próximo, com mais tempo passado, é aceito) em vez de puxar o jogador de volta */
     Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: p.z, fl: p.fl || 0, fb: p.fb ?? -1 }); return; }
@@ -933,18 +934,19 @@ function dojoPaid(p) {   // diária: uma vez por dia do jogo (o dono e quem ele 
 }
 function trainMsg(p, m) {
   if (m.a === 'stop') { if (p.train) trainEnd(p, 'Você parou de treinar.'); return; }
-  if (p.train || p.downed || p.carrying || p.bath || (p.fl || 0) !== 0) return;
-  let best = -1, bd = 1.9; DUMMIES.forEach((d, i) => { const dd = dist(p.x, p.y, d.x, d.y); if (dd < bd) { bd = dd; best = i; } }); if (best < 0) { tell(p, 'Chegue perto de um boneco de treino.'); return; }
+  if (p.train || p.downed || p.carrying || p.bath) return;
+  let best = -1, bd = 1.9; DUMMIES.forEach((d, i) => { if ((d.fl || 0) !== (p.fl || 0)) return; const dd = dist(p.x, p.y, d.x, d.y); if (dd < bd) { bd = dd; best = i; } }); if (best < 0) { tell(p, 'Chegue perto de um boneco de treino.'); return; }
   if (Object.values(S.players).some(q => q !== p && q.train && q.train.i === best) || Object.values(S.npcs).some(n => n.dojoDummy === best)) { tell(p, 'Esse boneco está ocupado.'); return; }
-  if (!dojoPaid(p)) return;
-  const d = DUMMIES[best]; p.x = d.fx; p.y = d.fy; p.sit = null; p.dir = dirFromVecS(d.x - d.fx, d.y - d.fy); p.train = { i: best, t0: now_(), next: now_() + 900, rest: false, x: p.x, y: p.y, hits: 0, gain: 0 };
-  Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: 0, fl: 0, fb: -1 }); Net.toOne(p.id, { t: 'train', on: 1, i: best });
+  const d = DUMMIES[best];
+  if (d.priv) { const AP = PROPS_BY['ap' + d.apt], r = AP && estateLoad().r[AP.id]; if (!(AP.suite && SUITE_OPEN) && (!r || r.owner !== estOwner(p))) { tell(p, 'Esse boneco é particular da suíte.'); return; } }
+  else if (!dojoPaid(p)) return; p.x = d.fx; p.y = d.fy; p.sit = null; p.dir = dirFromVecS(d.x - d.fx, d.y - d.fy); p.train = { i: best, t0: now_(), next: now_() + 900, rest: false, x: p.x, y: p.y, hits: 0, gain: 0 };
+  Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: 0, fl: p.fl || 0, fb: p.fb ?? -1 }); Net.toOne(p.id, { t: 'train', on: 1, i: best });
   tell(p, (d.t === 'makiwara' ? 'Socos no makiwara' : 'Golpes no mokujin') + ': o personagem treina sozinho até cansar. Ande para parar.' + (p.cls === 'knight' ? '' : ' (Só o cavaleiro aprende com os bonecos.)'));
 }
 function trainEnd(p, why) { const T = p.train; if (!T) return; p.train = null; Net.toOne(p.id, { t: 'train', on: 0 }); if (why) tell(p, why + (T.gain ? ' Treino: ' + T.hits + ' golpes.' : '')); sendStat(p); }
 function trainTick(now) {
   for (const p of Object.values(S.players)) { const T = p.train; if (!T) continue;
-    if (p.downed || p.bath || dist(p.x, p.y, T.x, T.y) > 0.6 || (p.fl || 0) !== 0) { trainEnd(p, 'Você parou de treinar.'); continue; }
+    if (p.downed || p.bath || dist(p.x, p.y, T.x, T.y) > 0.6 || (p.fl || 0) !== (DUMMIES[T.i].fl || 0)) { trainEnd(p, 'Você parou de treinar.'); continue; }
     if ((p.food ?? 100) < 20) { trainEnd(p, 'Com fome demais para continuar: vá comer alguma coisa.'); continue; }
     if (now < T.next) continue; const d = DUMMIES[T.i];
     if (T.rest) { if ((p.cst ?? 0) >= cstMaxOf(p) * 0.6) { T.rest = false; tell(p, 'Fôlego de volta: o treino continua.'); } T.next = now + 1000; continue; }
@@ -2217,7 +2219,7 @@ function tiedStruggle(p) {
 // ---------------- cozinha ----------------
 function cookAt(p, r) {
   const rc = RECIPES[r], now = now_(); if (!rc || p.downed || now < (p.cookT || 0)) return;
-  const st = KITCHENS.find(k => dist(k.x, k.y, p.x, p.y) < 1.9); if (!st) { tell(p, 'Precisa estar perto de um fogão.'); return; }
+  const st = KITCHENS.find(k => dist(k.x, k.y, p.x, p.y) < 1.9 && (k.fl || 0) === (p.fl || 0)); if (!st) { tell(p, 'Precisa estar perto de um fogão.'); return; }
   const has = () => Object.entries(rc.need).every(([k, n]) => k === 'meat' ? (p.inv.venison || 0) + (p.inv.pork || 0) >= n : (p.inv[k] || 0) >= n);
   if (!has()) { tell(p, 'Faltam ingredientes.'); return; }
   p.cookT = now + 3200; const x0 = p.x, y0 = p.y;
@@ -2521,6 +2523,7 @@ function npcbHour() {
   }
 }
 function npcbDayEnd() {
+  try { aptNpcDay(); } catch (e) { console.warn('aptos', e); }
   const N = npcbAll();
   try { npcDayEnd(); } catch (e) { console.warn('moradores', e); }
   for (const pid in N) { const B = N[pid], P = PROPS_BY[pid], td = B.today;
@@ -2778,7 +2781,14 @@ function estateLoad() {
   S.estateL = estateLocks(); return S.estate;
 }
 function estateSave() { try { hsSet(ESTATE_KEY, S.estate); } catch (e) { } }
-function estateLocks() { const E = S.estate, L = {}; if (!E) return L; for (const P of PROPS) if (tenantsOf(P).length) L[P.bi] = []; for (const pid in E.r) { const P = PROPS_BY[pid]; if (P && P.kind === 'house') L[P.bi] = [E.r[pid].ownerName.trim().toLowerCase(), ...E.r[pid].auth]; } return L; }
+function estateLocks() { const E = S.estate, L = {}; if (!E) return L; for (const P of PROPS) if (tenantsOf(P).length && !P.apt) L[P.bi] = []; for (const pid in E.r) { const P = PROPS_BY[pid]; if (P && P.kind === 'house' && !P.apt) L[P.bi] = [E.r[pid].ownerName.trim().toLowerCase(), ...E.r[pid].auth]; }
+  for (const P of PROPS) if (P.apt) { const r = E.r[P.id]; if (r) L['apt:' + P.apt] = [r.ownerName.trim().toLowerCase(), ...(r.auth || [])]; else if (aptNpc(P)) L['apt:' + P.apt] = []; }   /* apartamentos: do morador (ou do morador NPC) */
+  return L; }
+// morador NPC dos apartamentos vagos (a suíte fica vaga); paga o aluguel ao dono do dojô e se muda quando um jogador aluga
+const APT_NPC_NAMES = ['Seu Hideo, o relojoeiro', 'Dona Yumi, a costureira', 'Seu Kenji, o escriba', 'Dona Aiko, a florista'];
+function aptNpc(P) { if (!P || !P.apt || P.suite) return null; const E = estateLoad(); if (E.r[P.id]) return null; const k = APTS.findIndex(a => a.key === P.apt); return APT_NPC_NAMES[k % APT_NPC_NAMES.length]; }
+function aptPayOwner(v, why) { const D = dojoRec(); if (!D || !D.r || !v) return; const BK = bankLoad(), A = BK.acc[D.r.owner] || (BK.acc[D.r.owner] = { g: 0, loan: 0, due: 0, wk: estDay() }); A.g += v; bankSave(); if (D.B && why) bizLog(D.B, why); }
+function aptNpcDay() { for (const P of PROPS) { const nm = P.apt && aptNpc(P); if (nm) aptPayOwner(P.rent, nm.split(',')[0] + ' pagou ' + P.rent + ' de aluguel do ' + P.name.split(' ·')[0] + '.'); } }
 function tenantsOf(P) { const E = S.estate; if (!P || !P.tenants || !P.tenants.length) return []; if (E && E.gone && E.gone[P.id]) return []; return P.tenants; }
 function estatePublic() { const E = estateLoad(), st = {}; for (const pid in E.r) st[pid] = (E.r[pid].mode === 'own' ? '★' : '') + E.r[pid].ownerName; return st; }
 const estTen = () => { const E = estateLoad(); return { gone: E.gone || {}, evict: E.evict || {} }; };
@@ -2821,7 +2831,7 @@ function estateEnd(pid, why, refund = 0) {
 function estateJoin(np) {
   const E = estateLoad(), k = estOwner(np);
   if (E.lost[k]) { const L = E.lost[k], g = L._gold || 0; delete L._gold; np.gold += g; const left = estGive(np, L); if (Object.keys(left).length) E.lost[k] = left; else delete E.lost[k]; estateSave(); setTimeout(() => { if (S.players[np.id]) tell(np, 'O corretor devolveu o que era seu' + (g ? ' (' + g + ' de ouro)' : '') + '.'); }, 2500); }
-  const pid = rentalOf(np); if (pid) { const s = estHomeSpot(PROPS_BY[pid]); np.x = s.x; np.y = s.y; }
+  const pid = rentalOf(np); if (pid && !PROPS_BY[pid].apt) { const s = estHomeSpot(PROPS_BY[pid]); np.x = s.x; np.y = s.y; }
   else { const k = hotelRoomOf(np); if (k >= 0) { const R = hotelRooms()[k]; const sp = HOTEL_CABS[k] && HOTEL_CABS[k].spot; if (sp) { np.x = sp[0]; np.y = sp[1]; } else { np.x = R.bed.x + 0.6; np.y = R.bed.y + 1.0; } setTimeout(() => { if (S.players[np.id]) tell(np, 'Você acorda na sua cabine da Pousada do Javali Magro.'); }, 1300); } }
   for (const b of bizOf(np)) E.r[b].seen = Date.now();
   setTimeout(() => { if (!S.players[np.id] || !E.offers) return; const k2 = estOwner(np); for (const pid in E.offers) { const O = E.offers[pid], r = E.r[pid]; if (!r) { offerClose(PROPS_BY[pid], false); continue; } if ((r.owner === k2 && !O.counter) || (O.from === k2 && O.counter)) offerNotify(np, pid); } }, 2500);
@@ -2973,6 +2983,7 @@ function estateMsg(p, m) {
       const RS = !mine && P.kind !== 'house' ? (E.resale || {})[P.id] : null;   // melhorias deixadas pelo dono anterior: quem compra paga por elas também
       const cost = m.a === 'buy' ? buyPrice(P, p) + (RS ? RS.extra || 0 : 0) - (mine ? E.r[P.id].dep || 0 : 0) : P.rent * (RENT_DAYS + 2);   // 1ª semana + caução de 2 dias
       if (!debit(estOwner(p), p, cost)) { tell(p, 'Você precisa de ' + cost + ' de ouro (banco + bolsa).'); return; }   // paga com o banco e completa com a bolsa
+      if (P.apt) { const nm = aptNpc(P); aptPayOwner(cost, p.name + (m.a === 'buy' ? ' comprou o ' : ' alugou o ') + P.name.split(' ·')[0] + ' (' + cost + ').'); if (nm) tell(p, nm.split(',')[0] + ' arrumou as malas e se mudou: o ' + P.name.split(' ·')[0] + ' é seu.'); }
       if (mine) { const r = E.r[P.id]; r.mode = 'own'; r.price = cost + (r.dep || 0); r.dep = 0; r.paid = estDay(); tell(p, 'Escritura assinada: ' + P.name + ' agora é sua para sempre (imposto de 1 ouro por dia).'); }
       else { E.r[P.id] = { owner: estOwner(p), ownerName: p.name, mode: m.a === 'buy' ? 'own' : 'rent', paid: estDay(), auth: [], chest: {}, dep: m.a === 'buy' ? 0 : P.rent * 2, since: Date.now(), seen: Date.now(), price: m.a === 'buy' ? cost - (RS ? RS.extra || 0 : 0) : undefined };   // as melhorias contam à parte (upInvest)
         if (P.kind !== 'house') { E.r[P.id].biz = bizInit(P); bizLinkBank(E.r[P.id]); bizLog(E.r[P.id].biz, 'O lucro cai direto na sua conta do banco, e os salários e a reposição saem dela. Mantenha ouro no banco.');
@@ -3023,7 +3034,8 @@ function estateMsg(p, m) {
     case 'put': case 'take': {
       const pid = rentalOf(p); if (!pid) { tell(p, 'Você não tem casa.'); return; }
       const PP = PROPS_BY[pid], r = E.r[pid], k = String(m.k || '');
-      if (WORLD.bld[tileAt(p.x, p.y)] !== PP.bi) { tell(p, 'O baú fica dentro da sua casa.'); return; }
+      if (PP.apt) { const c = APT_CHESTS.find(q => q.apt === PP.apt); if (!c || (p.fl || 0) !== c.fl || dist(p.x, p.y, c.x, c.y) > 2.4) { tell(p, 'O tansu fica dentro do seu apartamento.'); return; } }
+      else if (WORLD.bld[tileAt(p.x, p.y)] !== PP.bi) { tell(p, 'O baú fica dentro da sua casa.'); return; }
       if (!LOOT[k]) return;
       if (m.a === 'put') { const q = Math.min(p.inv[k] || 0, Math.max(1, m.q | 0)); if (!q) return; if (!r.chest[k] && Object.keys(r.chest).length >= ESTATE_CHEST_SLOTS) { tell(p, 'O baú está cheio.'); return; } p.inv[k] -= q; if (!p.inv[k]) delete p.inv[k]; r.chest[k] = (r.chest[k] || 0) + q; }
       else { const q = Math.min(r.chest[k] || 0, Math.max(1, m.q | 0)); if (!q) return; if (!p.inv[k] && Object.keys(p.inv).length >= INV_SLOTS) { tell(p, 'Sua mochila está cheia.'); return; } r.chest[k] -= q; if (!r.chest[k]) delete r.chest[k]; p.inv[k] = (p.inv[k] || 0) + q; }
@@ -3276,10 +3288,10 @@ function estateTick(now) {
     const due = (r.mode === 'own' ? 1 : P.rent) * RENT_DAYS, q = ownerOnline(r);
     if (r.mode === 'own' && tenantsOf(P).length && !(E.evict || {})[pid] && r.tenPaid !== r.paid) { r.tenPaid = r.paid; const v = P.week * owed, BK = bankLoad(), A = BK.acc[r.owner] || (BK.acc[r.owner] = { g: 0, loan: 0, due: 0, wk: estDay() }); A.g += v; bankSave(); if (q) tell(q, 'Os inquilinos de ' + P.name + ' pagaram ' + v + ' de ouro de aluguel: foi direto para a sua conta no banco.'); }   /* aluguel dos inquilinos vai para o banco */
     if (!q) {   // dono fora do jogo: paga do banco e do cofre do negócio
-      let pd = false; while (day - r.paid >= RENT_DAYS) { if (!debit(r.owner, null, due, r.biz)) break; r.paid += RENT_DAYS; pd = true; } if (pd) estateSave();
+      let pd = false; while (day - r.paid >= RENT_DAYS) { if (!debit(r.owner, null, due, r.biz)) break; r.paid += RENT_DAYS; pd = true; if (P.apt && r.mode !== 'own') aptPayOwner(due, r.ownerName + ' pagou o aluguel do ' + P.name.split(' ·')[0] + ' (' + due + ').'); } if (pd) estateSave();
       if (r.mode !== 'own' && day - r.paid > ESTATE_ABANDON_DAYS) estateEnd(pid, ''); continue; }
 
-    let paid = 0; const sum = { bank: 0, cofre: 0, gold: 0 }; while (day - r.paid >= RENT_DAYS) { const d = debit(r.owner, q, due, r.biz); if (!d) break; for (const k in sum) sum[k] += d[k]; r.paid += RENT_DAYS; paid++; }
+    let paid = 0; const sum = { bank: 0, cofre: 0, gold: 0 }; while (day - r.paid >= RENT_DAYS) { const d = debit(r.owner, q, due, r.biz); if (!d) break; for (const k in sum) sum[k] += d[k]; r.paid += RENT_DAYS; paid++; if (P.apt && r.mode !== 'own') aptPayOwner(due, r.ownerName + ' pagou o aluguel do ' + P.name.split(' ·')[0] + ' (' + due + ').'); }
     if (paid) { featAdd(q, 'rent', paid); sendStat(q); tell(q, (r.mode === 'own' ? 'Imposto' : 'Aluguel') + ' semanal de ' + P.name + ': -' + (due * paid) + ' de ouro' + (paid > 1 ? ' (' + paid + ' semanas)' : '') + ' — ' + debitTxt(sum) + '.'); estateSave(); if (q.estOpen) estateSend(q); }
     const still = Math.floor((day - r.paid) / RENT_DAYS);
     if (still >= 2 && r.mode !== 'own') estateEnd(pid, 'Sem ouro para o aluguel, você perdeu ' + P.name + '. A caução cobriu a dívida' + (r.biz ? ' e o cofre veio para a sua bolsa.' : ' e o baú voltou para a sua mochila.'));
@@ -3293,7 +3305,7 @@ function estateTick(now) {
     if (p.homeSleep >= 20 && !buffOn(p, 'rested')) { p.buffs.rested = now + 600000; tell(p, 'Você dormiu bem na sua cama: Bem descansado (10 min, recupera vida e mana mais rápido).'); sendStat(p); }
   }
 }
-function estHomeBed(p) { if (p.sleep == null) return false; const b = BEDS[p.sleep], pid = rentalOf(p); return !!(b && pid && PROPS_BY[pid].bi === b.bi); }
+function estHomeBed(p) { if (p.sleep == null) return false; const b = BEDS[p.sleep], pid = rentalOf(p); if (!b || !pid) return false; const P = PROPS_BY[pid]; return P.apt ? b.apt === P.apt : (P.bi === b.bi && !b.fl); }
 
 // ============================================================
 //  ROTINA DOS MORADORES — dormem em casa (22h–6h), tomam café, trabalham, almoçam (taverna ou casa), trabalham,
@@ -3690,7 +3702,7 @@ function tatamiTaken() { const t = new Set(); for (const n of Object.values(S.np
 function dojoStop() {   /* um boneco livre, ou o tatame (lutar com outro praticante) */
   { const T = tatamiSpots(), taken = tatamiTaken(), free = T.filter(q => !taken.has(q.k)); if (free.length && (Math.random() < 0.45 || taken.size === 1)) { const q = free[0]; return { x: q.x, y: q.y, w: 40000 + Math.random() * 20000, dojo: -1, tk: q.k }; } }
   const used = new Set(Object.values(S.npcs).map(n => n.dojoDummy != null ? n.dojoDummy : (n.stops && n.stops[n.si] && n.stops[n.si].dojo)).filter(v => v != null && v >= 0));   /* também os que estão a caminho */ for (const p of Object.values(S.players)) if (p.train) used.add(p.train.i);
-  const free = DUMMIES.map((d, i) => i).filter(i => !used.has(i)); const i = free.length ? free[Math.floor(Math.random() * free.length)] : -1;
+  const free = DUMMIES.map((d, i) => i).filter(i => !used.has(i) && !DUMMIES[i].priv); const i = free.length ? free[Math.floor(Math.random() * free.length)] : -1;
   if (i >= 0) { const d = DUMMIES[i]; return { x: d.fx, y: d.fy, w: 35000 + Math.random() * 25000, dojo: i }; }
   const b = BUILDINGS.find(q => q.kind === 'dojo'), [x, y] = bLocal(b, 2, 2); return { x: x + Math.random(), y: y + Math.random(), w: 30000, dojo: -1 };
 }

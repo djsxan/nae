@@ -2,7 +2,7 @@
 //  COZINHA — fogões nas casas e na taverna. F perto de um fogão abre as receitas;
 //  cozinhar leva alguns segundos (mexendo a panela) e treina a habilidade Cozinha.
 // ============================================================
-function nearStove(r = 1.8) { const me = G.me; if (!me) return null; let best = null, bd = r; for (const k of KITCHENS) { const d = Math.hypot(k.x - me.x, k.y - me.y); if (d < bd) { bd = d; best = k; } } return best; }
+function nearStove(r = 1.8) { const me = G.me; if (!me) return null; let best = null, bd = r; for (const k of KITCHENS) { if ((k.fl || 0) !== (me.fl || 0)) continue; const d = Math.hypot(k.x - me.x, k.y - me.y); if (d < bd) { bd = d; best = k; } } return best; }
 function haveFor(rc) {
   const inv = (G.me && G.me.inv) || {};
   for (const k in rc.need) { if (k === 'meat') { if ((inv.venison || 0) + (inv.pork || 0) < rc.need[k]) return false; } else if ((inv[k] || 0) < rc.need[k]) return false; }

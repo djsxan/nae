@@ -391,4 +391,4 @@ function bankShow(m) {
 }
 
 // perto do baú da sua casa (o F abre o baú mesmo com gente por perto)
-function estChestHere() { const M = G.est && G.est.mine, me = G.me; if (!M || !me || !PROPS_BY[M.pid]) return false; const bi = PROPS_BY[M.pid].bi; if (WORLD.bld[tileAt(me.x, me.y)] !== bi) return false; const c = CHESTS.find(q => q.bi === bi); return !c || dist(me.x, me.y, c.x, c.y) < 2.4; }
+function estChestHere() { const M = G.est && G.est.mine, me = G.me; if (!M || !me || !PROPS_BY[M.pid]) return false; const PP = PROPS_BY[M.pid]; if (PP.apt) { const c = APT_CHESTS.find(q => q.apt === PP.apt); return !!c && (me.fl || 0) === c.fl && Math.hypot(me.x - c.x, me.y - c.y) < 2.4; } const bi = PP.bi; if (WORLD.bld[tileAt(me.x, me.y)] !== bi) return false; const c = CHESTS.find(q => q.bi === bi); return !c || dist(me.x, me.y, c.x, c.y) < 2.4; }
