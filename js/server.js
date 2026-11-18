@@ -152,6 +152,9 @@ function hostOnClient(from, m) {
     const lvl = clamp(m.lvl | 0 || 1, 1, 300);
     const si = SKINS[cls].findIndex(s => s.id === m.skin), skin = si >= 0 && lvl >= SKIN_LVL[si] ? m.skin : SKINS[cls][0].id;
     let s = townSpot(), sz = 0, sfl = 0, sfb = -1;   /* reconexão: volta para onde estava (não para o Templo) */
+    const ghost = /^[a-z0-9]{4,12}$/.test(m.uid || '') ? Object.values(S.players).find(q => q.uid === m.uid && q.id !== from && q.id !== Net.myId) : null;
+    if (ghost && !ghost.downed && !ghost.jailUntil) { m.px = ghost.x; m.py = ghost.y; m.pz = ghost.z || 0; m.pfl = ghost.fl || 0; m.pfb = ghost.fb ?? -1; }
+    if (ghost) { hostOnLeave(ghost.id, true); try { if (Net.rel[ghost.id]) Net.rel[ghost.id].close(); } catch (e) { } delete Net.rel[ghost.id]; delete Net.fast[ghost.id]; }
     if (isFinite(m.px) && isFinite(m.py) && !(+m.jailLeft > 0)) { const z0 = isFinite(m.pz) ? +m.pz : 0, f0 = m.pfl | 0, b0 = isFinite(m.pfb) ? m.pfb | 0 : -1; try { if (canStandZ(+m.px, +m.py, z0, 0.18, f0, b0)) { s = { x: +m.px, y: +m.py }; sz = z0; sfl = f0; sfb = b0; } } catch (e) { } }
     const np = {
       wandInfo: m.wandInfo && typeof m.wandInfo === 'object' && WANDS[m.wandInfo.k] ? { k: m.wandInfo.k, w: String(m.wandInfo.w || '').slice(0, 20), c: String(m.wandInfo.c || '').slice(0, 30), len: clamp(m.wandInfo.len | 0, 15, 40), feel: String(m.wandInfo.feel || '').slice(0, 24), dmg: clamp(+m.wandInfo.dmg || 0, -0.05, 0.08), mp: clamp(m.wandInfo.mp | 0, -5, 12) } : null,
@@ -179,7 +182,7 @@ function hostOnClient(from, m) {
     if (m.qdone) for (const q of QUESTS) if (m.qdone[q.id]) np.qdone[q.id] = m.qdone[q.id] | 0;
     np.hp = np.maxHp; np.mp = np.maxMp;
     if (!m.lvl) { np.gold = 30; np.pots.hp = 3; np.pots.mp = 2; np.pots.band = 3; } // kit inicial
-    S.players[from] = np;
+    np.joinT = Date.now(); S.players[from] = np;
     estateJoin(np);
     if (m.dev && typeof crypto !== 'undefined' && crypto.subtle) crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(m.dev).trim().toUpperCase())).then(buf => {
       const h = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -450,14 +453,14 @@ function dropCarried(p) {
   Net.toOne(t.id, { t: 'tp', x: t.x, y: t.y, z: t.z, fl: t.fl, fb: t.fb });
 }
 
-function hostOnLeave(id) {
+function hostOnLeave(id, quiet) {
   const p = S.players[id];
   if (!p) return;
   if (p.carrying) dropCarried(p);
   if (p.carriedBy && S.players[p.carriedBy]) S.players[p.carriedBy].carrying = null;
   delete S.players[id];
   Net.toAll({ t: 'pleave', id });
-  sys(`${p.name} deixou a cidadela.`);
+  if (!quiet) sys(`${p.name} deixou a cidadela.`);
 }
 
 // ---------------- combate ----------------
@@ -2377,7 +2380,7 @@ function hostTick() {
 }
 
 // ---------- mundo único: cópia para todos (para quem assumir se o anfitrião cair) e recomeço pelo Tecelão ----------
-function worldSnap() { estateLoad(); bankLoad(); const succ = Object.values(S.players).filter(q => q.id !== Net.myId).sort((a, b) => (b.hs || 0) - (a.hs || 0)).map(q => q.id); return { t: 'wsnap', est: S.estate, bank: S.bank, succ, ver: VERSION }; }
+function worldSnap() { estateLoad(); bankLoad(); const succ = Object.values(S.players).filter(q => q.id !== Net.myId).sort((a, b) => (a.joinT || 0) - (b.joinT || 0)).map(q => q.id);   /* quem chegou primeiro assume */ return { t: 'wsnap', est: S.estate, bank: S.bank, succ, ver: VERSION }; }
 function worldBroadcast() { if (!Net.isHost || Net.offline) return; try { const m = worldSnap(); for (const id in Net.rel) { const c = Net.rel[id]; if (c.open) c.send(m); } } catch (e) { console.warn('wsnap', e); } }
 function worldReset(p) {
   S.estate = { r: {}, lost: {}, hotel: {} }; estateSave(); S.bank = { acc: {} }; bankSave(); HOTEL_R = null;

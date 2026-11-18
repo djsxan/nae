@@ -46,8 +46,9 @@ const Net = {
       };
       conn.on('close', gone); conn.on('error', gone);
     });
-    peer.on('disconnected', () => { if (!peer.destroyed) peer.reconnect(); });
+    peer.on('disconnected', () => { if (!peer.destroyed) try { peer.reconnect(); } catch (e) { } });
     peer.on('error', err => { if (!opened) { peer.destroy(); cb(err); } else console.warn('PeerJS:', err); });
+    const keep = setInterval(() => { if (peer.destroyed || this.peer !== peer) { clearInterval(keep); return; } if (peer.disconnected) try { peer.reconnect(); } catch (e) { } }, 5000);   /* volta ao catálogo para quem precisa reconectar */
   },
 
   // procura reinos abertos nas vagas fixas (sem servidor de lista)

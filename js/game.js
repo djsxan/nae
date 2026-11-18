@@ -199,7 +199,7 @@ function clientOnServer(m) {
     case 'trade': tradeShow(m); break;
     case 'hotel': G.hotel = m; if (G.dialog && G.dialog.id === 'hotelkeeper') setDialogText(m.room >= 0 ? 'Sua cabine é a ' + (m.room + 1) + ', por mais ' + m.until + ' dia(s). O baú fica ao lado do catre.' : 'Você não tem cabine. Vagas agora: ' + m.free + ' de 6.'); if ($('hchest') && !$('hchest').classList.contains('hidden')) hotelChestShow(); break;
     case 'wt': WT.ph = m.ph ?? null; WT.rain = m.rain ?? null; break;
-    case 'denied': if (m.why === 'ver') { if (verNum(m.ver) > verNum(VERSION)) { netMsg('O reino está numa versão mais nova. Atualizando o jogo…'); setTimeout(() => location.replace(location.pathname + '?v=' + Date.now()), 1200); } else { netMsg('O anfitrião está numa versão antiga do jogo. Esperando ele atualizar…'); Net.reset(); setTimeout(worldTry, 8000); } break; } askRoomPw(m.why === 'pwbad'); break;
+    case 'denied': if (m.why === 'ver') { if (verNum(m.ver) > verNum(VERSION)) { netMsg('O reino está numa versão mais nova. Atualizando o jogo…'); saveUpdPos(); setTimeout(() => location.replace(location.pathname + '?v=' + Date.now()), 1200); } else { netMsg('O anfitrião está numa versão antiga do jogo. Esperando ele atualizar…'); Net.reset(); setTimeout(worldTry, 8000); } break; } askRoomPw(m.why === 'pwbad'); break;
     case 'wsnap': if (!Net.isHost) { try { localStorage.setItem('nae-world-estate-v1', JSON.stringify(m.est || {})); localStorage.setItem('nae-world-bank-v1', JSON.stringify(m.bank || {})); } catch (e) { } WN.succ = m.succ || []; } break;   // guarda a cópia do mundo
     case 'roompw': G.roomLocked = m.on; pzRoomRefresh(); break;
     case 'npc': if (G.dialog && G.dialog.id === m.n) { setDialogText(m.text); if (m.n === 'captain') later(50, () => G.dialog && buildDialogOptions('captain')); } break;
@@ -249,7 +249,7 @@ function clientOnServer(m) {
     case 'miss': { const e = G.monsters[m.id]; if (e) { const w = tileW(e.rx, e.ry, 30); for (let k = 0; k < 5; k++) spawnPart('dust', w.x, w.y); } break; }
     case 'dead': {
       G.dead = true; $('downed-ui').classList.add('hidden'); $('hud').classList.add('hidden'); try { const all = loadChars(); delete all[charKey(G.me.name, G.me.cls)]; localStorage.setItem(SAVE_KEY, JSON.stringify(all)); } catch (e) { }
-      const d = document.createElement('div'); d.id = 'deathscreen'; d.innerHTML = '<div class="ds-box"><div class="ds-title">Você morreu</div><div class="ds-sub">' + m.name + ', nível ' + m.lvl + ' — ' + m.reason + '</div><div class="ds-note">Em Nae a morte é para sempre. Seu personagem se foi.</div><button class="btn gold" onclick="location.reload()">Começar de novo</button></div>';
+      const d = document.createElement('div'); d.id = 'deathscreen'; d.innerHTML = '<div class="ds-box"><div class="ds-title">Você morreu</div><div class="ds-sub">' + m.name + ', nível ' + m.lvl + ' — ' + m.reason + '</div><div class="ds-note">Em Nae a morte é para sempre. Seu personagem se foi.</div><button class="btn gold" onclick="G.leaving = true; location.reload()">Começar de novo</button></div>';
       document.body.appendChild(d); break;
     }
     case 'lootgold': showToast('+ ' + m.g + ' de ouro'); break;
@@ -372,9 +372,9 @@ function updateLocal(now, dt) {
   // correr com SHIFT gasta estamina; ao esgotar, precisa recuperar um pouco antes de correr de novo
   if (G.stam == null) { G.stam = stamMax(); G.stamT = 0; G.tired = false; }
   const kneel = healthState(me) === 3;
-  const crouchKey = !kneel && (G.keys.has('c') || G.crouchToggle) && !me.downed && !me.carrying && !me.sit && (me.z || 0) < 0.5;
-  if (!(G.keys.has('c') && G.keys.has('shift'))) G.slideLatch = false;
-  if (!G.slide && !kneel && v && G.keys.has('c') && G.keys.has('shift') && !G.slideLatch && !G.tired && G.stam >= SLIDE_COST && !me.downed && !me.carrying && (me.z || 0) < 0.5 && !((me.fl || 0) !== 0)) {
+  const crouchKey = !kneel && (G.keys.has('control') || G.crouchToggle) && !me.downed && !me.carrying && !me.sit && (me.z || 0) < 0.5;
+  if (!(G.keys.has('control') && G.keys.has('shift'))) G.slideLatch = false;
+  if (!G.slide && !kneel && v && G.keys.has('control') && G.keys.has('shift') && !G.slideLatch && !G.tired && G.stam >= SLIDE_COST && !me.downed && !me.carrying && (me.z || 0) < 0.5 && !((me.fl || 0) !== 0)) {
     G.slide = { t0: now, v: v.slice() }; G.slideLatch = true; G.stam -= SLIDE_COST; G.stamT = now;
   }
   if (G.slide && now - G.slide.t0 > SLIDE_MS) G.slide = null;
@@ -1053,8 +1053,10 @@ canvas.addEventListener('mouseup', e => { if (e.button === 0 && G.melee) { const
 window.addEventListener('auxclick', e => { if (e.button === 3 || e.button === 4) e.preventDefault(); });
 window.addEventListener('mouseup', e => { if (e.button === 2 && G.parrying) { G.parrying = false; Net.send({ t: 'parry', on: 0 }); } });
 
+window.addEventListener('beforeunload', e => { if (G.started && !G.leaving) { e.preventDefault(); e.returnValue = ''; } });   /* evita fechar a aba sem querer */
 window.addEventListener('keydown', e => {
   if (!G.started) return;
+  if (e.ctrlKey && /^[a-z]$/i.test(e.key) && !/^[cvxa]$/i.test(e.key)) e.preventDefault();   /* agachado (Ctrl): sem atalhos do navegador como Ctrl+F e Ctrl+S */
   if (document.activeElement === $('chat-input')) { if (e.key === 'Enter') { const i = $('chat-input'), t = i.value.trim(); if (t) Net.send({ t: 'chat', text: t }); i.value = ''; chatClose(); e.preventDefault(); } else if (e.key === 'Escape') chatClose(); return; }
   if (/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '')) return;
   if (e.key === 'Enter' && !G.paused && !G.dialog) { chatOpen(); e.preventDefault(); return; }
@@ -1104,7 +1106,8 @@ window.addEventListener('keydown', e => {
   if (k === ' ' && G.pick) { e.preventDefault(); if (!e.repeat) lockpickKey(); return; }
   if (k === ' ' && G.me && G.me.bound) { e.preventDefault(); if (!e.repeat) Net.send({ t: 'struggle' }); return; }
   if (k === ' ' && G.me && (G.me.gripped || G.me.tied)) { e.preventDefault(); Net.send({ t: 'struggle' }); return; }   // agarrado: martelar espaço
-  if (k === ' ' && inCombatZone()) { e.preventDefault(); if (!e.repeat) { const me = G.me, iv = myInput(); const v = iv || (me.fa != null ? [-Math.cos(me.fa), -Math.sin(me.fa)] : [0, 1]); G.dodge = { t0: performance.now(), v }; Net.send({ t: 'dodge' }); } return; }
+  if (k === ' ') { e.preventDefault(); if (!e.repeat) cycleTarget(); return; }   /* Espaço: próximo monstro mais perto */
+  if (k === 'c' && inCombatZone()) { e.preventDefault(); if (!e.repeat) { const me = G.me, iv = myInput(); const v = iv || (me.fa != null ? [-Math.cos(me.fa), -Math.sin(me.fa)] : [0, 1]); G.dodge = { t0: performance.now(), v }; Net.send({ t: 'dodge' }); } return; }
   if (k === 'z' && !e.repeat && inCombatZone()) { strike('under'); return; }
   if ((k === '+' || k === '=') ) { SCALE = clamp(SCALE * 1.1, 1.4, 7); G.zoomUser = true; return; }
   if (k === '-') { SCALE = clamp(SCALE * 0.9, 1.4, 7); G.zoomUser = true; return; }
@@ -1185,6 +1188,11 @@ function frame() {
   requestAnimationFrame(frame);
 }
 
+function cycleTarget() {   /* Espaço: passa para o próximo monstro mais perto (até 9 tiles) */
+  const L = Object.values(G.monsters).filter(m => !m.dieAt && dist(m.rx, m.ry, G.me.x, G.me.y) <= 9).sort((a, b) => dist(a.rx, a.ry, G.me.x, G.me.y) - dist(b.rx, b.ry, G.me.x, G.me.y));
+  if (!L.length) { showToast('Nenhum monstro por perto.'); return; }
+  const i = L.findIndex(m => m.id === G.target); setTarget(L[(i + 1) % L.length].id);   /* percorre do mais perto ao mais longe */
+}
 function attackNearest() {
   let best = null, bd = 99;
   for (const id in G.monsters) { const m = G.monsters[id]; if (m.dieAt) continue; const d = dist(m.rx, m.ry, G.me.x, G.me.y); if (d < bd) { bd = d; best = m; } }
@@ -1272,7 +1280,8 @@ function helloMsg() {
   const name = $('name').value.trim() || 'Aventureiro';
   const saved = loadChars()[charKey(name, chosenClass)] || {};
   G.myUid = saved.t ? (saved.uid || '') : (G.myUid && G.myUidFor === charKey(name, chosenClass) ? G.myUid : Math.random().toString(36).slice(2, 10)); G.myUidFor = charKey(name, chosenClass);   // herói novo: código único (não herda nada de um herói antigo com o mesmo nome)
-  const me = G.started && G.me && !G.me.downed ? G.me : null;   /* reconectando: conta onde estava */
+  let me = G.started && G.me && !G.me.downed ? G.me : null;   /* reconectando: conta onde estava */
+  if (!me) try { const u = JSON.parse(sessionStorage.getItem('nae-upd-pos') || 'null'); sessionStorage.removeItem('nae-upd-pos'); if (u && Date.now() - u.t < 180000 && u.n === name) me = u; } catch (e) { }   /* voltou de uma atualização automática: mesmo lugar */
   return { t: 'hello', ver: VERSION, ...(me ? { px: me.x, py: me.y, pz: me.z || 0, pfl: me.fl || 0, pfb: me.fb ?? -1 } : {}), uid: G.myUid || undefined, wandInfo: saved.wandInfo, cloak: saved.cloak, pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, freeLimb: saved.freeLimb, shieldHp: saved.shieldHp, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
 }
 // reino trancado: pede a senha e manda o hello de novo pela mesma conexão
@@ -1282,7 +1291,7 @@ function askRoomPw(bad) {
   d.classList.remove('hidden'); const inp = d.querySelector('#rpw-in'); inp.focus();
   const ok = () => { G.roomPw = inp.value.trim(); if (!G.roomPw) return; d.remove(); Net.send(helloMsg()); };
   d.querySelector('#rpw-ok').onclick = ok; inp.onkeydown = e => { if (e.key === 'Enter') ok(); };
-  d.querySelector('#rpw-no').onclick = () => location.reload();
+  d.querySelector('#rpw-no').onclick = () => { G.leaving = true; location.reload(); };
 }
 function pzRoomRefresh() {
   const box = $('pz-roompw'); if (!box) return; box.style.display = Net.isHost && !Net.offline ? '' : 'none';
@@ -1307,18 +1316,19 @@ function worldTry() {
   Net.reset(); Net.onServer = m => { WN.lastMsg = Date.now(); clientOnServer(m); }; Net.onDisconnected = worldLost;
   Net.join(WN.id, err => {
     WN.busy = false;
-    if (!err) { WN.tries = 0; WN.lastMsg = Date.now(); WN.inWorld = true; netMsg(''); showRoom('Nae'); Net.send(helloMsg()); setTimeout(() => Net.send({ t: 'pcs', s: myHostScore() }), 1500); return; }
+    if (!err) { WN.tries = 0; WN.unav = 0; WN.lastMsg = Date.now(); WN.inWorld = true; netMsg(''); showRoom('Nae'); Net.send(helloMsg()); setTimeout(() => Net.send({ t: 'pcs', s: myHostScore() }), 1500); return; }
     const mayHost = !G.started || Date.now() - WN.lostT >= WN.rank * 4000;   // na migração, cada um espera a sua vez (o PC mais forte primeiro)
-    if (err.type === 'peer-unavailable' && mayHost) { worldHost(); return; }
+    if (err.type === 'peer-unavailable' && mayHost) { if (G.started && ++WN.unav < 3) { netMsg('Procurando o anfitrião… (' + WN.unav + ')'); setTimeout(worldTry, 2500); return; } WN.unav = 0; worldHost(); return; }   /* só assume se o anfitrião sumir de verdade (3 tentativas) */
     worldRetry();
   });
 }
 // versão publicada no site (lida do index.html): quem estiver com uma versão velha atualiza antes de virar anfitrião, e todos conferem a cada 3 min
 function liveVersion(cb) { if (location.protocol === 'file:') { cb(null); return; } fetch('index.html?nv=' + Date.now(), { cache: 'no-store' }).then(r => r.text()).then(t => { const m = new RegExp('[?]v=([0-9]+[.][0-9]+[.][0-9]+)').exec(t); cb(m ? 'v' + m[1] : null); }).catch(() => cb(null)); }
-function updateNow(v) { netMsg('Nova versão do jogo (' + v + '). Atualizando…'); if (Net.isHost && typeof worldBroadcast === 'function') worldBroadcast(); try { if (typeof saveChar === 'function' && G.me) saveChar(); } catch (e) { } setTimeout(() => location.replace(location.pathname + '?v=' + Date.now()), 1500); }
+function saveUpdPos() { try { const me = G.me; if (G.started && me && !me.downed) sessionStorage.setItem('nae-upd-pos', JSON.stringify({ x: me.x, y: me.y, z: me.z || 0, fl: me.fl || 0, fb: me.fb ?? -1, n: $('name').value.trim(), t: Date.now() })); } catch (e) { } G.leaving = true; }
+function updateNow(v) { saveUpdPos(); netMsg('Nova versão do jogo (' + v + '). Atualizando…'); if (Net.isHost && typeof worldBroadcast === 'function') worldBroadcast(); try { if (typeof saveChar === 'function' && G.me) saveChar(); } catch (e) { } setTimeout(() => location.replace(location.pathname + '?v=' + Date.now()), 1500); }
 setInterval(() => liveVersion(v => { if (v && verNum(v) > verNum(VERSION)) updateNow(v); }), 180000);
 function worldHost() {
-  if (!WN.verOk) { WN.busy = true; liveVersion(v => { WN.busy = false; WN.verOk = true; if (v && verNum(v) > verNum(VERSION)) { updateNow(v); return; } worldHost(); }); return; }
+  if (!WN.verOk) { WN.busy = true; liveVersion(v => { WN.busy = false; WN.verOk = true; setTimeout(() => { WN.verOk = false; }, 60000); if (v && verNum(v) > verNum(VERSION)) { updateNow(v); return; } worldHost(); }); return; }   /* confere a versão antes de cada vez que vira anfitrião */
   WN.busy = true; Net.reset(); Net.onClient = hostOnClient; Net.onServer = clientOnServer; Net.onPeerLeave = hostOnLeave;
   Net.host(WN.id, err => {
     WN.busy = false;
@@ -1656,7 +1666,7 @@ for (const b of document.querySelectorAll('#pz-quality button')) b.addEventListe
 $('pz-bright').addEventListener('input', e => { SET.bright = +e.target.value; saveSettings(); applySettings(); });
 $('pz-zoom').addEventListener('input', e => { SET.zoom = +e.target.value; saveSettings(); G.zoomUser = false; resize(); applySettings(); });
 $('pz-full').addEventListener('click', () => { if (document.fullscreenElement) document.exitFullscreen(); else (document.documentElement.requestFullscreen || (() => { })).call(document.documentElement); });
-$('pz-quit').addEventListener('click', () => { try { saveChar(); saveFog && G.fog && saveFog(); } catch (e) { } location.reload(); });
+$('pz-quit').addEventListener('click', () => { G.leaving = true; try { saveChar(); saveFog && G.fog && saveFog(); } catch (e) { } location.reload(); });
 applySettings();
 
 // ---------- modo criador: O Tecelão ----------

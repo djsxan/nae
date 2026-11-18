@@ -57,7 +57,7 @@ function emBuild() {
   d.addEventListener('click', ev => { const b = ev.target.closest('[data-em]'); if (!b) return; const k = b.dataset.em;
     if (k === 'resume') emClose(); else if (k === 'opts') emOpts(!EM.opts); else if (k === 'back') emOpts(false);
     else if (k === 'guide') window.open('guia.html', '_blank', 'noopener'); else if (k === 'road') window.open('roadmap.html', '_blank', 'noopener');
-    else if (k === 'quit') { const pq = $('pz-quit'); try { saveChar(); if (typeof saveFog === 'function' && G.fog) saveFog(); } catch (e) { } location.reload(); } });
+    else if (k === 'quit') { G.leaving = true; const pq = $('pz-quit'); try { saveChar(); if (typeof saveFog === 'function' && G.fog) saveFog(); } catch (e) { } location.reload(); } });
 }
 function emOpts(on) { EM.opts = !!on; const d = $('escmenu'); d.querySelector('.em-opts').classList.toggle('hidden', !EM.opts); d.querySelector('[data-em="opts"]').classList.toggle('on', EM.opts); if (EM.opts && typeof applySettings === 'function') applySettings(); }
 function emOpen() {
