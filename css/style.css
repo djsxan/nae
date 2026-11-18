@@ -664,3 +664,33 @@ body.touch #chat { width: 260px; } body.touch #chat-log { height: 70px; }
 body.nae.tp-open[data-tp=realm] .scroll { bottom: auto; }
 body.nae[data-tp=heroes] .scroll > #nae-cont { position: sticky; bottom: -26px; margin: 14px -30px -26px; padding: 14px 30px 18px; background: linear-gradient(180deg, rgba(14,10,8,0), rgba(14,10,8,.96) 30%); }
 .est-btn.mini { padding: 2px 7px; font-size: 11px; margin-left: 4px; }
+
+/* menu do Esc: estilo da tela inicial, jogo escurecido e desfocado atrás */
+#escmenu { position: fixed; inset: 0; z-index: 60; display: flex; align-items: center; gap: clamp(24px, 5vw, 80px); padding: 0 max(24px, 7vw); }
+#escmenu.hidden { display: none; }
+#escmenu .em-veil { position: absolute; inset: 0; background: radial-gradient(ellipse at 30% 50%, rgba(10,8,6,.35), rgba(6,5,4,.72)); backdrop-filter: blur(6px) brightness(.62) saturate(.85); -webkit-backdrop-filter: blur(6px) brightness(.62) saturate(.85); animation: emIn .25s ease-out; }
+@keyframes emIn { from { opacity: 0; } to { opacity: 1; } }
+#escmenu .em-left { position: relative; display: flex; flex-direction: column; gap: 28px; min-width: 260px; }
+#escmenu .nae-logo small { display: block; font: 600 13px 'Alegreya Sans', sans-serif; letter-spacing: .3em; color: #e6dcc4; text-transform: uppercase; margin-top: 8px; text-shadow: 0 1px 6px #000; }
+#escmenu .nae-nav button { text-align: left; }
+#escmenu .em-keys { font: 13px 'Alegreya Sans', sans-serif; color: rgba(226,214,188,.6); letter-spacing: .06em; }
+#escmenu .em-opts { position: relative; flex: 1; max-width: 620px; max-height: 82vh; overflow: auto; background: rgba(22,18,14,.82); border: 1px solid rgba(226,214,188,.22); border-radius: 6px; padding: 18px 22px; color: #e8dcc0; box-shadow: 0 20px 60px rgba(0,0,0,.5); }
+#escmenu .em-opts.hidden { display: none; }
+#escmenu .em-opts-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+#escmenu .em-opts-head h2 { font: 400 26px 'IM Fell English SC', 'Cinzel', serif; letter-spacing: .12em; margin: 0; color: #f1e6cc; }
+#escmenu .em-back { all: unset; cursor: pointer; font: 600 14px 'Cinzel', serif; color: rgba(226,214,188,.75); letter-spacing: .1em; } #escmenu .em-back:hover { color: #f1e6cc; }
+body.em-on #hud, body.em-on #chat, body.em-on .hotbar { opacity: .25; transition: opacity .2s; }
+#pause .gm-tabs button[data-gt="opts"] { display: none; }   /* Configurações agora ficam no menu do Esc */
+/* configurações dentro do menu do Esc: mesmo estilo do menu antigo */
+#escmenu .em-opts .pz-btn { display: block; width: 100%; margin: 8px 0; padding: 10px; font: 700 15px 'Cinzel', serif; color: #f4e4b8; background: linear-gradient(#5a3a1e, #2e1c0e); border: 1px solid #a8843a; border-radius: 6px; cursor: pointer; }
+#escmenu .em-opts .pz-btn:hover { filter: brightness(1.2); }
+#escmenu .em-opts .pz-quit { background: linear-gradient(#6a1e16, #3a0e0a); }
+#escmenu .em-opts .pz-sec { margin: 12px 0 4px; font: 700 13px 'Cinzel', serif; color: #d8b870; }
+#escmenu .em-opts .pz-row { display: flex; gap: 6px; }
+#escmenu .em-opts .pz-row button { flex: 1; padding: 8px; font: 700 13px 'Cinzel', serif; color: #e8dcc0; background: #241a12; border: 1px solid #6a5028; border-radius: 5px; cursor: pointer; }
+#escmenu .em-opts .pz-row button.on { background: linear-gradient(#8a6a2a, #5a4018); color: #fff4d0; border-color: #e8c870; }
+#escmenu .em-opts input[type=range] { width: 100%; accent-color: #c9a24a; }
+#escmenu .em-opts .pz-keys { margin: 10px 0; font-size: 14px; line-height: 1.6; }
+#escmenu .em-opts .pz-keys summary { cursor: pointer; font: 700 13px 'Cinzel', serif; color: #d8b870; }
+#escmenu .em-opts .pz-keys b { color: #f0d890; }
+#escmenu .em-opts .pz-sec:first-child { margin-top: 0; }

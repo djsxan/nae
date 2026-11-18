@@ -1060,7 +1060,7 @@ window.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !G.paused && !G.dialog) { chatOpen(); e.preventDefault(); return; }
   const k = e.key.toLowerCase();
   if (G.paused) { if (typeof gmKey === 'function' && gmKey(k, e)) e.preventDefault(); return; }
-  if (k === 'escape') { if (G.dialog) { closeDialog(); return; } for (const id of ['bankp', 'biz', 'jobboard', 'counterp', 'estate', 'bizhub', 'roompw-ask', 'tradep']) { const el = $(id); if (el && !el.classList.contains('hidden') && el.parentNode === document.body && getComputedStyle(el).display !== 'none') { if (id === 'biz' && typeof bizClose === 'function') bizClose(); else if (id === 'estate') estToggle(false); else if (id === 'bizhub') hubToggle(false); else el.classList.add('hidden'); return; } } togglePause(); return; }
+  if (k === 'escape') { if (G.dialog) { closeDialog(); return; } for (const id of ['bankp', 'biz', 'jobboard', 'counterp', 'estate', 'bizhub', 'roompw-ask', 'tradep']) { const el = $(id); if (el && !el.classList.contains('hidden') && el.parentNode === document.body && getComputedStyle(el).display !== 'none') { if (id === 'biz' && typeof bizClose === 'function') bizClose(); else if (id === 'estate') estToggle(false); else if (id === 'bizhub') hubToggle(false); else el.classList.add('hidden'); return; } } if (typeof emToggle === 'function') emToggle(); else togglePause(); return; }
   if (k >= '1' && k <= '4') { castSkill(+k - 1); return; }
   if (k === 'q') { drinkPot('hp'); return; }
   if (k === 'e') { drinkPot('mp'); return; }
@@ -1108,13 +1108,7 @@ window.addEventListener('keydown', e => {
   if (k === 'z' && !e.repeat && inCombatZone()) { strike('under'); return; }
   if ((k === '+' || k === '=') ) { SCALE = clamp(SCALE * 1.1, 1.4, 7); G.zoomUser = true; return; }
   if (k === '-') { SCALE = clamp(SCALE * 0.9, 1.4, 7); G.zoomUser = true; return; }
-  if (k === 'tab') {
-    e.preventDefault();
-    let best = null, bd = 99;
-    for (const id in G.monsters) { const m = G.monsters[id]; if (m.dieAt) continue; const d = dist(m.rx, m.ry, G.me.x, G.me.y); if (d < bd && m.id !== G.target) { bd = d; best = m; } }
-    if (best && bd <= 9) setTarget(best.id);
-    return;
-  }
+  if (k === 'tab') { e.preventDefault(); if (!e.repeat && typeof gmToggle === 'function') gmToggle(); return; }   /* TAB: painel de gameplay */
   if (k.startsWith('arrow')) e.preventDefault();
   if (k === 'shift') e.preventDefault();
   G.keys.add(k);
@@ -1651,7 +1645,7 @@ function togglePause(force) {
   $('pause').classList.toggle('hidden', !G.paused);
   if (G.paused) { applySettings(); G.keys.clear(); updateHud(); }
 }
-$('btn-menu').addEventListener('click', () => togglePause());
+$('btn-menu').addEventListener('click', () => { if (typeof emToggle === 'function') emToggle(); else togglePause(); });
 $('pz-resume').addEventListener('click', () => togglePause(false));
 for (const b of document.querySelectorAll('#pz-quality button')) b.addEventListener('click', () => {
   if (SET.quality === b.dataset.q) return;

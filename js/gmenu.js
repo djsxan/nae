@@ -5,7 +5,7 @@
 //  Os painéis antigos (inventário, árvore, jornada, mapa, negócios) são reaproveitados: entram na aba.
 // ============================================================
 const GM = { tab: 'char', on: false, built: false, biz: 'hub', notes: 'all', wv: null, wvTab: 'people', wvSel: null, wvT: 0, follow: null };
-const GM_TABS = [['char', 'Personagem', '🛡'], ['skills', 'Habilidades', '✦'], ['prog', 'Progresso', '📈'], ['journal', 'Jornada', '📜'], ['map', 'Mapa', '🗺'], ['biz', 'Negócios', '🏛'], ['craft', 'Receitas e ofícios', '⚒'], ['notes', 'Avisos', '✉'], ['opts', 'Configurações', '⚙'], ['weaver', 'Tecelão', '👁']];
+const GM_TABS = [['char', 'Personagem', '🛡'], ['skills', 'Habilidades', '✦'], ['prog', 'Progresso', '📈'], ['journal', 'Jornada', '📜'], ['map', 'Mapa', '🗺'], ['biz', 'Negócios', '🏛'], ['craft', 'Receitas e ofícios', '⚒'], ['notes', 'Avisos', '✉'], ['opts', 'Configurações', '⚙'], ['weaver', 'Tecelão', '👁']];   /* a aba Configurações fica escondida: o conteúdo vai para o menu do Esc */
 const GM_KEYS = { i: 'char', k: 'skills', j: 'journal', m: 'map', n: 'biz', l: 'biz' };
 const gmEsc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const gmIsDev = () => !!G.dev;   // aba do Tecelão só no modo Tecelão (vocação normal joga como todo mundo)
@@ -18,7 +18,7 @@ function gmBuild() {
     if (sec) { const mv = [sec]; let n = sec.nextElementSibling; while (n) { mv.push(n); n = n.nextElementSibling; } for (const el of mv) right.insertBefore(el, quit); }
   }
   box.classList.add('gm'); box.innerHTML = '';
-  box.insertAdjacentHTML('beforeend', '<div class="gm-head"><span class="gm-title">Nae</span><span class="gm-hint">Esc fecha · o mundo continua</span><a class="gm-guide" href="guia.html" target="_blank" rel="noopener">📖 Guia do jogo</a> <a class="gm-guide" href="roadmap.html" target="_blank" rel="noopener">🗺 Roadmap</a><span class="gp-gold"><span class="coin"></span><b id="gm-gold">0</b></span><button class="gm-x" title="Fechar (Esc)">✕</button></div>' +
+  box.insertAdjacentHTML('beforeend', '<div class="gm-head"><span class="gm-title">Nae</span><span class="gm-hint">TAB ou Esc fecha · o mundo continua</span><a class="gm-guide" href="guia.html" target="_blank" rel="noopener">📖 Guia do jogo</a> <a class="gm-guide" href="roadmap.html" target="_blank" rel="noopener">🗺 Roadmap</a><span class="gp-gold"><span class="coin"></span><b id="gm-gold">0</b></span><button class="gm-x" title="Fechar (Esc)">✕</button></div>' +
     '<nav class="gm-tabs">' + GM_TABS.map(([k, n, ic]) => '<button data-gt="' + k + '"' + (k === 'weaver' ? ' class="gm-dev"' : '') + '><i>' + ic + '</i><span>' + n + '</span></button>').join('') + '</nav><div class="gm-body" id="gm-body"></div>');
   const body = box.querySelector('#gm-body');
   for (const [k] of GM_TABS) { const p = document.createElement('div'); p.className = 'gm-pane'; p.dataset.pane = k; body.appendChild(p); }
@@ -43,6 +43,29 @@ function gmBuild() {
   pane('biz').querySelectorAll('[data-gb]').forEach(b => b.onclick = () => { GM.biz = b.dataset.gb; gmShow('biz'); });
   $('pause').addEventListener('mousedown', e => { if (e.target.id === 'pause') gmClose(); });
 }
+// ---------- menu do Esc: Continuar, Configurações, Guia, Roadmap, Sair para o menu inicial ----------
+const EM = { on: false, opts: false };
+function emBuild() {
+  if ($('escmenu')) return; gmBuild();
+  const d = document.createElement('div'); d.id = 'escmenu'; d.className = 'hidden';
+  d.innerHTML = '<div class="em-veil"></div><div class="em-left"><div class="nae-logo">NAE<small>Pausa · o mundo continua</small></div><nav class="nae-nav nae-nav2">'
+    + [['resume', 'Continuar'], ['opts', 'Configurações'], ['guide', 'Guia do jogo'], ['road', 'Roadmap'], ['quit', 'Sair para o menu inicial']].map(([k, n]) => '<button data-em="' + k + '">' + n + '</button>').join('')
+    + '</nav><div class="em-keys">TAB · personagem, habilidades, jornada, mapa e negócios</div></div><section class="em-opts hidden"><div class="em-opts-head"><h2>Configurações</h2><button class="em-back" data-em="back">Voltar</button></div><div class="em-opts-body"></div></section>';
+  document.body.appendChild(d);
+  const op = gmPane('opts'), body = d.querySelector('.em-opts-body'); if (op) while (op.firstChild) body.appendChild(op.firstChild);   /* as configurações passam a morar aqui */
+  for (const id of ['pz-quit', 'pz-resume']) { const q = body.querySelector('#' + id); if (q) q.style.display = 'none'; }   /* sair e continuar ficam na lista da esquerda */
+  d.addEventListener('click', ev => { const b = ev.target.closest('[data-em]'); if (!b) return; const k = b.dataset.em;
+    if (k === 'resume') emClose(); else if (k === 'opts') emOpts(!EM.opts); else if (k === 'back') emOpts(false);
+    else if (k === 'guide') window.open('guia.html', '_blank', 'noopener'); else if (k === 'road') window.open('roadmap.html', '_blank', 'noopener');
+    else if (k === 'quit') { const pq = $('pz-quit'); try { saveChar(); if (typeof saveFog === 'function' && G.fog) saveFog(); } catch (e) { } location.reload(); } });
+}
+function emOpts(on) { EM.opts = !!on; const d = $('escmenu'); d.querySelector('.em-opts').classList.toggle('hidden', !EM.opts); d.querySelector('[data-em="opts"]').classList.toggle('on', EM.opts); if (EM.opts && typeof applySettings === 'function') applySettings(); }
+function emOpen() {
+  if (!G.started) return; if (GM.on) gmClose(); emBuild();
+  EM.on = true; G.paused = true; G.keys.clear(); $('escmenu').classList.remove('hidden'); document.body.classList.add('em-on'); emOpts(false); Net.send({ t: 'menu', on: 1 });
+}
+function emClose() { if (!EM.on) return; EM.on = false; G.paused = false; $('escmenu').classList.add('hidden'); document.body.classList.remove('em-on'); Net.send({ t: 'menu', on: 0 }); }
+function emToggle() { if (EM.on) emClose(); else emOpen(); }
 function gmPane(k) { return document.querySelector('#gm-body [data-pane="' + k + '"]'); }
 // painéis de negócios voltam para fora quando a aba fecha (o corretor e o banco abrem eles sozinhos)
 function gmParkBiz() {
@@ -88,7 +111,8 @@ function gmClose() {
 function gmToggle(tab) { if (GM.on && (!tab || tab === GM.tab)) gmClose(); else gmOpen(tab); }
 // tecla com o menu aberto: as letras trocam de aba (I, K, J, M, N, L), Esc fecha
 function gmKey(k, e) {
-  if (k === 'escape') { gmClose(); return true; }
+  if (EM.on) { if (k === 'escape') { if (EM.opts) emOpts(false); else emClose(); } return true; }   /* menu do Esc aberto */
+  if (k === 'escape' || k === 'tab') { e.preventDefault(); gmClose(); return true; }
   const t = GM_KEYS[k]; if (t && !e.repeat) { if (k === 'n' && typeof estInBiz === 'function' && estInBiz()) { gmClose(); bizOpen(estInBiz().pid); return true; } if (k === 'l') GM.biz = 'est'; else if (k === 'n') GM.biz = 'hub'; gmToggle(t); return true; }
   return false;
 }
