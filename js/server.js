@@ -430,7 +430,7 @@ function hostOnClient(from, m) {
     case 'sit': {
       if (!m.on || p.downed || p.carrying || p.carriedBy) { p.sit = null; break; }
       const st = m.s != null ? WORLD.seats[m.s | 0] : null;
-      if (st) { if (dist(p.x, p.y, st.x, st.y) > 2.5) break; p.x = st.x; p.y = st.y; p.dir = st.dir; p.sit = 'c'; }
+      if (st) { if (dist(p.x, p.y, st.x, st.y) > 2.5 || (st.fl || 0) !== (p.fl || 0)) break; p.x = st.x; p.y = st.y; p.dir = st.dir; p.sit = st.low ? 'g' : 'c'; }
       else p.sit = 'g';
       p.walking = false;
       break;
@@ -2823,6 +2823,7 @@ function estateLoad() {
   for (const pid in S.estate.r) bizLinkBank(S.estate.r[pid]);
   S.estateL = estateLocks(); return S.estate;
 }
+function estChestSlots(pid) { const P = PROPS_BY[pid]; return P && P.suite ? ESTATE_CHEST_SLOTS * 2 : ESTATE_CHEST_SLOTS; }   /* o armário-baú da suíte guarda o dobro */
 function estateSave() { try { hsSet(ESTATE_KEY, S.estate); } catch (e) { } }
 function estateLocks() { const E = S.estate, L = {}; if (!E) return L; for (const P of PROPS) if (tenantsOf(P).length && !P.apt) L[P.bi] = []; for (const pid in E.r) { const P = PROPS_BY[pid]; if (P && P.kind === 'house' && !P.apt) L[P.bi] = [E.r[pid].ownerName.trim().toLowerCase(), ...E.r[pid].auth]; }
   for (const P of PROPS) if (P.apt) { const r = E.r[P.id]; if (r) L['apt:' + P.apt] = [r.ownerName.trim().toLowerCase(), ...(r.auth || [])]; else if (aptNpc(P)) L['apt:' + P.apt] = []; }   /* apartamentos: do morador (ou do morador NPC) */
@@ -3080,7 +3081,7 @@ function estateMsg(p, m) {
       if (PP.apt) { const c = APT_CHESTS.find(q => q.apt === PP.apt); if (!c || (p.fl || 0) !== c.fl || dist(p.x, p.y, c.x, c.y) > 2.4) { tell(p, 'O tansu fica dentro do seu apartamento.'); return; } }
       else if (WORLD.bld[tileAt(p.x, p.y)] !== PP.bi) { tell(p, 'O baú fica dentro da sua casa.'); return; }
       if (!LOOT[k]) return;
-      if (m.a === 'put') { const q = Math.min(p.inv[k] || 0, Math.max(1, m.q | 0)); if (!q) return; if (!r.chest[k] && Object.keys(r.chest).length >= ESTATE_CHEST_SLOTS) { tell(p, 'O baú está cheio.'); return; } p.inv[k] -= q; if (!p.inv[k]) delete p.inv[k]; r.chest[k] = (r.chest[k] || 0) + q; }
+      if (m.a === 'put') { const q = Math.min(p.inv[k] || 0, Math.max(1, m.q | 0)); if (!q) return; if (!r.chest[k] && Object.keys(r.chest).length >= estChestSlots(pid)) { tell(p, 'O baú está cheio (' + estChestSlots(pid) + ' tipos de item).'); return; } p.inv[k] -= q; if (!p.inv[k]) delete p.inv[k]; r.chest[k] = (r.chest[k] || 0) + q; }
       else { const q = Math.min(r.chest[k] || 0, Math.max(1, m.q | 0)); if (!q) return; if (!p.inv[k] && Object.keys(p.inv).length >= INV_SLOTS) { tell(p, 'Sua mochila está cheia.'); return; } r.chest[k] -= q; if (!r.chest[k]) delete r.chest[k]; p.inv[k] = (p.inv[k] || 0) + q; }
       estateSave(); sendStat(p); estateSend(p); return;
     }

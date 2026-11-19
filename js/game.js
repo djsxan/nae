@@ -965,7 +965,7 @@ canvas.addEventListener('contextmenu', e => e.preventDefault());
 function seatUnderMouse(cx, cy) {
   const S = SCALE, w = screenToWorld(cx, cy);
   let best = -1, bd = 1.2;
-  WORLD.seats.forEach((st, k) => { const d = Math.hypot(st.x - w.x, st.y - w.y); if (d < bd) { bd = d; best = k; } });
+  const mfl = (G.me && G.me.fl) || 0; WORLD.seats.forEach((st, k) => { if ((st.fl || 0) !== mfl || (st.fl && G.me.fb !== st.bi)) return; const d = Math.hypot(st.x - w.x, st.y - w.y); if (d < bd) { bd = d; best = k; } });
   return best;
 }
 // sentar: no chão (C) ou num assento
@@ -973,7 +973,7 @@ function sitDown(seat) {
   const me = G.me; if (!me || me.downed || me.carrying || me.carriedBy) return;
   if (seat != null && seat >= 0) {
     const st = WORLD.seats[seat];
-    me.sit = { seat, chair: 1, ox: me.x, oy: me.y }; me.x = me.rx = st.x; me.y = me.ry = st.y; me.dir = st.dir;
+    me.sit = { seat, chair: st.low ? 0 : 1, ox: me.x, oy: me.y }; me.x = me.rx = st.x; me.y = me.ry = st.y; me.dir = st.dir;
     Net.send({ t: 'sit', on: 1, s: seat });
   } else { me.sit = { chair: 0 }; Net.send({ t: 'sit', on: 1 }); }
   G.path = null; G.pathGoal = null; me.walking = false;

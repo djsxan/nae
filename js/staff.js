@@ -139,7 +139,7 @@ function empFollow(n, r, q, dt) {
 }
 function empDeposit(key, r, q) {
   const rec = S.estate.r[r.home]; if (!rec) return; rec.chest = rec.chest || {}; let left = 0;
-  for (const k of Object.keys(r.inv)) { if (!rec.chest[k] && Object.keys(rec.chest).length >= ESTATE_CHEST_SLOTS) { left++; continue; } rec.chest[k] = (rec.chest[k] || 0) + r.inv[k]; delete r.inv[k]; }
+  for (const k of Object.keys(r.inv)) { if (!rec.chest[k] && Object.keys(rec.chest).length >= estChestSlots(r.home)) { left++; continue; } rec.chest[k] = (rec.chest[k] || 0) + r.inv[k]; delete r.inv[k]; }
   estateSave(); if (q) tell(q, r.n + ' guardou ' + (left ? 'o que coube' : 'tudo') + ' no baú de casa.' + (left ? ' O baú está cheio.' : ''));
 }
 function empChoose(n, r, H, q, now) {   /* escolhe a próxima tarefa da casa */
@@ -287,6 +287,7 @@ function segOrder(p, key, m) {
   if (m.o === 'follow') { r.mode = 'follow'; r.post = null; empSay(n, 'Estou com você.'); }
   else if (m.o === 'post') { r.mode = 'post'; r.post = { x: n.x, y: n.y, fl: n.fl || 0, fb: n.fl ? n.fb : -1 }; empSay(n, 'Ninguém passa por aqui.'); }
   else if (m.o === 'home') { r.mode = 'home'; r.post = null; empSay(n, 'Vou guardar a sua porta.'); }
+  else if (m.o === 'entrance') { const b = BUILDINGS.find(q2 => q2.door2L && stairKind(q2, 0) === 'lift'), d2 = b && door2Of(b); if (!d2) return; const dv = DOOR_V[d2.s] || [1, 0], sp = segDoorSpot(d2.x, d2.y, dv[0], dv[1], segList(key).indexOf(r)); r.mode = 'post'; r.post = { x: sp.x, y: sp.y, fl: 0, fb: -1, dir: sp.dir }; empSay(n, 'Fico na entrada do corredor do elevador.'); }
   else if (m.o === 'fire') { segQuit(key, r, r.n + ' foi dispensad' + (r.g === 'f' ? 'a' : 'o') + '.'); return; }
   n.goal = null; estateSave(); segSend(key);
 }
@@ -295,6 +296,16 @@ function segDefend(attacker, victim) {   /* alguém bateu no seu patrão: os seg
   for (const r of list) { const n = S.npcs[segNid(r)]; if (!n || n.dead || (n.fl || 0) !== (attacker.fl || 0) || dist(n.x, n.y, attacker.x, attacker.y) > 12) continue; if (!n.fight) empSay(n, ['Tire as mãos do meu patrão!', 'Para trás!', 'Vai se ver comigo!'][Math.floor(Math.random() * 3)]); n.fight = { id: attacker.id, until: now_() + 20000 }; }
 }
 function segKilled(n, p) { const r = segList(n.seg).find(x => x.id === n.segId); n.fight = null; if (r) segQuit(n.seg, r, r.n + ' morreu lutando por você' + (p ? ' (golpe de ' + p.name + ')' : '') + '. O contrato acabou.', true); }
+// posto ao lado da porta: no tile vizinho à porta, colado na parede, de costas para o prédio e de frente para a rua
+function segDoorSpot(dx, dy, vx, vy, k) {
+  const sx = -vy, sy = vx, side = k ? 1 : -1;
+  for (const sd of [side, -side]) { const x = dx + vx * 1.0 + sx * sd * 1.0, y = dy + vy * 1.0 + sy * sd * 1.0; if (npcStand(x, y, 0.2)) return { x, y, dir: dirFromVecS(vx, vy) }; }
+  return { x: dx + vx * 1.3 + sx * side * 0.6, y: dy + vy * 1.3 + sy * side * 0.6, dir: dirFromVecS(vx, vy) };
+}
+function segWatch(n, base, now) {   /* parado de guarda: olha para os lados de vez em quando */
+  if (now > (n.glT || 0)) { n.glT = now + 4000 + Math.random() * 4000; n.glD = Math.random() < 0.5 ? -1 : 1; n.glUntil = now + 1400 + Math.random() * 800; }
+  n.walk = false; n.dir = (base + (now < (n.glUntil || 0) ? n.glD : 0) + 8) % 8;
+}
 function segThreat(n, r, q) {   /* a fera mais perto que ameaça o patrão (ou o ponto vigiado) */
   const c = r.mode === 'post' && r.post ? r.post : r.mode === 'home' ? n : (q && !(q.fl || 0) ? q : n), R = r.tr === 'atento' ? 9 : 6; let best = null, bd = 1e9;
   for (const m of Object.values(S.monsters)) { if ((m.alt || 0) > 1 || m.hp <= 0) continue; const d0 = MON[m.type] || {}; const hostile = (q && m.aggro === q.id) || (m.aggro && d0.aggro > 0) || (d0.aggro > 0 && dist(m.x, m.y, c.x, c.y) < R * 0.7); if (!hostile) continue; const d = dist(m.x, m.y, c.x, c.y); if (d < R && d < bd) { bd = d; best = m; } }
@@ -317,13 +328,18 @@ function segNpcTick(n, now, dt) {
   const low = n.hp < r.maxHp * 0.25 && r.tr !== 'leal';
   let m = n.monT && S.monsters[n.monT]; if (m && (m.hp <= 0 || dist(n.x, n.y, m.x, m.y) > 14)) m = null; if (!m && !low) { m = segThreat(n, r, q); if (m && n.monT !== m.id) empSay(n, ['Cuidado!', 'Deixa comigo!', 'Fique atrás de mim!'][Math.floor(Math.random() * 3)]); }
   n.monT = m ? m.id : null; if (m && !low) { segFightMonster(n, r, m, now, dt); return; }
-  if (r.mode === 'post' && r.post) { if (!empGo(n, r.post, 1.2, dt)) return; n.walk = false; return; }
-  if (r.mode === 'home' || !q) { const home = Object.keys(S.estate.r).find(pid => S.estate.r[pid].owner === n.seg && PROPS_BY[pid] && PROPS_BY[pid].kind === 'house'), D = home ? doorTiles()[PROPS_BY[home].bi] : null; if (D) { const k = L.indexOf(r), ox = D.ox + (k ? 0.7 : -0.7) * Math.abs(D.oy - D.y) / 1.3, oy = D.oy + (k ? 0.7 : -0.7) * Math.abs(D.ox - D.x) / 1.3; if (npcWalk(n, ox, oy, 1.2, dt) || dist(n.x, n.y, ox, oy) < 0.5) { n.walk = false; n.dir = dirFromVecS(D.ox - D.x, D.oy - D.y); } } return; }
+  if (r.mode === 'post' && r.post) { if (!empGo(n, r.post, 1.2, dt)) return; n.walk = false; if (r.post.dir != null) segWatch(n, r.post.dir, now); return; }
+  if (r.mode === 'home' || !q) { const home = Object.keys(S.estate.r).find(pid => S.estate.r[pid].owner === n.seg && PROPS_BY[pid] && PROPS_BY[pid].kind === 'house'), D = home ? doorTiles()[PROPS_BY[home].bi] : null; if (D) { const sp = segDoorSpot(D.x, D.y, (D.ox - D.x) / 1.3, (D.oy - D.y) / 1.3, L.indexOf(r)); if (npcWalk(n, sp.x, sp.y, 1.2, dt) || dist(n.x, n.y, sp.x, sp.y) < 0.4) segWatch(n, sp.dir, now); } return; }
   const qfl = q.fl || 0, qb = qfl ? q.fb : WORLD.bld[tileAt(q.x, q.y)];
+  if (qfl > 0 && BUILDINGS[qb] && stairKind(BUILDINGS[qb], 0) === 'lift') {   /* subiu de elevador: vai junto; com o patrão num apartamento, espera no corredor do elevador daquele andar */
+    const b = BUILDINGS[qb], k = L.indexOf(r), A = aptAt(qb, qfl, q.x, q.y); let tgt;
+    if (A) { const vv = k ? 4.5 : 3.7, [wx, wy] = localToWorld(b, 7.55, vv), [fx, fy] = localToWorld(b, 6.55, vv); tgt = { x: wx, y: wy, fl: qfl, fb: qb, dir: dirFromVecS(fx - wx, fy - wy) }; }
+    else { const d2 = (n.fl || 0) === qfl && n.fb === qb ? dist(n.x, n.y, q.x, q.y) : 99; if (d2 < 1.8) { n.walk = false; return; } const a = Math.atan2(n.y - q.y, n.x - q.x) + (k ? 0.6 : -0.6); tgt = { x: q.x + Math.cos(a) * 1.2, y: q.y + Math.sin(a) * 1.2, fl: qfl, fb: qb }; }
+    if (empGo(n, tgt, 1.6, dt) && A) segWatch(n, tgt.dir, now); return; }
   if (qb >= 0 && !((n.fl || 0) === qfl && qfl > 0)) {   /* o patrão entrou num prédio: vigia a porta, olhando para a rua */
-    const D = doorTiles()[qb]; if (D) { const k = L.indexOf(r), sx = D.oy - D.y, sy = D.x - D.ox, l = Math.hypot(sx, sy) || 1, ox = D.ox + sx / l * (k ? 0.75 : -0.75), oy = D.oy + sy / l * (k ? 0.75 : -0.75);
-      if ((n.fl || 0) > 0) { empGo(n, { x: ox, y: oy, fl: 0, fb: -1 }, 1.6, dt); return; }
-      if (npcWalk(n, ox, oy, dist(n.x, n.y, ox, oy) > 6 ? 2.4 : 1.5, dt) || dist(n.x, n.y, ox, oy) < 0.5) { n.walk = false; n.dir = dirFromVecS(D.ox - D.x, D.oy - D.y); } return; } }
+    const D = doorTiles()[qb]; if (D) { const sp = segDoorSpot(D.x, D.y, (D.ox - D.x) / 1.3, (D.oy - D.y) / 1.3, L.indexOf(r));
+      if ((n.fl || 0) > 0) { empGo(n, { x: sp.x, y: sp.y, fl: 0, fb: -1 }, 1.6, dt); return; }
+      if (npcWalk(n, sp.x, sp.y, dist(n.x, n.y, sp.x, sp.y) > 6 ? 2.4 : 1.5, dt) || dist(n.x, n.y, sp.x, sp.y) < 0.4) segWatch(n, sp.dir, now); return; } }
   const d = (n.fl || 0) === qfl ? dist(n.x, n.y, q.x, q.y) : 99; if (!(n.fl || 0) && !qfl && d > 30) { n.x = q.x - 1; n.y = q.y + 0.5; n.legs = null; n.path = null; n.walkKey = null; return; }
   if (d < 2.0) { n.walk = false; return; }
   const k = L.indexOf(r), a = Math.atan2(n.y - q.y, n.x - q.x) + (k ? 0.6 : -0.6), tx = q.x + Math.cos(a) * 1.5, ty = q.y + Math.sin(a) * 1.5;
@@ -354,7 +370,7 @@ function segMenu(id) {
   const s = (G.segs || []).find(x => x.id === id); if (!s) { const d = document.getElementById('segmenu'); if (d) d.remove(); return; }
   const opt = (o, ic, t, sub) => '<button class="lift-btn" data-o="' + o + '"><span class="lift-n">' + ic + '</span><span><b>' + t + '</b><br><small>' + sub + '</small></span></button>';
   const html = '<div style="padding:8px 14px 0;font-size:14px;opacity:.85">' + s.n + ' · ' + SEG_TR[s.tr].n + ' · ' + (s.w ? s.w + ' ouro/dia' : 'teste, sem salário') + ' · vida ' + s.hp + '/' + s.maxHp + (s.warn ? ' · <b style="color:#e88">salário atrasado</b>' : '') + '</div><div class="lift-list" style="padding-top:8px">' +
-    (s.mode !== 'follow' ? opt('follow', '🛡', 'Me acompanhe', 'Anda com você; quando você entra num prédio, vigia a porta.') : '') + (s.mode !== 'post' ? opt('post', '📍', 'Vigie aqui', 'Fica neste ponto e enfrenta quem chegar.') : '') + (s.mode !== 'home' ? opt('home', '🏠', 'Guarde a minha casa', 'Fica de guarda na porta de casa.') : '') + opt('fire', '✋', 'Dispensar', 'Encerra o contrato.') + '</div>';
+    (s.mode !== 'follow' ? opt('follow', '🛡', 'Me acompanhe', 'Anda com você; quando você entra num prédio, vigia a porta.') : '') + (s.mode !== 'post' ? opt('post', '📍', 'Vigie aqui', 'Fica neste ponto e enfrenta quem chegar.') : '') + (s.mode !== 'home' ? opt('home', '🏠', 'Guarde a minha casa', 'Fica de guarda na porta de casa.') : '') + opt('entrance', '🚪', 'Vigie a entrada do elevador', 'Fica na porta do corredor do elevador do prédio do dojô.') + opt('fire', '✋', 'Dispensar', 'Encerra o contrato.') + '</div>';
   const d = staffPanel('segmenu', s.n + ' · segurança', html); d.dataset.id = id;
   d.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const o = b.dataset.o; if (o === 'fire' && !confirm('Dispensar ' + s.n + '?')) return; d.remove(); Net.send({ t: 'emp', a: 'sorder', id, o }); });
 }
