@@ -60,6 +60,7 @@ function empQuit(key, r, why) {
 }
 function empWelcome(to) { const M = S.estate && S.estate.emp; if (!M) return; const p = S.players[to]; for (const key in M) { const r = M[key]; if (r.messy) { const H = empHome(r), bi = H ? empBedIdx(H) : -1; if (bi >= 0) Net.toOne(to, { t: 'bedmess', bed: bi, on: 1 }); } if (p && estOwner(p) === key) setTimeout(() => empSend(r, key), 800); } }
 function empMsg(p, m) {
+  if (m.a === 'shopcat') { Net.toOne(p.id, { t: 'empshop', l: shopCatalog(p) }); return; }
   if (m.a === 'purse') { const L = S.purses || [], u = L.find(x => x.id === m.id); if (!u || (u.fl || 0) !== (p.fl || 0) || dist(u.x, u.y, p.x, p.y) > 1.6) return; L.splice(L.indexOf(u), 1); p.gold = (p.gold || 0) + u.g; sendStat(p); tell(p, 'Você pegou uma bolsa com ' + u.g + ' de ouro.'); Net.toAll({ t: 'purses', l: L }); return; }
   const key = estOwner(p), M = empLoad(), r = M[key];
   if (m.a === 'cands') { const home = rentalOf(p); Net.toOne(p.id, { t: 'empc', list: empCands(), tr: EMP_TR, str: SEG_TR, home: home ? PROPS_BY[home].name : '', have: r ? r.n : '', segs: segList(key).length }); return; }
@@ -86,6 +87,9 @@ function empMsg(p, m) {
     else if (m.o === 'home') { const was = r.forageOn; r.mode = 'home'; r.forageOn = 0; if (n.forage) { n.forage = null; n.goal = empTgt(H); } else n.goal = null; empSay(n, was ? 'Paro de buscar comida e fico cuidando da casa.' : 'Vou cuidar da casa.'); estateSave(); }
     else if (m.o === 'forage') { r.mode = 'home'; r.forageOn = 1; r.forageT = 0; n.goal = null; n.task = null; const hr = empHour(); estateSave();   /* modo contínuo: sai de dia até mandarem ficar em casa */
       if (dayInfoS().night || hr < 6 || hr >= 16) empSay(n, 'Combinado. Amanhã cedo saio para buscar comida, e todo dia até você mandar parar.'); else if (empFoodNeed(r) <= 0) empSay(n, 'O baú está cheio. Assim que abrir espaço, saio para buscar mais.'); else { n.forage = { t0: now_() }; r.forageT = now_() + 30000; empSay(n, 'Vou buscar comida. Volto antes de escurecer e saio de novo até você mandar parar.'); } }
+    else if (m.o === 'shop') { const list = (Array.isArray(m.list) ? m.list : []).map(x => [String(x[0]), String(x[1]), Math.max(1, Math.min(20, x[2] | 0))]).filter(x => S.npcs[x[0]] && tradeCat(S.npcs[x[0]]) && LOOT[x[1]]).slice(0, 12); if (!list.length) { tell(p, 'A lista está vazia.'); return; }
+      const est = list.reduce((a, x) => a + shopPrice(S.npcs[x[0]], p, x[1]) * x[2], 0), money = Math.min(p.gold || 0, Math.max(0, Math.floor(+m.money || est))); if (money <= 0) { tell(p, 'Entregue o dinheiro das compras (você não tem ouro na bolsa).'); return; }
+      p.gold -= money; sendStat(p); r.forageOn = 0; n.forage = null; n.goal = null; n.task = null; r.shop = { list, i: 0, purse: money, got: {} }; r.mode = 'shop'; empSay(n, 'Vou às compras com ' + money + ' de ouro. Guardo tudo no baú e trago o troco.'); }   /* lista de compras */
     else if (m.o === 'deliver') { if (!Object.keys(r.inv).length) { tell(p, nm + ' não está carregando nada.'); return; } r.mode = 'deliver'; n.goal = null; empSay(n, 'Levo tudo para casa e guardo no baú.'); }
     else if (m.o === 'massage') { if (!empAtHome(p, H)) { tell(p, 'A massagem é em casa.'); return; } r.mode = 'home'; if (p.sleep == null) { r.massage = now_() + 90000; n.goal = null; empSay(n, 'Deite-se na cama que eu já vou.'); estateSave(); empSend(r, key); return; } r.massage = 0; const bd = BEDS[p.sleep]; n.goal = Object.assign(empTgt(H, bd.x + (H.x - bd.x) / (Math.hypot(H.x - bd.x, H.y - bd.y) || 1) * 1.2, bd.y + (H.y - bd.y) / (Math.hypot(H.x - bd.x, H.y - bd.y) || 1) * 1.2), { act: () => empMassage(n, r, p) }); empSay(n, 'Relaxe, eu cuido disso.'); }
     else if (m.o === 'fire') { empQuit(key, r, nm + ' foi dispensad' + (r.g === 'f' ? 'a' : 'o') + '.'); return; }
@@ -261,7 +265,7 @@ function bathDrinkTick(p, now) {
   if (D.left > 0 && now >= D.next) { D.left--; D.next = now + 32000; p.buffs.tipsy = Math.max(p.buffs.tipsy || 0, now) + 90000; p.buffs.warm = Math.max(p.buffs.warm || 0, now + 300000); near(p.x, p.y, { t: 'bdrink', id: p.id, left: D.left, sip: 1 }); sendStat(p); if (!D.left) D.emptyT = now + 7000; return; }
   if (!D.left && now > (D.emptyT || 0) && !D.asked) { if (sakeServe(p)) D.asked = 1; else { D.emptyT = now + 20000; if (!D.told) { D.told = 1; tell(p, 'O copinho esvaziou. Quando a doméstica estiver em casa, ela vem servir.'); } } }   /* tenta de novo quando ela voltar */
 }
-const SAKE_KNEEL = [2.3, 1.55], SAKE_CUP = [1.95, 1.55];   /* onde ela ajoelha (um passo atrás da borda) e o copinho na bandeja */
+const SAKE_KNEEL = [2.3, 1.55], SAKE_CUP = [1.86, 1.55];   /* onde ela ajoelha (um passo atrás da borda) e o copinho na bandeja */
 function sakeHome(p) { const key = estOwner(p), r = S.estate && S.estate.emp && S.estate.emp[key]; if (!r || r.mode !== 'home' || r.forageOn && false) return null; const n = S.npcs[empNid(r)], H = empHome(r); if (!n || n.dead || n.forage || !H || !empAtHome(n, H) || !H.fl || H.bi !== p.fb) return null; return { r, n, H }; }
 function sakeKitchen(H) { const K = KITCHENS.find(k => k.bi === H.bi && k.fl === H.fl && k.k === 'jkitchen' && aptAt(H.bi, H.fl, k.x, k.y) === H.A) || KITCHENS.find(k => k.bi === H.bi && k.fl === H.fl && aptAt(H.bi, H.fl, k.x, k.y) === H.A); return K ? { x: K.sx ?? K.x, y: K.sy ?? K.y, fx: K.fx ?? K.x, fy: K.fy ?? K.y } : { x: H.x, y: H.y, fx: H.x, fy: H.y }; }
 function skTraySet(bi, at, fl) { S.skTray = S.skTray || {}; if (at) S.skTray[bi] = at; else delete S.skTray[bi]; const b = BUILDINGS[bi]; Net.toAll({ t: 'sktray', bi, at: at || null }); }
@@ -281,6 +285,27 @@ function sakeReturnTick(n, r, H) {   /* banho acabou: leva a bandeja de volta pa
     n.goal = Object.assign(empTgt(H, K.x, K.y), { act: () => { empAnim(n, 'gather', 900, K.fx, K.fy); n.task = { until: now_() + 1000, done: () => skCarry(n, 0) }; } }); } }; } });
   empSay(n, 'Vou guardar a bandeja.'); return true;
 }
+// ---------- compras da doméstica ----------
+function shopPrice(t, p, k) { try { return tSellPrice(t, p || {}, k); } catch (e) { return Math.max(1, Math.ceil(tBase(k) * 1.2)); } }
+function shopCatalog(p) {   /* lojas com vendedor e o que vendem agora */
+  const out = []; for (const t of Object.values(S.npcs || {})) { if (t.dead || t.transient || t.trader || !tradeCat(t)) continue; const T = tradeStock(t), items = Object.entries(T.stock).filter(([k, q]) => q > 0 && LOOT[k] && !k.startsWith('pot_') && tBase(k)).map(([k, q]) => [k, tName(k), shopPrice(t, p, k), q]); if (items.length) out.push({ id: t.id, n: t.name.split(',')[0], items }); }
+  return out;
+}
+function shopTick(n, r, H, q, now, dt, spd) {
+  const S2 = r.shop; if (!S2) { r.mode = 'home'; return; }
+  if (S2.i < S2.list.length) { const [tid, k, qty] = S2.list[S2.i], t = S.npcs[tid]; if (!t || t.dead) { S2.i++; return; }
+    const tgt = { x: t.x + 0.8, y: t.y + 0.6, fl: 0, fb: -1 }; if (!(empGo(n, tgt, spd, dt) || ((n.fl || 0) === 0 && dist(n.x, n.y, t.x, t.y) < 1.6))) return;
+    if (!n.task) { n.dir = dirFromVecS(t.x - n.x, t.y - n.y); const T = tradeStock(t), price = shopPrice(t, q, k), can = Math.min(qty, T.stock[k] || 0, Math.floor(S2.purse / price)), room = r.inv[k] || Object.keys(r.inv).length < Math.max(empCap(r), 8);
+      if (can > 0 && room) { T.stock[k] -= can; S2.purse -= can * price; r.inv[k] = (r.inv[k] || 0) + can; S2.got[k] = (S2.got[k] || 0) + can; const rb = typeof npcBiz === 'function' ? npcBiz(t) : null; if (rb && rb.biz) { rb.biz.cofre += can * price; if (rb.biz.today) rb.biz.today.rev += can * price; } empSay(n, 'Comprei ' + can + 'x ' + tName(k) + '.'); }
+      else empSay(n, can <= 0 ? (T.stock[k] > 0 ? 'Não deu o dinheiro para ' + tName(k) + '.' : tName(k) + ' estava em falta.') : 'A cesta está cheia.');
+      empAnim(n, 'gather', 900, t.x, t.y); n.task = { until: now + 1000, done: () => { S2.i++; } }; }
+    return; }
+  if (!empGo(n, empTgt(H), spd, dt)) return;   /* volta para casa, guarda e devolve o troco */
+  empDeposit(n.emp, r, q); const ch = S2.purse, got = Object.entries(S2.got).map(([k, v]) => v + 'x ' + tName(k)).join(', ') || 'nada';
+  if (ch > 0) { if (q) { q.gold = (q.gold || 0) + ch; sendStat(q); } else { const B = bankLoad(), A = B.acc[n.emp] || (B.acc[n.emp] = { g: 0, loan: 0, due: 0, wk: estDay() }); A.g += ch; bankSave(); } }
+  if (q) tell(q, r.n + ' voltou das compras: ' + got + ' no baú.' + (ch > 0 ? ' Troco: ' + ch + ' de ouro' + (q ? '.' : ' (no banco).') : ''));
+  empSay(n, 'Tudo guardado no baú.'); r.shop = null; r.mode = 'home'; estateSave(); empSend(r, n.emp);
+}
 function sakeServe(p) {   /* a doméstica vem até a beira, ajoelha e serve com a garrafinha */
   const key = estOwner(p), r = S.estate && S.estate.emp && S.estate.emp[key]; if (!r || r.mode !== 'home') return false; const n = S.npcs[empNid(r)]; if (!n || n.dead || (n.fl || 0) !== (p.fl || 0) || ((n.fl || 0) && n.fb !== p.fb)) return false;
   const b = BUILDINGS[p.fb], [sx2, sy2] = localToWorld(b, SAKE_KNEEL[0], SAKE_KNEEL[1]), [cx, cy] = localToWorld(b, SAKE_CUP[0], SAKE_CUP[1]);   /* ajoelha um passo atrás da borda, de frente para o copinho */
@@ -295,6 +320,7 @@ function empNpcTick(n, now, dt) {
   const H = empHome(r); if (!H) return; const q = empOwnerP(n.emp), spd = r.tr === 'rapido' ? 1.4 : 1.05;
   if (n.task) { if (now < (n.task.until || 0)) { n.walk = false; return; } const T = n.task; n.task = null; if (T.done) T.done(); }
   if (r.mode === 'follow') { if (!q) { r.mode = 'home'; return; } empFollow(n, r, q, dt); return; }
+  if (r.mode === 'shop') { shopTick(n, r, H, q, now, dt, spd); return; }
   if (r.mode === 'deliver') { if (empGo(n, empTgt(H), spd, dt)) { empDeposit(n.emp, r, q); r.mode = 'home'; empSend(r, n.emp); } return; }
   if (n.forage) { empForageTick(n, r, H, now, dt); return; }
   if (n.goal) { if (empGo(n, n.goal, spd, dt)) { const g = n.goal; n.goal = null; n.walk = false; if (g.act) g.act(); } return; }
@@ -334,6 +360,7 @@ if (typeof progEvent === 'function') { const _peS = progEvent; progEvent = funct
   if (m.t === 'empc') { agencyRender(m); return true; }
   if (m.t === 'empme') { G.emp = m.id ? m : null; if (document.getElementById('empmenu')) empMenu(); if (document.getElementById('empbag')) empBag(); return true; }
   if (m.t === 'massage') { const pl = G.players[m.pid]; if (pl) pl.massageUntil = m.on ? performance.now() + (m.ms || 20000) : 0; const md = G.npcs[m.mid]; if (md) md.z = m.on ? (m.h || 0) * HV / FLOOR_PX : 0; return true; }   /* de bruços, e ela em cima da cama */
+  if (m.t === 'empshop') { empShopMenu(m.l || []); return true; }
   if (m.t === 'purses') { G.purses = m.l || []; return true; }
   if (m.t === 'skt') { const e = G.npcs[m.id]; if (e) { if (m.plate != null) e.plateH = m.plate; else e.trayH = m.on ? 1 : 0; } return true; }
   if (m.t === 'cookfx') { (G.cookFx = G.cookFx || []).push({ ...m, t0: performance.now() }); return true; }
@@ -365,9 +392,21 @@ function empMenu() {
   const n = Object.keys(E.inv || {}).length, opt = (o, ic, t, sub) => '<button class="lift-btn" data-o="' + o + '"><span class="lift-n">' + ic + '</span><span><b>' + t + '</b><br><small>' + sub + '</small></span></button>';
   const html = '<div style="padding:8px 14px 0;font-size:14px;opacity:.85">' + E.n + ' · ' + EMP_TR[E.tr].n + ' · ' + E.w + ' ouro/dia · ' + E.home + (E.warn ? ' · <b style="color:#e88">salário atrasado</b>' : '') + '</div><div class="lift-list" style="padding-top:8px">' +
     (E.mode === 'follow' ? opt('home', '🏠', 'Fique em casa', 'Volta para casa e cuida das tarefas.') : opt('follow', '👣', 'Me siga', 'Anda atrás de você e coleta junto.')) +
-    opt('bag', '🧺', 'Carregar (' + n + '/' + E.cap + ')', 'Passe itens para a mochila dele ou pegue de volta.') + opt('deliver', '📦', 'Leve isto para casa', 'Volta sozinho e guarda tudo no baú.') + opt('massage', '💆', 'Massagem', 'Em casa, deitado na cama: fôlego, vida e membros.') + (E.forageOn ? opt('home', '🏠', 'Voltar para casa', 'Para de buscar comida e volta a cuidar da casa.') : opt('forage', '🍓', 'Buscar comida', 'Todo dia: sai para colher frutas e ervas e caçar cervo ou javali, volta antes de escurecer, guarda no baú e sai de novo. Continua até você mandar ficar em casa.')) + opt('fire', '✋', 'Dispensar', 'Encerra o contrato.') + '</div>';
+    opt('bag', '🧺', 'Carregar (' + n + '/' + E.cap + ')', 'Passe itens para a mochila dele ou pegue de volta.') + opt('deliver', '📦', 'Leve isto para casa', 'Volta sozinho e guarda tudo no baú.') + opt('massage', '💆', 'Massagem', 'Em casa, deitado na cama: fôlego, vida e membros.') + opt('shop', '🛒', 'Fazer compras', 'Monte uma lista nas lojas da cidade, entregue o dinheiro e ela compra, guarda no baú e devolve o troco.') + (E.forageOn ? opt('home', '🏠', 'Voltar para casa', 'Para de buscar comida e volta a cuidar da casa.') : opt('forage', '🍓', 'Buscar comida', 'Todo dia: sai para colher frutas e ervas e caçar cervo ou javali, volta antes de escurecer, guarda no baú e sai de novo. Continua até você mandar ficar em casa.')) + opt('fire', '✋', 'Dispensar', 'Encerra o contrato.') + '</div>';
   const d = staffPanel('empmenu', E.n, html);
-  d.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const o = b.dataset.o; if (o === 'bag') { d.remove(); empBag(); return; } if (o === 'fire' && !confirm('Dispensar ' + E.n + '?')) return; d.remove(); Net.send({ t: 'emp', a: 'order', o }); });
+  d.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const o = b.dataset.o; if (o === 'bag') { d.remove(); empBag(); return; } if (o === 'shop') { d.remove(); Net.send({ t: 'emp', a: 'shopcat' }); return; } if (o === 'fire' && !confirm('Dispensar ' + E.n + '?')) return; d.remove(); Net.send({ t: 'emp', a: 'order', o }); });
+}
+function empShopMenu(L) {
+  const cart = {}; const key = (s0, k) => s0 + '|' + k;
+  const render = () => { let tot = 0; for (const c in cart) { const [sid, k] = c.split('|'), sh = L.find(x => x.id === sid), it = sh && sh.items.find(i => i[0] === k); if (it) tot += it[2] * cart[c]; }
+    const h = '<div style="padding:8px 14px 0;font-size:14px;opacity:.85">Escolha os itens. Ela leva o dinheiro, compra loja por loja e guarda no baú.</div>' + L.map(sh => '<div style="padding:8px 14px 2px"><b>' + sh.n + '</b></div>' + sh.items.map(([k, nm, pr, q]) => '<div style="display:flex;align-items:center;gap:8px;padding:2px 14px"><span style="flex:1">' + nm + ' <small style="opacity:.7">' + pr + ' ouro · ' + q + ' em estoque</small></span><button class="est-btn ghost" data-m="' + key(sh.id, k) + '">−</button><b style="min-width:20px;text-align:center">' + (cart[key(sh.id, k)] || 0) + '</b><button class="est-btn ghost" data-p="' + key(sh.id, k) + '" data-max="' + q + '">+</button></div>').join('')).join('') +
+      '<div style="padding:12px 14px;display:flex;gap:10px;align-items:center;flex-wrap:wrap"><span>Total: <b>' + tot + '</b> de ouro · na bolsa: ' + (G.me.gold || 0) + '</span><button class="lift-btn" data-go style="flex:0 0 auto"' + (tot && tot <= (G.me.gold || 0) ? '' : ' disabled') + '>Entregar ' + tot + ' e mandar</button></div>';
+    const d = staffPanel('empshop', 'Lista de compras', h);
+    d.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { const c = b.dataset.p; cart[c] = Math.min(+b.dataset.max, (cart[c] || 0) + 1); render(); });
+    d.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const c = b.dataset.m; cart[c] = Math.max(0, (cart[c] || 0) - 1); if (!cart[c]) delete cart[c]; render(); });
+    const go = d.querySelector('[data-go]'); if (go) go.onclick = () => { const list = Object.entries(cart).map(([c, n]) => { const [sid, k] = c.split('|'); return [sid, k, n]; }); Net.send({ t: 'emp', a: 'order', o: 'shop', list, money: tot }); d.remove(); };
+  };
+  if (!L.length) { staffPanel('empshop', 'Lista de compras', '<div style="padding:14px">Nenhuma loja com vendedor agora.</div>'); return; } render();
 }
 function empBag() {
   const E = G.emp, me = G.me; if (!E || !me) { const d = document.getElementById('empbag'); if (d) d.remove(); return; }
@@ -396,7 +435,7 @@ function drawPurses(ctx, P, now) { const me = G.me; for (const u of G.purses || 
   ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x, y, 5, 2, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#6a4424'; ctx.beginPath(); ctx.ellipse(x, y - 3, 4.2, 3.4, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#4a2e18'; ctx.fillRect(x - 1.6, y - 7.2, 3.2, 1.6); ctx.fillStyle = '#e8c060'; for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.ellipse(x + 3 + k * 1.6, y + 0.5 - k * 0.3, 1.3, 0.6, 0, 0, 7); ctx.fill(); }
   if (Math.sin(now / 300) > 0.6) { ctx.fillStyle = 'rgba(255,240,180,.9)'; ctx.fillRect(x - 0.5, y - 9, 1, 1); } ctx.restore(); } }
 function drawStaffFx(ctx, P, now) {
-  const me = G.me; if (!me) return; drawPurses(ctx, P, now); drawCookFx(ctx, P, now); if (typeof drawFurnFire === 'function') drawFurnFire(ctx, P, now); if (typeof drawRailOver === 'function') drawRailOver(ctx, P, now);
+  const me = G.me; if (!me) return; drawPurses(ctx, P, now); drawCookFx(ctx, P, now); if (typeof drawFurnFire === 'function') drawFurnFire(ctx, P, now);
   if (G.skTray && me.fl) for (const bi in G.skTray) { if (+bi !== me.fb || G.skTray[bi] !== 'rim') continue; if (Object.values(G.players).some(e => e.bdrink && e.bathing && e.fb === +bi)) continue; const b = BUILDINGS[+bi], raise = me.fl * (bldDims(b).H / floorsOf(b)) * HV, [x0, y0] = localToWorld(b, SAKE_RIM[0], SAKE_RIM[1]), q = P(x0, y0, 0), s2 = sakeTraySprite(sakeTrayYaw({ fb: +bi }), { bottle: true, cup: true, lvl: 0 }); ctx.save(); ctx.imageSmoothingEnabled = true; pblit(ctx, s2, q[0], q[1] - raise - 0.32 * HV); ctx.restore(); }   /* bandeja esperando a doméstica buscar */
   const keys = Object.keys(G.bedMess || {}); if (!keys.length) return; const myFl = me.fl || 0, myB = myFl ? me.fb : bldAt(me.x, me.y);
   for (const k of keys) { const bd = BEDS[+k]; if (!bd || bd.bi !== myB || (bd.fl || 0) !== myFl) continue; const b = BUILDINGS[bd.bi], raise = myFl * (bldDims(b).H / floorsOf(b)) * HV;

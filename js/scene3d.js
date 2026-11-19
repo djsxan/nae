@@ -82,9 +82,10 @@ function scen3(key, make) {
   let s = SC3.get(key);
   if (s !== undefined) { SC3.delete(key); SC3.set(key, s); if (S3.pinning && !S3.pin.has(key)) { S3.pin.add(key); if (s) { S3.px -= s.c.width * s.c.height; S3.pinPx += s.c.width * s.c.height; } } return s; }
   if (S3.budget <= 0) return null;
+  if (S3.budget < 1e8 && S3.frameMs > 8) return null;   /* no máximo uns 8 ms montando cenário por quadro: sem travadas ao chegar num lugar novo */
   S3.budget--;
   if (S3.pinning) S3.pin.add(key);
-  try { s = shootScene(make()); } catch (e) { console.warn('cena3d', key, e); s = null; }
+  { const t0 = performance.now(); try { s = shootScene(make()); } catch (e) { console.warn('cena3d', key, e); s = null; } S3.frameMs = (S3.frameMs || 0) + performance.now() - t0; }
   SC3.set(key, s);
   if (s && !S3.pin.has(key)) S3.px = (S3.px || 0) + s.c.width * s.c.height;
   if (s && S3.pin.has(key)) S3.pinPx = (S3.pinPx || 0) + s.c.width * s.c.height;

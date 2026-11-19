@@ -113,6 +113,7 @@ function gmToggle(tab) { if (GM.on && (!tab || tab === GM.tab)) gmClose(); else 
 function gmKey(k, e) {
   if (EM.on) { if (k === 'escape') { if (EM.opts) emOpts(false); else emClose(); } return true; }   /* menu do Esc aberto */
   if (k === 'escape' || k === 'tab') { e.preventDefault(); gmClose(); return true; }
+  if ((k === 'q' || k === 'e') && !e.repeat && GM.on) { const L = GM_TABS.map(t => t[0]).filter(t => t !== 'weaver' || gmIsDev()); let i = L.indexOf(GM.tab); i = (i + (k === 'e' ? 1 : -1) + L.length) % L.length; gmShow(L[i]); return true; }   /* Q e E passam de uma aba para a outra */
   const t = GM_KEYS[k]; if (t && !e.repeat) { if (k === 'n' && typeof estInBiz === 'function' && estInBiz()) { gmClose(); bizOpen(estInBiz().pid); return true; } if (k === 'l') GM.biz = 'est'; else if (k === 'n') GM.biz = 'hub'; gmToggle(t); return true; }
   return false;
 }

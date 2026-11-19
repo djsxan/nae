@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.85.0';
-const VERSION_NAME = 'Nae · Medalhão';
+const VERSION = 'v1.86.0';
+const VERSION_NAME = 'Nae · Lista de Compras';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -262,7 +262,7 @@ const INV_SLOTS = 24;
 // modo criador (O Tecelão): abrir com ?criador e digitar a senha. Aqui fica só o hash SHA-256 da senha.
 const DEV_HASH = 'f1ee529ef49111208f1c1646c53c8c311c9f093fd7891c1b46d77e98210b018d';
 // bastiões: cada monstro volta ~3 min depois de morrer (sem jogador perto); chefe ~10 min; o baú do chefe dura 2 min
-const BASTION_RESPAWN = 180000, BOSS_RESPAWN = 600000, CHEST_MS = 120000, MAX_WILD = 200;
+const BASTION_RESPAWN = 90000, BOSS_RESPAWN = 300000, CHEST_MS = 120000, MAX_WILD = 200;
 // ===== corpo: partes, feridas e sangramento (fase 1) =====
 const BODY_PARTS = ['head', 'torso', 'armA', 'armB', 'legL', 'legR'];
 const BODY_NAMES = { head: 'Cabeça', torso: 'Tronco', armA: 'Braço da arma', armB: 'Outro braço', legL: 'Perna esquerda', legR: 'Perna direita' };

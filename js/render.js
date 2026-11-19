@@ -581,6 +581,7 @@ function drawMonsterEntity(ctx, e, sx, sy, now) {
     if (fall) { ctx.save(); ctx.translate(sx, sy + sink); ctx.rotate(fall); pblit(ctx, s, 0, 0, alpha); ctx.restore(); }
     else pblit(ctx, s, sx, sy + sink, alpha);
     if (chC > 0.02) ctx.restore();
+    if (e.burnUntil > now && !fall && typeof burnGlowFilter === 'function') { const C = G.charMap && G.charMap[e.id], ph = C && C.dur ? Math.min(1, (now - C.t) / C.dur) : 0.5; ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.filter = burnGlowFilter(ph); ctx.globalAlpha = Math.max(0, (0.62 + 0.18 * Math.sin(now / 85 + e.id)) * (1 - ph * 0.45)) * alpha; pblit(ctx, s, sx, sy + sink); ctx.restore(); }   /* o corpo incandesce enquanto queima */
     if (e.hitAt && now - e.hitAt < 110 && !fall) pblit(ctx, whiteOf(s, `wm|${e.type}|${f}|${atk}|${e.dir || 0}|${hurtF}`), sx, sy + sink, 0.7 * alpha);
     if (e.flags & 1 && Math.random() < 0.2) spawnPart('snow', sx - G.view.ox + (Math.random() - 0.5) * 24, sy - G.view.oy - Math.random() * 40);
     if (e.flags & 2) for (let k = 0; k < 3; k++) { const a = now / 180 + k * 2.1; dab(ctx, sx + Math.cos(a) * 12, sy - MON_H[e.type] * 0.55 - 4 + Math.sin(a) * 4, 2, 2, '#f0d040'); }
@@ -915,7 +916,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   const myZ = me ? (me.z || 0) * FLOOR_PX : 0;
   if (G.hover && inBounds(G.hover.x, G.hover.y)) { const p = iso(G.hover.x, G.hover.y); diamondOutline(ctx, p.sx + ox, p.sy + oy - myZ, 'rgba(255,240,200,0.35)'); }
   const tgt = G.target && G.monsters[G.target];
-  if (tgt) { const p = iso(tgt.rx, tgt.ry); targetRing(ctx, p.sx + ox, p.sy + oy, now); }   /* sem marcador colorido de zona de mira no bicho */
+  /* sem círculo nem marcador de mira debaixo dos bichos */
   if (G.pathGoal) { const p = iso(G.pathGoal.x, G.pathGoal.y); diamondOutline(ctx, p.sx + ox, p.sy + oy - myZ, `rgba(240,200,80,${0.45 + Math.sin(now / 200) * 0.3})`); }
   for (const id in G.players) { const e = G.players[id]; if (e.cast && e.cast.end > now && e.visible) { const p = iso(e.rx, e.ry); drawMagicCircle(ctx, p.sx + ox, p.sy + oy - (e.z || 0) * FLOOR_PX, now, e.cast.el, (now - e.cast.start) / (e.cast.end - e.cast.start)); } }
 
@@ -1190,6 +1191,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     if (typeof drawBowLate === 'function') try { drawBowLate(ctx, now); } catch (e) { }   /* flechas cravadas nos bonecos e as que voam nos andares */   /* cama desarrumada */
     if (typeof drawOfuroFx === 'function') try { drawOfuroFx(ctx, (x, y, z) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy - (z || 0) * FLOOR_PX]; }, now); } catch (e) { }   /* bolhas e vapor do ofurô, por cima da água */
     for (const it of items) if (it.inside) drawItem(it);
+    if (typeof drawRailOver === 'function') try { drawRailOver(ctx, (x, y, z) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy - (z || 0) * FLOOR_PX]; }, now); } catch (e) { }   /* guarda-corpo das varandas por cima de quem está atrás dele */
     if (G.cellarDark) { cutL.length = 0; front.length = 0; }   // no porão não se vê os prédios da frente
     if (cutL.length) {   // corte estilo Tibia: os prédios da frente aparecem só até a altura do joelho (paredes baixas), sem esconder o cômodo
       const kh = (typeof HV !== 'undefined' ? HV : 25) * 0.55, done = new Set();

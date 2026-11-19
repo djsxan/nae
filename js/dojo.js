@@ -133,7 +133,7 @@ function drawBath(ctx, e, sx, sy, now) {
   ctx.restore(); if (!gst) smokePuff(e, sx, y0 + 18, smk, now); if (e.bdrink) drawSakeRim(ctx, e, sx, sy, now, gst);
 }
 // copinho de saquê na beirada do canto livre e a garrafinha da doméstica servindo (fio de saquê, nível subindo)
-const SAKE_RIM = [1.95, 1.62];   /* o copinho fica na beirada ao lado de quem bebe (canto livre, de frente para o quarto) */
+const SAKE_RIM = [1.86, 1.62];   /* um pouco ao sul: bem apoiada na borda */   /* o copinho fica na beirada ao lado de quem bebe (canto livre, de frente para o quarto) */
 function sakeRimPos(e) { const b = BUILDINGS[e.fb]; if (!b) return null; const [cx, cy] = localToWorld(b, SAKE_RIM[0], SAKE_RIM[1]); return [cx, cy]; }
 function sakeDir(e) { const b = BUILDINGS[e.fb]; if (!b) return e.dir | 0; const [x0, y0] = localToWorld(b, 1.4, 1.4), [x1, y1] = localToWorld(b, 1.4, 2.4); return dirFromVec(x1 - x0, y1 - y0); }   /* bebendo: vira para o quarto */
 function sakeTrayYaw(e) { const b = BUILDINGS[e.fb]; if (!b) return 0; const [x0, y0] = localToWorld(b, SAKE_RIM[0], SAKE_RIM[1] - 0.5), [x1, y1] = localToWorld(b, SAKE_RIM[0], SAKE_RIM[1] + 0.5), p0 = iso(x0, y0), p1 = iso(x1, y1); return Math.round(Math.atan2(2 * (p1.sy - p0.sy), p1.sx - p0.sx) * 100) / 100; }   /* a bandeja fica ao longo da borda */

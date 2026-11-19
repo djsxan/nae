@@ -113,7 +113,7 @@ function tickBastions(now) {
     if (m) { if (s.night && !night) { delete S.monsters[s.mid]; near(m.x, m.y, { t: 'mdie', id: m.id, d: 0 }); s.mid = null; } continue; }
     if (s.mid != null) { s.mid = null; s.deadAt = now; }          // morreu
     if (s.night && !night) continue;
-    if (s.deadAt && now - s.deadAt < (s.b.fast && !s.boss ? s.b.fast : s.b.respawn && s.boss ? s.b.respawn : s.boss ? BOSS_RESPAWN : BASTION_RESPAWN)) continue;
+    if (s.deadAt && now - s.deadAt < (s.b.fast && !s.boss ? s.b.fast : s.b.respawn && s.boss ? s.b.respawn / 2 : s.boss ? BOSS_RESPAWN : BASTION_RESPAWN)) continue;
     const [x, y] = s.pos;
     if (s.deadAt && !s.b.fast) { let busy = false; for (const id in S.players) if (dist(S.players[id].x, S.players[id].y, x, y) < 12) busy = true; if (busy) continue; }
     const ox = s.patrol ? (s.off - 1) * 0.7 : 0;
@@ -1026,6 +1026,7 @@ function autoTick(now) {
     for (const o of Object.values(S.monsters)) { if (o.hp <= 0 || (o.alt || 0) >= 1.2 || Math.abs((o.z || 0) - (p.z || 0)) >= 0.5) continue; const d0 = MON[o.type] || {}; if (d0.beh === 'flee' && o.aggro !== p.id) continue;   /* bichos mansos ficam em paz, a não ser que ataquem */
       const d = dist(p.x, p.y, o.x, o.y); if (d > rng + (d0.rad || 0)) continue; const sc = d + (o.id === p.target ? -2 : 0) + (o.aggro === p.id ? -1.5 : 0); if (sc < best) { best = sc; q = o; } }
     if (!q) continue; p.target = q.id; p.dir = dirFromVecS(q.x - p.x, q.y - p.y);
+    if (p.cls === 'archer' && autoArcherSkill(p, q, now)) continue;   /* habilidades na hora certa */
     if (p.cls === 'archer') { if (now < (p.nockReady || 0)) continue; const lead = Math.min(0.6, dist(p.x, p.y, q.x, q.y) / 14), tx = q.x + (q.vx || 0) * lead, ty = q.y + (q.vy || 0) * lead; p.drawT = now - BOW.draw * 0.8; bowLoose(p, { a: Math.atan2(ty - p.y, tx - p.x), tx, ty, pow: 0.8 }); p.nextAtk = now + BOW.loose + BOW.nock + 200; continue; }   /* a mesma flecha do tiro manual */
     if (p.cls === 'mage') { p.mp -= 2; sendStat(p); } basicAttack(p, q, now);
   }
@@ -1067,6 +1068,16 @@ function meditTick(now) {
     if (p.food <= 0 || p.water <= 0) { meditStop(p, p.food <= 0 ? 'A fome tira a concentração.' : 'A sede tira a concentração.'); continue; }
     if (Math.floor((now - M.t0) / 1000) % 2 === 0) sendStat(p);
   }
+}
+function autoArcherSkill(p, q, now) {   /* arqueiro: Chuva em grupo, Perfurante em fila, Passo Ágil quando cercado, Tiro Duplo no resto */
+  if (p.sheathed || now < (p._autoSkT || 0)) return false; const SK = SKILLS.archer, idx = id => SK.findIndex(s => s.id === id), ready = i => i >= 0 && now >= (p.cds[i] || 0) && (p.mp || 0) >= SK[i].mp;
+  const hostile = o => o.hp > 0 && (o.alt || 0) < 1.2 && ((MON[o.type] || {}).beh !== 'flee' || o.aggro === p.id), mons = Object.values(S.monsters).filter(o => hostile(o) && dist(p.x, p.y, o.x, o.y) <= 7.2), d = dist(p.x, p.y, q.x, q.y);
+  const use = (id, tg) => { p.target = tg.id; p.dir = dirFromVecS(tg.x - p.x, tg.y - p.y); useSkill(p, idx(id), { a: Math.atan2(tg.y - p.y, tg.x - p.x) }); p._autoSkT = now + 700; return true; };
+  const close = mons.filter(o => dist(p.x, p.y, o.x, o.y) < 2.2).length; if (close >= 2 && ready(idx('agile'))) return use('agile', q);
+  if (ready(idx('rain'))) { let best = null, bc = 0; for (const o of mons) { if (dist(p.x, p.y, o.x, o.y) > 6.5) continue; const c = mons.filter(z => dist(z.x, z.y, o.x, o.y) <= 1.6).length; if (c > bc) { bc = c; best = o; } } if (best && bc >= 3) return use('rain', best); }
+  if (ready(idx('pierce')) && d <= 7) { const a0 = Math.atan2(q.y - p.y, q.x - p.x), ca = Math.cos(a0), sa = Math.sin(a0), inLine = mons.filter(o => { const dx = o.x - p.x, dy = o.y - p.y, al = dx * ca + dy * sa; return al > 0 && al < 7 && Math.abs(-dx * sa + dy * ca) < 0.6; }).length; if (inLine >= 2) return use('pierce', q); }
+  if (ready(idx('double')) && d <= 6.5 && (p.mp || 0) >= SK[idx('double')].mp + 12) return use('double', q);   /* guarda mana para as outras */
+  return false;
 }
 function autoMage(p, now) {
   if (p.duel || p.bath || p.sleep != null || p.carrying || p.lifted || p.grabbed || p.bound || p.casting || p.train || p.medit || inSafe(p.x, p.y)) { if (p.flame && p.flame.auto) flameStop(p); return; }
