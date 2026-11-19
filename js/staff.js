@@ -427,7 +427,7 @@ function segSpawn(key, r, near0) {
 function segSend(key) { const q = empOwnerP(key); if (!q) return; Net.toOne(q.id, { t: 'segme', list: segList(key).map(r => { const n = S.npcs[segNid(r)]; return { id: segNid(r), job: r.job ? r.job.k : '', n: r.n, g: r.g, tr: r.tr, w: r.w, mode: r.mode, hp: Math.round(n ? n.hp : r.hp), maxHp: r.maxHp, warn: r.warn ? 1 : 0, jail: r.jail && Date.now() < r.jail ? Math.ceil((r.jail - Date.now()) / 1000) : 0 }; }) }); }
 function segQuit(key, r, why, dead) {
   const L = segLoad(), list = L[key] || [], i = list.indexOf(r); if (i >= 0) list.splice(i, 1); if (!list.length) delete L[key];
-  const n = S.npcs[segNid(r)]; if (n) { if (dead) { n.dead = true; n.hp = 0; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'hurt', ms: 400 }); setTimeout(() => { if (S.npcs[n.id]) visGone(n); }, 25000); } else visGone(n); }
+  const n = S.npcs[segNid(r)]; if (n) { if (dead) { n.dead = true; n.hp = 0; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'hurt', ms: 400 }); setTimeout(() => { if (S.npcs[n.id]) visGone(n); }, 300000); } else visGone(n); }   /* o corpo fica no chão 5 minutos */
   estateSave(); const q = empOwnerP(key); if (q) { tell(q, why); segSend(key); }
 }
 function segOrder(p, key, m) {
@@ -568,9 +568,22 @@ function segDefendNpc(aid, victim) {
   const L = S.estate && S.estate.seg, list = L && L[estOwner(victim)]; if (!list || !list.length) return; const a = S.npcs[aid]; if (!a || a.dead || a.seg || a.emp) return;
   for (const r of list) { const n = S.npcs[segNid(r)]; if (!n || n.dead || n.downed || r.jail || r.flee || (n.fl || 0) !== (victim.fl || 0) || dist(n.x, n.y, a.x, a.y) > 14) continue; if (n.fightN !== aid) empSay(n, ['Ninguém encosta no meu patrão!', 'Para trás, ' + String(a.name || '').split(',')[0] + '!', 'Vai ter que passar por mim!'][Math.floor(Math.random() * 3)]); n.fightN = aid; n.fightNT = now_() + 30000; }
 }
+function segSlot(n, t, k) {   /* cada segurança cerca o alvo por um lado, sem se amontoar */
+  const crew = Object.values(S.npcs).filter(o => o.seg && !o.dead && !o.downed && (k === 'm' ? o.monT === t.id : o.fightN === t.id) && dist(o.x, o.y, t.x, t.y) < 6).sort((a, b) => (a.id < b.id ? -1 : 1));
+  const d = dist(n.x, n.y, t.x, t.y) || 1, R = k === 'm' ? Math.max(0.95, ((MON[t.type] || {}).rad || 0) + 0.8) : 0.95; if (crew.length < 2) return [t.x + (n.x - t.x) / d * R, t.y + (n.y - t.y) / d * R];
+  const i = Math.max(0, crew.indexOf(n)), base = Math.atan2(crew[0].y - t.y, crew[0].x - t.x), a = base + i * Math.PI * 2 / crew.length;
+  for (const rr of [R, R * 0.85, R * 1.15]) { const x = t.x + Math.cos(a) * rr, y = t.y + Math.sin(a) * rr; if (npcStand(x, y, 0.2)) return [x, y]; }
+  return [t.x + (n.x - t.x) / d * R, t.y + (n.y - t.y) / d * R];
+}
+function segSeparate(n, dt) {   /* colisão leve entre seguranças (e com o patrão) */
+  if (n.dead || n.downed || n.onBack) return; const q = empOwnerP(n.seg);
+  for (const o of Object.values(S.npcs)) { if (o === n || !o.seg || o.dead || (o.fl || 0) !== (n.fl || 0)) continue; const dx = n.x - o.x, dy = n.y - o.y, d = Math.hypot(dx, dy); if (d >= 0.55 || d < 1e-4) continue;
+    const push = Math.min(0.06, (0.55 - d) * 0.5) * Math.min(1, dt * 10), nx = n.x + dx / d * push, ny = n.y + dy / d * push; if ((n.fl || 0) || npcStand(nx, ny, 0.2)) { n.x = nx; n.y = ny; } }
+  if (q && (q.fl || 0) === (n.fl || 0)) { const dx = n.x - q.x, dy = n.y - q.y, d = Math.hypot(dx, dy); if (d < 0.45 && d > 1e-4) { const nx = n.x + dx / d * 0.04, ny = n.y + dy / d * 0.04; if ((n.fl || 0) || npcStand(nx, ny, 0.2)) { n.x = nx; n.y = ny; } } }
+}
 function segFightNpc(n, r, now, dt) {   /* luta contra uma sentinela ou morador que atacou o patrão */
   const t = S.npcs[n.fightN]; if (!t || t.dead || t.downed || now > (n.fightNT || 0)) { n.fightN = null; return false; }
-  const d = dist(n.x, n.y, t.x, t.y); if (d > 1.3) { npcWalk(n, t.x, t.y, 2.5, dt); return true; }
+  const d = dist(n.x, n.y, t.x, t.y), sp = segSlot(n, t, 'n'); if (dist(n.x, n.y, sp[0], sp[1]) > 0.3) npcWalk(n, sp[0], sp[1], 2.5, dt); if (d > 1.45) return true;
   n.dir = dirFromVecS(t.x - n.x, t.y - n.y); n.walk = false;
   if (now >= (n.nextAtk || 0)) { n.nextAtk = now + 1200; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'atk_slashR', ms: 900, tx: t.x, ty: t.y }); setTimeout(() => { if (n.dead || n.downed || !S.npcs[t.id] || t.dead || dist(n.x, n.y, t.x, t.y) > 1.9) return; npcDamage(t, r.tr === 'veterano' ? rint(18, 28) : rint(12, 20), null); if (t.kind === 'guard' || t.kind === 'captain') { t.fightSeg = n.id; t.fightSegT = now_() + 30000; } else if (!t.fight && !t.flee) { t.fightSeg = n.id; t.fightSegT = now_() + 15000; } }, 420); }
   return true;
@@ -595,8 +608,8 @@ function segThreat(n, r, q) {   /* a fera mais perto que ameaça o patrão (ou o
   return best;
 }
 function segFightMonster(n, r, m, now, dt) {
-  const d = dist(n.x, n.y, m.x, m.y); if (d > 1.4) { npcWalk(n, m.x, m.y, 2.5, dt); return; }
-  n.dir = dirFromVecS(m.x - n.x, m.y - n.y); n.walk = false;
+  const d = dist(n.x, n.y, m.x, m.y), sp = segSlot(n, m, 'm'), far = dist(n.x, n.y, sp[0], sp[1]) > 0.3; if (far) npcWalk(n, sp[0], sp[1], 2.5, dt); if (d > 1.45 + ((MON[m.type] || {}).rad || 0)) return;   /* vai para o seu lado do alvo */
+  n.dir = dirFromVecS(m.x - n.x, m.y - n.y); if (!far) n.walk = false;
   if (now >= (n.nextAtk || 0)) { n.nextAtk = now + 1200; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'atk_slashR', ms: 900, tx: m.x, ty: m.y });
     setTimeout(() => { if (!S.monsters[m.id] || n.dead || dist(n.x, n.y, m.x, m.y) > 2) return; const dmg = r.tr === 'veterano' ? rint(18, 28) : rint(12, 20); m.hp -= dmg; near(m.x, m.y, { t: 'hit', k: 'm', id: m.id, x: m.x, y: m.y, dmg, ax: n.x, ay: n.y });
       if (m.hp <= 0) { const q = empOwnerP(n.seg), pp = q && dist(q.x, q.y, m.x, m.y) < 16 ? q : null; if (pp) killMonster(m, pp, 0); else { delete S.monsters[m.id]; near(m.x, m.y, { t: 'mdie', id: m.id, d: 0 }); } n.monT = null; empSay(n, ['Está feito.', 'Uma a menos.', 'Pode seguir, patrão.'][Math.floor(Math.random() * 3)]); } }, 420); }

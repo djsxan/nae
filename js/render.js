@@ -908,9 +908,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   const myZ = me ? (me.z || 0) * FLOOR_PX : 0;
   if (G.hover && inBounds(G.hover.x, G.hover.y)) { const p = iso(G.hover.x, G.hover.y); diamondOutline(ctx, p.sx + ox, p.sy + oy - myZ, 'rgba(255,240,200,0.35)'); }
   const tgt = G.target && G.monsters[G.target];
-  if (tgt) { const p = iso(tgt.rx, tgt.ry); targetRing(ctx, p.sx + ox, p.sy + oy, now);
-    const zf = { head: 0.86, torso: 0.55, legs: 0.2 }[G.aim || 'torso'], hy = p.sy + oy - (tgt.z || 0) * FLOOR_PX - (MON_H[tgt.type] || 60) * zf, hx = p.sx + ox, c = { head: '#ff5a3a', torso: '#ffd060', legs: '#6ab8ff' }[G.aim || 'torso'];
-    ctx.strokeStyle = c; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(hx - 16, hy); ctx.lineTo(hx - 9, hy); ctx.moveTo(hx + 9, hy); ctx.lineTo(hx + 16, hy); ctx.stroke(); ctx.beginPath(); ctx.arc(hx, hy, 4 + Math.sin(now / 200), 0, 7); ctx.stroke(); }
+  if (tgt) { const p = iso(tgt.rx, tgt.ry); targetRing(ctx, p.sx + ox, p.sy + oy, now); }   /* sem marcador colorido de zona de mira no bicho */
   if (G.pathGoal) { const p = iso(G.pathGoal.x, G.pathGoal.y); diamondOutline(ctx, p.sx + ox, p.sy + oy - myZ, `rgba(240,200,80,${0.45 + Math.sin(now / 200) * 0.3})`); }
   for (const id in G.players) { const e = G.players[id]; if (e.cast && e.cast.end > now && e.visible) { const p = iso(e.rx, e.ry); drawMagicCircle(ctx, p.sx + ox, p.sy + oy - (e.z || 0) * FLOOR_PX, now, e.cast.el, (now - e.cast.start) / (e.cast.end - e.cast.start)); } }
 

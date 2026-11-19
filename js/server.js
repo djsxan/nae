@@ -1257,7 +1257,7 @@ function npcAction(p, m) {
     if (p.body) for (const k of BODY_PARTS) { if ((p.lost || 0) & (LOST[k] || 0)) continue; p.body[k] = 100; p.bleed[k] = 0; }   // a sacerdotisa trata todas as feridas
     p.infect = 0; p.infT = 0; p.cold = 0;
     aoe('heal', p.x, p.y, { id: p.id });
-    say('Que a Aurora guarde seus passos. Suas feridas estão fechadas, e a bênção reduz o dano que você recebe por algum tempo.');
+    say('Que a Aurora guarde seus passos. Suas feridas estão fechadas, e a bênção reduz o dano que você recebe por algum tempo.' + ((p.lost || 0) & 30 ? ' O que foi arrancado do seu corpo, só o Ritual da Aurora devolve: peça a mim.' : '')); sendStat(p);   /* o corpo volta ao normal na hora */
   } else if (n.id === 'st_apoth' && m.a === 'consult') {   /* Boticário de Elva: consulta, chá e encomendas */
     if (!pay(5)) return; const out = [];
     for (const bp of BODY_PARTS) { if ((p.lost || 0) & (LOST[bp] || 0)) { out.push(BODY_NAMES[bp] + ': perdido' + ((p.pro || 0) & LOST[bp] ? ' (com prótese)' : ' — o ferreiro faz próteses')); continue; } const st = PART_STATE(p.body ? p.body[bp] : 100); if (st > 0 || (p.bleed && p.bleed[bp])) out.push(BODY_NAMES[bp] + ': ' + PART_STATE_NAMES[st] + (p.bleed && p.bleed[bp] ? ', sangrando' : '')); }
@@ -2306,7 +2306,7 @@ function npcTick(now, dt) {
     if (n.bizWorker) { workerTick(n, now, dt); continue; }
     if (n.bard) continue;   // o bardo fica tocando no canto
     if (n.emp && typeof empNpcTick === 'function') { empNpcTick(n, now, dt); continue; }
-    if (n.seg && typeof segNpcTick === 'function') { segNpcTick(n, now, dt); continue; }   /* segurança contratado */   /* empregado doméstico */
+    if (n.seg && typeof segNpcTick === 'function') { segNpcTick(n, now, dt); if (typeof segSeparate === 'function') segSeparate(n, dt); continue; }   /* segurança contratado */   /* empregado doméstico */
     if (n.transient) { visitorTick(n, now, dt); continue; }
     if (n.goHome && !n.dragBy && !n.gripBy) { if (npcWalk(n, n.postX, n.postY, 1.3, dt)) { n.goHome = false; n.x = n.postX; n.y = n.postY; } continue; }
     if (n.route && !n.dragBy && !n.gripBy) { if (now >= (n.pauseT || 0)) { const wp = n.route[n.ri % n.route.length]; if (npcWalk(n, wp[0], wp[1], 0.9, dt)) { n.ri++; n.pauseT = now + 3000 + Math.random() * 5000; } } continue; }
@@ -4386,7 +4386,7 @@ function guardThreat(n, now, dt) {
   if (!inSafe(n.x, n.y)) return false;
   for (const q of Object.values(S.players)) {
     if (dist(n.x, n.y, q.x, q.y) > 7 || (q.fl || 0) !== 0 && (q.fl || 0) !== (n.fl || 0)) continue;
-    const why = threatWhy(q, now); if (!why) continue;
+    const why = threatWhy(q, now); if (!why) continue; if (why === 'weapon' && dist(n.x, n.y, q.x, q.y) > 7 * 2 / 3) continue;   /* arma empunhada: a sentinela só nota de mais perto (um terço a menos) */
     if (WORLD.bld[tileAt(q.x, q.y)] !== WORLD.bld[tileAt(n.x, n.y)] && !sightClear(n.x, n.y, q.x, q.y)) continue;
     if (Object.values(S.npcs).some(o => o !== n && o.threat && o.threat.id === q.id)) continue;   // outra sentinela já está cuidando
     n.threat = { id: q.id, why, warn: 0, t: now + 700, t0: now }; return true;
