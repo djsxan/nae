@@ -121,12 +121,36 @@ function empLine(n, spd, dt) {
   if (d <= st || d < 0.05) { n.x = tx; n.y = ty; P.shift(); if (!P.length) { n.walk = false; return true; } return false; }
   n.x += dx / d * st; n.y += dy / d * st; n.walk = true; n.dir = dirFromVecS(dx, dy); return false;
 }
+// ---------- suíte: contornar a mesa baixa (kotatsu e almofadas) ----------
+const LOW_RECT = { u0: 2.42, u1: 4.3, v0: 1.2, v1: 4.05 };
+function lowHit(a, c) { const R = LOW_RECT; for (let t = 0.04; t < 0.97; t += 0.04) { const u = a[0] + (c[0] - a[0]) * t, v = a[1] + (c[1] - a[1]) * t; if (u > R.u0 + 0.04 && u < R.u1 - 0.04 && v > R.v0 + 0.04 && v < R.v1 - 0.04) return true; } return false; }
+function lowDetour(a, c) {
+  if (!lowHit(a, c)) return []; const R = LOW_RECT, C = [[R.u0, R.v0], [R.u1, R.v0], [R.u1, R.v1], [R.u0, R.v1]], d = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]); let best = null, bd = 1e9;
+  for (const k of C) if (!lowHit(a, k) && !lowHit(k, c)) { const L = d(a, k) + d(k, c); if (L < bd) { bd = L; best = [k]; } }
+  if (best) return best;
+  for (let i = 0; i < 4; i++) for (const j of [(i + 1) % 4, (i + 3) % 4]) { const k = C[i], e = C[j]; if (!lowHit(a, k) && !lowHit(e, c)) { const L = d(a, k) + d(k, e) + d(e, c); if (L < bd) { bd = L; best = [k, e]; } } }
+  return best || [];
+}
+function lowRoute(b, from, pts) {   /* refaz o trajeto em linha reta para dar a volta na área da mesa baixa */
+  const out = []; let prev = worldToLocal(b, from[0], from[1]);
+  for (const p of pts) { const q = worldToLocal(b, p[0], p[1]); for (const w of lowDetour(prev, q)) out.push(localToWorld(b, w[0], w[1])); out.push(p); prev = q; }
+  return out;
+}
+function empSmokeSpot(H) {   /* varanda do apartamento ou a frente da casa; sem área externa, fuma dentro */
+  if (H.fl) { const b = H.b, A = H.A, D = bDims(b)[1], um = A.suite ? 3 : (A.u0 + A.u1) / 2, top = H.fl === floorsOf(b) - 1;
+    if (top && !A.suite) return null; const inP = localToWorld(b, um, D - 0.45), outP = localToWorld(b, um, D + 0.35), spot = localToWorld(b, um + (Math.random() < 0.5 ? -0.7 : 0.7), D + 0.55), st = localToWorld(b, um, D + 2);
+    const here = worldToLocal(b, H.x, H.y); return { goal: { x: spot[0], y: spot[1], fl: H.fl, fb: H.bi }, fr: [inP, outP, spot], back: [outP, inP, localToWorld(b, here[0], here[1])], dir: dirFromVecS(st[0] - spot[0], st[1] - spot[1]) }; }
+  const Dt = typeof doorTiles === 'function' ? doorTiles()[H.bi] : null; if (!Dt) return null;
+  const vx = Dt.ox - Dt.x, vy = Dt.oy - Dt.y, vl = Math.hypot(vx, vy) || 1, px = -vy / vl, py = vx / vl;
+  for (const sd of [1, -1]) { const x = Dt.ox + vx / vl * 0.6 + px * sd * 1.2, y = Dt.oy + vy / vl * 0.6 + py * sd * 1.2; if (npcStand(x, y, 0.25)) return { goal: { x, y, fl: 0, fb: -1 }, dir: dirFromVecS(vx, vy) }; }   /* ao lado da porta, de frente para a rua */
+  return null;
+}
 function empGo(n, tgt, spd, dt) {
   const fl = n.fl || 0, tfl = tgt.fl || 0;
   if (fl === tfl && (fl === 0 || n.fb === tgt.fb)) {
     if (fl === 0) { const ok = npcWalk(n, tgt.x, tgt.y, spd, dt); return ok || dist(n.x, n.y, tgt.x, tgt.y) < 0.45; }
     const key = Math.round(tgt.x * 4) + ',' + Math.round(tgt.y * 4);
-    if (n.frKey !== key) { const b = BUILDINGS[n.fb], A0 = aptAt(n.fb, fl, n.x, n.y), A1 = aptAt(n.fb, fl, tgt.x, tgt.y), pts = []; if (A0 !== A1) { if (A0) pts.push(...empAptPts(b, A0, true)); if (A1) pts.push(...empAptPts(b, A1, false)); } pts.push([tgt.x, tgt.y]); n.fr = pts; n.frKey = key; }
+    if (n.frKey !== key) { const b = BUILDINGS[n.fb], A0 = aptAt(n.fb, fl, n.x, n.y), A1 = aptAt(n.fb, fl, tgt.x, tgt.y), pts = []; if (A0 !== A1) { if (A0) pts.push(...empAptPts(b, A0, true)); if (A1) pts.push(...empAptPts(b, A1, false)); } pts.push([tgt.x, tgt.y]); n.fr = (A0 && A0.suite) || (A1 && A1.suite) ? lowRoute(b, [n.x, n.y], pts) : pts; n.frKey = key; }
     return empLine(n, spd, dt);
   }
   if (fl > 0) {   /* sai do apartamento até a cabine e troca de andar */
@@ -155,6 +179,7 @@ function empDeposit(key, r, q) {
   estateSave(); if (q) tell(q, r.n + ' guardou ' + (left ? 'o que coube' : 'tudo') + ' no baú de casa.' + (left ? ' O baú está cheio.' : ''));
 }
 function empChoose(n, r, H, q, now) {   /* escolhe a próxima tarefa da casa */
+  if (sakeReturnTick(n, r, H)) return;   /* bandeja esquecida na borda volta para a cozinha */
   const rec = S.estate.r[r.home], ch = rec ? (rec.chest = rec.chest || {}) : {}, qHome = q && empAtHome(q, H) && !q.downed;
   if (!qHome) r.tubDone = false;
   const hasFood = EMP_FOOD.some(f => ch[f] > 0); if (qHome && (q.food ?? 100) < 55 && !hasFood && now_() > (r.noFoodT || 0)) { r.noFoodT = now_() + 120000; empSay(n, 'Não tem comida no baú. Traga carne crua que eu cozinho.'); }
@@ -178,17 +203,21 @@ function empChoose(n, r, H, q, now) {   /* escolhe a próxima tarefa da casa */
     n.goal = Object.assign(empTgt(H, sx, sy), { act: () => { empAnim(n, 'sweep', 4200, bd.x, bd.y); n.task = { until: now_() + (r.tr === 'rapido' ? 3000 : 4300), done: () => { r.messy = false; Net.toAll({ t: 'bedmess', bed: bi, on: 0 }); estateSave(); empSend(r, n.emp); } }; } }); return; }
   const raw = ['venison', 'pork'].find(k => ch[k] > 0);
   if (raw) { const K = KITCHENS.find(k => k.bi === H.bi && (H.fl ? k.fl === H.fl && aptAt(H.bi, H.fl, k.x, k.y) === H.A : !k.fl));   /* cozinha a carne crua do baú */
-    if (K) { n.goal = Object.assign(empTgt(H, K.x + 0.5, K.y + 0.8), { act: () => { empAnim(n, 'cook', 4500, K.x, K.y); n.task = { until: now_() + (r.tr === 'rapido' ? 3500 : 5000), done: () => {
+    if (K) { n.goal = Object.assign(empTgt(H, K.sx ?? K.x + 0.5, K.sy ?? K.y + 0.8), { act: () => { const stewing = r.tr === 'cozinheiro' && ch.herb > 0; empAnim(n, 'cookfull', 6000, K.fx ?? K.x, K.fy ?? K.y); near(n.x, n.y, { t: 'cookfx', x: K.fx ?? K.x, y: K.fy ?? K.y, fl: H.fl || 0, fb: H.fl ? H.bi : -1, k: K.k || 'stove', kind: stewing ? 'pot' : 'pan', ms: 6000 }); n.task = { until: now_() + 6200, done: () => {
       let made = 0, stew = 0; for (let t = 0; t < 2; t++) { const k = ['venison', 'pork'].find(z => ch[z] > 0); if (!k) break; const toStew = r.tr === 'cozinheiro' && ch.herb > 0, out = toStew ? 'stew' : 'cookedmeat'; if (!ch[out] && Object.keys(ch).length >= ESTATE_CHEST_SLOTS) break; ch[k]--; if (!ch[k]) delete ch[k]; if (toStew) { ch.herb--; if (!ch.herb) delete ch.herb; stew++; } ch[out] = (ch[out] || 0) + 1; made++; }
-      if (made) { empSay(n, stew ? 'Fiz um ensopado cheiroso!' : 'A carne está assada, guardei no baú.'); estateSave(); } } }; } }); return; } }
+      if (made) { empSay(n, stew ? 'Fiz um ensopado cheiroso!' : 'A carne está assada, vou guardar no baú.'); estateSave(); const C = H.P && H.P.apt ? APT_CHESTS.find(c => c.apt === H.P.apt) : null; n.plateH = 1; near(n.x, n.y, { t: 'skt', id: n.id, plate: 1 });   /* leva o prato até o baú */
+        n.goal = Object.assign(empTgt(H, C ? C.x + 0.6 : H.x, C ? C.y + 0.6 : H.y), { act: () => { empAnim(n, 'gather', 900, C ? C.x : H.x, C ? C.y : H.y); n.task = { until: now_() + 1000, done: () => { n.plateH = 0; near(n.x, n.y, { t: 'skt', id: n.id, plate: 0 }); } }; } }); } } }; } }); return; } }
   if (r.forageOn && now > (r.forageT || 0) && !dayInfoS().night && empHour() >= 6 && empHour() < 16 && empFoodNeed(r) > 0 && !(q && q.bdrink)) { r.forageT = now + 30000; n.forage = { t0: now }; empSay(n, ['Vou buscar mais comida.', 'Saindo para a coleta.', 'Volto antes de escurecer.'][Math.floor(Math.random() * 3)]); return; }   /* modo buscar comida: sai de novo */
-  if (now_() > (r.smokeT || (r.smokeT = now_() + 240000 + Math.random() * 360000))) { r.smokeT = now_() + 600000 + Math.random() * 300000; empSmoke(n, 60000, false); n.task = { until: now_() + 60000, done: () => empSmoke(n, 0) }; return; }   /* pausa para um cigarro */
+  if (now_() > (r.smokeT || (r.smokeT = now_() + 240000 + Math.random() * 360000))) { r.smokeT = now_() + 600000 + Math.random() * 300000;   /* pausa para um cigarro: de preferência lá fora */
+    const sp = empSmokeSpot(H), puff = () => { if (sp) n.dir = sp.dir; empSmoke(n, 60000, false); n.task = { until: now_() + 60000, done: () => { empSmoke(n, 0); if (sp && sp.back) { const g = empTgt(H, sp.back[sp.back.length - 1][0], sp.back[sp.back.length - 1][1]); n.goal = g; n.fr = sp.back.slice(); n.frKey = Math.round(g.x * 4) + ',' + Math.round(g.y * 4); } } }; };
+    if (sp) { n.goal = Object.assign(sp.goal, { act: puff }); if (sp.fr) { n.fr = sp.fr.slice(); n.frKey = Math.round(sp.goal.x * 4) + ',' + Math.round(sp.goal.y * 4); } return; }
+    puff(); return; }
   { let x, y; if (H.fl) { const F = empFreeFloor(H), t = F[Math.floor(Math.random() * F.length)]; if (!t) return; const [ux, uy] = localToWorld(H.b, t[0], t[1]); x = ux; y = uy; } else { const T = bldFreeTiles(H.bi), t = T[Math.floor(Math.random() * T.length)] || [H.x, H.y]; x = t[0]; y = t[1]; }   /* varre a casa */
     n.goal = Object.assign(empTgt(H, x, y), { act: () => { if (Math.random() < 0.6) { empAnim(n, 'sweep', 2800); n.task = { until: now_() + 2900 }; } } }); }
 }
 function empFreeFloor(H) {   /* pontos de chão livre do apartamento: sem móveis em cima, fora da banheira e do deque */
   const key = H.bi + ':' + H.fl + ':' + H.A.key; EMP_FLOOR[key] = EMP_FLOOR[key] || (() => { const L = interiorLayout(H.b, H.fl).F, D = bDims(H.b)[1], out = [];
-    for (let u = H.A.u0; u < H.A.u1; u++) for (let v = 0; v < D; v++) { if (L.some(f => f.t !== 'rug' && u >= f.i && u < f.i + f.w && v >= f.j && v < f.j + f.h)) continue; if (H.A.suite && u < 3 && v < 3) continue; out.push([u + 0.5, v + 0.5]); }
+    for (let u = H.A.u0; u < H.A.u1; u++) for (let v = 0; v < D; v++) { if (L.some(f => f.t !== 'rug' && u >= f.i && u < f.i + f.w && v >= f.j && v < f.j + f.h)) continue; if (H.A.suite && u < 3 && v < 3) continue; if (H.A.suite && u + 0.5 > LOW_RECT.u0 && u + 0.5 < LOW_RECT.u1 && v + 0.5 > LOW_RECT.v0 && v + 0.5 < LOW_RECT.v1) continue; out.push([u + 0.5, v + 0.5]); }
     return out; })(); return EMP_FLOOR[key];
 }
 const EMP_FLOOR = {};
@@ -220,17 +249,40 @@ function empForageTick(n, r, H, now, dt) {
 }
 function bathDrinkStart(p) {
   const B = p.bath; if (!B) return; if (B.mode !== 'seat' || B.seat !== 3) { tell(p, 'Para beber saquê, sente no canto livre da banheira (o oposto às paredes).'); return; }
-  if (p.bdrink) { tell(p, 'Seu copinho já está na beirada.'); return; }
-  p.bdrink = { left: 3, next: now_() + 4000 }; near(p.x, p.y, { t: 'bdrink', id: p.id, left: 3 }); tell(p, 'Um copinho de saquê na beirada. De tempos em tempos você pega, dá um gole e devolve.');
+  if (p.bdrink) { tell(p, p.bdrink.tray ? 'Seu copinho já está na beirada.' : 'O saquê já está a caminho.'); return; }
+  const r = S.estate && S.estate.emp && S.estate.emp[estOwner(p)]; if (!r) { tell(p, 'Não há quem sirva: contrate uma doméstica na Casa das Mãos de Ouro.'); return; }
+  p.bdrink = { left: 0, next: 1e15, tray: S.skTray && S.skTray[p.fb] === 'rim' ? 1 : 0 }; near(p.x, p.y, { t: 'bdrink', id: p.id, left: 0, tray: p.bdrink.tray });
+  if (p.bdrink.tray) { p.bdrink.emptyT = 0; tell(p, 'A bandeja já está na beirada.'); } else tell(p, r.n + ' vai buscar o saquê na cozinha.');
 }
 function bathDrinkTick(p, now) {
   const D = p.bdrink; if (!p.bath) { p.bdrink = null; near(p.x, p.y, { t: 'bdrink', id: p.id, off: 1 }); return; } if (D.pouring) return;
+  if (!D.tray) { if (!D.fetching && now > (D.retry || 0)) { if (sakeFetch(p)) D.fetching = 1; else { D.retry = now + 5000; if (!D.told) { D.told = 1; tell(p, 'A doméstica traz o saquê assim que voltar para casa.'); } } } return; }   /* a bandeja ainda não chegou */
   if (D.left > 0 && now >= D.next) { D.left--; D.next = now + 32000; p.buffs.tipsy = Math.max(p.buffs.tipsy || 0, now) + 90000; p.buffs.warm = Math.max(p.buffs.warm || 0, now + 300000); near(p.x, p.y, { t: 'bdrink', id: p.id, left: D.left, sip: 1 }); sendStat(p); if (!D.left) D.emptyT = now + 7000; return; }
   if (!D.left && now > (D.emptyT || 0) && !D.asked) { if (sakeServe(p)) D.asked = 1; else { D.emptyT = now + 20000; if (!D.told) { D.told = 1; tell(p, 'O copinho esvaziou. Quando a doméstica estiver em casa, ela vem servir.'); } } }   /* tenta de novo quando ela voltar */
 }
+const SAKE_KNEEL = [2.3, 1.55], SAKE_CUP = [1.95, 1.55];   /* onde ela ajoelha (um passo atrás da borda) e o copinho na bandeja */
+function sakeHome(p) { const key = estOwner(p), r = S.estate && S.estate.emp && S.estate.emp[key]; if (!r || r.mode !== 'home' || r.forageOn && false) return null; const n = S.npcs[empNid(r)], H = empHome(r); if (!n || n.dead || n.forage || !H || !empAtHome(n, H) || !H.fl || H.bi !== p.fb) return null; return { r, n, H }; }
+function sakeKitchen(H) { const K = KITCHENS.find(k => k.bi === H.bi && k.fl === H.fl && k.k === 'jkitchen' && aptAt(H.bi, H.fl, k.x, k.y) === H.A) || KITCHENS.find(k => k.bi === H.bi && k.fl === H.fl && aptAt(H.bi, H.fl, k.x, k.y) === H.A); return K ? { x: K.sx ?? K.x, y: K.sy ?? K.y, fx: K.fx ?? K.x, fy: K.fy ?? K.y } : { x: H.x, y: H.y, fx: H.x, fy: H.y }; }
+function skTraySet(bi, at, fl) { S.skTray = S.skTray || {}; if (at) S.skTray[bi] = at; else delete S.skTray[bi]; const b = BUILDINGS[bi]; Net.toAll({ t: 'sktray', bi, at: at || null }); }
+function skCarry(n, on) { n.trayH = on ? 1 : 0; near(n.x, n.y, { t: 'skt', id: n.id, on: on ? 1 : 0 }); }
+function sakeFetch(p) {   /* a doméstica pega a bandeja na bancada da cozinha e a leva até a borda da banheira */
+  const M = sakeHome(p); if (!M) return false; const { r, n, H } = M, K = sakeKitchen(H), b = BUILDINGS[p.fb], [kx, ky] = localToWorld(b, SAKE_KNEEL[0], SAKE_KNEEL[1]), [cx, cy] = localToWorld(b, SAKE_CUP[0], SAKE_CUP[1]);
+  n.task = null; empSay(n, 'Vou buscar o saquê.');
+  n.goal = Object.assign(empTgt(H, K.x, K.y), { act: () => { empAnim(n, 'gather', 900, K.fx, K.fy); n.task = { until: now_() + 1000, done: () => { skCarry(n, 1);   /* pega a bandeja na bancada */
+    n.goal = Object.assign(empTgt(H, kx, ky), { act: () => { n.dir = dirFromVecS(cx - n.x, cy - n.y); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'kneelput', ms: 1600, tx: cx, ty: cy }); n.task = { until: now_() + 1500, done: () => { skCarry(n, 0); skTraySet(p.fb, 'rim');   /* ajoelha e deixa a bandeja na borda */
+      if (p.bdrink && p.bath) { p.bdrink.tray = 1; p.bdrink.fetching = 0; p.bdrink.left = 0; p.bdrink.asked = 0; p.bdrink.emptyT = 0; near(p.x, p.y, { t: 'bdrink', id: p.id, left: 0, tray: 1 }); } } }; } }); } }; } });
+  return true;
+}
+function sakeReturnTick(n, r, H) {   /* banho acabou: leva a bandeja de volta para a bancada */
+  if (!S.skTray || S.skTray[H.bi] !== 'rim' || !H.fl) return false; const q = empOwnerP(n.emp); if (q && q.bath && q.bdrink && q.fb === H.bi) return false;
+  const b = BUILDINGS[H.bi], K = sakeKitchen(H), [kx, ky] = localToWorld(b, SAKE_KNEEL[0], SAKE_KNEEL[1]), [cx, cy] = localToWorld(b, SAKE_CUP[0], SAKE_CUP[1]);
+  n.goal = Object.assign(empTgt(H, kx, ky), { act: () => { if (!S.skTray || S.skTray[H.bi] !== 'rim') return; n.dir = dirFromVecS(cx - n.x, cy - n.y); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'kneelput', ms: 1600, tx: cx, ty: cy }); n.task = { until: now_() + 1500, done: () => { skTraySet(H.bi, null); skCarry(n, 1);
+    n.goal = Object.assign(empTgt(H, K.x, K.y), { act: () => { empAnim(n, 'gather', 900, K.fx, K.fy); n.task = { until: now_() + 1000, done: () => skCarry(n, 0) }; } }); } }; } });
+  empSay(n, 'Vou guardar a bandeja.'); return true;
+}
 function sakeServe(p) {   /* a doméstica vem até a beira, ajoelha e serve com a garrafinha */
   const key = estOwner(p), r = S.estate && S.estate.emp && S.estate.emp[key]; if (!r || r.mode !== 'home') return false; const n = S.npcs[empNid(r)]; if (!n || n.dead || (n.fl || 0) !== (p.fl || 0) || ((n.fl || 0) && n.fb !== p.fb)) return false;
-  const b = BUILDINGS[p.fb], [sx2, sy2] = localToWorld(b, 2.25, 1.55), [cx, cy] = localToWorld(b, 1.95, 1.55);   /* ajoelha fora da borda, ao lado do copinho */
+  const b = BUILDINGS[p.fb], [sx2, sy2] = localToWorld(b, SAKE_KNEEL[0], SAKE_KNEEL[1]), [cx, cy] = localToWorld(b, SAKE_CUP[0], SAKE_CUP[1]);   /* ajoelha um passo atrás da borda, de frente para o copinho */
   n.task = null; n.forage = null; n.goal = { x: sx2, y: sy2, fl: p.fl || 0, fb: p.fl ? p.fb : -1, act: () => { if (!p.bdrink || !p.bath) return; n.dir = dirFromVecS(cx - n.x, cy - n.y); p.bdrink.pouring = 1; const t0 = now_();
     near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'pour', ms: 6000, tx: cx, ty: cy }); near(p.x, p.y, { t: 'bdrink', id: p.id, left: 0, pour: 1, mid: n.id });
     n.task = { until: t0 + 6300, done: () => { if (!p.bdrink) return; p.bdrink.pouring = 0; p.bdrink.left = 3; p.bdrink.asked = 0; p.bdrink.next = now_() + 9000; near(p.x, p.y, { t: 'bdrink', id: p.id, left: 3 }); } }; } };
@@ -281,8 +333,11 @@ if (typeof progEvent === 'function') { const _peS = progEvent; progEvent = funct
   if (m.t === 'empc') { agencyRender(m); return true; }
   if (m.t === 'empme') { G.emp = m.id ? m : null; if (document.getElementById('empmenu')) empMenu(); if (document.getElementById('empbag')) empBag(); return true; }
   if (m.t === 'massage') { const pl = G.players[m.pid]; if (pl) pl.massageUntil = m.on ? performance.now() + (m.ms || 20000) : 0; const md = G.npcs[m.mid]; if (md) md.z = m.on ? (m.h || 0) * HV / FLOOR_PX : 0; return true; }   /* de bruços, e ela em cima da cama */
+  if (m.t === 'skt') { const e = G.npcs[m.id]; if (e) { if (m.plate != null) e.plateH = m.plate; else e.trayH = m.on ? 1 : 0; } return true; }
+  if (m.t === 'cookfx') { (G.cookFx = G.cookFx || []).push({ ...m, t0: performance.now() }); return true; }
+  if (m.t === 'sktray') { G.skTray = G.skTray || {}; if (m.at) G.skTray[m.bi] = m.at; else delete G.skTray[m.bi]; return true; }
   if (m.t === 'autoatk') { G.autoAtk = !!m.on; let el = document.getElementById('autoatk-ind'); if (!el) { el = document.createElement('div'); el.id = 'autoatk-ind'; el.style.cssText = 'position:fixed;left:50%;bottom:calc(118px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:4px 12px;border-radius:12px;background:rgba(20,14,10,.78);color:#f0d890;font:600 13px Alegreya Sans,system-ui,sans-serif;border:1px solid #8a6a30;pointer-events:none;z-index:30'; el.textContent = '⟳ Ataque automático · R desliga'; document.body.appendChild(el); } el.hidden = !m.on; return true; }   /* aviso do ataque automático */
-  if (m.t === 'bdrink') { const e = G.players[m.id]; if (e) { if (m.off) e.bdrink = null; else { e.bdrink = e.bdrink || {}; e.bdrink.left = m.left; if (m.sip) e.bdrink.sipT = performance.now(); if (m.pour) { e.bdrink.pourT = performance.now(); e.bdrink.mid = m.mid; } } } return true; }
+  if (m.t === 'bdrink') { const e = G.players[m.id]; if (e) { if (m.off) e.bdrink = null; else { e.bdrink = e.bdrink || {}; e.bdrink.left = m.left; if (m.sip) e.bdrink.sipT = performance.now(); if (m.pour) { e.bdrink.pourT = performance.now(); e.bdrink.mid = m.mid; } if (m.tray != null) e.bdrink.tray = m.tray; } } return true; }
   if (m.t === 'npcsmoke') { const e = G.npcs[m.id]; if (e) e.smokeN = m.on ? { t0: performance.now(), until: performance.now() + (m.ms || 60000), nowp: m.nowp } : null; if (e && !m.on && e.custP && e.custP.cig) e.custP = null; return true; }
   if (m.t === 'bedmess') { if (m.on) G.bedMess[m.bed] = 1; else delete G.bedMess[m.bed]; return true; }
   return _peS(m, now);
@@ -308,7 +363,7 @@ function empMenu() {
   const n = Object.keys(E.inv || {}).length, opt = (o, ic, t, sub) => '<button class="lift-btn" data-o="' + o + '"><span class="lift-n">' + ic + '</span><span><b>' + t + '</b><br><small>' + sub + '</small></span></button>';
   const html = '<div style="padding:8px 14px 0;font-size:14px;opacity:.85">' + E.n + ' · ' + EMP_TR[E.tr].n + ' · ' + E.w + ' ouro/dia · ' + E.home + (E.warn ? ' · <b style="color:#e88">salário atrasado</b>' : '') + '</div><div class="lift-list" style="padding-top:8px">' +
     (E.mode === 'follow' ? opt('home', '🏠', 'Fique em casa', 'Volta para casa e cuida das tarefas.') : opt('follow', '👣', 'Me siga', 'Anda atrás de você e coleta junto.')) +
-    opt('bag', '🧺', 'Carregar (' + n + '/' + E.cap + ')', 'Passe itens para a mochila dele ou pegue de volta.') + opt('deliver', '📦', 'Leve isto para casa', 'Volta sozinho e guarda tudo no baú.') + opt('massage', '💆', 'Massagem', 'Em casa, deitado na cama: fôlego, vida e membros.') + opt('forage', '🍓', 'Buscar comida' + (E.forageOn ? ' (ativo)' : ''), 'Todo dia: sai para colher frutas e ervas e caçar cervo ou javali, volta antes de escurecer, guarda no baú e sai de novo. Continua até você mandar ficar em casa.') + opt('fire', '✋', 'Dispensar', 'Encerra o contrato.') + '</div>';
+    opt('bag', '🧺', 'Carregar (' + n + '/' + E.cap + ')', 'Passe itens para a mochila dele ou pegue de volta.') + opt('deliver', '📦', 'Leve isto para casa', 'Volta sozinho e guarda tudo no baú.') + opt('massage', '💆', 'Massagem', 'Em casa, deitado na cama: fôlego, vida e membros.') + (E.forageOn ? opt('home', '🏠', 'Voltar para casa', 'Para de buscar comida e volta a cuidar da casa.') : opt('forage', '🍓', 'Buscar comida', 'Todo dia: sai para colher frutas e ervas e caçar cervo ou javali, volta antes de escurecer, guarda no baú e sai de novo. Continua até você mandar ficar em casa.')) + opt('fire', '✋', 'Dispensar', 'Encerra o contrato.') + '</div>';
   const d = staffPanel('empmenu', E.n, html);
   d.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const o = b.dataset.o; if (o === 'bag') { d.remove(); empBag(); return; } if (o === 'fire' && !confirm('Dispensar ' + E.n + '?')) return; d.remove(); Net.send({ t: 'emp', a: 'order', o }); });
 }
@@ -321,8 +376,23 @@ function empBag() {
   d.querySelectorAll('[data-t]').forEach(b => b.onclick = ev => { const k = b.dataset.t; Net.send({ t: 'emp', a: 'take', k, q: ev.shiftKey ? 999 : 1 }); });
 }
 // cama desarrumada: coberta puxada para o lado, amassada, e o travesseiro torto
+function drawCookFx(ctx, P, now) {   /* panela ou frigideira no fogão, chamas, vapor e faíscas */
+  const me = G.me; G.cookFx = (G.cookFx || []).filter(f => now - f.t0 < f.ms + 600); if (!me) return;
+  for (const f of G.cookFx) { if ((f.fl || 0) !== (me.fl || 0) || ((f.fl || 0) && f.fb !== me.fb)) continue; const b = f.fb >= 0 ? BUILDINGS[f.fb] : null, raise = f.fl && b ? f.fl * (bldDims(b).H / floorsOf(b)) * HV : 0, top = f.k === 'irori' ? 0.12 : f.k === 'jkitchen' ? 0.42 : 0.5, q = P(f.x, f.y, 0), x = q[0], y = q[1] - raise - top * HV, t = (now - f.t0) / f.ms, step = Math.min(4, Math.floor(t * 5)), fade = Math.min(1, (f.ms + 600 - (now - f.t0)) / 600);
+    ctx.save(); ctx.globalAlpha = fade; ctx.globalCompositeOperation = 'lighter';
+    for (let k = 0; k < 5; k++) { const fx = x + (k - 2) * 2.2, fh = 3 + Math.sin(now / 70 + k * 1.7) * 1.4 + (k === 2 ? 1.5 : 0), g = ctx.createRadialGradient(fx, y + 1.5, 0, fx, y + 1.5 - fh * 0.4, fh); g.addColorStop(0, 'rgba(255,230,150,0.9)'); g.addColorStop(0.5, 'rgba(255,120,40,0.55)'); g.addColorStop(1, 'rgba(255,60,10,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(fx, y + 1.5 - fh * 0.35, 1.5, fh * 0.6, 0, 0, 7); ctx.fill(); }   /* chamas sob a panela */
+    ctx.restore();
+    if (R3.ok && typeof cookSprite === 'function') { const s2 = cookSprite(f.kind || 'pan', step); ctx.save(); ctx.globalAlpha = fade; ctx.imageSmoothingEnabled = true; pblit(ctx, s2, x, y); ctx.restore(); }
+    if (G.view && Math.random() < 0.35 * fade) spawnPart('smoke', x + (Math.random() - 0.5) * 5 - G.view.ox, y - 4 - G.view.oy, { color: 'rgba(236,236,236,0.6)' });   /* vapor */
+    if (G.view && t > 0.36 && t < 0.54 && Math.random() < 0.5) spawnPart('ember', x + (Math.random() - 0.5) * 6 - G.view.ox, y - 3 - G.view.oy, { vx: (Math.random() - 0.5) * 0.05, vy: -0.06 });   /* faíscas ao virar */
+    if (G.view && t > 0.58 && t < 0.7 && Math.random() < 0.6) spawnPart('sparkle', x + (Math.random() - 0.5) * 4 - G.view.ox, y - 8 - G.view.oy, { color: 'rgba(250,250,240,A)', vx: 0, vy: 0.05, life: 500 });   /* o tempero caindo */
+    if (f.kind === 'pot' && Math.random() < 0.4) { ctx.save(); ctx.globalAlpha = 0.7 * fade; ctx.fillStyle = 'rgba(200,150,90,0.8)'; ctx.beginPath(); ctx.arc(x + (Math.random() - 0.5) * 5, y - 5.5 + Math.random(), 0.5 + Math.random() * 0.5, 0, 7); ctx.fill(); ctx.restore(); }   /* borbulhas */
+  }
+}
 function drawStaffFx(ctx, P, now) {
-  const me = G.me; if (!me) return; const keys = Object.keys(G.bedMess || {}); if (!keys.length) return; const myFl = me.fl || 0, myB = myFl ? me.fb : bldAt(me.x, me.y);
+  const me = G.me; if (!me) return; drawCookFx(ctx, P, now);
+  if (G.skTray && me.fl) for (const bi in G.skTray) { if (+bi !== me.fb || G.skTray[bi] !== 'rim') continue; if (Object.values(G.players).some(e => e.bdrink && e.bathing && e.fb === +bi)) continue; const b = BUILDINGS[+bi], raise = me.fl * (bldDims(b).H / floorsOf(b)) * HV, [x0, y0] = localToWorld(b, SAKE_RIM[0], SAKE_RIM[1]), q = P(x0, y0, 0), s2 = sakeTraySprite(sakeTrayYaw({ fb: +bi }), { bottle: true, cup: true, lvl: 0 }); ctx.save(); ctx.imageSmoothingEnabled = true; pblit(ctx, s2, q[0], q[1] - raise - 0.32 * HV); ctx.restore(); }   /* bandeja esperando a doméstica buscar */
+  const keys = Object.keys(G.bedMess || {}); if (!keys.length) return; const myFl = me.fl || 0, myB = myFl ? me.fb : bldAt(me.x, me.y);
   for (const k of keys) { const bd = BEDS[+k]; if (!bd || bd.bi !== myB || (bd.fl || 0) !== myFl) continue; const b = BUILDINGS[bd.bi], raise = myFl * (bldDims(b).H / floorsOf(b)) * HV;
     const len = Math.hypot(bd.dx, bd.dy) || 1, ux = bd.dx / len, uy = bd.dy / len, px = -uy, py = ux, L = len + 0.75, h = bd.apt ? (bd.fl === floorsOf(b) - 1 ? 0.2 : 0.07) : 0.24, W = bd.apt && bd.fl === floorsOf(b) - 1 ? 1.4 : 0.8;
     const at = (t, s, dh) => { const x = bd.x + ux * (t - 0.5) * L + px * s, y = bd.y + uy * (t - 0.5) * L + py * s, q = P(x, y, 0); return [q[0], q[1] - raise - (h + (dh || 0)) * HV]; };

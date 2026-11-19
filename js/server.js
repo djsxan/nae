@@ -1012,19 +1012,22 @@ function dojoPaid(p) {   // diária: uma vez por dia do jogo (o dono e quem ele 
 const AUTO_R = 8.5;   /* o que cabe na tela */
 function autoMsg(p, m) {
   if (p.cls !== 'archer' && p.cls !== 'mage') return;
-  if (!m.on) { if (p.autoAtk) { p.autoAtk = 0; Net.toOne(p.id, { t: 'autoatk', on: 0 }); tell(p, 'Ataque automático desligado.'); } return; }
+  if (!m.on) { if (p.autoAtk) { p.autoAtk = 0; if (p.flame && p.flame.auto) flameStop(p); Net.toOne(p.id, { t: 'autoatk', on: 0 }); tell(p, 'Ataque automático desligado.'); } return; }
   if (p.cls === 'archer' && p.sheathed) { tell(p, 'Saque o arco primeiro (G).'); Net.toOne(p.id, { t: 'autoatk', on: 0 }); return; }
-  p.autoAtk = 1; Net.toOne(p.id, { t: 'autoatk', on: 1 }); tell(p, 'Ataque automático ligado: ' + (p.cls === 'archer' ? 'flechas' : 'setas mágicas (2 de mana cada)') + ' em todo monstro à vista. R desliga.');
+  p.autoAtk = 1; Net.toOne(p.id, { t: 'autoatk', on: 1 }); tell(p, 'Ataque automático ligado: ' + (p.cls === 'archer' ? 'flechas em todo monstro à vista' : 'Chamas mirando onde pega mais monstros, e as magias de apoio quando fizer falta (sem mana, espera e volta)') + '. R desliga.');
 }
 function autoTick(now) {
   for (const p of Object.values(S.players)) { if (!p.autoAtk) continue;
-    if (p.downed || p.cls === 'knight' || (p.cls === 'archer' && p.sheathed)) { p.autoAtk = 0; Net.toOne(p.id, { t: 'autoatk', on: 0 }); continue; }
+    if (p.downed || p.cls === 'knight' || (p.cls === 'archer' && p.sheathed)) { p.autoAtk = 0; if (p.flame && p.flame.auto) flameStop(p); Net.toOne(p.id, { t: 'autoatk', on: 0 }); continue; }
+    if (p.cls === 'mage') { autoMage(p, now); continue; }   /* mago: rotação das magias dos botões */
     if (p.duel || p.bath || p.sleep != null || p.carrying || p.lifted || p.grabbed || p.bound || p.atk || p.casting || p.flame || p.train || now < (p.nextAtk || 0) || inSafe(p.x, p.y)) continue;
     if (p.cls === 'mage' && (p.mp || 0) < 2) { if (now > (p._autoMpT || 0)) { p._autoMpT = now + 8000; tell(p, 'Sem mana para o ataque automático: ele volta quando a mana encher.'); } continue; }
     const rng = Math.max(AUTO_R, CLASSES[p.cls].range + treeEff(p, 'range')); let q = null, best = 1e9;
     for (const o of Object.values(S.monsters)) { if (o.hp <= 0 || (o.alt || 0) >= 1.2 || Math.abs((o.z || 0) - (p.z || 0)) >= 0.5) continue; const d0 = MON[o.type] || {}; if (d0.beh === 'flee' && o.aggro !== p.id) continue;   /* bichos mansos ficam em paz, a não ser que ataquem */
       const d = dist(p.x, p.y, o.x, o.y); if (d > rng + (d0.rad || 0)) continue; const sc = d + (o.id === p.target ? -2 : 0) + (o.aggro === p.id ? -1.5 : 0); if (sc < best) { best = sc; q = o; } }
-    if (!q) continue; p.target = q.id; p.dir = dirFromVecS(q.x - p.x, q.y - p.y); if (p.cls === 'mage') { p.mp -= 2; sendStat(p); } basicAttack(p, q, now);
+    if (!q) continue; p.target = q.id; p.dir = dirFromVecS(q.x - p.x, q.y - p.y);
+    if (p.cls === 'archer') { if (now < (p.nockReady || 0)) continue; const lead = Math.min(0.6, dist(p.x, p.y, q.x, q.y) / 14), tx = q.x + (q.vx || 0) * lead, ty = q.y + (q.vy || 0) * lead; p.drawT = now - BOW.draw * 0.8; bowLoose(p, { a: Math.atan2(ty - p.y, tx - p.x), tx, ty, pow: 0.8 }); p.nextAtk = now + BOW.loose + BOW.nock + 200; continue; }   /* a mesma flecha do tiro manual */
+    if (p.cls === 'mage') { p.mp -= 2; sendStat(p); } basicAttack(p, q, now);
   }
 }
 // ---------- meditação do mago: senta em lótus e se concentra num elemento ----------
@@ -1065,6 +1068,21 @@ function meditTick(now) {
     if (Math.floor((now - M.t0) / 1000) % 2 === 0) sendStat(p);
   }
 }
+function autoMage(p, now) {
+  if (p.duel || p.bath || p.sleep != null || p.carrying || p.lifted || p.grabbed || p.bound || p.casting || p.train || p.medit || inSafe(p.x, p.y)) { if (p.flame && p.flame.auto) flameStop(p); return; }
+  const SK = SKILLS.mage, idx = id => SK.findIndex(s => s.id === id), ready = i => i >= 0 && now >= (p.cds[i] || 0) && (p.mp || 0) >= SK[i].mp, hostile = o => o.hp > 0 && (o.alt || 0) < 1.2 && Math.abs((o.z || 0) - (p.z || 0)) < 0.5 && ((MON[o.type] || {}).beh !== 'flee' || o.aggro === p.id);
+  const cast = (id, msg) => { if (p.flame) flameStop(p); useSkill(p, idx(id), msg || {}); };
+  const close = Object.values(S.monsters).find(o => hostile(o) && dist(p.x, p.y, o.x, o.y) < 1.1);
+  if (close && ready(idx('windstep')) && now > (p._autoWs || 0)) { p._autoWs = now + 3500; cast('windstep', { a: Math.atan2(p.y - close.y, p.x - close.x) }); return; }   /* um monstro encostou: recua com o vento */
+  if (p.hp < p.maxHp * 0.55 && ready(idx('faith'))) { cast('faith'); return; }   /* vida baixa: cura */
+  if (p.hp < p.maxHp * 0.8 && ready(idx('bloom')) && now > (p._autoBl || 0)) { p._autoBl = now + 20000; cast('bloom'); return; }   /* ferido: flores que curam */
+  if ((p.burnUntil || 0) > now && ready(idx('spring'))) { cast('spring'); return; }   /* pegando fogo: a fonte apaga */
+  const st = flameStats(p), mons = Object.values(S.monsters).filter(o => hostile(o) && dist(p.x, p.y, o.x, o.y) <= st.R + ((MON[o.type] || {}).rad || 0) + 0.3);
+  if (p._autoLow && (p.mp || 0) >= (p.maxMp || 50) * 0.35) p._autoLow = 0;
+  if (!mons.length || p._autoLow || (p.mp || 0) < 2) { if (p.flame && p.flame.auto) flameStop(p); if ((p.mp || 0) < 2 && !p._autoLow) { p._autoLow = 1; if (mons.length) tell(p, 'Sem mana: o ataque automático espera a mana voltar.'); } return; }
+  let best = 0, bc = -1, bd = 1e9; for (const o of mons) { const a0 = Math.atan2(o.y - p.y, o.x - p.x), ca = Math.cos(a0), sa = Math.sin(a0); let c = 0; for (const q of mons) { const dx = q.x - p.x, dy = q.y - p.y, al = dx * ca + dy * sa; if (al > 0.2 && Math.abs(-dx * sa + dy * ca) <= 0.35 + al * 0.18) c++; } const d = dist(p.x, p.y, o.x, o.y); if (c > bc || (c === bc && d < bd)) { bc = c; bd = d; best = a0; } }   /* o ângulo do jato que pega mais monstros */
+  if (!p.flame) { flameMsg(p, { on: 1, a: best }); if (p.flame) p.flame.auto = 1; } else { p.flame.a = best; p.flame.last = now; p.dir = dirFromVecS(Math.cos(best), Math.sin(best)); }
+}
 function trainMsg(p, m) {
   if (m.a === 'stop') { if (p.train) trainEnd(p, 'Você parou de treinar.'); return; }
   if (p.train || p.downed || p.carrying || p.bath) return;
@@ -1087,7 +1105,7 @@ function trainTick(now) {
     if ((p.cst ?? 0) < 14) { T.rest = true; T.next = now + 1000; tell(p, 'Sem fôlego: o personagem para um pouco para respirar.'); continue; }
     const wk = trainKind(p, d), fist = wk === 'fist', bow = wk === 'bow';
     p.cst -= bow ? 5 : 7; p.food = Math.max(0, (p.food ?? 100) - 0.12); p.water = Math.max(0, (p.water ?? 100) - 0.1); T.hits++; T.next = now + (bow ? 1500 : fist ? 1100 : wk === 'halberd' ? 1500 : 1350);
-    if (bow) { const fd = flight(p.x, p.y, d.x, d.y) + 200; p.dir = dirFromVecS(d.x - p.x, d.y - p.y); anim('p', p, 'shoot', d.x, d.y, { proj: 'arrow', d: fd }); near(d.x, d.y, { t: 'dummyhit', i: T.i, d: fd + 60 }); }   /* flecha no boneco */
+    if (bow) { p.dir = dirFromVecS(d.x - p.x, d.y - p.y); const tt = Math.max(0.18, dist(p.x, p.y, d.x, d.y) / 9); anim('p', p, 'loose', d.x, d.y); near(p.x, p.y, { t: 'tarrow', i: T.i, x: p.x, y: p.y, tx: d.x, ty: d.y, fl: d.fl || 0, fb: d.bi ?? -1, T: +tt.toFixed(3), s: Math.random() }); near(d.x, d.y, { t: 'dummyhit', i: T.i, d: Math.round(tt * 1000) }); setTimeout(() => { if (S.players[p.id] && p.train) anim('p', p, 'nock', d.x, d.y); }, BOW.loose); }   /* flecha no boneco: voa em arco e crava */
     else { const a = fist ? (T.hits % 3 === 2 ? 'kick' : 'punch') : wk === 'halberd' ? 'swing' : (T.hits % 2 ? 'swing' : 'bash'); near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a, tx: d.x, ty: d.y, ms: 700 }); near(d.x, d.y, { t: 'dummyhit', i: T.i, d: 260 }); }
     const partner = Object.values(S.npcs).some(o => o.task === 'partner' && o.partnerOf === p.id && dist(o.x, o.y, p.x, p.y) < 2.4);
     if (p.cls !== 'mage') { const k = wk; useGain(p, k, 0.3 * (partner ? 1.5 : 1)); if (d.t === 'mokujin' && p.cls === 'knight') useGain(p, 'parry', 0.12); T.gain++; if (T.hits % 10 === 0) sfx(p.x, p.y, '+ ' + USE[k].name, '#e8c060', 0); }
@@ -2373,14 +2391,14 @@ function cookAt(p, r) {
   const st = KITCHENS.find(k => dist(k.x, k.y, p.x, p.y) < 1.9 && (k.fl || 0) === (p.fl || 0)); if (!st) { tell(p, 'Precisa estar perto de um fogão.'); return; }
   const has = () => Object.entries(rc.need).every(([k, n]) => k === 'meat' ? (p.inv.venison || 0) + (p.inv.pork || 0) >= n : (p.inv[k] || 0) >= n);
   if (!has()) { tell(p, 'Faltam ingredientes.'); return; }
-  p.cookT = now + 3200; const x0 = p.x, y0 = p.y;
-  near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'cook', ms: 3000, tx: st.x, ty: st.y });
+  p.cookT = now + 6200; const x0 = p.x, y0 = p.y;
+  near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'cookfull', ms: 6000, tx: st.x, ty: st.y }); near(p.x, p.y, { t: 'cookfx', x: st.fx ?? st.x, y: st.fy ?? st.y, fl: st.fl || 0, fb: st.fl ? st.bi : -1, k: st.k || 'stove', kind: rc.out === 'stew' || /stew|soup|sopa/.test(rc.out) ? 'pot' : 'pan', ms: 6000 });   /* mexe, vira, tempera, prova e serve */
   setTimeout(() => {
     if (!S.players[p.id] || p.downed || dist(p.x, p.y, x0, y0) > 0.6) { tell(p, 'Você saiu do fogão e a comida passou do ponto.'); return; }
     if (!has()) return;
     for (const [k, n] of Object.entries(rc.need)) { if (k === 'meat') { let left = n; for (const mk of ['venison', 'pork']) { const t = Math.min(left, p.inv[mk] || 0); p.inv[mk] -= t; left -= t; if (!p.inv[mk]) delete p.inv[mk]; } } else { p.inv[k] -= n; if (!p.inv[k]) delete p.inv[k]; } }
     p.inv[rc.out] = (p.inv[rc.out] || 0) + 1; useGain(p, 'cook', 2); Net.toOne(p.id, { t: 'loot', k: rc.out }); tell(p, rc.name + ' pronto!'); sendStat(p);
-  }, 3000);
+  }, 6000);
 }
 
 // ---------------- cadeia: celas, pena por crime, fiança, fuga, visitas ----------------

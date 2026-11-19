@@ -320,7 +320,7 @@ function interiorLayout0(b, fl = 0) {
     } else {   // suíte de luxo
       put('plantpot', 7, 4, { block: false }); put('andon', 7, 2, { block: false }); keep(6, 2); keep(5, 2); keep(2, 4); keep(3, 4); keep(2, 3); keep(3, 3);   // porta do hall e porta de correr da varanda livres
       put('ofuro', 0, 0, { w: 2, h: 2, block: false }); put('andon', 0, 2, { block: false });   /* ala do banho (a cortina separa da cama) */
-      put('suitechest', 3, 0); put('platbed', 4, 0, { w: 2, h: 2, block: false });   /* armário-baú laqueado ao lado da cama, do lado sul */
+      put('suitechest', 3, 0, { ox: -0.45 }); put('platbed', 4, 0, { w: 2, h: 2, block: false });   /* armário-baú laqueado ao lado da cama, do lado sul */
       put('kotatsu', 3, 2, { block: false, ox: -0.5 }); put('zaisu', 3, 1, { v: 0, block: false, ox: -0.5 }); put('zaisu', 3, 3, { v: 2, block: false, force: 1, ox: -0.5 }); put('zaisu', 2, 2, { v: 1, block: false, ox: -0.3 }); put('zaisu', 4, 2, { v: 3, block: false, ox: -0.7 });   /* meio tile ao sul: centralizado entre a cama e a banheira */   /* mesinha centralizada com quatro cadeiras baixas (zaisu) */ put('zengarden', 0, 3, { w: 2, h: 2 }); put('jkitchen', 4, 4, { w: 2 });   /* cozinha no canto perto da varanda */
     }
   } else if (k === 'shop' && b.deco === 'greenhouse') {   // Boticário de Elva: gavetinhas e potes no fundo, alambique, balcão com balança e almofariz, canteiros, plantas que brilham, vasos pendurados, ervas secando e o tanque
@@ -1072,7 +1072,7 @@ function generateWorld() {
         if (f.t === 'futon' || f.t === 'platbed') { const [x0, y0] = localToWorld(b, cx, f.j + 0.3), [x1, y1] = localToWorld(b, cx, f.j + f.h - 0.3); BEDS.push({ x, y, dx: x1 - x0, dy: y1 - y0, bi, fl, apt: A.key }); }
         if (f.t === 'tansu') APT_CHESTS.push({ x, y, bi, fl, apt: A.key }); if (f.t === 'chest' || f.t === 'suitechest') APT_CHESTS.unshift({ x, y, bi, fl, apt: A.key });   /* a suíte tem um armário-baú ao lado da cama */
         if (f.t === 'zaisu') { const R = [[0, 1], [1, 0], [0, -1], [-1, 0]][f.v || 0], [x, y] = localToWorld(b, cx + (f.ox || 0), cz), [tx, ty] = localToWorld(b, cx + (f.ox || 0) + R[0], cz + R[1]); seats.push({ x, y, dir: vecDir8(tx - x, ty - y), h: 0.1, bi, fl, low: 1 }); }   /* almofada: senta no chão, virado para a mesinha */
-        if (f.t === 'irori' || f.t === 'jkitchen') KITCHENS.push({ x, y, bi, fl });
+        if (f.t === 'irori' || f.t === 'jkitchen') { const [sx, sy] = localToWorld(b, cx, f.j - 0.5), [fx, fy] = localToWorld(b, cx, f.j + 0.2); KITCHENS.push({ x, y, bi, fl, sx, sy, fx, fy, k: f.t }); }   /* de pé do lado de dentro, de frente para a bancada */
         if (f.t === 'zengarden') { const [dx, dy] = localToWorld(b, f.i + 1.45, f.j + 0.6), [tx, ty] = localToWorld(b, f.i + 2.3, f.j + 0.6); DUMMIES.push({ x: dx, y: dy, bi, fl, t: 'makiwara', fx: tx, fy: ty, apt: A.key, priv: 1 }); } } } });
   // ---- chão da cidade: pedra gasta, terra nas vielas, grama nos cantos, lajes na avenida ----
   for (let y = y0 + 2; y <= y1 - 2; y++) for (let x = x0 + 2; x <= x1 - 2; x++) {
@@ -1258,7 +1258,7 @@ function placeFurniture(b, bi, f, obj, seats, idx) {
     if (f.t === 'cabindoor') { const [x, y] = bLocal(b, f.i, f.j); Q.door = [x, y]; Q.di = y * MAP_W + x; Q.spot = bLocal(b, f.adj[0], f.adj[1]); Q.tiles = new Set(f.inner.map(([i, j]) => { const [tx, ty] = bLocal(b, i, j); return ty * MAP_W + tx; })); HOTEL_DOORS.set(Q.di, f.cab); }
   }
   if (f.t === 'cot' || f.t === 'futon') { const [px, py] = bLocal(b, f.i, f.j), [fx, fy] = bLocal(b, f.i, f.j + f.h - 1); BEDS.push({ x: (px + fx) / 2, y: (py + fy) / 2, dx: fx - px, dy: fy - py, bi }); }
-  if (f.t === 'stove') { const [x, y] = bLocal(b, f.i, f.j); KITCHENS.push({ x, y, bi }); }
+  if (f.t === 'stove') { const [x, y] = bLocal(b, f.i, f.j); KITCHENS.push({ x, y, bi, k: 'stove' }); }
   if (f.t === 'makiwara' || f.t === 'mokujin') { const [x, y] = bLocal(b, f.i, f.j), side = f.i === 0 ? 1 : -1, [fx, fy] = bLocal(b, f.i + side, f.j); DUMMIES.push({ x, y, bi, t: f.t, fx, fy }); }
   if (f.t === 'chest' && (b.kind === 'house' || b.kind === 'manor') && !b.office) { const [x, y] = bLocal(b, f.i, f.j); CHESTS.push({ x, y, bi }); }
   if (f.t === 'bed') { const [px, py] = bLocal(b, f.i + (f.w - 1) / 2, f.j), [fx, fy] = bLocal(b, f.i + (f.w - 1) / 2, f.j + f.h - 1); BEDS.push({ x: (px + fx) / 2, y: (py + fy) / 2, dx: fx - px, dy: fy - py, bi }); }

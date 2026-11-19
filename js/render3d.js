@@ -130,7 +130,7 @@ function buildHumanoid(L, opts = {}) {
     const rg = geo('robe' + S, () => new THREE.LatheGeometry(pts.map(p => new THREE.Vector2(p.x * S, p.y * S)), 20));
     const rb = mesh(rg, mat(hx(L.body), 'cloth', { side: THREE.DoubleSide }), 0, -0.04 * S, 0); rb.scale.set(1, 1, 0.82); spine.add(rb);   // torno gerado de cima para baixo: normais para dentro, então desenha os dois lados
     const hem = mesh(torG(0.38 * S, 0.018 * S), trimM, 0, -0.86 * S, 0); hem.rotation.x = Math.PI / 2; hem.scale.set(1, 0.82, 1); spine.add(hem);
-    R.robe = rb; R.hem = hem; R.robeS = S;
+    R.robe = rb; R.hem = hem; R.robeS = S; R.robeW = L.furisode ? 0.7 : 1;   /* quimono de maiko: silhueta reta */
   }
   // pescoço e cabeça
   const neckJ = joint(chest, 0, 0.27 * S, 0);
@@ -151,9 +151,7 @@ function buildHumanoid(L, opts = {}) {
     const fM = L.gi ? mat(hx(L.gi), 'cloth') : L.armor === 'plate' ? bodyM : L.armor === 'leather' ? body2M : robe ? mat(hx(L.body), 'cloth') : skinM;
     el.add(mesh(capG(robe ? 0.075 * S : 0.05 * S, 0.18 * S), fM, 0, -0.12 * S, 0));
     if (robe) { const cuff = mesh(torG(0.075 * S, 0.012 * S), trimM, 0, -0.22 * S, 0); cuff.rotation.x = Math.PI / 2; el.add(cuff); }
-    let slv = null; if (L.furisode) { slv = new THREE.Group(); slv.position.set(side * 0.02 * S, -0.1 * S, 0); el.add(slv); const cm = mat(hx(L.body), 'cloth'), sh2 = new THREE.Shape(); sh2.moveTo(0, 0); sh2.lineTo(0.2 * S, 0); sh2.lineTo(0.2 * S, -0.34 * S); sh2.quadraticCurveTo(0.2 * S, -0.42 * S, 0.12 * S, -0.42 * S); sh2.lineTo(0.06 * S, -0.42 * S); sh2.quadraticCurveTo(0, -0.42 * S, 0, -0.34 * S); sh2.lineTo(0, 0);
-      const g2 = new THREE.ExtrudeGeometry(sh2, { depth: 0.022 * S, bevelEnabled: true, bevelThickness: 0.006 * S, bevelSize: 0.006 * S, bevelSegments: 2 }); g2.translate(-0.011 * S, 0, 0); const m2 = new THREE.Mesh(g2, cm); m2.rotation.y = -Math.PI / 2; m2.position.set(0, 0, 0.07 * S); slv.add(m2);
-      const fr = mesh(boxG(0.03 * S, 0.035 * S, 0.17 * S), mat(hx(L.collar || '#c8302a'), 'cloth'), 0, -0.385 * S, -0.03 * S); slv.add(fr); }   /* manga longa do furisode: tecido que cai na vertical do antebraço, com a barra arredondada */
+    let slv = null; if (L.furisode) { slv = new THREE.Group(); slv.position.set(side * 0.055 * S, -0.06 * S, -0.01 * S); el.add(slv); slv.add(furisodeSleeve(L, S, side, hx)); }   /* manga longa do furisode: tecido curvo estampado, com forro */
     const hand = joint(el, 0, -0.27 * S, 0);
     hand.add(mesh(sphG(0.045 * S), L.armor === 'plate' ? bodyM : skinM, 0, 0, 0));
     return { sh, el, hand, slv };
@@ -391,7 +389,7 @@ function applyPose(R, Q, P, walkPh) {
   { const bm = (Q.broom || 0) > 0.5; if (bm && !R.broom) { const g = new THREE.Group(), wd = mat('#7a5a34', 'wood'); g.add(mesh(cylG(0.012, 0.012, 1.15, 6), wd, 0, -0.2, 0)); const br = mesh(coneG(0.09, 0.26, 8), mat('#c8a860', 'cloth'), 0, -0.85, 0); br.rotation.x = Math.PI; g.add(br); g.rotation.x = 0.5; R.A.hand.add(g); R.broom = g; } if (R.broom) R.broom.visible = bm; if (bm && R.weapon && !R.weapon.bow) R.weapon.obj.visible = false; }
   { const ha = (Q.harrow || 0) > 0.5; if (ha && !R.harrow) { const g = new THREE.Group(); g.add(mesh(cylG(0.006, 0.006, 0.72, 5), mat('#6a4a2a', 'wood'), 0, -0.02, 0)); g.add(mesh(coneG(0.014, 0.05, 4), mat('#8a8f96', 'metal'), 0, 0.36, 0)); for (const s of [-1, 1]) { const f = mesh(boxG(0.003, 0.08, 0.03), mat('#e8e0cc', 'cloth'), s * 0.008, -0.34, 0); g.add(f); } R.B.hand.add(g); R.harrow = g; } if (R.harrow) R.harrow.visible = ha; }
   { const oc = (Q.ochoko || 0) > 0.5; if (oc && !R.ochoko) { const g = new THREE.Group(), c = sakeCup(true); c.position.set(0, -0.03, 0.05); g.add(c); g.scale.setScalar(1.5); R.B.hand.add(g); R.ochoko = g; } if (R.ochoko) R.ochoko.visible = oc; }   /* copinho de saquê (porcelana com sakura) */
-  { const tk = (Q.tokk || 0) > 0.5; if (tk && !R.tokk) { const g = new THREE.Group(), b = sakeBottle(); b.position.set(0, -0.06, 0); g.add(b); g.userData.sp = b.userData.sp; g.scale.setScalar(1.5); R.A.hand.add(g); R.tokk = g; } if (R.tokk) { R.tokk.visible = tk; R.tokk.userData.tilt = Q.tokt || 0; } R._tuck = Q.tuck || 0; }   /* tokkuri na mão: fica de pé e inclina para servir (ver shoot3D) */
+  { const tk = (Q.tokk || 0) > 0.5; if (tk && !R.tokk) { const g = new THREE.Group(), b = sakeBottle(); b.position.set(0, -0.06, 0); g.add(b); g.userData.sp = b.userData.sp; g.scale.setScalar(1.5); R.A.hand.add(g); R.tokk = g; } if (R.tokk) { R.tokk.visible = tk; R.tokk.userData.tilt = Q.tokt || 0; } R._tuck = Q.tuck || 0; R._sway = P && P.walk >= 0 ? Math.sin(P.walk / 12 * Math.PI * 2) * 0.16 : 0; }   /* tokkuri na mão: fica de pé e inclina para servir (ver shoot3D) */
   { const cg = (Q.cig || 0) > 0.5; if (cg && !R.cig) { const g = new THREE.Group(); const c = mesh(cylG(0.005, 0.005, 0.07, 6), mat('#f4f0e8', 'cloth'), 0, -0.01, 0.05); c.rotation.x = Math.PI / 2; g.add(c); g.add(mesh(sphG(0.007), mat('#ff6020', 'cloth'), 0, -0.01, 0.087)); R.A.hand.add(g); R.cig = g; } if (R.cig) R.cig.visible = cg; }   /* cigarro */
   { const pp = (Q.pipe || 0) > 0.5; if (pp && !R.pipe) { const g = new THREE.Group(), wd = mat('#4a2e1a', 'wood'); g.add(mesh(cylG(0.006, 0.006, 0.12, 6), wd, 0, -0.02, 0.06)); g.children[0].rotation.x = Math.PI / 2; g.add(mesh(cylG(0.018, 0.014, 0.035, 8), wd, 0, 0.0, 0.12)); R.A.hand.add(g); R.pipe = g; } if (R.pipe) R.pipe.visible = pp; }
   holdProps(R, Q);
@@ -428,10 +426,53 @@ function applyPose(R, Q, P, walkPh) {
     }
     pos.needsUpdate = true; R.cape.geometry.computeVertexNormals();
   }
-  if (R.robe) { R.robe.rotation.z = Math.sin(walkPh) * (P.walk >= 0 ? 0.05 : 0); const k = P.sit ? 0.48 : 1, md = !!P.med, S0 = R.robeS; R.robe.scale.set(1, k, 0.82); R.robe.position.z = 0; R.robe.rotation.x = P.sit ? -0.5 : 0; if (R.hem) { R.hem.position.y = -0.04 * S0 - 0.82 * S0 * k; R.hem.position.z = P.sit ? 0.18 * S0 : 0; R.hem.scale.set(1, 0.82, 1); }
+  if (R.robe) { R.robe.rotation.z = Math.sin(walkPh) * (P.walk >= 0 ? 0.05 : 0); const k = P.sit ? 0.48 : 1, md = !!P.med, S0 = R.robeS; const rw = R.robeW || 1; R.robe.scale.set(rw, k, 0.82 * rw); R.robe.position.z = 0; R.robe.rotation.x = P.sit ? -0.5 : 0; if (R.hem) { R.hem.position.y = -0.04 * S0 - 0.82 * S0 * k; R.hem.position.z = P.sit ? 0.18 * S0 : 0; R.hem.scale.set(rw, 0.82 * rw, 1); }
     if (md) { R.robe.scale.set(1.32, 0.2, 1.12); R.robe.rotation.x = 0.06; R.robe.position.z = 0.05 * S0; if (R.hem) { R.hem.position.y = -0.04 * S0 - 0.82 * S0 * 0.2; R.hem.position.z = 0.05 * S0; R.hem.scale.set(1.32, 1.12, 1); } }   /* lótus: a túnica se abre em volta das pernas cruzadas */
     if (md && !R.lap) { const lp = new THREE.Group(), cm = R.robe.material; const m1 = mesh(sphG(0.2 * S0), cm, 0, -0.1 * S0, 0.1 * S0); m1.scale.set(1.85, 0.72, 1.35); lp.add(m1); for (const s of [-1, 1]) { const f = mesh(capG(0.028 * S0, 0.26 * S0), cm, s * 0.1 * S0, -0.1 * S0, 0.2 * S0); f.rotation.set(Math.PI / 2 - 0.25, 0, s * 0.35); lp.add(f); } R.spine.add(lp); R.lap = lp; }   /* tecido dobrado no colo, com duas pregas */
     if (R.lap) R.lap.visible = md; }   // sentado: a saia cobre só até o assento
+}
+
+// ---------- mangas do furisode: tecido com cerejeiras e forro rosa ----------
+const _kimTex = new Map();
+function kimonoTex(base) {
+  if (_kimTex.has(base)) return _kimTex.get(base); const c = document.createElement('canvas'); c.width = 256; c.height = 512; const x = c.getContext('2d');
+  const gr = x.createLinearGradient(0, 0, 0, 512); gr.addColorStop(0, base); gr.addColorStop(1, '#3a0a10'); x.fillStyle = gr; x.fillRect(0, 0, 256, 512);
+  let sd = 11; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  const fl = (fx, fy, rr, col) => { x.save(); x.translate(fx, fy); x.rotate(rnd() * 6.28); x.fillStyle = col; for (let p = 0; p < 5; p++) { x.rotate(Math.PI * 2 / 5); x.beginPath(); x.moveTo(0, 0); x.bezierCurveTo(-rr * 0.55, -rr * 0.35, -rr * 0.45, -rr * 1.05, 0, -rr * 0.9); x.bezierCurveTo(rr * 0.45, -rr * 1.05, rr * 0.55, -rr * 0.35, 0, 0); x.fill(); } x.fillStyle = '#e8c060'; x.beginPath(); x.arc(0, 0, rr * 0.2, 0, 7); x.fill(); x.restore(); };
+  x.strokeStyle = 'rgba(40,16,10,0.7)'; x.lineWidth = 4; x.lineCap = 'round'; x.beginPath(); x.moveTo(-10, 420); x.quadraticCurveTo(90, 330, 170, 360); x.quadraticCurveTo(220, 380, 270, 300); x.stroke();   /* galho na barra */
+  for (let k = 0; k < 16; k++) { const y = 300 + rnd() * 200; fl(rnd() * 256, y, 13 + rnd() * 10, rnd() < 0.6 ? 'rgba(248,214,226,0.95)' : 'rgba(255,248,250,0.95)'); }   /* cerejeiras concentradas embaixo, como na barra do furisode */
+  for (let k = 0; k < 9; k++) fl(rnd() * 256, 40 + rnd() * 260, 6 + rnd() * 5, 'rgba(240,190,206,0.7)');   /* pétalas soltas no alto */
+  x.fillStyle = 'rgba(232,192,96,0.85)'; for (let k = 0; k < 40; k++) x.fillRect(rnd() * 256, 260 + rnd() * 250, 2, 2);   /* pontinhos dourados */
+  const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; _kimTex.set(base, t); return t;
+}
+function furisodeSleeve(L, S, side, hx) {   /* placa curva (levemente abaulada), larga para trás do braço, com a ponta de fora arredondada */
+  const W = 0.18 * S, Hh = 0.4 * S, pg = new THREE.PlaneGeometry(W, Hh, 8, 10), pos = pg.attributes.position;
+  for (let i = 0; i < pos.count; i++) { const x0 = pos.getX(i), y0 = pos.getY(i), u = x0 / W + 0.5, t = (Hh / 2 - y0) / Hh; let y = y0, z = Math.sin(u * Math.PI) * 0.03 * S * (0.35 + t * 0.9);
+    if (t > 0.78 && u < 0.45) { const k = (t - 0.78) / 0.22, q = (0.45 - u) / 0.45; y += k * k * q * 0.09 * S; }   /* canto de baixo arredondado */
+    pos.setXYZ(i, x0 - W * 0.32, y - Hh / 2, z); }
+  pg.computeVertexNormals();
+  const g = new THREE.Group(), outM = new THREE.MeshStandardMaterial({ map: kimonoTex(hx(L.body)), roughness: 0.82, metalness: 0, side: THREE.FrontSide }), inM = new THREE.MeshStandardMaterial({ color: new THREE.Color('#e8a0b0').convertSRGBToLinear(), roughness: 0.9, side: THREE.BackSide });
+  for (const m of [outM, inM]) { const me = new THREE.Mesh(pg, m); me.rotation.y = side * Math.PI / 2; g.add(me); }
+  const hem = new THREE.Mesh(new THREE.BoxGeometry(0.012 * S, 0.02 * S, W * 0.6), mat(hx(L.collar || '#c8302a'), 'cloth')); hem.position.set(0, -Hh + 0.02 * S, -W * 0.05); g.add(hem);   /* barra com a cor da gola */
+  return g;
+}
+
+// ---------- panela e frigideira no fogão ----------
+let _ckRig = null;
+function cookRig() {
+  if (_ckRig) return _ckRig; const iron = mat('#2a2826', 'darkmetal'), root = new THREE.Group();
+  const pan = new THREE.Group(); pan.add(mesh(cylG(0.15, 0.13, 0.04, 20), iron, 0, 0.02, 0)); const hd = mesh(cylG(0.012, 0.012, 0.22, 8), mat('#4a2e1a', 'wood'), 0.24, 0.035, 0); hd.rotation.z = Math.PI / 2; pan.add(hd);
+  const meat = mesh(sphG(0.085), mat('#b04a40', 'skin'), -0.01, 0.045, 0); meat.scale.set(1.15, 0.38, 0.85); pan.add(meat); const m2 = mesh(sphG(0.06), mat('#b04a40', 'skin'), 0.07, 0.042, 0.05); m2.scale.set(1, 0.35, 0.8); pan.add(m2); root.add(pan);
+  const pot = new THREE.Group(); pot.add(mesh(cylG(0.13, 0.12, 0.17, 20), iron, 0, 0.085, 0)); pot.add(mesh(torG(0.13, 0.012), iron, 0, 0.17, 0)); pot.children[1].rotation.x = Math.PI / 2; for (const sx of [-1, 1]) { const ea = mesh(torG(0.03, 0.008), iron, sx * 0.14, 0.15, 0); pot.add(ea); }
+  const soup = new THREE.Mesh(new THREE.CircleGeometry(0.118, 20), mat('#8a5a2a', 'gem', { roughness: 0.15 })); soup.rotation.x = -Math.PI / 2; soup.position.y = 0.15; pot.add(soup); root.add(pot);
+  _ckRig = { root, pan, pot, meats: [meat, m2], soup }; return _ckRig;
+}
+function cookSprite(kind, step) {   /* step 0..4: a carne vai do cru ao assado; o ensopado escurece */
+  return cache3('ck|' + kind + step, () => { const K = cookRig(), { renderer, scene, cam, W, H } = R3; K.pan.visible = kind === 'pan'; K.pot.visible = kind !== 'pan';
+    const raw = new THREE.Color('#b04a40'), done = new THREE.Color('#6a3e22'), t = step / 4; for (const m of K.meats) { m.material = mat('#' + raw.clone().lerp(done, t).getHexString(), 'skin'); }
+    K.soup.material = mat('#' + new THREE.Color('#9a6a32').lerp(new THREE.Color('#6a3a1a'), t).getHexString(), 'gem', { roughness: 0.12 });
+    K.root.rotation.set(0, 0.5, 0); K.root.scale.setScalar(1.25); K.root.updateMatrixWorld(true); scene.add(K.root); renderer.render(scene, cam); scene.remove(K.root);
+    const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(renderer.domElement, 0, 0); return { c, w: FRAME_W, h: FRAME_H, ax: FRAME_W / 2, ay: FOOT_Y, painted: true, hd: true }; });
 }
 
 // ---------- jogo de saquê: porcelana creme com sakura pintada à mão ----------
@@ -494,7 +535,7 @@ function shoot3D(R, dir, extraRotX, groundSit) {
   // apoia o pé mais baixo no chão
   R.root.position.set(0, 0, 0);
   R.root.updateMatrixWorld(true);
-  { let ch = false; for (const A of [R.A, R.B]) if (A && A.slv) { hangWorld(A.slv, R, 0); A.slv.scale.set(R._tuck > 0.5 ? 0.6 : 1, R._tuck > 0.5 ? 0.12 : 1, R._tuck > 0.5 ? 0.5 : 1); ch = true; } if (R.tokk && R.tokk.visible) { hangWorld(R.tokk, R, R.tokk.userData.tilt || 0); ch = true; } if (ch) R.root.updateMatrixWorld(true); }   /* mangas caem na vertical; garrafa de pé */
+  { let ch = false; for (const A of [R.A, R.B]) if (A && A.slv) { hangWorld(A.slv, R, (R._sway || 0) * (A === R.A ? 1 : -1)); A.slv.scale.set(R._tuck > 0.5 ? 0.6 : 1, R._tuck > 0.5 ? 0.12 : 1, R._tuck > 0.5 ? 0.5 : 1); ch = true; } if (R.tokk && R.tokk.visible) { hangWorld(R.tokk, R, R.tokk.userData.tilt || 0); ch = true; } if (ch) R.root.updateMatrixWorld(true); }   /* mangas caem na vertical; garrafa de pé */
   if (!extraRotX) {
     let minY = Infinity;
     for (const f of [R.LA.ft, R.LB.ft]) { f.getWorldPosition(tmpV); minY = Math.min(minY, tmpV.y); }
@@ -839,6 +880,11 @@ function holdProps(R, Q) {
   show('bucket', on('bucket'), g => { g.add(mesh(cylG(0.08, 0.065, 0.13, 10), wood(), 0, -0.2, 0)); g.add(mesh(cylG(0.082, 0.082, 0.012, 10), mat('#4a4a4e', 'metal'), 0, -0.16, 0)); g.add(mesh(cylG(0.07, 0.07, 0.005, 10), mat('#3a6aa8', 'gem', { emissiveIntensity: 0 }), 0, -0.14, 0)); const h = mesh(torG(0.07, 0.006), mat('#4a4a4e', 'metal'), 0, -0.12, 0); g.add(h); }, R.A.hand);
   show('sack', on('sack'), g => { const s = mesh(sphG(0.16), mat('#a8916a', 'cloth'), -0.2, 0.3, -0.05); s.scale.set(0.95, 0.72, 1.35); g.add(s); const t = mesh(cylG(0.03, 0.045, 0.08, 6), mat('#8a7550', 'cloth'), -0.2, 0.36, -0.27); t.rotation.x = 1.3; g.add(t); }, R.chest);
   show('book', on('book'), g => { g.add(mesh(boxG(0.13, 0.17, 0.035), mat('#6a1e18', 'leather'), 0, -0.04, 0.05)); g.add(mesh(boxG(0.12, 0.16, 0.03), mat('#efe6cc', 'cloth'), 0.008, -0.04, 0.05)); }, R.B.hand);
+  { const tv = on('sktray'); if (tv && !R.hp_sktray) { const g = new THREE.Group(), wd = mat('#d9bb8c', 'wood'), wd2 = mat('#c7a372', 'wood'); g.add(mesh(boxG(0.36, 0.014, 0.2), wd, 0, 0, 0)); for (const [x0, z0, w, d] of [[0, 0.094, 0.36, 0.012], [0, -0.094, 0.36, 0.012], [0.174, 0, 0.012, 0.2], [-0.174, 0, 0.012, 0.2]]) g.add(mesh(boxG(w, 0.026, d), wd2, x0, 0.013, z0)); const bt = sakeBottle(); bt.position.set(0.085, 0.007, 0); g.add(bt); const cp = sakeCup(false); cp.position.set(-0.09, 0.007, 0.01); g.add(cp); g.scale.setScalar(1.5); g.rotation.y = Math.PI / 2; g.position.set(0, 0.98, 0.26); R.root.add(g); R.hp_sktray = g; } if (R.hp_sktray) R.hp_sktray.visible = tv; }   /* bandeja de saquê carregada */
+  show('ladle', on('ladle'), g => { const w = mat('#8a6438', 'wood'); g.add(mesh(cylG(0.008, 0.008, 0.3, 6), w, 0, -0.08, 0.06)); g.children[0].rotation.x = 1.0; const bw = mesh(sphG(0.035), w, 0, -0.2, 0.17); bw.scale.set(1, 0.55, 1); g.add(bw); }, R.A.hand);
+  show('spat', on('spat'), g => { g.add(mesh(cylG(0.008, 0.008, 0.2, 6), mat('#6a4a2a', 'wood'), 0, -0.05, 0.05)); g.children[0].rotation.x = 1.1; g.add(mesh(boxG(0.07, 0.005, 0.09), mat('#9aa0a6', 'metal'), 0, -0.1, 0.15)); }, R.A.hand);
+  show('pinch', on('pinch'), g => { g.add(mesh(sphG(0.012), mat('#f4f0e6', 'cloth'), 0, -0.03, 0.03)); }, R.B.hand);
+  show('plate', on('plate'), g => { g.add(mesh(cylG(0.11, 0.08, 0.02, 16), mat('#efe8dc', 'cloth', { roughness: 0.3 }), 0, -0.02, 0.08)); const m = mesh(sphG(0.06), mat('#7a4a2a', 'skin'), 0, 0.01, 0.08); m.scale.set(1.3, 0.45, 1); g.add(m); g.add(mesh(sphG(0.018), mat('#5a8a3a', 'cloth'), 0.05, 0.02, 0.1)); }, R.B.hand);
   show('mug', on('mug'), g => { g.add(mesh(cylG(0.038, 0.034, 0.08, 10), wood(), 0, -0.03, 0.05)); g.add(mesh(cylG(0.033, 0.033, 0.004, 10), mat('#f2ead8', 'cloth'), 0, 0.012, 0.05)); const h = mesh(torG(0.025, 0.007), wood(), 0.045, -0.03, 0.05); h.rotation.y = Math.PI / 2; g.add(h); }, R.A.hand);
   const woodT = () => mat('#7a5530', 'wood'), ironT = () => mat('#8a8e96', 'metal');
   show('t_axe', on('t_axe'), g => { g.add(mesh(cylG(0.016, 0.018, 0.62, 6), woodT(), 0, -0.26, 0)); const hd = mesh(boxG(0.03, 0.12, 0.17), ironT(), 0, -0.52, 0.07); g.add(hd); g.add(mesh(boxG(0.012, 0.13, 0.04), mat('#c8ccd4', 'metal'), 0, -0.52, 0.17)); }, R.A.hand);

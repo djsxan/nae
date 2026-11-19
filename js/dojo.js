@@ -138,7 +138,7 @@ function sakeRimPos(e) { const b = BUILDINGS[e.fb]; if (!b) return null; const [
 function sakeDir(e) { const b = BUILDINGS[e.fb]; if (!b) return e.dir | 0; const [x0, y0] = localToWorld(b, 1.4, 1.4), [x1, y1] = localToWorld(b, 1.4, 2.4); return dirFromVec(x1 - x0, y1 - y0); }   /* bebendo: vira para o quarto */
 function sakeTrayYaw(e) { const b = BUILDINGS[e.fb]; if (!b) return 0; const [x0, y0] = localToWorld(b, SAKE_RIM[0], SAKE_RIM[1] - 0.5), [x1, y1] = localToWorld(b, SAKE_RIM[0], SAKE_RIM[1] + 0.5), p0 = iso(x0, y0), p1 = iso(x1, y1); return Math.round(Math.atan2(2 * (p1.sy - p0.sy), p1.sx - p0.sx) * 100) / 100; }   /* a bandeja fica ao longo da borda */
 function drawSakeRim(ctx, e, sx, sy, now, gst) {
-  const D = e.bdrink, P2 = sakeRimPos(e); if (!P2 || !R3.ok || typeof sakeTraySprite !== 'function') return;
+  const D = e.bdrink, P2 = sakeRimPos(e); if (!P2 || !R3.ok || typeof sakeTraySprite !== 'function' || !D.tray) return;   /* a bandeja só aparece depois que a doméstica a traz */
   const p1 = iso(P2[0], P2[1]), p0 = iso(e.rx, e.ry), x = sx + p1.sx - p0.sx, y = sy + p1.sy - p0.sy - 0.32 * HV;
   const inHand = gst && gst.k === 'sip' && gst.f >= 2 && gst.f < 10, pour = D.pourT && now - D.pourT < 6000 ? (now - D.pourT) / 6000 : -1;
   let lvl = D.left > 0 ? D.left / 3 : 0; if (pour >= 0) lvl = pour < 0.32 ? 0 : Math.min(1, (pour - 0.32) / 0.48);
@@ -146,9 +146,11 @@ function drawSakeRim(ctx, e, sx, sy, now, gst) {
   ctx.save(); ctx.imageSmoothingEnabled = true; pblit(ctx, s, x, y); ctx.restore();   /* foto 3D suavizada */
   if (pour > 0.3 && pour < 0.84 && D.mid) { const M = G.npcs[D.mid]; if (M && M._spout && now - (M._spoutT || 0) < 1500) {
     const ax = M._spout[0], ay = M._spout[1], bx = x - s.ax + s.cup[0], by = y - s.ay + s.cup[1] - 0.3, fade = Math.min(1, (pour - 0.3) / 0.04, (0.84 - pour) / 0.04);
-    ctx.save(); ctx.lineCap = 'round'; const wob = Math.sin(now / 70) * 0.12;
-    ctx.strokeStyle = 'rgba(236,226,196,' + (0.55 * fade).toFixed(2) + ')'; ctx.lineWidth = 0.95; ctx.beginPath(); ctx.moveTo(ax, ay); ctx.bezierCurveTo(ax + (bx - ax) * 0.15, ay + (by - ay) * 0.1, bx + wob, by - (by - ay) * 0.45, bx + wob, by); ctx.stroke();   /* corpo do fio, um pouco translúcido */
-    ctx.strokeStyle = 'rgba(255,253,242,' + (0.85 * fade).toFixed(2) + ')'; ctx.lineWidth = 0.32; ctx.beginPath(); ctx.moveTo(ax - 0.12, ay); ctx.bezierCurveTo(ax + (bx - ax) * 0.15 - 0.12, ay + (by - ay) * 0.1, bx + wob - 0.12, by - (by - ay) * 0.45, bx + wob - 0.12, by); ctx.stroke();   /* brilho */
+    ctx.save(); ctx.lineCap = 'round'; const dx = bx - ax, dy = by - ay, N = 16, P2 = [];   /* parábola: avança na horizontal em ritmo constante e cai acelerando (queda ~ t²) */
+    for (let i = 0; i <= N; i++) { const t = i / N, wob = Math.sin(now / 55 + t * 9) * 0.1 * t * t; P2.push([ax + dx * t + wob, ay + dy * t * t]); }
+    for (let i = 0; i < N; i++) { const t = (i + 0.5) / N, w = (1.05 - 0.5 * Math.sqrt(t)) * fade; ctx.strokeStyle = 'rgba(232,222,190,' + (0.62 * fade).toFixed(2) + ')'; ctx.lineWidth = w; ctx.beginPath(); ctx.moveTo(P2[i][0], P2[i][1]); ctx.lineTo(P2[i + 1][0], P2[i + 1][1]); ctx.stroke(); }   /* afina conforme acelera */
+    ctx.strokeStyle = 'rgba(255,254,246,' + (0.8 * fade).toFixed(2) + ')'; ctx.lineWidth = 0.22; ctx.beginPath(); ctx.moveTo(P2[0][0] - 0.15, P2[0][1]); for (let i = 1; i <= N; i++) ctx.lineTo(P2[i][0] - 0.15 * (1 - i / N), P2[i][1]); ctx.stroke();   /* brilho */
+    for (let k = 0; k < 3; k++) { const q2 = ((now / 300) + k / 3) % 1, a2 = k * 2.1 + Math.floor(now / 300); ctx.fillStyle = 'rgba(250,244,220,' + (0.75 * (1 - q2) * fade).toFixed(2) + ')'; ctx.beginPath(); ctx.arc(bx + Math.cos(a2) * (0.4 + q2 * 1.1), by - Math.sin(q2 * Math.PI) * 1.2, 0.22, 0, 7); ctx.fill(); }   /* respingos na boca do copo */
     const q = (now % 420) / 420; ctx.strokeStyle = 'rgba(255,250,232,' + (0.5 * (1 - q) * fade).toFixed(2) + ')'; ctx.lineWidth = 0.25; ctx.beginPath(); ctx.ellipse(bx, by + 0.15, 0.6 + q * 1.2, (0.6 + q * 1.2) * 0.4, 0, 0, 7); ctx.stroke();   /* ondinha na superfície do copo */
     ctx.restore(); } }
 }

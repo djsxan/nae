@@ -4,7 +4,7 @@
 //  (com queda) e fica cravada onde acertou: no corpo, no chão, em árvores e paredes.
 // ============================================================
 G.bow = { st: 'ready' };
-G.flyArrows = {}; G.gArrows = []; G.corpseArrows = {};
+G.flyArrows = {}; G.gArrows = []; G.corpseArrows = {}; G.dummyArrows = {};
 const isArcher = () => G.me && G.me.cls === 'archer';
 function bowPress() {
   const b = G.bow, now = performance.now(), me = G.me; if (!me || me.downed || me.carrying || me.shea) return;   // arco guardado: sem mira
@@ -120,6 +120,23 @@ function drawStuck(ctx, e, sx, sy, now, lyingDir) {
     arrowShaft(ctx, bx, by, (Math.cos(fa) - Math.sin(fa)) * 32, (Math.cos(fa) + Math.sin(fa)) * 16, 17, lying ? 8 : 3);
   }
 }
+function flyArrowsDraw(ctx, now, late) {   /* flechas em voo: as do chão no desenho normal, as dos andares depois do interior */
+  const ox = G.view.ox, oy = G.view.oy;
+  for (const id in G.flyArrows) {
+    const A = G.flyArrows[id]; if (!!A.zo !== late) continue; const t = (now - A.t0) / 1000; if (A.end && t >= A.end) { const L = (G.dummyArrows[A.stick.i] = G.dummyArrows[A.stick.i] || []); L.push({ ...A.stick, pitch: Math.atan2(A.vz - A.g * A.end, Math.hypot(A.vx, A.vy) * 2), t: now }); if (L.length > 12) L.shift(); delete G.flyArrows[id]; continue; } if (t > 5) { delete G.flyArrows[id]; continue; }
+    const x = A.x + A.vx * t, y = A.y + A.vy * t, h = A.h + A.vz * t - 0.5 * A.g * t * t, vz = A.vz - A.g * t;
+    const p = iso(x, y), sx = p.sx + ox, sy = p.sy + oy - h * 25 - (A.zo || 0);
+    const dx = (A.vx - A.vy) * 32, dy = (A.vx + A.vy) * 16 - vz * 25 * 0.5;
+    ctx.save(); ctx.globalAlpha = 0.12; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.6; const l = Math.hypot(dx, dy) || 1; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx - dx / l * 26, sy - dy / l * 26); ctx.stroke(); ctx.restore();
+    arrowShaft(ctx, sx + dx / l * 6, sy + dy / l * 6, dx, dy, 15, 0, true);
+  }
+}
+function drawBowLate(ctx, now) {   /* depois do interior dos andares: flechas cravadas nos bonecos e as que voam lá em cima */
+  const ox = G.view.ox, oy = G.view.oy;
+  for (const i in G.dummyArrows) { const L = G.dummyArrows[i]; if (!L.length || now - L[L.length - 1].t > 30000) { delete G.dummyArrows[i]; continue; }   /* flechas cravadas no boneco: somem 30 s depois da última */
+    for (const s of L) { const p = iso(s.x, s.y), bx = p.sx + ox, by = p.sy + oy - s.h * 25 - (s.zo || 0), up = Math.max(0.5, -Math.sin(s.pitch || 0) * 10); arrowShaft(ctx, bx, by, (Math.cos(s.a) - Math.sin(s.a)) * 32, (Math.cos(s.a) + Math.sin(s.a)) * 16, 14, up); } }
+  flyArrowsDraw(ctx, now, true);
+}
 function drawBowGround(ctx, now, P) {
   G.gArrows = G.gArrows.filter(a => now < a.t0 + a.ms);
   for (const a of G.gArrows) {
@@ -129,14 +146,7 @@ function drawBowGround(ctx, now, P) {
 }
 function drawBowTop(ctx, now) {
   const ox = G.view.ox, oy = G.view.oy;
-  for (const id in G.flyArrows) {
-    const A = G.flyArrows[id], t = (now - A.t0) / 1000; if (t > 5) { delete G.flyArrows[id]; continue; }
-    const x = A.x + A.vx * t, y = A.y + A.vy * t, h = A.h + A.vz * t - 0.5 * A.g * t * t, vz = A.vz - A.g * t;
-    const p = iso(x, y), sx = p.sx + ox, sy = p.sy + oy - h * 25;
-    const dx = (A.vx - A.vy) * 32, dy = (A.vx + A.vy) * 16 - vz * 25 * 0.5;
-    ctx.save(); ctx.globalAlpha = 0.12; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 0.6; const l = Math.hypot(dx, dy) || 1; ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx - dx / l * 26, sy - dy / l * 26); ctx.stroke(); ctx.restore();
-    arrowShaft(ctx, sx + dx / l * 6, sy + dy / l * 6, dx, dy, 15, 0, true);
-  }
+  flyArrowsDraw(ctx, now, false);
   // mira do arqueiro: puxando, mostra a trajetória em arco e onde a flecha cai; anel no cursor enche com a força
   if (isArcher() && G.mouseW && inCombatZone() && G.bow.st === 'drawing') drawArc(ctx, now);
   if (isArcher() && !G.me.shea && G.mouseW && inCombatZone()) {   // arco guardado: sem anel de mira
@@ -153,6 +163,8 @@ function drawBowTop(ctx, now) {
 function bowEvent(m, now) {
   switch (m.t) {
     case 'arrow': G.flyArrows[m.id] = { ...m, t0: now }; return true;
+    case 'tarrow': { const B = BUILDINGS[m.fb], zo = m.fl && B ? m.fl * (bldDims(B).H / floorsOf(B)) * HV : 0, a = Math.atan2(m.ty - m.y, m.tx - m.x), x0 = m.x + Math.cos(a) * 0.45, y0 = m.y + Math.sin(a) * 0.45, T = m.T || 0.4, ht = 0.95 + m.s * 0.45, lat = (m.s - 0.5) * 0.22, tx = m.tx - Math.cos(a) * 0.12 - Math.sin(a) * lat, ty = m.ty - Math.sin(a) * 0.12 + Math.cos(a) * lat, g = 9.8, h0 = 1.45;
+      G.flyArrows['t' + now + m.s] = { x: x0, y: y0, h: h0, vx: (tx - x0) / T, vy: (ty - y0) / T, vz: (ht - h0 + 0.5 * g * T * T) / T, g, t0: now, zo, end: T, stick: { i: m.i, x: tx, y: ty, h: ht, a, zo } }; return true; }   /* flecha de treino: voa até o boneco */
     case 'arrowend': delete G.flyArrows[m.id]; return true;
     case 'astick': G.gArrows.push({ ...m, t0: now }); if (G.gArrows.length > 160) G.gArrows.shift(); return true;
     case 'stick': {

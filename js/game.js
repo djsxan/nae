@@ -42,6 +42,8 @@ const IDLE_SETS = {
 const npcHash = e => e._h ?? (e._h = [...String(e.id)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) & 0xffff, 7));
 function npcHeld(e) {
   if (e.pkg || e.npDown || e.npDead || e.onBackBy || e.dragged) return null;
+  if (e.trayH) return 'sktray';   /* doméstica levando a bandeja de saquê */
+  if (e.plateH) return 'plate';
   const k = e.kind || '', h = npcHash(e), bi = WORLD.bld[tileAt(e.rx, e.ry)], B = bi >= 0 ? BUILDINGS[bi] : null;
   if (B && B.kind === 'tavern' && !e.walking && !/innkeeper|guard|captain/.test(k)) return 'mug';
   if (/^v_house/.test(k) || k === 'v_peasf') return h % 3 ? 'basket' : null;
@@ -1324,7 +1326,7 @@ function askRoomPw(bad) {
   d.classList.remove('hidden'); const inp = d.querySelector('#rpw-in'); inp.focus();
   const ok = () => { G.roomPw = inp.value.trim(); if (!G.roomPw) return; d.remove(); Net.send(helloMsg()); };
   d.querySelector('#rpw-ok').onclick = ok; inp.onkeydown = e => { if (e.key === 'Enter') ok(); };
-  d.querySelector('#rpw-no').onclick = () => { G.leaving = true; location.reload(); };
+  d.querySelector('#rpw-no').onclick = () => quitToMenu();
 }
 function pzRoomRefresh() {
   const box = $('pz-roompw'); if (!box) return; box.style.display = Net.isHost && !Net.offline ? '' : 'none';
@@ -1740,7 +1742,12 @@ for (const b of document.querySelectorAll('#pz-quality button')) b.addEventListe
 $('pz-bright').addEventListener('input', e => { SET.bright = +e.target.value; saveSettings(); applySettings(); });
 $('pz-zoom').addEventListener('input', e => { SET.zoom = +e.target.value; saveSettings(); G.zoomUser = false; resize(); applySettings(); });
 $('pz-full').addEventListener('click', () => { if (document.fullscreenElement) document.exitFullscreen(); else (document.documentElement.requestFullscreen || (() => { })).call(document.documentElement); });
-$('pz-quit').addEventListener('click', () => { G.leaving = true; try { saveChar(); saveFog && G.fog && saveFog(); } catch (e) { } location.reload(); });
+function quitToMenu() {   /* cobre a tela antes de recarregar: nada de relance do jogo */
+  G.leaving = true; try { saveChar(); if (typeof saveFog === 'function' && G.fog) saveFog(); } catch (e) { }
+  let c = document.getElementById('quitcover'); if (!c) { c = document.createElement('div'); c.id = 'quitcover'; c.style.cssText = 'position:fixed;inset:0;z-index:99999;background:#070605;opacity:0;transition:opacity .22s ease;display:flex;align-items:center;justify-content:center;color:#d8c8a0;font:600 18px Cinzel,Georgia,serif;letter-spacing:.08em'; c.textContent = 'Voltando ao menu…'; document.body.appendChild(c); }
+  requestAnimationFrame(() => { c.style.opacity = '1'; setTimeout(() => location.reload(), 260); });
+}
+$('pz-quit').addEventListener('click', () => quitToMenu());
 applySettings();
 
 // ---------- modo criador: O Tecelão ----------
@@ -1997,21 +2004,26 @@ const EMOTES = [{ k: 'toast', n: 'Brindar', i: '🍻' }, { k: 'salute', n: 'Saud
   w.innerHTML = EMOTES.map((e, i) => '<div class="ew-opt" data-i="' + i + '" style="--a:' + (i * 360 / EMOTES.length - 90) + 'deg"><span>' + e.i + '</span><b>' + e.n + '</b></div>').join('') + '<div class="ew-hint">solte sobre um emoji</div>';
   document.body.appendChild(w);
   const st = document.createElement('style');
-  st.textContent = '#emote-wheel{position:fixed;left:50%;top:50%;width:0;height:0;z-index:30}#emote-wheel.hidden{display:none}#emote-wheel .ew-opt{position:absolute;width:86px;height:86px;margin:-43px;border-radius:50%;transform:rotate(var(--a)) translate(105px) rotate(calc(-1 * var(--a)));background:radial-gradient(#3a2e22ee,#14100cee);box-shadow:0 0 0 2px #8a6a2a;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#f0d890;font:700 12px Cinzel,serif;cursor:pointer;transition:transform .1s,box-shadow .1s}#emote-wheel .ew-opt span{font-size:30px}#emote-wheel .ew-opt.on{box-shadow:0 0 0 3px #f0d890,0 0 18px #f0c060;transform:rotate(var(--a)) translate(105px) rotate(calc(-1 * var(--a))) scale(1.12)}#emote-wheel .ew-hint{position:absolute;left:-90px;width:180px;top:150px;text-align:center;font:italic 13px Alegreya,serif;color:#e8dcc0;text-shadow:0 1px 3px #000}#btn-emote{position:fixed;top:316px;right:12px;z-index:5;width:36px;height:36px;border-radius:50%;border:0;font-size:18px;cursor:pointer;background:radial-gradient(#3a302a,#141010);box-shadow:0 0 0 1px #000,0 0 0 3px #8a6a2a;display:none}body.touch #btn-emote{display:block}';
+  st.textContent = '#emote-wheel{position:fixed;left:50%;top:50%;width:0;height:0;z-index:30;--D:min(540px,94vmin)}#emote-wheel.hidden{display:none}#emote-wheel .ew-disc{position:absolute;width:var(--D);height:var(--D);left:calc(var(--D)/-2);top:calc(var(--D)/-2);border-radius:50%;background:radial-gradient(circle,rgba(16,12,9,.5) 0 17%,rgba(30,22,15,.28) 17.4% 31%,rgba(16,12,9,.46) 31.4% 100%);backdrop-filter:blur(7px) saturate(1.15);-webkit-backdrop-filter:blur(7px) saturate(1.15);box-shadow:inset 0 0 0 1.5px rgba(222,186,110,.55),inset 0 0 0 calc(var(--D)*.155) rgba(0,0,0,0),0 10px 40px rgba(0,0,0,.45);animation:ewIn .14s ease-out}#emote-wheel .ew-disc::before,#emote-wheel .ew-disc::after{content:"";position:absolute;border-radius:50%;inset:31%;box-shadow:0 0 0 1px rgba(222,186,110,.4)}#emote-wheel .ew-disc::after{inset:17%;box-shadow:0 0 0 1px rgba(222,186,110,.3)}#emote-wheel .ew-hl{position:absolute;width:var(--D);height:var(--D);left:calc(var(--D)/-2);top:calc(var(--D)/-2);border-radius:50%;pointer-events:none;opacity:0;transition:opacity .08s;background:conic-gradient(from calc(var(--s)*1deg),rgba(244,206,120,.34) 0 calc(var(--w)*1deg),transparent 0);-webkit-mask:radial-gradient(circle,transparent 0 var(--r0),#000 var(--r0) var(--r1),transparent var(--r1));mask:radial-gradient(circle,transparent 0 var(--r0),#000 var(--r0) var(--r1),transparent var(--r1))}#emote-wheel .ew-hl.on{opacity:1}#emote-wheel .ew-opt{position:absolute;width:calc(var(--D)*.15);height:calc(var(--D)*.15);margin:calc(var(--D)*-.075);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:#f2e2b8;font:700 clamp(10px,calc(var(--D)*.024),13px) Cinzel,serif;letter-spacing:.03em;text-shadow:0 1px 3px #000;cursor:pointer;transform:rotate(var(--a)) translate(var(--r)) rotate(calc(-1 * var(--a)));transition:transform .1s,filter .1s}#emote-wheel .ew-opt span{font-size:calc(var(--D)*.068);line-height:1;filter:drop-shadow(0 2px 3px rgba(0,0,0,.6))}#emote-wheel .ew-opt.in span{font-size:calc(var(--D)*.06)}#emote-wheel .ew-opt.on{transform:rotate(var(--a)) translate(var(--r)) rotate(calc(-1 * var(--a))) scale(1.2);filter:drop-shadow(0 0 10px rgba(244,200,110,.75))}#emote-wheel .ew-center{position:absolute;width:calc(var(--D)*.32);left:calc(var(--D)*-.16);top:-24px;text-align:center;pointer-events:none}#emote-wheel .ew-center b{display:block;font:700 clamp(14px,calc(var(--D)*.036),20px) Cinzel,serif;color:#f6dc9a;text-shadow:0 1px 4px #000}#emote-wheel .ew-center small{display:block;margin-top:4px;font:italic 12px Alegreya,serif;color:#d8ccb0;text-shadow:0 1px 3px #000}@keyframes ewIn{from{transform:scale(.9);opacity:0}to{transform:scale(1);opacity:1}}@media (prefers-reduced-motion:reduce){#emote-wheel .ew-disc{animation:none}}#btn-emote{position:fixed;top:316px;right:12px;z-index:5;width:36px;height:36px;border-radius:50%;border:0;font-size:18px;cursor:pointer;background:radial-gradient(#3a302a,#141010);box-shadow:0 0 0 1px #000,0 0 0 3px #8a6a2a;display:none}body.touch #btn-emote{display:block}';
   document.head.appendChild(st);
   const btn = document.createElement('button'); btn.id = 'btn-emote'; btn.textContent = '☺'; btn.title = 'Emojis (T)'; document.body.appendChild(btn);
   btn.addEventListener('click', () => { if (G.wheel) closeEmoteWheel(false); else { openEmoteWheel(); G.wheel.tap = true; } });
   w.querySelectorAll('.ew-opt').forEach(o => o.addEventListener('click', () => { G.wheel && (G.wheel.sel = +o.dataset.i); closeEmoteWheel(true); }));
-  window.addEventListener('mousemove', e => {
-    if (!G.wheel) return;
-    const dx = e.clientX - innerWidth / 2, dy = e.clientY - innerHeight / 2;
-    const N = w.querySelectorAll('.ew-opt').length; if (Math.hypot(dx, dy) < 40) { G.wheel.sel = -1; } else { const a = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360) % 360; G.wheel.sel = Math.round(a / (360 / N)) % N; }
-    w.querySelectorAll('.ew-opt').forEach(o => o.classList.toggle('on', +o.dataset.i === G.wheel.sel));
-  });
+  window.addEventListener('mousemove', e => { if (G.wheel) ewPick(e.clientX - innerWidth / 2, e.clientY - innerHeight / 2); });
 })();
-function openEmoteWheel() { if (!G.started || G.me.downed) return; G.wheel = { sel: -1 }; const w = $('emote-wheel'), L = emoteList();
-  w.innerHTML = L.map((e, i) => '<div class="ew-opt" data-i="' + i + '" style="--a:' + (i * 360 / L.length - 90) + 'deg"><span>' + e.i + '</span><b>' + e.n + '</b></div>').join('') + '<div class="ew-hint">solte sobre um emoji</div>';
-  w.querySelectorAll('.ew-opt').forEach(o => o.addEventListener('click', () => { G.wheel && (G.wheel.sel = +o.dataset.i); closeEmoteWheel(true); })); w.classList.remove('hidden'); }
+const EW_INNER = ['meditate', 'smoke'];   /* opções da situação ficam no anel de dentro */
+function ewD() { return Math.min(540, 0.94 * Math.min(innerWidth, innerHeight)); }
+function openEmoteWheel() { if (!G.started || G.me.downed) return; G.wheel = { sel: -1 }; const w = $('emote-wheel'), L = emoteList(), D = ewD();
+  const out = L.map((e, i) => i).filter(i => !EW_INNER.includes(L[i].k)), inn = L.map((e, i) => i).filter(i => EW_INNER.includes(L[i].k)); G.wheel.out = out; G.wheel.inn = inn;
+  const item = (i, k, n, ring) => '<div class="ew-opt' + (ring ? ' in' : '') + '" data-i="' + i + '" style="--a:' + (k * 360 / n - 90) + 'deg;--r:' + (ring ? D * 0.24 : D * 0.39).toFixed(0) + 'px"><span>' + L[i].i + '</span><b>' + L[i].n + '</b></div>';
+  w.innerHTML = '<div class="ew-disc"></div><div class="ew-hl"></div>' + out.map((i, k) => item(i, k, out.length, 0)).join('') + inn.map((i, k) => item(i, k, Math.max(inn.length, 1), 1)).join('') + '<div class="ew-center"><b id="ew-name">Emojis</b><small>solte sobre um deles</small></div>';
+  w.querySelectorAll('.ew-opt').forEach(o => { o.addEventListener('click', () => { G.wheel && (G.wheel.sel = +o.dataset.i); closeEmoteWheel(true); }); o.addEventListener('mouseenter', () => { if (G.wheel) ewSet(+o.dataset.i); }); }); w.classList.remove('hidden'); }
+function ewSet(sel) { const W = G.wheel; if (!W) return; W.sel = sel; const w = $('emote-wheel'), L = emoteList(), D = ewD(), hl = w.querySelector('.ew-hl'), nm = $('ew-name');
+  w.querySelectorAll('.ew-opt').forEach(o => o.classList.toggle('on', +o.dataset.i === sel)); if (nm) nm.textContent = sel >= 0 ? L[sel].n : 'Emojis';
+  if (!hl) return; if (sel < 0) { hl.classList.remove('on'); return; } const inner = W.inn.includes(sel), ring = inner ? W.inn : W.out, k = ring.indexOf(sel), n = ring.length, wdeg = 360 / n;
+  hl.style.setProperty('--s', (k * wdeg - wdeg / 2).toFixed(1)); hl.style.setProperty('--w', wdeg.toFixed(1)); hl.style.setProperty('--r0', (inner ? D * 0.17 : D * 0.31).toFixed(0) + 'px'); hl.style.setProperty('--r1', (inner ? D * 0.31 : D * 0.5).toFixed(0) + 'px'); hl.classList.add('on'); }
+function ewPick(dx, dy) { const W = G.wheel; if (!W) return; const D = ewD(), r = Math.hypot(dx, dy); if (r < D * 0.15) { ewSet(-1); return; }
+  const a = (Math.atan2(dy, dx) * 180 / Math.PI + 90 + 360) % 360, ring = W.inn.length && r < D * 0.31 ? W.inn : W.out, n = ring.length; if (!n) { ewSet(-1); return; } ewSet(ring[Math.round(a / (360 / n)) % n]); }
 function emoteList() { return G.me && G.me.bathing ? [{ k: 'smoke', n: 'Fumar', i: '🚬' }].concat(EMOTES.filter(e => ['toast', 'salute', 'cheer', 'surprise', 'adore', 'sad'].includes(e.k))) : G.me && G.me.cls === 'mage' ? EMOTES.concat([{ k: 'meditate', n: 'Meditar', i: '🧘' }]) : EMOTES; }
 function closeEmoteWheel(fire) {
   const wl = G.wheel; G.wheel = null; $('emote-wheel').classList.add('hidden');
