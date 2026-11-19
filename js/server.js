@@ -1086,13 +1086,15 @@ function autoMage(p, now) {
 function trainMsg(p, m) {
   if (m.a === 'stop') { if (p.train) trainEnd(p, 'Você parou de treinar.'); return; }
   if (p.train || p.downed || p.carrying || p.bath) return;
-  let best = -1, bd = 1.9; DUMMIES.forEach((d, i) => { if ((d.fl || 0) !== (p.fl || 0)) return; const dd = dist(p.x, p.y, d.x, d.y); if (dd < bd) { bd = dd; best = i; } }); if (best < 0) { tell(p, 'Chegue perto de um boneco de treino.'); return; }
+  let best = -1, bd = 1.9, free = false; DUMMIES.forEach((d, i) => { if ((d.fl || 0) !== (p.fl || 0)) return; const dd = dist(p.x, p.y, d.x, d.y); if (dd < bd) { bd = dd; best = i; } });
+  if (p.cls === 'archer' && !p.sheathed && Number.isInteger(m.i) && DUMMIES[m.i]) { const d = DUMMIES[m.i], myB = (p.fl || 0) ? p.fb : WORLD.bld[tileAt(p.x, p.y)]; if ((d.fl || 0) === (p.fl || 0) && d.bi === myB && dist(p.x, p.y, d.x, d.y) <= 9.5) { best = m.i; free = true; } }   /* arqueiro: atira de onde está, no mesmo cômodo */
+  if (best < 0) { tell(p, 'Chegue perto de um boneco de treino.'); return; }
   if (Object.values(S.players).some(q => q !== p && q.train && q.train.i === best) || Object.values(S.npcs).some(n => n.dojoDummy === best)) { tell(p, 'Esse boneco está ocupado.'); return; }
   const d = DUMMIES[best];
   if (d.priv) { const AP = PROPS_BY['ap' + d.apt], r = AP && estateLoad().r[AP.id]; if (!(AP.suite && SUITE_OPEN) && (!r || r.owner !== estOwner(p))) { tell(p, 'Esse boneco é particular da suíte.'); return; } }
-  else if (!dojoPaid(p)) return; p.x = d.fx; p.y = d.fy;
-  if (p.cls === 'archer' && !p.sheathed && !(d.fl || 0)) { const ux = d.fx - d.x, uy = d.fy - d.y, ul = Math.hypot(ux, uy) || 1; for (const k of [3, 2.5, 2]) { const x = d.x + ux / ul * k, y = d.y + uy / ul * k; if (npcStand(x, y, 0.25) && WORLD.bld[tileAt(x, y)] === WORLD.bld[tileAt(d.x, d.y)]) { p.x = x; p.y = y; break; } } }   /* arqueiro: recua alguns passos para atirar */ p.sit = null; p.dir = dirFromVecS(d.x - d.fx, d.y - d.fy); p.train = { i: best, t0: now_(), next: now_() + 900, rest: false, x: p.x, y: p.y, hits: 0, gain: 0 };
-  Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: 0, fl: p.fl || 0, fb: p.fb ?? -1 }); Net.toOne(p.id, { t: 'train', on: 1, i: best });
+  else if (!dojoPaid(p)) return; if (!free) { p.x = d.fx; p.y = d.fy; }
+  if (!free && p.cls === 'archer' && !p.sheathed && !(d.fl || 0)) { const ux = d.fx - d.x, uy = d.fy - d.y, ul = Math.hypot(ux, uy) || 1; for (const k of [3, 2.5, 2]) { const x = d.x + ux / ul * k, y = d.y + uy / ul * k; if (npcStand(x, y, 0.25) && WORLD.bld[tileAt(x, y)] === WORLD.bld[tileAt(d.x, d.y)]) { p.x = x; p.y = y; break; } } }   /* arqueiro: recua alguns passos para atirar */ p.sit = null; p.dir = dirFromVecS(d.x - d.fx, d.y - d.fy); p.train = { i: best, t0: now_(), next: now_() + 900, rest: false, x: p.x, y: p.y, hits: 0, gain: 0 };
+  if (!free) Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: 0, fl: p.fl || 0, fb: p.fb ?? -1 }); Net.toOne(p.id, { t: 'train', on: 1, i: best, free: free ? 1 : 0 });
   const wk = trainKind(p, d); tell(p, (wk === 'bow' ? 'Flechas no boneco' : wk === 'fist' ? (d.t === 'makiwara' ? 'Socos no makiwara' : 'Socos e chutes no mokujin') : 'Golpes de ' + USE[wk].name.toLowerCase() + ' no boneco') + ': o personagem treina sem parar e descansa quando cansa. Ande para parar.' + (p.cls === 'mage' ? ' (O mago não aprende com os bonecos.)' : ''));
 }
 function trainKind(p, d) { if (p.sheathed || p.cls === 'mage') return 'fist'; if (p.cls === 'archer') return 'bow'; return p.wpn === 'halberd' ? 'halberd' : 'sword'; }   /* com a arma sacada treina a arma; guardada, os punhos */
@@ -2545,7 +2547,7 @@ function lawMsg(p, m) {
 function useGain(p, k, amt) {
   if (!USE[k] || !p || p.dev || !(amt > 0)) return; p.use = p.use || {};
   const l0 = useLvl(p, k); p.use[k] = (p.use[k] || 0) + amt; const l1 = useLvl(p, k);
-  if (l1 > l0) { if (k === 'vigor') { const r = p.hp / Math.max(1, p.maxHp); p.maxHp = maxHpOf(p); if (!p.downed) p.hp = Math.max(1, Math.round(p.maxHp * r)); } if (l1 % 5 === 0) Net.toOne(p.id, { t: 'usel', k, l: l1 }); }
+  if (l1 > l0) { if (k === 'vigor') { const r = p.hp / Math.max(1, p.maxHp); p.maxHp = maxHpOf(p); if (!p.downed) p.hp = Math.max(1, Math.round(p.maxHp * r)); } if (l1 % 5 === 0) Net.toOne(p.id, { t: 'usel', k, l: l1 }); Net.toOne(p.id, { t: 'chat', name: '', text: '📈 ' + USE[k].name + ' subiu para ' + l1 + ' (+' + (useBonus(p, k) * 100).toFixed(1).replace('.', ',') + '%)' }); }   /* progresso da perícia no chat, a cada ponto inteiro */
 }
 function treeSkill(p, b, msg) {
   const br = TREE[p.cls] && TREE[p.cls][b], nd = br && br.nodes[msg.n === 5 ? 5 : 4]; if (!nd || !nd.skill) return; if (msg.n === 5) b = b + 10;   // segunda habilidade do ramo (recarga própria)
@@ -3273,6 +3275,7 @@ function bizMsg(p, m) {
       tell(p, 'O lucro fica na sua conta do banco. Para sacar, fale com um banqueiro no Banco de Nae.'); break;   // sacar só no banco
     }
     case 'deposit': {
+      if (!nearBanker(p)) { tell(p, 'Para depositar, vá ao Banco de Nae, ou peça a um segurança (F) que leve o dinheiro.'); return; }   /* dinheiro da bolsa só entra no banco em pessoa */
       const g = clamp(m.q | 0, 1, 100000); if (p.gold < g) return; p.gold -= g; B.cofre += g; if (B.closed) { B.closed = false; bizLog(B, 'Conta abastecida: o negócio voltou a funcionar.'); } tell(p, 'Depositado no banco: ' + g + ' de ouro.'); sendStat(p); break;
     }
     default: return;
@@ -3441,6 +3444,9 @@ function bizHour(now) {
       for (const s of [...(B.staff || [])]) { if (debit(r.owner, null, s.w, B)) B.today.cost += s.w; else { B.staff = B.staff.filter(q => q !== s); bizLog(B, s.n + ' foi embora: não recebeu o salário (' + s.w + ').'); } }
       { const st = P.kind === 'shop' ? B.stock : B.store, gs = Object.keys(st || {}).filter(g => st[g] >= 3), hon = (B.staff || []).some(s => s.tr === 'honest') ? 0.5 : 1;
         if (gs.length && Math.random() < THEFT[B.up.safe || 0] * hon) { const g = gs[Math.floor(Math.random() * gs.length)], lost = Math.max(1, Math.floor(st[g] * 0.2)); st[g] -= lost; bizLog(B, 'Ladrões levaram ' + lost + ' ' + GOODS[g].n + ' durante a noite!'); if (on) tell(on, 'Roubaram ' + lost + ' ' + GOODS[g].n + ' de ' + P.name + '!'); } }
+      { const D = typeof dojoRec === 'function' ? dojoRec() : null, isDojo = !!(D && D.B === B), isTav = P.wk === 'tavern';   /* dojô e taverna dão reputação ao dono pelo movimento do dia */
+        if ((isDojo || isTav) && !B.closed) { const sold = B.today.sold || 0, rev = B.today.rev || 0, amt = isDojo ? (sold >= 6 ? 3 : sold >= 3 ? 2 : sold >= 1 ? 1 : 0) : (rev >= 150 ? 3 : rev >= 70 ? 2 : rev > 0 ? 1 : 0);
+          if (amt) { r.repPend = (r.repPend || 0) + amt; const op = Object.values(S.players).find(q => estOwner(q) === r.owner); if (op) { repAdd(op, 'cidade', r.repPend, 'movimento do ' + (isDojo ? 'dojô' : 'taverna') + ' de ontem'); r.repPend = 0; } } } }
       B.hist.push({ rev: Math.round(B.today.rev), cost: Math.round(B.today.cost), sold: B.today.sold, xfer: Math.round(B.today.xfer || 0) }); if (B.hist.length > 7) B.hist.shift(); B.today = { rev: 0, sold: 0, cost: 0, xfer: 0 };
     }
   }
@@ -4154,7 +4160,7 @@ function bankView(p) { const A = bankAcc(p), O = bankOwnerRec(); return { t: 'ba
 function nearBanker(p) { return Object.values(S.npcs || {}).some(n => /^banker\d?$/.test(n.kind) && !n.dead && !n.downed && dist(n.x, n.y, p.x, p.y) < 4.5); }
 function bankMsg(p, m) {
   const A = bankAcc(p), q = Math.max(0, Math.floor(+m.q || 0));
-  if (m.a !== 'open' && m.a !== 'dep' && !nearBanker(p)) { tell(p, 'Fale com um dos banqueiros, no Banco de Nae.'); return; }   // depositar vale de qualquer lugar; sacar e empréstimos só no banco
+  if (m.a !== 'open' && !nearBanker(p)) { tell(p, m.a === 'dep' ? 'Para depositar, vá ao Banco de Nae, ou peça a um segurança (F) que leve o dinheiro.' : 'Fale com um dos banqueiros, no Banco de Nae.'); return; }   // depositar, sacar e empréstimos só no banco (ou pelo segurança)
   if (m.a === 'dep') { const v = Math.min(q, p.gold); if (!v) return; p.gold -= v; A.g += v; tell(p, 'Depositado: ' + v + ' de ouro. Saldo: ' + Math.floor(A.g) + '.'); }
   else if (m.a === 'wd') { const v = Math.min(q, Math.floor(A.g)); if (!v) return; A.g -= v; p.gold += v; tell(p, 'Sacado: ' + v + ' de ouro.'); }
   else if (m.a === 'loan') { if (A.loan > 0) { tell(p, 'Você já tem um empréstimo. Pague antes de pedir outro.'); return; } const v = Math.min(q, loanMax(p)); if (!v) return; A.loan = Math.ceil(v * (1 + LOAN_INT)); A.due = estDay() + LOAN_WEEKS * RENT_DAYS; p.gold += v; tell(p, 'Empréstimo de ' + v + ' de ouro. Você deve ' + A.loan + ' (juros de 10% por semana) em até 2 semanas.'); }

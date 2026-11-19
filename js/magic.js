@@ -18,7 +18,7 @@ if (typeof buildHotbar === 'function') { const _bh = buildHotbar; buildHotbar = 
 // ---------- eventos das magias ----------
 if (typeof progEvent === 'function') { const _pe = progEvent; progEvent = function (m, now) {
   if (m.t === 'medit') { const e = G.players[m.id]; if (e) e.medit = m.on ? { el: m.el, t0: now } : null; if (e === G.me && !m.on) { const d = document.getElementById('meditmenu'); if (d) d.remove(); } return true; }
-  if (m.t === 'flamefx') { const e = G.players[m.id]; if (e) e.flame = m.on ? { a: m.a, r: m.r, until: now + 450 } : null; return true; }
+  if (m.t === 'flamefx') { const e = G.players[m.id]; if (e) e.flame = m.on ? { a: m.a, r: m.r, until: now + 450 } : null; if (e && e === G.me && m.on) { G.faceLock = { a: m.a, until: now + 500 }; G.me.dir = dirFromVec(Math.cos(m.a), Math.sin(m.a), G.me.dir); } return true; }   /* o mago encara para onde o jato vai (também no automático) */
   if (m.t === 'ember') { const e = G.players[m.id]; if (e) e.emberUntil = m.ms ? now + m.ms : 0; return true; }
   if (m.t === 'mburn') { const e = G.monsters[m.id]; { const C = G.charMap[m.id]; G.charMap[m.id] = { c: Math.min(1, (C ? charOf(m.id, now) : 0) + 0.4), t: now }; } if (e) { e.burnUntil = now + m.ms; e.charUntil = now + m.ms + 20000; if (G.view) { const p = iso(e.rx, e.ry); sparkBurst(p.sx, p.sy - 18, FIRE_PAL[1], 12); } } return true; }   /* faíscas no impacto; chamuscado por 20 s */
   return _pe(m, now);
@@ -155,6 +155,21 @@ function drawFurnFire(ctx, P, now) {
     G.lights.push({ x, y: y - 10, r: 60 + F.s * 40, c: '255,150,60', a: 0.95, flick: 1 });
     if (F.sparks && Math.random() < 0.12) sparkBurst(x - G.view.ox + (Math.random() - 0.5) * 10, y - G.view.oy - 6, FIRE_PAL[1], 3);   /* forja: faíscas */
     if (F.smoke && Math.random() < 0.05) fireSmokeAt(x - G.view.ox, y - G.view.oy - 16, false, 3); }
+}
+// ---------- varandas do prédio do dojô: o guarda-corpo fica na frente de quem está atrás dele (com os vãos entre as ripas) ----------
+function drawRailOver(ctx, P, now) {
+  const bi = BUILDINGS.findIndex(b => b.kind === 'dojo'); if (bi < 0) return; const b = BUILDINGS[bi], { H } = bldDims(b), nF = 4, fh = H / nF, w = b.w, h = b.h;
+  const ents = []; for (const L of [G.players, G.npcs]) for (const id in L) { const e = L[id]; if (!e || !e._spr || (e.fl || 0) < 1 || e.fb !== bi || now - (e._drawT || 0) > 300) continue; ents.push(e); }
+  if (!ents.length) return;
+  const pr = (x, y, z) => { const [wx, wy] = localToWorld(b, x, z), q = P(wx, wy, 0); return [q[0], q[1] - y * HV]; };
+  const line = (a, c, col, lw) => { ctx.strokeStyle = col; ctx.lineWidth = lw; ctx.beginPath(); ctx.moveTo(a[0], a[1]); ctx.lineTo(c[0], c[1]); ctx.stroke(); };
+  for (const e of ents) { const s = e._spr, f = e.fl, y0 = f * fh, bw = f < nF - 1 ? w : 6, zf = h + 0.96, x0 = e._sx - s.ax, y0s = e._sy - s.ay;
+    ctx.save(); ctx.beginPath(); ctx.rect(x0, y0s, s.w, s.h); ctx.clip(); ctx.lineCap = 'butt';
+    for (let x = 0.15; x < bw; x += 0.17) line(pr(x, y0 + 0.33, zf), pr(x, y0 + 0.91, zf), '#9a6a38', 0.55);   /* ripas */
+    for (let x = 0; x <= bw + 0.001; x += 1) line(pr(x, y0 + 0.05, zf), pr(x, y0 + 0.97, zf), '#6a4422', 1.3);   /* pilares */
+    line(pr(0, y0 + 0.93, zf), pr(bw, y0 + 0.93, zf), '#6a4422', 1.2); line(pr(0, y0 + 0.3, zf), pr(bw, y0 + 0.3, zf), '#6a4422', 0.7);   /* corrimão e travessa */
+    for (const xe of [0, bw]) { for (let z = h + 0.15; z < zf; z += 0.17) line(pr(xe, y0 + 0.33, z), pr(xe, y0 + 0.91, z), '#9a6a38', 0.55); line(pr(xe, y0 + 0.93, h), pr(xe, y0 + 0.93, zf), '#6a4422', 1.1); }   /* pontas */
+    ctx.restore(); }
 }
 G.fireLast = G.fireLast || 0;
 function drawFlameFx(ctx, now) {

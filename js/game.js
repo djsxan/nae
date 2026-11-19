@@ -164,6 +164,7 @@ function clientOnServer(m) {
       if (m.w === 'n') { if (m.a === 'adore' && m.ms > 3000) { e.bubble = { t: '✦', until: now + m.ms }; e.reactT = now + m.ms; if (m.tx != null) e.dir = dirFromVec(m.tx - e.rx, m.ty - e.ry, e.dir); } else if (m.a === 'look' && e.bubble && e.bubble.t === '✦') e.bubble = null; if (m.a === 'shout') { e.bubble = { t: m.txt || 'Guardas!', until: now + 2500 }; e.anim = null; } if (m.a === 'talk') { e.bubble = { t: m.txt || '...', until: now + 2600 + (m.txt || '').length * 60 }; if (!(e.anim && e.anim.a !== 'talk' && now - e.anim.t0 < (e.anim.ms || 0))) e.anim = null; } if (m.a === 'mercy') { e.bubble = { t: m.txt || 'Misericórdia!', until: now + 3000 }; e.anim = null; } }
       if (m.a === 'execute' && m.id === G.myId) later(380, () => { G.shake = Math.max(G.shake, 6); });
       if (m.tx != null && m.w === 'p' && m.a !== 'spin') e.dir = dirFromVec(m.tx - e.rx, m.ty - e.ry, e.dir);
+      if (m.tx != null && e === G.me && /^(loose|shoot|bolt|quiver|dualcast|turnshot|turncast|castup|cast|fireball)$/.test(m.a)) G.faceLock = { x: m.tx, y: m.ty, until: now + 700 };   /* ao atirar ou lançar, fica de frente para o inimigo */
       if (m.tx != null && m.w === 'n' && m.a !== 'talk') e.dir = dirFromVec(m.tx - (e.rx ?? e.x), m.ty - (e.ry ?? e.y), e.dir);   /* o NPC fica de frente para o que está fazendo */
 
       if (m.proj) {
@@ -431,7 +432,7 @@ function updateLocal(now, dt) {
     else if (freeAt(nx, me.y, me.z)) me.x = nx;
     else if (freeAt(me.x, ny, me.z)) me.y = ny; }
     moved = Math.hypot(me.x - ox, me.y - oy);
-    if (!combatFacing()) me.dir = dirFromVec(v[0], v[1], me.dir);
+    if (!combatFacing() && !(G.faceLock && now < G.faceLock.until)) me.dir = dirFromVec(v[0], v[1], me.dir);
     if (!moved && G.path) { G.path = null; G.pathGoal = null; }
   }
   me.walking = moved > 0.0005 || !!G.towWalk;
@@ -478,7 +479,9 @@ function updateLocal(now, dt) {
     { let best = null, bd = 3.4; for (const id in G.monsters) { const q = G.monsters[id]; if (q.dieAt || !q.visible || Math.abs((q.z || 0) - (me.z || 0)) > 0.5) continue; const d = dist(q.rx, q.ry, me.x, me.y), aq = Math.atan2(q.ry - me.y, q.rx - me.x); let df = Math.abs(aq - a) % (Math.PI * 2); if (df > Math.PI) df = Math.PI * 2 - df; if (d < bd && df < 0.95) { bd = d; best = aq; } }
       for (const id in G.players) { const q = G.players[id]; if (id === G.myId || !q.visible || q.downed || q.isNpc) continue; const d = dist(q.rx, q.ry, me.x, me.y), aq = Math.atan2(q.ry - me.y, q.rx - me.x); let df = Math.abs(aq - a) % (Math.PI * 2); if (df > Math.PI) df = Math.PI * 2 - df; if (d < bd && df < 0.95) { bd = d; best = aq; } }
       if (best != null) a = best; }   /* assistência de mira: o inimigo perto, na direção do cursor */
+    if (G.faceLock && now < G.faceLock.until) a = G.faceLock.a != null ? G.faceLock.a : Math.atan2(G.faceLock.y - me.y, G.faceLock.x - me.x);   /* o ataque manda na direção */
     me.fa = a; me.dir = dirFromVec(Math.cos(a), Math.sin(a), me.dir); if (G.parrying && now - (G.parryAT || 0) > 70) { G.parryAT = now; Net.send({ t: 'parrya', a }); } }
+  if (G.faceLock && now < G.faceLock.until && !me.sit && !me.bathing && me.sleep == null) { const a2 = G.faceLock.a != null ? G.faceLock.a : Math.atan2(G.faceLock.y - me.y, G.faceLock.x - me.x); me.fa = a2; me.dir = dirFromVec(Math.cos(a2), Math.sin(a2), me.dir); }   /* atirando ou lançando magia: de frente para o inimigo */
   if (now - me.sendT > 100 && (moved || me.walking !== me.sentWalk || stF !== me.sentSt || me.dir !== me.sentDir)) { me.sentDir = me.dir;
     me.sendT = now; me.sentWalk = me.walking; me.sentSt = stF;
     Net.send({ t: 'mv', x: Math.round(me.x * 100) / 100, y: Math.round(me.y * 100) / 100, z: Math.round(me.z * 100) / 100, d: me.dir, w: me.walking ? 1 : 0, r: running ? 1 : 0, c: me.crouch ? 1 : 0, sl: me.slide ? 1 : 0, ti: G.tired || (G.stam ?? STAM_MAX) < stamMax() * 0.3 ? 1 : 0 }, true);
@@ -622,6 +625,7 @@ resize();
 
 function bar(id, v, max, text) { $(id + '-fill').style.width = (100 * clamp(v / max, 0, 1)) + '%'; $(id + '-text').textContent = text; }
 function updateHud() {
+  if (G.me) document.body.classList.toggle('unarmed', !!(G.me.shea || G.training || G.me.bathing || G.me.downed || G.me.medit));   /* botões de ataque só com a arma sacada */
   const me = G.me; if (!me) return;
   $('hud-name').textContent = me.name;
   $('hud-class').textContent = CLASSES[me.cls].name; $('hud-lvl').textContent = me.lvl;
@@ -1099,7 +1103,8 @@ window.addEventListener('keydown', e => {
   if (k === 'f' && !e.repeat && typeof liftNear === 'function' && liftNear()) { liftMenu(); return; }
   if (k === 'f' && !e.repeat && typeof leverNear === 'function' && leverNear()) { Net.send({ t: 'tub' }); return; }
   if (k === 'f' && !e.repeat && typeof ofuroNear === 'function' && ofuroNear()) { bathEnter(); return; }
-  if (k === 'f' && !e.repeat && typeof dummyNear === 'function' && dummyNear() && !G.training) { Net.send({ t: 'train', a: 'start' }); return; }
+  if (k === 'f' && !e.repeat && typeof purseNear === 'function' && purseNear()) { Net.send({ t: 'emp', a: 'purse', id: purseNear().id }); return; }   /* bolsa caída no chão */
+  if (k === 'f' && !e.repeat && typeof dummyNear === 'function' && dummyNear() && !G.training) { const fd = typeof dummyFacing === 'function' ? dummyFacing() : null; Net.send({ t: 'train', a: 'start', i: fd ? DUMMIES.indexOf(fd) : undefined }); return; }   /* arqueiro: o boneco para onde está virado */
   if (k === 'f' && !e.repeat && openNearChest(1.8)) return;
   if (k === 'f' && !e.repeat && G.me && (G.me.carrying || G.me.dragMode === 'arms' || G.me.dragMode === 'foot') && STAGE.x >= 0 && dist(G.me.x, G.me.y, STAGE.x, STAGE.y) < 3.4) { Net.send({ t: 'exec' }); return; }
   if (k === 'y' && !e.repeat && G.me && G.me.wantedUntil > performance.now()) { Net.send({ t: 'surrender' }); return; }
@@ -2279,7 +2284,7 @@ function drawShopScene(ctx, now) {
   }
 }
 function drawBlockHud(ctx, now) {
-  drawTradeFx(ctx, now); drawShopScene(ctx, now); if (typeof drawFlameFx === 'function') drawFlameFx(ctx, now); if (typeof staffFrame === 'function') staffFrame(now);
+  drawTradeFx(ctx, now); drawShopScene(ctx, now); if (typeof drawFlameFx === 'function') drawFlameFx(ctx, now); if (G.me) { const un = !!(G.me.shea || G.training || G.me.bathing || G.me.downed || G.me.medit); if (un !== G._unarmed) { G._unarmed = un; document.body.classList.toggle('unarmed', un); } } if (typeof staffFrame === 'function') staffFrame(now);
   if (G.tradeAt) { const tp = $('tradep'); if (!tp || tp.classList.contains('hidden')) { G.tradeAt = null; G.trade = null; } else if (dist(G.me.x, G.me.y, G.tradeAt.x, G.tradeAt.y) > 4) { tp.classList.add('hidden'); G.tradeAt = null; G.trade = null; } }   // longe do vendedor: fecha a troca
   const me = G.me; if (!me || !G.parrying) return; const ox = G.view.ox, oy = G.view.oy, P = iso(me.rx, me.ry), cx = P.sx + ox, cy = P.sy + oy - 26, f = me.fa ?? 0;
   const sh = me.cls === 'knight' && (me.shp ?? 100) > 0 && me.wpn !== 'halberd' && !me.shea;

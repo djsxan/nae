@@ -290,7 +290,9 @@ kbd { font-family: 'Alegreya Sans SC', sans-serif; font-size: 12px; font-weight:
 #topbtns button:hover { background: rgba(60,42,22,0.8); }
 #btn-emote { top: 50px !important; right: 10px !important; width: 32px !important; height: 32px !important; }
 /* botões de combate: tamanho ajustável na pausa */
-#combat-pad { transform: scale(var(--pad, .55)) !important; transform-origin: bottom right; right: 12px; bottom: 12px; }
+#combat-pad { transform: scale(calc(var(--pad, .55) * 1.25)) !important; transform-origin: bottom right; right: 12px; bottom: 12px; }   /* botões 25% maiores */
+#combat-pad .slot.skill, #combat-pad #btn-attack, #combat-pad #passive { transition: opacity .25s ease, transform .25s ease; }
+body.unarmed #combat-pad .slot.skill, body.unarmed #combat-pad #btn-attack, body.unarmed #combat-pad #passive { opacity: 0; pointer-events: none; }   /* arma guardada, treino, banho: sem botões de ataque */
 #passive { display: none; }
 /* painéis do jogo (inventário e jornada) */
 .gpanel { position: fixed; z-index: 30; top: 50%; left: 50%; transform: translate(-50%, -50%); width: min(400px, 92vw); max-height: 86vh; overflow: auto; padding: 14px 16px; border-radius: 10px; background: linear-gradient(rgba(42,34,26,0.96), rgba(20,16,12,0.96)); border: 2px solid #8a6a2a; box-shadow: 0 0 0 3px #1a120a, 0 12px 40px rgba(0,0,0,.7); color: #e8dcc0; }
@@ -322,7 +324,7 @@ kbd { font-family: 'Alegreya Sans SC', sans-serif; font-size: 12px; font-weight:
 #hstate.kneel { animation: heartbeat .8s infinite; background: radial-gradient(ellipse at center, transparent 45%, rgba(40,0,0,0.45)); }
 body.dying #game { filter: saturate(0.35) contrast(1.05); }
 body.tired #game { filter: saturate(0.8); }
-@media (max-width: 900px) { #combat-pad { transform: scale(var(--pad, .7)) !important; } }
+@media (max-width: 900px) { #combat-pad { transform: scale(calc(var(--pad, .7) * 1.25)) !important; } }
 #btn-crouch { display: none; position: fixed; z-index: 6; left: 66px; bottom: 312px; width: 44px; height: 44px; border-radius: 50%; border: 0; font-size: 20px; color: #e8d29a; background: rgba(20,14,8,0.6); box-shadow: 0 0 0 1px rgba(201,162,74,0.5); }
 body.touch #btn-crouch { display: block; } #btn-crouch.on { background: rgba(140,100,40,0.8); color: #fff; }
 
@@ -498,6 +500,9 @@ body.nae:not(.nae-ready) #lobby > *:not(#title3d) { visibility: hidden; }
 /* ---------- medalhões de sobrevivência ao lado do chat ---------- */
 #surv-medals { position: fixed; z-index: 12; left: 12px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; gap: 8px; align-items: center; pointer-events: auto; }
 #surv-medals .sv-w { width: 58px; height: 58px; filter: drop-shadow(0 4px 6px rgba(0,0,0,.6)); }
+#surv-medals .sv-w.sv-body { width: 74px; height: 74px; }   /* medalhão do corpo, maior */
+#surv-medals .sv-body .sv-arc { stroke-width: 3.6; }
+#bodydoll { display: none !important; }   /* o corpo agora fica dentro do medalhão */
 #surv-medals .sv-w.low { animation: svPulse 1s ease-in-out infinite; }
 #surv-medals .sv-lw { transition: opacity .8s; } #surv-medals .sv-lw.full { opacity: .55; }   /* estamina cheia: o pulmão fica discreto */
 @keyframes svPulse { 50% { filter: drop-shadow(0 0 8px rgba(255,80,50,.9)) drop-shadow(0 4px 6px rgba(0,0,0,.6)); } }

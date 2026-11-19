@@ -479,6 +479,8 @@ function drawHeroEntity(ctx, e, sx, sy, now) {
     const s = heroSprite3D(e.cls, e.skin, e.color, { dir: e.dir || 0, walk: -1, down: true }); pblit(ctx, woundOf(s, Math.max(1, woundLevel(e))), sx, sy); e._spr = null; return;
   }
   if (R3.ok) {
+    if (e.downed && !e.carriedBy) { const mv = e._clx != null && Math.hypot(e.rx - e._clx, e.ry - e._cly) > 0.0015; if (mv) { e._crawlT = now; e.dir = dirFromVec(e.rx - e._clx, e.ry - e._cly, e.dir); } e._clx = e.rx; e._cly = e.ry;   /* caído e se mexendo: arrasta-se pelo chão como os NPCs */
+      if (now - (e._crawlT || 0) < 450) { const s = heroSprite3D(e.cls, e.skin, e.color, { dir: e.dir || 0, walk: -1, down: true, prone: true, crawl: 1 + Math.floor(now / 260) % 4 }); ctx.imageSmoothingEnabled = true; pblit(ctx, woundOf(s, 3), sx, sy); if (Math.random() < 0.02) addBlood(e.rx, e.ry, 0, 0.25, 60000); e._spr = null; return; } }
     if (e.downed && !e.carriedBy) { const f = FALLS['p' + e.id]; if (f) { drawFall(ctx, f, sx, sy, now, 1, 3); return; } const s = heroSprite3D(e.cls, e.skin, e.color, { dir: e.dir || 0, walk: -1, down: true }); ctx.imageSmoothingEnabled = true; pblit(ctx, woundOf(s, 3), sx, sy); return; }
     const P = heroPoseFor(e, now);
     if (!P.act && e.hitAt && now - e.hitAt < 300) P.act = { k: 'hurt', f: Math.min(11, Math.floor((now - e.hitAt) / 300 * 12)) };

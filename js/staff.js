@@ -60,6 +60,7 @@ function empQuit(key, r, why) {
 }
 function empWelcome(to) { const M = S.estate && S.estate.emp; if (!M) return; const p = S.players[to]; for (const key in M) { const r = M[key]; if (r.messy) { const H = empHome(r), bi = H ? empBedIdx(H) : -1; if (bi >= 0) Net.toOne(to, { t: 'bedmess', bed: bi, on: 1 }); } if (p && estOwner(p) === key) setTimeout(() => empSend(r, key), 800); } }
 function empMsg(p, m) {
+  if (m.a === 'purse') { const L = S.purses || [], u = L.find(x => x.id === m.id); if (!u || (u.fl || 0) !== (p.fl || 0) || dist(u.x, u.y, p.x, p.y) > 1.6) return; L.splice(L.indexOf(u), 1); p.gold = (p.gold || 0) + u.g; sendStat(p); tell(p, 'Você pegou uma bolsa com ' + u.g + ' de ouro.'); Net.toAll({ t: 'purses', l: L }); return; }
   const key = estOwner(p), M = empLoad(), r = M[key];
   if (m.a === 'cands') { const home = rentalOf(p); Net.toOne(p.id, { t: 'empc', list: empCands(), tr: EMP_TR, str: SEG_TR, home: home ? PROPS_BY[home].name : '', have: r ? r.n : '', segs: segList(key).length }); return; }
   if (m.a === 'sorder') { segOrder(p, key, m); return; }
@@ -333,6 +334,7 @@ if (typeof progEvent === 'function') { const _peS = progEvent; progEvent = funct
   if (m.t === 'empc') { agencyRender(m); return true; }
   if (m.t === 'empme') { G.emp = m.id ? m : null; if (document.getElementById('empmenu')) empMenu(); if (document.getElementById('empbag')) empBag(); return true; }
   if (m.t === 'massage') { const pl = G.players[m.pid]; if (pl) pl.massageUntil = m.on ? performance.now() + (m.ms || 20000) : 0; const md = G.npcs[m.mid]; if (md) md.z = m.on ? (m.h || 0) * HV / FLOOR_PX : 0; return true; }   /* de bruços, e ela em cima da cama */
+  if (m.t === 'purses') { G.purses = m.l || []; return true; }
   if (m.t === 'skt') { const e = G.npcs[m.id]; if (e) { if (m.plate != null) e.plateH = m.plate; else e.trayH = m.on ? 1 : 0; } return true; }
   if (m.t === 'cookfx') { (G.cookFx = G.cookFx || []).push({ ...m, t0: performance.now() }); return true; }
   if (m.t === 'sktray') { G.skTray = G.skTray || {}; if (m.at) G.skTray[m.bi] = m.at; else delete G.skTray[m.bi]; return true; }
@@ -389,8 +391,12 @@ function drawCookFx(ctx, P, now) {   /* panela ou frigideira no fogão, chamas, 
     if (f.kind === 'pot' && Math.random() < 0.4) { ctx.save(); ctx.globalAlpha = 0.7 * fade; ctx.fillStyle = 'rgba(200,150,90,0.8)'; ctx.beginPath(); ctx.arc(x + (Math.random() - 0.5) * 5, y - 5.5 + Math.random(), 0.5 + Math.random() * 0.5, 0, 7); ctx.fill(); ctx.restore(); }   /* borbulhas */
   }
 }
+function purseNear() { const me = G.me; if (!me) return null; let best = null, bd = 1.4; for (const u of G.purses || []) { if ((u.fl || 0) !== (me.fl || 0)) continue; const d = Math.hypot(u.x - me.x, u.y - me.y); if (d < bd) { bd = d; best = u; } } return best; }
+function drawPurses(ctx, P, now) { const me = G.me; for (const u of G.purses || []) { if ((u.fl || 0) !== (me.fl || 0)) continue; const q = P(u.x, u.y, 0), x = q[0], y = q[1] - (u.fl ? u.fl * (bldDims(BUILDINGS[u.fb]).H / floorsOf(BUILDINGS[u.fb])) * HV : 0);
+  ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x, y, 5, 2, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#6a4424'; ctx.beginPath(); ctx.ellipse(x, y - 3, 4.2, 3.4, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#4a2e18'; ctx.fillRect(x - 1.6, y - 7.2, 3.2, 1.6); ctx.fillStyle = '#e8c060'; for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.ellipse(x + 3 + k * 1.6, y + 0.5 - k * 0.3, 1.3, 0.6, 0, 0, 7); ctx.fill(); }
+  if (Math.sin(now / 300) > 0.6) { ctx.fillStyle = 'rgba(255,240,180,.9)'; ctx.fillRect(x - 0.5, y - 9, 1, 1); } ctx.restore(); } }
 function drawStaffFx(ctx, P, now) {
-  const me = G.me; if (!me) return; drawCookFx(ctx, P, now); if (typeof drawFurnFire === 'function') drawFurnFire(ctx, P, now);
+  const me = G.me; if (!me) return; drawPurses(ctx, P, now); drawCookFx(ctx, P, now); if (typeof drawFurnFire === 'function') drawFurnFire(ctx, P, now); if (typeof drawRailOver === 'function') drawRailOver(ctx, P, now);
   if (G.skTray && me.fl) for (const bi in G.skTray) { if (+bi !== me.fb || G.skTray[bi] !== 'rim') continue; if (Object.values(G.players).some(e => e.bdrink && e.bathing && e.fb === +bi)) continue; const b = BUILDINGS[+bi], raise = me.fl * (bldDims(b).H / floorsOf(b)) * HV, [x0, y0] = localToWorld(b, SAKE_RIM[0], SAKE_RIM[1]), q = P(x0, y0, 0), s2 = sakeTraySprite(sakeTrayYaw({ fb: +bi }), { bottle: true, cup: true, lvl: 0 }); ctx.save(); ctx.imageSmoothingEnabled = true; pblit(ctx, s2, q[0], q[1] - raise - 0.32 * HV); ctx.restore(); }   /* bandeja esperando a doméstica buscar */
   const keys = Object.keys(G.bedMess || {}); if (!keys.length) return; const myFl = me.fl || 0, myB = myFl ? me.fb : bldAt(me.x, me.y);
   for (const k of keys) { const bd = BEDS[+k]; if (!bd || bd.bi !== myB || (bd.fl || 0) !== myFl) continue; const b = BUILDINGS[bd.bi], raise = myFl * (bldDims(b).H / floorsOf(b)) * HV;
@@ -424,7 +430,7 @@ function segSpawn(key, r, near0) {
   const n = { id, kind: r.look, name: r.n + ', segurança', transient: true, seg: key, segId: r.id, x, y, z: 0, fl, fb, postX: x, postY: y, hp: r.hp, maxHp: r.maxHp, downed: null, dead: false };
   S.npcs[id] = n; Net.toAll({ t: 'vspawn', v: visPublic(n) }); return n;
 }
-function segSend(key) { const q = empOwnerP(key); if (!q) return; Net.toOne(q.id, { t: 'segme', list: segList(key).map(r => { const n = S.npcs[segNid(r)]; return { id: segNid(r), job: r.job ? r.job.k : '', n: r.n, g: r.g, tr: r.tr, w: r.w, mode: r.mode, hp: Math.round(n ? n.hp : r.hp), maxHp: r.maxHp, warn: r.warn ? 1 : 0, jail: r.jail && Date.now() < r.jail ? Math.ceil((r.jail - Date.now()) / 1000) : 0 }; }) }); }
+function segSend(key) { const q = empOwnerP(key); if (!q) return; Net.toOne(q.id, { t: 'segme', list: segList(key).map(r => { const n = S.npcs[segNid(r)]; return { id: segNid(r), escort: r.escort ? 1 : 0, carry: r.carry || 0, job: r.job ? r.job.k : '', n: r.n, g: r.g, tr: r.tr, w: r.w, mode: r.mode, hp: Math.round(n ? n.hp : r.hp), maxHp: r.maxHp, warn: r.warn ? 1 : 0, jail: r.jail && Date.now() < r.jail ? Math.ceil((r.jail - Date.now()) / 1000) : 0 }; }) }); }
 function segQuit(key, r, why, dead) {
   const L = segLoad(), list = L[key] || [], i = list.indexOf(r); if (i >= 0) list.splice(i, 1); if (!list.length) delete L[key];
   const n = S.npcs[segNid(r)]; if (n) { if (dead) { n.dead = true; n.hp = 0; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'hurt', ms: 400 }); setTimeout(() => { if (S.npcs[n.id]) visGone(n); }, 300000); } else visGone(n); }   /* o corpo fica no chão 5 minutos */
@@ -438,6 +444,9 @@ function segOrder(p, key, m) {
   else if (m.o === 'post') { r.mode = 'post'; r.post = { x: n.x, y: n.y, fl: n.fl || 0, fb: n.fl ? n.fb : -1 }; empSay(n, 'Ninguém passa por aqui.'); }
   else if (m.o === 'home') { r.mode = 'home'; r.post = null; r.homePid = segPickHome(n.seg, p); empSay(n, 'Vou guardar a sua porta.'); }
   else if (m.o === 'entrance') { const b = BUILDINGS.find(q2 => q2.door2L && stairKind(q2, 0) === 'lift'), d2 = b && door2Of(b); if (!d2) return; if (!Object.keys(S.estate.r).some(pid => S.estate.r[pid].owner === key && PROPS_BY[pid] && PROPS_BY[pid].apt)) { tell(p, 'Só quem mora num apartamento do prédio do dojô.'); return; } const dv = DOOR_V[d2.s] || [1, 0], sp = segDoorSpot(d2.x, d2.y, dv[0], dv[1], segList(key).indexOf(r)); r.mode = 'post'; r.post = { x: sp.x, y: sp.y, fl: 0, fb: -1, dir: sp.dir }; empSay(n, 'Fico na entrada do corredor do elevador.'); }
+  else if (m.o === 'escort') { if (!(S.estate.emp && S.estate.emp[key])) { tell(p, 'Você não tem doméstica para escoltar.'); return; } for (const x of segList(key)) x.escort = 0; r.escort = 1; empSay(n, 'Quando a doméstica sair para buscar comida, eu vou junto.'); }   /* um segurança por vez */
+  else if (m.o === 'noescort') { r.escort = 0; empSay(n, 'Certo, volto ao meu posto.'); }
+  else if (m.o === 'bank') { const q = Math.min(p.gold || 0, Math.max(0, Math.floor(+m.q || 0))); if (!q) { tell(p, 'Diga quanto ele deve levar.'); return; } if (r.carry) { tell(p, r.n + ' já está levando dinheiro ao banco.'); return; } p.gold -= q; sendStat(p); r.carry = q; r.bankRet = r.mode === 'bank' ? 'follow' : r.mode; r.mode = 'bank'; empSay(n, 'Levo ' + q + ' de ouro ao banco e volto.'); }   /* o segurança leva o ouro ao banco */
   else if (m.o === 'fire') { segQuit(key, r, r.n + ' foi dispensad' + (r.g === 'f' ? 'a' : 'o') + '.'); return; }
   n.goal = null; estateSave(); segSend(key);
 }
@@ -445,7 +454,7 @@ function segDefend(attacker, victim) {   /* alguém bateu no seu patrão: os seg
   const L = S.estate && S.estate.seg, list = L && L[estOwner(victim)]; if (!list || !list.length) return;
   for (const r of list) { const n = S.npcs[segNid(r)]; if (!n || n.dead || (n.fl || 0) !== (attacker.fl || 0) || dist(n.x, n.y, attacker.x, attacker.y) > 12) continue; if (r.jail || r.flee) continue; if (!n.fight) empSay(n, ['Tire as mãos do meu patrão!', 'Para trás!', 'Vai se ver comigo!'][Math.floor(Math.random() * 3)]); n.fight = { id: attacker.id, until: now_() + 20000 }; n.foe = attacker.id; n.foeK = 'p'; }
 }
-function segKilled(n, p) { const r = segList(n.seg).find(x => x.id === n.segId); n.fight = null; if (r) segQuit(n.seg, r, r.n + ' morreu lutando por você' + (p ? ' (golpe de ' + p.name + ')' : '') + '. O contrato acabou.', true); }
+function segKilled(n, p) { const r = segList(n.seg).find(x => x.id === n.segId); n.fight = null; if (r && r.carry) { purseDrop(n.x, n.y, n.fl, n.fb, r.carry, r.n); r.carry = 0; }   /* morreu levando o dinheiro: a bolsa cai */ if (r) segQuit(n.seg, r, r.n + ' morreu lutando por você' + (p ? ' (golpe de ' + p.name + ')' : '') + '. O contrato acabou.', true); }
 // posto ao lado da porta: no tile vizinho à porta, colado na parede, de costas para o prédio e de frente para a rua
 function segPickHome(key, p) {   /* qual casa guardar: a do andar/prédio onde o patrão está; senão a mais perto dele */
   const L = Object.keys(S.estate.r).filter(pid => S.estate.r[pid].owner === key && PROPS_BY[pid] && PROPS_BY[pid].kind === 'house'); if (!L.length) return null;
@@ -568,6 +577,15 @@ function segDefendNpc(aid, victim) {
   const L = S.estate && S.estate.seg, list = L && L[estOwner(victim)]; if (!list || !list.length) return; const a = S.npcs[aid]; if (!a || a.dead || a.seg || a.emp) return;
   for (const r of list) { const n = S.npcs[segNid(r)]; if (!n || n.dead || n.downed || r.jail || r.flee || (n.fl || 0) !== (victim.fl || 0) || dist(n.x, n.y, a.x, a.y) > 14) continue; if (n.fightN !== aid) empSay(n, ['Ninguém encosta no meu patrão!', 'Para trás, ' + String(a.name || '').split(',')[0] + '!', 'Vai ter que passar por mim!'][Math.floor(Math.random() * 3)]); n.fightN = aid; n.fightNT = now_() + 30000; }
 }
+function segBankTick(n, r, q, now, dt) {   /* vai até o banqueiro, deposita na conta do patrão e volta ao que fazia */
+  const bk = Object.values(S.npcs).filter(o => /^banker\d?$/.test(o.kind) && !o.dead && !o.downed).sort((a, b) => dist(a.x, a.y, n.x, n.y) - dist(b.x, b.y, n.x, n.y))[0];
+  let tgt = null; if (bk) tgt = { x: bk.x + 0.9, y: bk.y + 0.9, fl: 0, fb: -1 }; else { const BP = PROPS.find(P => P.kind === 'bank'), D = BP && doorTiles()[BP.bi]; if (D) tgt = { x: D.x, y: D.y, fl: 0, fb: -1 }; }
+  if (!tgt) { r.mode = r.bankRet || 'follow'; return; }
+  const arrived = empGo(n, tgt, 1.6, dt) || ((n.fl || 0) === 0 && dist(n.x, n.y, tgt.x, tgt.y) < 1.5); if (!arrived) return;
+  const B = bankLoad(), A = B.acc[n.seg] || (B.acc[n.seg] = { g: 0, loan: 0, due: 0, wk: estDay() }), v = r.carry || 0; A.g += v; bankSave(); r.carry = 0; r.mode = r.bankRet || 'follow'; r.bankRet = null;
+  empSay(n, 'Depositado.'); const own = empOwnerP(n.seg); if (own) tell(own, r.n + ' depositou ' + v + ' de ouro na sua conta. Saldo: ' + Math.floor(A.g) + '.'); estateSave(); segSend(n.seg);
+}
+function purseDrop(x, y, fl, fb, g, who) { S.purses = (S.purses || []).filter(u => Date.now() - u.t < 600000); S.purses.push({ id: 'pu' + Date.now() + Math.floor(Math.random() * 1000), x, y, fl: fl || 0, fb: fl ? fb : -1, g, t: Date.now(), who }); Net.toAll({ t: 'purses', l: S.purses }); }   /* a bolsa cai no chão e qualquer um pode pegar */
 function segSlot(n, t, k) {   /* cada segurança cerca o alvo por um lado, sem se amontoar */
   const crew = Object.values(S.npcs).filter(o => o.seg && !o.dead && !o.downed && (k === 'm' ? o.monT === t.id : o.fightN === t.id) && dist(o.x, o.y, t.x, t.y) < 6).sort((a, b) => (a.id < b.id ? -1 : 1));
   const d = dist(n.x, n.y, t.x, t.y) || 1, R = k === 'm' ? Math.max(0.95, ((MON[t.type] || {}).rad || 0) + 0.8) : 0.95; if (crew.length < 2) return [t.x + (n.x - t.x) / d * R, t.y + (n.y - t.y) / d * R];
@@ -632,6 +650,8 @@ function segNpcTick(n, now, dt) {
   let m = n.monT && S.monsters[n.monT]; if (m && (m.hp <= 0 || dist(n.x, n.y, m.x, m.y) > 14)) m = null; if (!m && !low) { m = segThreat(n, r, q); if (m && n.monT !== m.id) empSay(n, ['Cuidado!', 'Deixa comigo!', 'Fique atrás de mim!'][Math.floor(Math.random() * 3)]); }
   n.monT = m ? m.id : null; if (m && !low) { if (n.smoking) empSmoke(n, 0); segFightMonster(n, r, m, now, dt); return; }
   if (segReviveTick(n, r, q, now, dt)) return;
+  if (r.mode === 'bank') { segBankTick(n, r, q, now, dt); return; }
+  if (r.escort && !n.smoking) { const em = S.estate.emp && S.estate.emp[n.seg], md = em && S.npcs[empNid(em)]; if (md && !md.dead && (md.forage || !empAtHome(md, empHome(em)))) { const d = (n.fl || 0) === (md.fl || 0) ? dist(n.x, n.y, md.x, md.y) : 99; if (d > 1.7) empGo(n, { x: md.x, y: md.y, fl: md.fl || 0, fb: md.fl ? md.fb : -1 }, md.forage ? 2.3 : 1.6, dt); else { n.walk = false; n.dir = dirFromVecS(md.x - n.x, md.y - n.y); } return; } }   /* escoltando a doméstica enquanto ela está fora */
   if (n.smoking) { if (now > n.smoking || (q && !(q.fl || 0) && !(n.fl || 0) && dist(n.x, n.y, q.x, q.y) > 5 && r.mode === 'follow')) { empSmoke(n, 0); } else { n.walk = false; return; } }   /* fumando: fica parado; se o patrão se afasta, apaga */
   if (now > (r.smokeT || (r.smokeT = now + 240000 + Math.random() * 360000)) && !L.some(x => x !== r && S.npcs[segNid(x)] && S.npcs[segNid(x)].smoking > now) && (!q || r.mode !== 'follow' || (!q.walking && dist(n.x, n.y, q.x, q.y) < 3))) { r.smokeT = now + 600000 + Math.random() * 300000; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'sheatheH', ms: 500 }); empSmoke(n, 60000, true); return; }   /* um segurança por vez guarda a espada e fuma */
   if (r.mode === 'post' && r.post) { if (!empGo(n, r.post, 1.2, dt)) return; n.walk = false; if (r.post.dir != null) segWatch(n, r.post.dir, now); return; }
@@ -682,7 +702,13 @@ function segMenu(id) {
   const html = '<div style="padding:8px 14px 0;font-size:14px;opacity:.85">' + s.n + ' · ' + SEG_TR[s.tr].n + ' · ' + (s.w ? s.w + ' ouro/dia' : 'teste, sem salário') + ' · vida ' + s.hp + '/' + s.maxHp + (s.warn ? ' · <b style="color:#e88">salário atrasado</b>' : '') + (s.jail ? ' · <b style="color:#e88">preso (' + s.jail + ' s; fiança com o carcereiro)</b>' : '') + '</div><div class="lift-list" style="padding-top:8px">' +
     (s.mode !== 'follow' ? opt('follow', '🛡', 'Me acompanhe', 'Anda com você; quando você entra num prédio, vigia a porta.') : '') + (s.mode !== 'post' ? opt('post', '📍', 'Vigie aqui', 'Fica neste ponto e enfrenta quem chegar.') : '') + (s.mode !== 'home' ? opt('home', '🏠', 'Guarde a minha casa', 'Fica de guarda na porta de casa.') : '') + (G.est && G.est.mine && PROPS_BY[G.est.mine.pid] && PROPS_BY[G.est.mine.pid].apt ? opt('entrance', '🚪', 'Vigie a entrada do elevador', 'Fica na porta do corredor do elevador do prédio do dojô.') : '') + opt('dirty', '🗡', 'Trabalho sujo' + (s.job ? ' (em andamento)' : ''), 'Intimidar, dar uma surra, roubar ou sabotar.') + opt('fire', '✋', 'Dispensar', 'Encerra o contrato.') + '</div>';
   const d = staffPanel('segmenu', s.n + ' · segurança', html); d.dataset.id = id;
-  d.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const o = b.dataset.o; if (o === 'dirty') { d.remove(); segDirtyMenu(id); return; } if (o === 'fire' && !confirm('Dispensar ' + s.n + '?')) return; d.remove(); Net.send({ t: 'emp', a: 'sorder', id, o }); });
+  { const ls = d.querySelector('.lift-list'); if (ls) ls.insertAdjacentHTML('beforeend', (G.emp ? (s.escort ? opt('noescort', '🏠', 'Voltar ao posto', 'Para de acompanhar a doméstica nas saídas.') : opt('escort', '🧺', 'Escoltar a doméstica', 'Acompanha a doméstica quando ela sai para buscar comida e volta com ela, todos os dias.')) : '') + (s.carry ? '' : opt('bank', '💰', 'Depositar no banco', 'Leva o ouro da sua bolsa ao banco e volta. Se morrer no caminho, o dinheiro cai com ele.'))); }
+  d.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const o = b.dataset.o; if (o === 'dirty') { d.remove(); segDirtyMenu(id); return; } if (o === 'bank') { d.remove(); segBankMenu(id); return; } if (o === 'fire' && !confirm('Dispensar ' + s.n + '?')) return; d.remove(); Net.send({ t: 'emp', a: 'sorder', id, o }); });
+}
+function segBankMenu(id) {
+  const s = (G.segs || []).find(x => x.id === id); if (!s) return; const g = G.me.gold || 0;
+  const d = staffPanel('segbank', s.n + ' · depositar no banco', '<div style="padding:10px 14px;font-size:14px">Na bolsa: <b>' + g + '</b> de ouro.<div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap"><input id="segbank-q" type="number" min="1" max="' + g + '" value="' + g + '" style="width:110px"><button class="lift-btn" data-q="half" style="flex:0 0 auto">Metade</button><button class="lift-btn" data-q="ok" style="flex:0 0 auto">Entregar</button></div></div>');
+  d.querySelectorAll('[data-q]').forEach(b => b.onclick = () => { const inp = document.getElementById('segbank-q'); if (b.dataset.q === 'half') { inp.value = Math.floor(g / 2); return; } const q = Math.floor(+inp.value || 0); if (q > 0) Net.send({ t: 'emp', a: 'sorder', id, o: 'bank', q }); d.remove(); });
 }
 function segDirtyMenu(id) {
   const s = (G.segs || []).find(x => x.id === id); if (!s) return; const opt = (k, ic) => '<button class="lift-btn" data-j="' + k + '"><span class="lift-n">' + ic + '</span><span><b>' + DIRTY[k].n + '</b> · ' + (s.w ? DIRTY[k].c + ' de ouro' : 'de graça (teste)') + '<br><small>' + DIRTY[k].d + '</small></span></button>';

@@ -88,17 +88,21 @@ function survBuild() {
       '<g fill="none" stroke="#3a2a16" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M24 34c0-5 3.5-8 8-8s8 3 8 8z"/><path d="M26 34v4h12v-4"/></g><path d="M32 18c-2 3-3.5 5-3.5 6.5a3.5 3.5 0 0 0 7 0c0-1.5-1.5-3.5-3.5-6.5z" fill="#3a6aa8" transform="translate(0 -1) scale(.62) translate(19.6 6)"/>') + '</div>' +
     '<div class="sv-w" data-tip="Frio">' + face('sv-cw', arc('sv-cold', 21) +
       '<g fill="none" stroke="#3a2a16" stroke-width="1.8" stroke-linecap="round"><path d="M32 20v14"/><circle cx="32" cy="38" r="4"/><path d="M29 22h-2M29 26h-2M29 30h-2"/></g><circle id="sv-bulb" cx="32" cy="38" r="2.6" fill="#5a8ad8"/>') + '</div>' +
-    '<div class="sv-w sv-lw" data-tip="Estamina (correr)">' + face('sv-lw', arc('sv-stam', 21) +
-      '<g fill="#b8566a" stroke="#3a2a16" stroke-width="1.6" stroke-linejoin="round"><path id="sv-lungL" d="M29.5 24c-4 0-7.5 6-7.5 12.5 0 3 1.5 4.5 3.8 4.5 2.4 0 3.7-1.8 3.7-4.5z"/><path id="sv-lungR" d="M34.5 24c4 0 7.5 6 7.5 12.5 0 3-1.5 4.5-3.8 4.5-2.4 0-3.7-1.8-3.7-4.5z"/></g><path d="M32 18v10M32 26l-2.5 2.5M32 26l2.5 2.5" fill="none" stroke="#3a2a16" stroke-width="1.8" stroke-linecap="round"/>') + '</div>' +
+    '<div class="sv-w sv-lw sv-body" data-tip="Corpo: vida (anel de fora), mana (meio) e fôlego (dentro). A silhueta mostra as partes feridas.">' + face('sv-lw', arc('sv-hp', 23) + arc('sv-mp', 18.6) + arc('sv-stam', 14.2) +
+      '<g id="sv-doll" stroke="#2a1c10" stroke-width="0.7"><circle id="sv-b-head" cx="32" cy="23.4" r="2.5"/><rect id="sv-b-torso" x="29.4" y="26.4" width="5.2" height="7.6" rx="1.4"/><rect id="sv-b-armA" x="26.4" y="26.8" width="2.4" height="7.4" rx="1.1"/><rect id="sv-b-armB" x="35.2" y="26.8" width="2.4" height="7.4" rx="1.1"/><rect id="sv-b-legL" x="29.6" y="34.4" width="2.3" height="7.8" rx="1.1"/><rect id="sv-b-legR" x="32.1" y="34.4" width="2.3" height="7.8" rx="1.1"/></g>') + '</div>' +
     '<div id="sv-season"></div>';
   document.body.appendChild(d);
 }
 // pulmão: o arco esvazia ao correr; os pulmões "respiram" mais rápido quando cansado e piscam ao esgotar
-function survLungUpdate(now) {
-  const c = document.querySelector('#surv-medals .sv-stam'); if (!c) return; const mx = typeof stamMax === 'function' ? stamMax() : 100, v = Math.max(0, Math.min(1, (G.stam ?? mx) / mx));
-  const r = +c.getAttribute('r'), L = 2 * Math.PI * r; c.style.strokeDasharray = L; c.style.strokeDashoffset = L * (1 - v); c.style.stroke = G.tired ? '#c8402a' : v < 0.3 ? '#d8803a' : '#7ac8a0';
+function survLungUpdate(now) {   /* medalhão do corpo: anéis de vida, mana e fôlego e a silhueta com as feridas */
+  const me = G.me; const set = (sel, v, col) => { const c = document.querySelector('#surv-medals .' + sel); if (!c) return; const r = +c.getAttribute('r'), L = 2 * Math.PI * r; c.style.strokeDasharray = L; c.style.strokeDashoffset = L * (1 - Math.max(0, Math.min(1, v))); if (col) c.style.stroke = col; };
+  const mx = typeof stamMax === 'function' ? stamMax() : 100, v = Math.max(0, Math.min(1, (G.stam ?? mx) / mx));
+  set('sv-stam', v, G.tired ? '#c8402a' : v < 0.3 ? '#d8803a' : '#e8c060');
+  if (me) { const hp = me.maxHp ? me.hp / me.maxHp : 1, mp = me.maxMp ? me.mp / me.maxMp : 1; set('sv-hp', hp, hp < 0.25 ? (Math.sin(now / 160) > 0 ? '#ff4a3a' : '#a8201a') : '#d8382c'); set('sv-mp', mp, '#4a8ae8');
+    const LOSTB = { armA: 2, armB: 4, legL: 8, legR: 16 }, col = st => ['#efe2c8', '#e0b060', '#d06a3a', '#8a2418'][st] || '#efe2c8';
+    for (const k2 of ['head', 'torso', 'armA', 'armB', 'legL', 'legR']) { const el = document.getElementById('sv-b-' + k2); if (!el) continue; const lost = (me.lost || 0) & (LOSTB[k2] || 0), st = me.body && typeof PART_STATE === 'function' ? PART_STATE(me.body[k2]) : 0; el.setAttribute('fill', lost ? 'rgba(40,30,30,.35)' : col(st)); el.setAttribute('stroke-dasharray', lost ? '1 1' : ''); }
+    const bl = me.bleed && Object.values(me.bleed).some(x => x > 0), dl = document.getElementById('sv-doll'); if (dl) dl.style.opacity = bl ? (0.7 + 0.3 * Math.sin(now / 200)).toFixed(2) : '1'; }
   const w = document.querySelector('#surv-medals .sv-lw'); if (w) { w.classList.toggle('low', !!G.tired || v < 0.15); w.classList.toggle('full', v >= 0.999 && !G.tired); }
-  const k = 1 + Math.sin(now / (G.tired || v < 0.4 ? 180 : 700)) * (v < 0.999 ? 0.06 : 0.025); for (const id of ['sv-lungL', 'sv-lungR']) { const e = document.getElementById(id); if (e) e.setAttribute('transform', 'translate(32 33) scale(' + k.toFixed(3) + ') translate(-32 -33)'); }
 }
 function survMedalsUpdate(me) {
   if (!me) return; survBuild();

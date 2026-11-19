@@ -203,9 +203,15 @@ function drawRack(ctx, e, sx, sy) {   /* a roupa (na cor da vocação) dobrada n
 }
 
 // ---------- bonecos de treino: F perto de um makiwara ou mokujin; o boneco balança quando apanha ----------
-function dummyNear() { const me = G.me; if (!me || me.downed || me.bathing || G.training) return null; let best = null, bd = 1.7; for (const q of DUMMIES) { if ((q.fl || 0) !== (me.fl || 0)) continue; const dd = Math.hypot(me.x - q.x, me.y - q.y); if (dd < bd) { bd = dd; best = q; } } return best; }
+function dummyFacing() {   /* arqueiro com o arco sacado: qualquer boneco do mesmo cômodo, desde que esteja virado para ele */
+  const me = G.me; if (!me || me.cls !== 'archer' || me.shea || me.downed || me.bathing || G.training) return null; const myB = (me.fl || 0) ? me.fb : bldAt(me.x, me.y); if (myB == null || myB < 0) return null;
+  const fa = me.fa != null ? me.fa : (me.dir || 0) * Math.PI / 4; let best = null, bs = 1e9;
+  for (const q of DUMMIES) { if ((q.fl || 0) !== (me.fl || 0) || q.bi !== myB) continue; const dd = Math.hypot(me.x - q.x, me.y - q.y); if (dd > 9 || dd < 1.2) continue; let da = Math.abs(Math.atan2(q.y - me.y, q.x - me.x) - fa) % (Math.PI * 2); if (da > Math.PI) da = Math.PI * 2 - da; if (da > 0.7) continue; const sc = da * 4 + dd * 0.2; if (sc < bs) { bs = sc; best = q; } }
+  return best;
+}
+function dummyNear() { const me = G.me; if (!me || me.downed || me.bathing || G.training) return null; { const f = dummyFacing(); if (f) return f; } let best = null, bd = 1.7; for (const q of DUMMIES) { if ((q.fl || 0) !== (me.fl || 0)) continue; const dd = Math.hypot(me.x - q.x, me.y - q.y); if (dd < bd) { bd = dd; best = q; } } return best; }
 if (typeof progEvent === 'function') { const _peT = progEvent; progEvent = function (m, now) {
-  if (m.t === 'train') { G.training = !!m.on; if (m.on && G.me && DUMMIES[m.i]) { const q = DUMMIES[m.i]; G.me.dir = dirFromVec(q.x - q.fx, q.y - q.fy, G.me.dir); } return true; }   /* treinando: de frente para o boneco, sem girar com o mouse */
+  if (m.t === 'train') { G.training = !!m.on; if (m.on && G.me && DUMMIES[m.i]) { const q = DUMMIES[m.i]; G.me.dir = m.free ? dirFromVec(q.x - G.me.x, q.y - G.me.y, G.me.dir) : dirFromVec(q.x - q.fx, q.y - q.fy, G.me.dir); } return true; }   /* treinando: de frente para o boneco, sem girar com o mouse */
   if (m.t === 'tub') { tubRecv(m); return true; }
   if (m.t === 'dummyhit') { const q = DUMMIES[m.i]; if (q) setTimeout(() => { const w = tileW(q.x, q.y, 22); for (let k = 0; k < 4; k++) spawnPart('dust', w.x + (Math.random() - 0.5) * 6, w.y + (Math.random() - 0.5) * 4); if (q.t === 'makiwara') for (let k = 0; k < 2; k++) spawnPart('sparkle', w.x, w.y, { color: 'rgba(230,200,120,A)', life: 350 }); }, m.d || 0); return true; }
   return _peT(m, now);
