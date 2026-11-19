@@ -174,6 +174,23 @@ function drawRailOver(ctx, P, now) {
     for (const xe of [0, bw]) { for (let z = h + 0.15; z < zf; z += 0.17) line(pr(xe, y0 + 0.33, z), pr(xe, y0 + 0.91, z), '#9a6a38', 0.55); line(pr(xe, y0 + 0.93, h), pr(xe, y0 + 0.93, zf), '#6a4422', 1.1); }   /* pontas */
     ctx.restore(); }
 }
+// ---------- a muda: brota da terra (carvalho, salgueiro ou cerejeira), com o aro de folhas e a luz suave ----------
+const SAP_LOOK = { earth: { trunk: '#6a4a2c', leaf: ['#4e8a34', '#6aa844', '#3c7028'], glow: '150,230,110' }, water: { trunk: '#7a6a54', leaf: ['#9ab8a4', '#b8d4c4', '#7a9e8a'], glow: '140,210,230' }, wind: { trunk: '#4a3228', leaf: ['#f4b8c8', '#ffd6e0', '#e890a8'], glow: '255,190,215' } };
+function drawSapling(ctx, s, sx, sy, now) {
+  const L = SAP_LOOK[s.k] || SAP_LOOK.earth, born = G.sapBorn && G.sapBorn[s.x + ',' + s.y], gk = born ? Math.min(1, (now - born) / 2200) : 1, gr = gk < 1 ? 1 - Math.pow(1 - gk, 3) : 1, sway = Math.sin(now / 900 + s.x) * 0.06, sd = s.x * 7 + s.y * 3;
+  ctx.save();
+  { const g = ctx.createRadialGradient(sx, sy, 2, sx, sy, 34); g.addColorStop(0, 'rgba(' + L.glow + ',' + (0.28 * gr).toFixed(2) + ')'); g.addColorStop(1, 'rgba(' + L.glow + ',0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(sx, sy, 34, 16, 0, 0, 7); ctx.fill(); }   /* área de efeito */
+  ctx.fillStyle = 'rgba(70,46,24,0.55)'; ctx.beginPath(); ctx.ellipse(sx, sy + 1, 7 * gr, 3 * gr, 0, 0, 7); ctx.fill();   /* terra revolvida */
+  for (let k = 0; k < 7; k++) { const a = k / 7 * 6.28 + sd, r = 9 + (k % 3) * 2; ctx.fillStyle = ['#e8d060', '#f0f0f0', '#c890e0'][k % 3]; ctx.beginPath(); ctx.arc(sx + Math.cos(a) * r * gr, sy + Math.sin(a) * r * 0.45 * gr, 1.1, 0, 7); ctx.fill(); }   /* florzinhas em volta */
+  const H = 26 * gr; ctx.translate(sx, sy); ctx.rotate(sway); ctx.strokeStyle = L.trunk; ctx.lineCap = 'round'; ctx.lineWidth = 2.6 * gr; ctx.beginPath(); ctx.moveTo(0, 0); ctx.quadraticCurveTo(1.5, -H * 0.5, 0, -H); ctx.stroke();
+  ctx.lineWidth = 1.2 * gr; for (const [t, dir] of [[0.45, -1], [0.62, 1], [0.78, -1]]) { ctx.beginPath(); ctx.moveTo(0.5, -H * t); ctx.quadraticCurveTo(dir * 4, -H * t - 3, dir * 7 * gr, -H * t - 5 * gr); ctx.stroke(); }
+  const leaf = (x, y, r, c, a) => { ctx.fillStyle = c; ctx.beginPath(); ctx.ellipse(x, y, r, r * 0.62, a, 0, 7); ctx.fill(); };
+  if (s.k === 'water') { for (let k = 0; k < 9; k++) { const x0 = (k - 4) * 2.4 * gr, len = (10 + (k % 3) * 3) * gr; ctx.strokeStyle = L.leaf[k % 3]; ctx.lineWidth = 1.4; ctx.beginPath(); ctx.moveTo(x0 * 0.4, -H); ctx.quadraticCurveTo(x0, -H + 2, x0 * 1.2 + Math.sin(now / 700 + k) * 0.8, -H + len); ctx.stroke(); } }   /* salgueiro: ramos caindo */
+  else for (let k = 0; k < 11; k++) { const a = k / 11 * 6.28 + sd, r = (5 + (k % 3) * 1.6) * gr, x = Math.cos(a) * r, y = -H - 2 + Math.sin(a) * r * 0.7; leaf(x, y, 3.2 * gr, L.leaf[k % 3], a); }
+  if (s.k === 'wind' && Math.random() < 0.03 && G.view) spawnPart('sparkle', sx - G.view.ox + (Math.random() - 0.5) * 10, sy - G.view.oy - H, { color: 'rgba(255,200,215,A)', vx: 0.02, vy: 0.02, life: 1800 });   /* pétalas soltas */
+  ctx.restore();
+  if (Math.random() < 0.02 && G.view) spawnPart('sparkle', sx - G.view.ox + (Math.random() - 0.5) * 30, sy - G.view.oy - 4, { color: 'rgba(' + L.glow + ',A)', vx: 0, vy: -0.03, life: 1500 });   /* luzinhas subindo */
+}
 G.fireLast = G.fireLast || 0;
 function drawFlameFx(ctx, now) {
   const dt = Math.min(50, now - (G.fireLast || now)); G.fireLast = now;
@@ -256,6 +273,8 @@ if (typeof drawZones === 'function') { const _dz = drawZones; drawZones = functi
     ctx.globalAlpha = 1; }
 }; }
 if (typeof progEvent === 'function') { const _pe2 = progEvent; progEvent = function (m, now) {
+  if (m.t === 'saps') { G.saps = m.l || []; return true; }
+  if (m.t === 'sapborn') { (G.sapBorn = G.sapBorn || {})[m.x + ',' + m.y] = now; if (G.view) { const p = iso(m.x, m.y); for (let k = 0; k < 24; k++) spawnPart('sparkle', p.sx + (Math.random() - 0.5) * 30, p.sy - Math.random() * 10, { color: 'rgba(150,230,120,A)', vx: (Math.random() - 0.5) * 0.06, vy: -0.05 - Math.random() * 0.05, life: 1400 }); } return true; }
   if (m.t === 'blooms') { G.blooms = (m.l || []).map(b => ({ tiles: b[0], until: now + b[1], wet: b[2], t0: now - (m.fresh ? 0 : 2000) })); return true; }
   return _pe2(m, now);
 }; }

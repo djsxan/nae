@@ -191,7 +191,7 @@ function hostOnClient(from, m) {
     if (m.qdone) for (const q of QUESTS) if (m.qdone[q.id]) np.qdone[q.id] = m.qdone[q.id] | 0;
     np.hp = np.maxHp; np.mp = np.maxMp;
     if (!m.lvl) { np.gold = 30; np.pots.hp = 3; np.pots.mp = 2; np.pots.band = 3; } // kit inicial
-    np.joinT = Date.now(); np.recon = m._recon || 0; S.players[from] = np; if (S.blooms && S.blooms.length) setTimeout(() => { if (S.players[from]) bloomsSend(false, from); }, 3000);
+    np.joinT = Date.now(); np.recon = m._recon || 0; S.players[from] = np; if (S.blooms && S.blooms.length) setTimeout(() => { if (S.players[from]) bloomsSend(false, from); }, 3000); setTimeout(() => { if (S.players[from] && S.estate && (S.estate.saps || []).length) sapsSend(from); }, 3200);
     estateJoin(np);
     if (m.dev && typeof crypto !== 'undefined' && crypto.subtle) crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(m.dev).trim().toUpperCase())).then(buf => {
       const h = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -731,6 +731,7 @@ function damagePlayer(p, raw, m, delay = 0, zone = null, exactPart = null) {
   if (buffOn(p, 'wall')) mult *= 0.4;
   if (buffOn(p, 'warcry')) mult *= 0.8;
   if (buffOn(p, 'bless')) mult *= 0.9;
+  if ((p._sapT || 0) > now_()) mult *= 0.85;   /* casca protetora da muda */
   mult *= Math.max(0.4, 1 - treeEff(p, 'armor')); if (buffOn(p, 'iron')) mult *= 0.6; if (buffOn(p, 'sanct')) mult *= 0.75;
   useGain(p, 'vigor', 0.5);
   if (p.body && PART_STATE(p.body.armB) >= 2) mult = Math.min(1, mult * 1.25);
@@ -937,7 +938,7 @@ function mageSpell(p, sk, msg, now) {
       if (WORLD.obj[i] === O.CAMPFIRE) { setObj(i, O.NONE); (S.doused = S.doused || []).push({ i, x, y, t: now }); if (S.doused.length > 30) S.doused.shift(); doused++; } }
     if (list.length && S.fires) S.fires = S.fires.filter(f => !list.some(([x, y]) => Math.abs(f.x - x) < 0.6 && Math.abs(f.y - y) < 0.6));
     if (list.length) near(p.x, p.y, { t: 'fireout', l: list });
-    let wet = 0; for (const b of S.blooms || []) if (b.until > now && dist(p.x, p.y, b.x, b.y) <= R + b.r) { b.wet = 1; b.until += 90000; wet++; for (const o of S.objBack || []) if (o.bloom && b.tiles.includes(o.i)) o.at = b.until; }
+    let wet = 0; for (const b of S.blooms || []) if (b.until > now && dist(p.x, p.y, b.x, b.y) <= R + b.r) { b.wet = 1; b.until += 90000; wet++; sapTryWater(p, b, now); for (const o of S.objBack || []) if (o.bloom && b.tiles.includes(o.i)) o.at = b.until; }
     if (wet) bloomsSend(false);
     tell(p, 'A água brota das suas mãos' + (filled ? ': ' + filled + (filled > 1 ? ' odres cheios' : ' odre cheio') : '') + (doused ? ', fogo apagado' : '') + (wet ? ', flores regadas' : '') + '.');
     return true;
@@ -1139,8 +1140,32 @@ function bathTick(now) {
     if (p.bleed) for (const k in p.bleed) p.bleed[k] = 0; if (p.infect === 1 && now - B.t0 > 5000) { p.infect = 0; p.infT = 0; tell(p, 'A água quente limpou as feridas: a febre passou.'); }
     sendStat(p); }
 }
+// ---------- elementos do mago e a muda ----------
+const EL_BRANCH = { holy: 'Luz', water: 'Água', fire: 'Fogo', earth: 'Terra', wind: 'Ar' };
+function elemStrength(p, el) { const br = (TREE.mage || []).find(b => b.name === EL_BRANCH[el]), T = p.tree || {}; const pts = br ? br.nodes.reduce((a, n) => a + (T[n.id] || 0), 0) : 0; return useLvl(p, 'el_' + el) + pts * 10; }   /* perícia (0-100) + 10 por ponto na árvore */
+function strongestEl(p, among) { let best = among[0], bv = -1; for (const el of among) { const v2 = elemStrength(p, el); if (v2 > bv) { bv = v2; best = el; } } return best; }
+const SAP_NEED = 25;   /* força de Terra para a água fazer nascer a muda */
+function sapList() { S.estate.saps = S.estate.saps || []; return S.estate.saps; }
+function sapsSend(to) { const m = { t: 'saps', l: sapList().map(s => ({ id: s.id, x: s.x, y: s.y, k: s.k, t: s.t, own: s.ownName })) }; if (to) Net.toOne(to, m); else Net.toAll(m); }
+function sapTryWater(p, b, now) {   /* a Fonte sobre as flores do próprio mago faz nascer a muda */
+  if (p.cls !== 'mage' || b.by !== p.id || b.sapDone) return false; if (elemStrength(p, 'earth') < SAP_NEED) return false;
+  const key = estOwner(p), L = sapList(); if (L.some(s => s.owner === key)) { if (!p._sapWarn) { p._sapWarn = 1; tell(p, 'Você já tem uma muda plantada. Só uma por vez.'); } return false; }
+  let x = Math.round(b.x), y = Math.round(b.y); for (let r2 = 0; r2 < 3; r2++) { let ok = false; for (let dy = -r2; dy <= r2 && !ok; dy++) for (let dx = -r2; dx <= r2 && !ok; dx++) { const t = (y + dy) * MAP_W + (x + dx); if (inBounds(x + dx, y + dy) && WORLD.obj[t] === O.NONE && WORLD.bld[t] < 0 && WORLD.ground[t] !== T.WATER) { x += dx; y += dy; ok = true; } } if (ok) break; }
+  const k = strongestEl(p, ['earth', 'water', 'wind']); b.sapDone = 1;
+  L.push({ id: 'sap' + now, x, y, owner: key, ownName: p.name, by: p.id, k, t: Date.now() }); estateSave(); sapsSend();
+  near(x, y, { t: 'sapborn', x, y, k }); info(p, 'A água encontra as flores e uma muda rompe a terra! ' + ({ earth: 'Um pequeno carvalho', water: 'Um pequeno salgueiro', wind: 'Uma pequena cerejeira' })[k] + ' agora cura, devolve mana, protege e acalma os bichos em volta.'); useGain(p, 'el_earth', 3); return true;
+}
+function sapTick(now) {   /* a cada 2 s: bônus para quem está perto da muda */
+  const L = (S.estate && S.estate.saps) || []; if (!L.length || now - (S.sapT || 0) < 2000) return; S.sapT = now;
+  for (const s of L) { const R = 3.2;
+    for (const q of Object.values(S.players)) { if (q.downed || (q.fl || 0) !== 0 || dist(q.x, q.y, s.x, s.y) > R) continue; let any = false;
+      if (q.hp < q.maxHp) { const h = Math.max(2, Math.round(q.maxHp * 0.03)); q.hp = Math.min(q.maxHp, q.hp + h); sfx(q.x, q.y, '+' + h, '#7ad860', 60); any = true; }
+      if ((q.mp || 0) < (q.maxMp || 0)) { q.mp = Math.min(q.maxMp, q.mp + Math.max(1, q.maxMp * 0.04)); any = true; }
+      q.cst = Math.min(cstMaxOf(q), (q.cst ?? 0) + 15); q._sapT = now + 2600; if (any || 1) sendStat(q); }
+    for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(m.x, m.y, s.x, s.y) > R + 1.5) continue; m.calmUntil = now + 2600; m.aggro = null; m.atk = null; m.flee = null; } }
+}
 function mageTick(now) {   /* brasa (animais recuam), flores (curam e acalmam) */
-  bathTick(now); flameTick(now); autoTick(now); meditTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
+  bathTick(now); flameTick(now); autoTick(now); meditTick(now); sapTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
   for (const p of Object.values(S.players)) {
     if (p.cls !== 'mage' || !buffOn(p, 'ember') || p.downed) continue;
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(p.x, p.y, m.x, m.y) > 3.5) continue; m.flee = { from: p.id, until: now + 1800 }; if (m.aggro === p.id) m.aggro = null; m.atk = null; }

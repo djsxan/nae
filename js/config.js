@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.86.0';
-const VERSION_NAME = 'Nae · Lista de Compras';
+const VERSION = 'v1.87.0';
+const VERSION_NAME = 'Nae · Muda';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -407,7 +407,7 @@ const TREE = {
     { name: 'Terra', icon: '🌿', el: 'earth', base: 'bloom', nodes: [
       { id: 'w_roots', name: 'Raízes Fundas', max: 3, eff: { hp: 0.05 }, desc: '+5% de vida máxima por ponto.' },
       { id: 'w_bark', name: 'Casca de Carvalho', max: 3, eff: { armor: 0.03 }, desc: '-3% de dano recebido por ponto.' },
-      { id: 'w_sapling', name: 'Muda', soon: 1, max: 0, desc: 'Planta uma muda que cresce com o tempo e com água.' },
+      { id: 'w_sapling', name: 'Muda', soon: 1, max: 0, desc: 'Com a Terra forte (perícia + pontos na árvore), a Fonte sobre as suas flores faz nascer uma muda: cura, devolve mana, protege e acalma os bichos em volta. Em breve ela desperta como guardiã.' },
       { id: 'w_thorns', name: 'Espinheiro', soon: 1, max: 0, desc: 'Uma cerca de espinhos brota do chão e prende quem passar.' },
       { id: 'w_ent', name: 'Despertar do Ent', soon: 1, max: 0, desc: 'A muda vira um Ent que luta ao seu lado e depois volta a dormir como árvore.' }] },
     { name: 'Ar', icon: '🌬', el: 'wind', base: 'windstep', nodes: [

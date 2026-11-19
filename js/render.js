@@ -964,6 +964,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   // 4) coleta dos itens
   const items = [], upper = [], sky = [], visTrees = [], visFlowers = [], visGrass = [];
   for (const g of (G.started && G.gibs) || []) { if (now > g.until) continue; const k = Math.min(1, (now - g.t0) / 480), wx = g.x + g.dx * g.d * k, wy = g.y + g.dy * g.d * k, p = iso(wx, wy); items.push({ d: wx + wy - 0.2, k: 0, gib: g, sx: p.sx + ox, sy: p.sy + oy - (g.z || 0) * FLOOR_PX - Math.sin(Math.PI * k) * 34, gk: k }); }
+  for (const s of (G.started && G.saps) || []) { const p = iso(s.x, s.y); items.push({ d: s.x + s.y, k: 0, sap: s, sx: p.sx + ox, sy: p.sy + oy }); }   /* mudas dos magos */
   for (const c of (G.started && G.corpses) || []) { const p = iso(c.x, c.y); const it = { d: c.x + c.y - 0.35, k: 0, corpse: c, sx: p.sx + ox, sy: p.sy + oy - (c.z || 0) * FLOOR_PX }; (c.z ? upper : items).push(it); }
   if (typeof estSignItems === 'function') estSignItems(items, ox, oy);
   for (const c of (G.started && G.chests) || []) { const p = iso(c.x, c.y); items.push({ d: c.x + c.y, k: 0, chest: c, sx: p.sx + ox, sy: p.sy + oy }); }
@@ -1078,6 +1079,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   };
   const drawItem = it => {
     if (it.gib) { const g = it.gib; ctx.imageSmoothingEnabled = true; if (it.gk >= 1 && !g.landed) { g.landed = 1; addBlood(g.x + g.dx * g.d, g.y + g.dy * g.d, g.z, 0.35, 300000); } ctx.save(); ctx.translate(it.sx, it.sy); ctx.rotate(g.rot + (it.gk < 1 ? g.spin * it.gk : g.spin)); pblit(ctx, g.s, 0, g.s.h * 0.12); ctx.restore(); return; }
+    if (it.sap) { if (typeof drawSapling === 'function') drawSapling(ctx, it.sap, it.sx, it.sy, now); return; }
     if (it.corpse) {
       const c = it.corpse; if (c.onBack) return; if (typeof TOWS !== 'undefined' && TOWS['c:' + c.id]) { drawTow(ctx, 'c:' + c.id, now); return; } let f = FALLS['m' + c.id];
       const live = G.monsters[c.id]; if (!f && live && live.dieAt && now - live.dieAt < 1500) return;   // a queda ao vivo ainda vai começar
