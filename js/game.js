@@ -537,6 +537,7 @@ function treeEquipMenu(nd, bi, i) {
   const off = d.querySelector('[data-off]'); if (off) off.onclick = () => { G.slotTree[cur] = null; slotTreeSave(); buildHotbar(); d.remove(); };
 }
 function castSkill(i) {
+  if (i === 0 && G.me && G.me.cls === 'mage' && typeof flameStart === 'function' && !slotTreeNode(0) && SKILLS.mage[0] && SKILLS.mage[0].id === 'ember') { flameStart(); setTimeout(() => flameStop(), 1200); return; }   /* clique no ícone: um jato curto */
   { const T = slotTreeNode(i); if (T) { const now = performance.now(); if (now < (G.tcdEnd[i] || 0) || G.me.downed) return; if (G.me.mp < T.nd.mp) { showToast('Mana insuficiente.'); return; }
     Net.send({ t: 'tskill', b: T.b, n: T.n === 5 ? 5 : undefined, a: G.me.fa ?? 0, id: G.target || 0 }); G.tcdEnd[i] = now + T.nd.cd; const slot = $('slot' + i); slot.classList.remove('pressed'); void slot.offsetWidth; slot.classList.add('pressed'); return; } }
   const me = G.me, sk = SKILLS[me.cls][i], now = performance.now();
@@ -1082,6 +1083,7 @@ window.addEventListener('keydown', e => {
   if (typeof obsKey === 'function' && obsKey(k, e)) { e.preventDefault(); return; }
   if (G.paused) { if (typeof gmKey === 'function' && gmKey(k, e)) e.preventDefault(); return; }
   if (k === 'escape') { if (G.dialog) { closeDialog(); return; } for (const id of ['chestp', 'bankp', 'biz', 'jobboard', 'counterp', 'estate', 'bizhub', 'roompw-ask', 'tradep']) { const el = $(id); if (el && !el.classList.contains('hidden') && el.parentNode === document.body && getComputedStyle(el).display !== 'none') { if (id === 'biz' && typeof bizClose === 'function') bizClose(); else if (id === 'estate') estToggle(false); else if (id === 'bizhub') hubToggle(false); else el.classList.add('hidden'); return; } } if (typeof emToggle === 'function') emToggle(); else togglePause(); return; }
+  if (k === '1' && typeof flameKey === 'function' && flameKey(e)) return;   /* mago: segurar a tecla 1 = Chamas */
   if (k >= '1' && k <= '4') { castSkill(+k - 1); return; }
   if (k === '5' && G.me && SKILLS[G.me.cls].length > 4) { if (!e.repeat) castSkill(4); return; }
   if (k === 'q') { drinkPot('hp'); return; }
@@ -1146,6 +1148,7 @@ window.addEventListener('keydown', e => {
 });
 window.addEventListener('keyup', e => {
   if (!e.key) return; const k = e.key.toLowerCase();
+  if (k === '1' && typeof flameStop === 'function') flameStop();   /* soltou a tecla: as chamas param */
   G.keys.delete(k);
   if (k === 't' && G.wheel) closeEmoteWheel(true);
   if (k === 'h' && typeof grabKeyUp === 'function' && grabKeyUp()) return;
@@ -2263,7 +2266,7 @@ function drawShopScene(ctx, now) {
   }
 }
 function drawBlockHud(ctx, now) {
-  drawTradeFx(ctx, now); drawShopScene(ctx, now);
+  drawTradeFx(ctx, now); drawShopScene(ctx, now); if (typeof drawFlameFx === 'function') drawFlameFx(ctx, now);
   if (G.tradeAt) { const tp = $('tradep'); if (!tp || tp.classList.contains('hidden')) { G.tradeAt = null; G.trade = null; } else if (dist(G.me.x, G.me.y, G.tradeAt.x, G.tradeAt.y) > 4) { tp.classList.add('hidden'); G.tradeAt = null; G.trade = null; } }   // longe do vendedor: fecha a troca
   const me = G.me; if (!me || !G.parrying) return; const ox = G.view.ox, oy = G.view.oy, P = iso(me.rx, me.ry), cx = P.sx + ox, cy = P.sy + oy - 26, f = me.fa ?? 0;
   const sh = me.cls === 'knight' && (me.shp ?? 100) > 0 && me.wpn !== 'halberd' && !me.shea;

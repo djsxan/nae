@@ -17,12 +17,37 @@ if (typeof buildHotbar === 'function') { const _bh = buildHotbar; buildHotbar = 
 
 // ---------- eventos das magias ----------
 if (typeof progEvent === 'function') { const _pe = progEvent; progEvent = function (m, now) {
+  if (m.t === 'flamefx') { const e = G.players[m.id]; if (e) e.flame = m.on ? { a: m.a, r: m.r, until: now + 450 } : null; return true; }
   if (m.t === 'ember') { const e = G.players[m.id]; if (e) e.emberUntil = m.ms ? now + m.ms : 0; return true; }
   if (m.t === 'mburn') { const e = G.monsters[m.id]; if (e) e.burnUntil = now + m.ms; return true; }
   return _pe(m, now);
 }; }
 
 // ---------- Brasa na mão: chama e luz de tocha (desenhada junto do personagem) ----------
+// ---------- Chamas: segurar a tecla 1 solta um jato contínuo na direção do mouse ----------
+G.flame = G.flame || { on: false };
+function flameAngle() { const me = G.me; if (!me) return 0; if (!G.mouseW) return me.fa ?? 0; return Math.atan2(G.mouseW.y - me.y, G.mouseW.x - me.x); }
+function flameKey(e) { const me = G.me; if (!me || me.cls !== 'mage' || (typeof slotTreeNode === 'function' && slotTreeNode(0)) || !SKILLS.mage[0] || SKILLS.mage[0].id !== 'ember') return false; if (!e.repeat) flameStart(); return true; }
+function flameStart() { const me = G.me; if (!me || me.downed || G.flame.on) return; if ((me.mp || 0) < 2) { showToast('Mana insuficiente.'); return; } G.flame.on = true; Net.send({ t: 'flame', on: 1, a: flameAngle() }); }
+function flameStop() { if (!G.flame.on) return; G.flame.on = false; Net.send({ t: 'flame', on: 0 }); }
+setInterval(() => { if (!G.flame.on || !G.me) return; if (G.me.downed) { flameStop(); return; } Net.send({ t: 'flame', on: 1, a: flameAngle() }); }, 150);
+window.addEventListener('blur', () => flameStop());
+function drawFlameFx(ctx, now) {
+  for (const id in G.players) { const e = G.players[id], F = e.flame; if (!F || now > F.until || !e.visible) continue;
+    if (!e.anim || now - e.anim.t0 > (e.anim.ms || 600)) e.anim = { a: 'cast', t0: now, ms: 600 };
+    const ox = G.view.ox, oy = G.view.oy, hp = iso(e.rx + Math.cos(F.a) * 0.3, e.ry + Math.sin(F.a) * 0.3), hx = hp.sx + ox, hy = hp.sy + oy - (R3.ok ? 28 : 36);
+    const tp = iso(e.rx + Math.cos(F.a) * F.r, e.ry + Math.sin(F.a) * F.r), tx = tp.sx + ox, ty = tp.sy + oy - 14, L = Math.hypot(tx - hx, ty - hy) || 1, ux = (tx - hx) / L, uy = (ty - hy) / L, px = -uy, py = ux;
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    for (let layer = 0; layer < 3; layer++) { const W = [14, 9, 4][layer], cols = [['rgba(255,70,10,0.0)', 'rgba(255,90,20,0.55)', 'rgba(255,60,10,0)'], ['rgba(255,150,40,0.1)', 'rgba(255,170,60,0.7)', 'rgba(255,120,30,0)'], ['rgba(255,250,220,0.9)', 'rgba(255,230,140,0.75)', 'rgba(255,200,80,0)']][layer];
+      const g = ctx.createLinearGradient(hx, hy, tx, ty); g.addColorStop(0, cols[0]); g.addColorStop(0.35, cols[1]); g.addColorStop(1, cols[2]); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(hx + px * 1.5, hy + py * 1.5);
+      const N = 10; for (let k = 1; k <= N; k++) { const t = k / N, wob = Math.sin(now / 60 + k * 1.7 + layer) * 2.5 * t, w = 1.5 + W * t + wob; ctx.lineTo(hx + ux * L * t + px * w, hy + uy * L * t + py * w); }
+      for (let k = N; k >= 1; k--) { const t = k / N, wob = Math.cos(now / 55 + k * 1.3 + layer) * 2.5 * t, w = 1.5 + W * t + wob; ctx.lineTo(hx + ux * L * t - px * w, hy + uy * L * t - py * w); } ctx.closePath(); ctx.fill(); }
+    ctx.restore();
+    if (G.view) for (let k = 0; k < 3; k++) { const t = Math.random(); spawnPart('ember', hx + ux * L * t + px * (Math.random() - 0.5) * 16 * t - ox, hy + uy * L * t + py * (Math.random() - 0.5) * 16 * t - oy, { vx: ux * 0.08, vy: uy * 0.08 - 0.03 }); }
+    if (Math.random() < 0.25 && G.view) spawnPart('smoke', tx - ox, ty - oy - 4, { color: '#5a4a40' });
+    G.lights.push({ x: hx + ux * L * 0.5, y: hy + uy * L * 0.5, r: 90 + L * 0.8, c: '255,150,60', a: 0.9, flick: 1 });
+  }
+}
 function drawEmberHand(ctx, e, sx, sy, now) {
   const side = DIR_VIEW && DIR_VIEW[e.dir || 0] === 'W' ? -1 : 1, hx = sx + side * 11, hy = sy - (R3.ok ? 31 : 41), fl = Math.min(1, (e.emberUntil - now) / 500);
   ctx.save(); ctx.globalCompositeOperation = 'lighter';

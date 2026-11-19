@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.80.0';
-const VERSION_NAME = 'Nae · Seiza';
+const VERSION = 'v1.81.0';
+const VERSION_NAME = 'Nae · Chamas';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -112,8 +112,8 @@ const SKILLS = {
       desc: 'Por 6s: anda 60% mais rápido, ataca 2x mais rápido e +10% de crítico.' },
   ],
   mage: [   // as 5 magias base do Pentagrama (teclas 1 a 5)
-    { id: 'ember', name: 'Brasa na Mão', mp: 8, cd: 14000, el: 'fire',
-      desc: 'A mão pega fogo por 12s: os golpes de cajado queimam (+40% e o alvo arde por 3s), a mão ilumina como uma tocha, acende fogueiras apagadas e os animais recuam do fogo.' },
+    { id: 'ember', name: 'Chamas', mp: 6, cd: 0, el: 'fire', hold: 1,
+      desc: 'Segure a tecla 1: um jato contínuo de fogo sai das mãos na direção do mouse (6 de mana por segundo). Quem é atingido arde por 3 s, os animais fogem, o jato acende fogueiras apagadas e pode pôr fogo no mato. O alcance e o dano crescem com o nível, com os pontos na árvore do Fogo e com a perícia Fogo.' },
     { id: 'windstep', name: 'Passo do Vento', mp: 6, cd: 5000, el: 'wind',
       desc: 'Uma lufada leva você 3,5 casas para onde está andando (ou para onde olha). No meio do passo nada te acerta.' },
     { id: 'bloom', name: 'Florescer', mp: 10, cd: 9000, el: 'earth',
@@ -439,7 +439,7 @@ const USE = {
   staff:  { name: 'Cajado', cat: 'Armas', K: 450, desc: 'Golpes de cajado: mais dano corpo a corpo.' },
   bow:    { name: 'Arco', cat: 'Armas', K: 500, desc: 'Flechas disparadas: mais dano à distância.' },
   magic:  { name: 'Magia', cat: 'Armas', K: 500, desc: 'Feitiços lançados: mais dano das magias.' },
-  el_fire:  { name: 'Fogo', cat: 'Magias', K: 300, desc: 'Brasa na Mão: mais dano do fogo.' },
+  el_fire:  { name: 'Fogo', cat: 'Magias', K: 300, desc: 'Chamas: mais alcance e mais dano do fogo.' },
   el_wind:  { name: 'Ar', cat: 'Magias', K: 300, desc: 'Passo do Vento: vai mais longe.' },
   el_earth: { name: 'Terra', cat: 'Magias', K: 300, desc: 'Florescer: mais flores e curam mais.' },
   el_holy:  { name: 'Luz', cat: 'Magias', K: 300, desc: 'Fé Inabalável: cura mais.' },

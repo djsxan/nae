@@ -222,6 +222,7 @@ function hostOnClient(from, m) {
       sendStat(p); break;
     }
     case 'tskill': if (!p.duel) treeSkill(p, m.b | 0, m); break;
+    case 'flame': flameMsg(p, m); break;
     case 'draw': if (p.sheathed) { if (m.on) tell(p, 'Saque o arco primeiro (G).'); break; } bowDraw(p, !!m.on); break;
     case 'loose': if (p.sheathed) break; bowLoose(p, m); break;
     case 'pullarrow': pullArrow(p); break;
@@ -859,6 +860,36 @@ function useSkill(p, i, msg) {
   sendStat(p);
 }
 // ---------- magias base do Pentagrama ----------
+// ---------- Chamas: lança-chamas contínuo (segurando a tecla 1); alcance e dano crescem em curva acelerada com teto ----------
+function flameStats(p) {
+  const T = p.tree || {}, pts = (T.w_flame || 0) + (T.w_focus || 0), L = (p.lvl || 1) + pts * 2 + (typeof useBonus === 'function' ? useBonus(p, 'el_fire') : 0) * 20;
+  const sig = x => 1 / (1 + Math.exp(-(x - 15) / 5)), k = Math.min(1.15, Math.max(0, (sig(L) - sig(1)) / (sig(30) - sig(1))));
+  return { R: 2.5 + 3.5 * k, F: 1 + 5 * k, k };
+}
+function flameStop(p, why) { if (!p.flame) return; p.flame = null; near(p.x, p.y, { t: 'flamefx', id: p.id, on: 0 }); if (why) tell(p, why); }
+function flameMsg(p, m) {
+  if (p.cls !== 'mage' || p.downed || p.carriedBy || p.bound || p.bath) { flameStop(p); return; }
+  if (!m.on) { flameStop(p); return; }
+  const now = now_(); if (!p.flame) { if ((p.mp || 0) < 2) { tell(p, 'Mana insuficiente.'); return; } p.flame = { t0: now, tick: now, hit: now - 300, fx: 0 }; useGain(p, 'el_fire', 1); anim('p', p, 'castup', p.x, p.y, { s: 'Chamas!' }); }
+  p.flame.a = +m.a || 0; p.flame.last = now; p.dir = dirFromVecS(Math.cos(p.flame.a), Math.sin(p.flame.a));
+}
+function flameTick(now) {
+  for (const p of Object.values(S.players)) { const F = p.flame; if (!F) continue;
+    if (p.downed || p.cls !== 'mage' || now - (F.last || 0) > 700) { flameStop(p); continue; }
+    const dt = (now - F.tick) / 1000; if (dt < 0.1) continue; F.tick = now;
+    p.mp -= 6 * Math.min(dt, 0.4); if (p.mp <= 0) { p.mp = 0; flameStop(p, 'Sem mana: as chamas se apagam.'); sendStat(p); continue; }
+    const st = flameStats(p), ca = Math.cos(F.a), sa = Math.sin(F.a);
+    if (now - F.fx > 260) { F.fx = now; near(p.x, p.y, { t: 'flamefx', id: p.id, on: 1, a: +F.a.toFixed(3), r: +st.R.toFixed(2) }); }
+    if (now - F.hit >= 450) { F.hit = now;
+      for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || (m.alt || 0) > 1) continue; const d0 = MON[m.type] || {}, dx = m.x - p.x, dy = m.y - p.y, along = dx * ca + dy * sa; if (along < 0.2 || along > st.R + (d0.rad || 0)) continue; if (Math.abs(-dx * sa + dy * ca) > 0.35 + along * 0.18 + (d0.rad || 0) * 0.5) continue;
+        p._el = 'fire'; hitMonster(p, m, 0.12 * st.F * (1 + treeEff(p, 'fire')), 0); p._el = null; useGain(p, 'el_fire', 0.25);
+        if (!(m._burnT > now) && S.monsters[m.id]) { m._burnT = now + 3000; emberBurn(p, m); }   /* fica ardendo */
+        if (d0.beh === 'flee' || d0.beh === 'pred' || d0.beh === 'retal') { m.flee = { from: p.id, until: now + 2500 }; if (m.aggro === p.id) m.aggro = null; m.atk = null; } }   /* animais fogem do fogo */
+      for (const d of (S.doused || []).slice()) { const ddx = d.x - p.x, ddy = d.y - p.y, al = ddx * ca + ddy * sa; if (al > 0 && al < st.R && Math.abs(-ddx * sa + ddy * ca) < 0.7 && WORLD.obj[d.i] === O.NONE) { setObj(d.i, O.CAMPFIRE); (S.objBack = S.objBack || []).push({ i: d.i, o: O.NONE, at: now + 180000 }); S.doused.splice(S.doused.indexOf(d), 1); tell(p, 'As chamas acenderam a fogueira.'); } }
+      if (Math.random() < 0.35) { const tx = p.x + ca * st.R * 0.9, ty = p.y + sa * st.R * 0.9, list = []; igniteTile(tx, ty, now, list, false); if (list.length) near(tx, ty, { t: 'fires', l: list }); }   /* o mato pode pegar fogo */
+      sendStat(p); }
+  }
+}
 function mageSpell(p, sk, msg, now) {
   const shout = { s: sk.name + '!' };
   if (sk.id === 'ember') {
@@ -1014,7 +1045,7 @@ function bathTick(now) {
     sendStat(p); }
 }
 function mageTick(now) {   /* brasa (animais recuam), flores (curam e acalmam) */
-  bathTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
+  bathTick(now); flameTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
   for (const p of Object.values(S.players)) {
     if (p.cls !== 'mage' || !buffOn(p, 'ember') || p.downed) continue;
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(p.x, p.y, m.x, m.y) > 3.5) continue; m.flee = { from: p.id, until: now + 1800 }; if (m.aggro === p.id) m.aggro = null; m.atk = null; }
