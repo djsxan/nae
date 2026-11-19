@@ -63,6 +63,7 @@ function empMsg(p, m) {
   const key = estOwner(p), M = empLoad(), r = M[key];
   if (m.a === 'cands') { const home = rentalOf(p); Net.toOne(p.id, { t: 'empc', list: empCands(), tr: EMP_TR, str: SEG_TR, home: home ? PROPS_BY[home].name : '', have: r ? r.n : '', segs: segList(key).length }); return; }
   if (m.a === 'sorder') { segOrder(p, key, m); return; }
+  if (m.a === 'segans') { segAnswer(p, key, m); return; }
   if (m.a === 'hire') {
     const ag = S.npcs.agent; if (!ag || dist(p.x, p.y, ag.x, ag.y) > 4.5) { tell(p, 'Fale com a Dona Celeste, na Agência Mão Amiga.'); return; }
     const day = estDay(), C = empCands().find(c => c.i === (m.i | 0)); if (!C || C.gone) { tell(p, 'Esse candidato já foi contratado.'); return; }
@@ -275,7 +276,7 @@ function segSpawn(key, r, near0) {
   const n = { id, kind: r.look, name: r.n + ', segurança', transient: true, seg: key, segId: r.id, x, y, z: 0, fl, fb, postX: x, postY: y, hp: r.hp, maxHp: r.maxHp, downed: null, dead: false };
   S.npcs[id] = n; Net.toAll({ t: 'vspawn', v: visPublic(n) }); return n;
 }
-function segSend(key) { const q = empOwnerP(key); if (!q) return; Net.toOne(q.id, { t: 'segme', list: segList(key).map(r => { const n = S.npcs[segNid(r)]; return { id: segNid(r), n: r.n, g: r.g, tr: r.tr, w: r.w, mode: r.mode, hp: Math.round(n ? n.hp : r.hp), maxHp: r.maxHp, warn: r.warn ? 1 : 0 }; }) }); }
+function segSend(key) { const q = empOwnerP(key); if (!q) return; Net.toOne(q.id, { t: 'segme', list: segList(key).map(r => { const n = S.npcs[segNid(r)]; return { id: segNid(r), n: r.n, g: r.g, tr: r.tr, w: r.w, mode: r.mode, hp: Math.round(n ? n.hp : r.hp), maxHp: r.maxHp, warn: r.warn ? 1 : 0, jail: r.jail && Date.now() < r.jail ? Math.ceil((r.jail - Date.now()) / 1000) : 0 }; }) }); }
 function segQuit(key, r, why, dead) {
   const L = segLoad(), list = L[key] || [], i = list.indexOf(r); if (i >= 0) list.splice(i, 1); if (!list.length) delete L[key];
   const n = S.npcs[segNid(r)]; if (n) { if (dead) { n.dead = true; n.hp = 0; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'hurt', ms: 400 }); setTimeout(() => { if (S.npcs[n.id]) visGone(n); }, 25000); } else visGone(n); }
@@ -283,6 +284,7 @@ function segQuit(key, r, why, dead) {
 }
 function segOrder(p, key, m) {
   const r = segList(key).find(x => segNid(x) === m.id); if (!r) return; const n = S.npcs[segNid(r)]; if (!n) return;
+  if (m.o !== 'fire' && (r.jail || r.flee)) { tell(p, r.n + (r.jail ? ' está preso.' : ' fugiu.')); return; }
   if (m.o !== 'fire' && ((n.fl || 0) !== (p.fl || 0) || dist(n.x, n.y, p.x, p.y) > 3)) { tell(p, 'Chegue perto de ' + r.n + '.'); return; }
   if (m.o === 'follow') { r.mode = 'follow'; r.post = null; empSay(n, 'Estou com você.'); }
   else if (m.o === 'post') { r.mode = 'post'; r.post = { x: n.x, y: n.y, fl: n.fl || 0, fb: n.fl ? n.fb : -1 }; empSay(n, 'Ninguém passa por aqui.'); }
@@ -293,7 +295,7 @@ function segOrder(p, key, m) {
 }
 function segDefend(attacker, victim) {   /* alguém bateu no seu patrão: os seguranças dele partem para cima */
   const L = S.estate && S.estate.seg, list = L && L[estOwner(victim)]; if (!list || !list.length) return;
-  for (const r of list) { const n = S.npcs[segNid(r)]; if (!n || n.dead || (n.fl || 0) !== (attacker.fl || 0) || dist(n.x, n.y, attacker.x, attacker.y) > 12) continue; if (!n.fight) empSay(n, ['Tire as mãos do meu patrão!', 'Para trás!', 'Vai se ver comigo!'][Math.floor(Math.random() * 3)]); n.fight = { id: attacker.id, until: now_() + 20000 }; }
+  for (const r of list) { const n = S.npcs[segNid(r)]; if (!n || n.dead || (n.fl || 0) !== (attacker.fl || 0) || dist(n.x, n.y, attacker.x, attacker.y) > 12) continue; if (r.jail || r.flee) continue; if (!n.fight) empSay(n, ['Tire as mãos do meu patrão!', 'Para trás!', 'Vai se ver comigo!'][Math.floor(Math.random() * 3)]); n.fight = { id: attacker.id, until: now_() + 20000 }; n.foe = attacker.id; }
 }
 function segKilled(n, p) { const r = segList(n.seg).find(x => x.id === n.segId); n.fight = null; if (r) segQuit(n.seg, r, r.n + ' morreu lutando por você' + (p ? ' (golpe de ' + p.name + ')' : '') + '. O contrato acabou.', true); }
 // posto ao lado da porta: no tile vizinho à porta, colado na parede, de costas para o prédio e de frente para a rua
@@ -305,6 +307,42 @@ function segDoorSpot(dx, dy, vx, vy, k) {
 function segWatch(n, base, now) {   /* parado de guarda: olha para os lados de vez em quando */
   if (now > (n.glT || 0)) { n.glT = now + 4000 + Math.random() * 4000; n.glD = Math.random() < 0.5 ? -1 : 1; n.glUntil = now + 1400 + Math.random() * 800; }
   n.walk = false; n.dir = (base + (now < (n.glUntil || 0) ? n.glD : 0) + 8) % 8;
+}
+// ---------- crimes do segurança: matar quem já caiu (só por ordem); visto por alguém, a guarda reage ----------
+function segAnswer(p, key, m) {
+  const r = segList(key).find(x => segNid(x) === m.id); if (!r || !r.ask) return; const n = S.npcs[segNid(r)], f = S.players[r.ask.foe]; r.ask = null; Net.toOne(p.id, { t: 'segask', id: null });
+  if (!n || !f || !f.downed) return; if (!m.kill) { empSay(n, 'Ele aprendeu a lição.'); n.foe = null; return; }
+  n.kill = { id: f.id, t0: now_() }; empSay(n, 'Como quiser.');
+}
+function segKillTick(n, r, q, now, dt) {
+  const f = S.players[n.kill.id]; if (!f || !f.downed || now - n.kill.t0 > 15000) { n.kill = null; n.foe = null; return; }
+  if (dist(n.x, n.y, f.x, f.y) > 1.2) { npcWalk(n, f.x, f.y, 2.2, dt); return; }
+  n.walk = false; n.dir = dirFromVecS(f.x - n.x, f.y - n.y); if (n.kill.hit) return; n.kill.hit = 1;   /* finalização: para sobre o caído, uma frase, ergue a espada com as duas mãos e desce o golpe devagar */
+  empSay(n, ['Fim da linha.', 'Devia ter ficado longe do meu patrão.', 'Que os deuses te recebam.'][Math.floor(Math.random() * 3)]);
+  setTimeout(() => { if (S.npcs[n.id] && !n.dead) near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'execute', ms: 1700, tx: f.x, ty: f.y }); }, 900);
+  setTimeout(() => { n.kill = null; n.foe = null; if (!S.players[f.id] || !f.downed || n.dead) return; near(f.x, f.y, { t: 'hit', k: 'p', id: f.id, x: f.x, y: f.y, dmg: 99, ax: n.x, ay: n.y }); near(f.x, f.y, { t: 'blood', x: f.x, y: f.y, n: 16 }); near(f.x, f.y, { t: 'finisher', x: f.x, y: f.y });
+    if (f.downed) f.downed.faint = false; if (PERMADEATH && !f.dev && !f.devPowers) permaDeath(f, 'pelas mãos de ' + r.n + ', segurança de ' + (q ? q.name : 'alguém')); else respawnTemple(f);
+    const wit = segWitnesses(n, f.id); if (wit) segCrime(n, r, q, wit); else if (q) tell(q, r.n + ' acabou com ' + f.name + '. Ninguém viu.'); }, 900 + 850);
+}
+function segWitnesses(n, victimId) {   /* alguém viu? (moradores, visitantes, sentinelas ou outros jogadores por perto) */
+  const fl = n.fl || 0;
+  for (const o of Object.values(S.npcs)) { if (o === n || o.dead || o.downed || o.seg || o.emp || o.sleeping || (o.fl || 0) !== fl) continue; if (dist(o.x, o.y, n.x, n.y) < 9) return o.name.split(',')[0]; }
+  for (const o of Object.values(S.players)) { if (o.id === victimId || estOwner(o) === n.seg || o.downed || (o.fl || 0) !== fl) continue; if (dist(o.x, o.y, n.x, n.y) < 9) return o.name; }
+  return null;
+}
+function segCrime(n, r, q, wit) {
+  const fine = 30; if (q) { repAdd(q, 'cidade', -4, 'seu segurança matou alguém'); repAdd(q, 'guarda', -4, 'seu segurança matou alguém'); const d = debit(n.seg, q, fine); if (!d) { const g = Math.min(q.gold || 0, fine); q.gold -= g; } tell(q, wit + ' viu ' + r.n + ' matar. A guarda cobrou de você uma multa de ' + fine + ' de ouro.'); sendStat(q); }
+  sys(r.n + ', segurança de ' + (q ? q.name : 'alguém') + ', matou um homem caído. ' + wit + ' chamou a guarda!');
+  if (r.tr === 'leal') { r.jail = Date.now() + 240000; empSay(n, 'Eu me entrego. Fiz o que o patrão mandou.'); if (q) tell(q, r.n + ' se entregou e vai ficar 4 minutos preso. A fiança com o carcereiro solta antes.'); }
+  else if (Math.random() < 0.5) { const G = visGates(), g = G.sort((a, b) => dist(a[0], a[1], n.x, n.y) - dist(b[0], b[1], n.x, n.y))[0]; r.flee = g; empSay(n, 'Não vão me pegar!'); if (q) tell(q, r.n + ' fugiu da guarda!'); }
+  else { r.jail = Date.now() + 240000; empSay(n, 'Me pegaram!'); if (q) tell(q, r.n + ' tentou fugir, mas a guarda pegou: 4 minutos preso. A fiança com o carcereiro solta antes.'); }
+  n.fight = null; n.monT = null; estateSave(); segSend(n.seg);
+}
+function segJailSpot(r) { const jb = BUILDINGS.findIndex(b => b.kind === 'jail'); if (jb < 0) return null; const T = bldFreeTiles(jb); if (!T.length) return null; const t = T[(parseInt(r.id, 10) || 0) % T.length]; return [t[0], t[1]]; }
+function segBail(p) {
+  const r = segList(estOwner(p)).find(x => x.jail && Date.now() < x.jail); if (!r) return 'Nenhum segurança seu está preso.';
+  const price = 40, d = debit(estOwner(p), p, price); if (!d) return 'A fiança do seu segurança é ' + price + ' de ouro. Você não tem o bastante.';
+  r.jail = 0; estateSave(); segSend(estOwner(p)); sendStat(p); const n = S.npcs[segNid(r)]; if (n) empSay(n, 'Obrigado, patrão. Não vai se repetir.'); return 'Fiança paga: ' + price + ' de ouro. ' + r.n + ' está livre.';
 }
 function segThreat(n, r, q) {   /* a fera mais perto que ameaça o patrão (ou o ponto vigiado) */
   const c = r.mode === 'post' && r.post ? r.post : r.mode === 'home' ? n : (q && !(q.fl || 0) ? q : n), R = r.tr === 'atento' ? 9 : 6; let best = null, bd = 1e9;
@@ -324,6 +362,11 @@ function segNpcTick(n, now, dt) {
   n.goHome = false; r.hp = n.hp;
   if (n.hp <= 0) { segQuit(n.seg, r, r.n + ' morreu lutando por você. O contrato acabou.', true); return; }
   const q = empOwnerP(n.seg);
+  if (r.flee) { const [gx, gy] = r.flee; if (npcWalk(n, gx, gy, 3.0, dt) || dist(n.x, n.y, gx, gy) < 1.5) segQuit(n.seg, r, r.n + ' fugiu da cidade. O contrato acabou.'); return; }
+  if (r.jail) { if (Date.now() < r.jail) { const sp = segJailSpot(r); if (sp && (npcWalk(n, sp[0], sp[1], 1.4, dt) || dist(n.x, n.y, sp[0], sp[1]) < 0.6)) n.walk = false; return; } r.jail = 0; empSay(n, 'Cumpri a pena. De volta ao trabalho.'); if (q) tell(q, r.n + ' cumpriu a pena e voltou ao trabalho.'); estateSave(); segSend(n.seg); }
+  if (n.kill) { segKillTick(n, r, q, now, dt); return; }
+  if (n.foe && !n.fight) { const f = S.players[n.foe]; if (f && f.downed && !r.ask && q) { r.ask = { foe: f.id, until: now + 20000 }; n.dir = dirFromVecS(q.x - n.x, q.y - n.y); empSay(n, 'Patrão, ele caiu. Acabo com ele?'); Net.toOne(q.id, { t: 'segask', id: segNid(r), n: r.n, foe: f.name }); } else if (!f || !f.downed) { n.foe = null; } }
+  if (r.ask) { const f = S.players[r.ask.foe]; if (!f || !f.downed || now > r.ask.until) { if (now > r.ask.until && f && f.downed) empSay(n, 'Deixo ele ir, então.'); r.ask = null; n.foe = null; if (q) Net.toOne(q.id, { t: 'segask', id: null }); } else { n.walk = false; if (q) n.dir = dirFromVecS(q.x - n.x, q.y - n.y); return; } }
   if (n.hp < r.maxHp && now >= (n.regT || 0)) { n.regT = now + 1000; n.hp = Math.min(r.maxHp, n.hp + 1); }
   const low = n.hp < r.maxHp * 0.25 && r.tr !== 'leal';
   let m = n.monT && S.monsters[n.monT]; if (m && (m.hp <= 0 || dist(n.x, n.y, m.x, m.y) > 14)) m = null; if (!m && !low) { m = segThreat(n, r, q); if (m && n.monT !== m.id) empSay(n, ['Cuidado!', 'Deixa comigo!', 'Fique atrás de mim!'][Math.floor(Math.random() * 3)]); }
@@ -361,6 +404,8 @@ function segTick(now) {   /* uma vez por segundo (chamado pelo empTick): garante
 // ---------- segurança: lado do jogador ----------
 if (typeof G !== 'undefined') G.segs = [];
 if (typeof progEvent === 'function') { const _peG = progEvent; progEvent = function (m, now) {
+  if (m.t === 'finisher') { const me = G.me; if (me && Math.hypot(me.x - m.x, me.y - m.y) < 12) G.shake = Math.max(G.shake || 0, 7); return true; }   /* o chão treme com o golpe final */
+  if (m.t === 'segask') { const d = document.getElementById('segask'); if (d) d.remove(); if (m.id) { const p2 = staffPanel('segask', m.n + ' pergunta', '<div style="padding:10px 14px">"Patrão, ' + m.foe + ' caiu. Acabo com ele?"<div style="font-size:13px;opacity:.75;margin-top:6px">Se alguém vir, a guarda reage: você paga multa e perde um pouco de reputação, e ele vai preso ou foge.</div></div><div class="lift-list" style="padding-top:4px"><button class="lift-btn" data-k="1"><span class="lift-n">🗡</span><span><b>Acabe com ele</b></span></button><button class="lift-btn" data-k="0"><span class="lift-n">✋</span><span><b>Poupe</b></span></button></div>'); p2.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { p2.remove(); Net.send({ t: 'emp', a: 'segans', id: m.id, kill: +b.dataset.k }); }); } return true; }
   if (m.t === 'segme') { G.segs = m.list || []; const d = document.getElementById('segmenu'); if (d && d.dataset.id) segMenu(d.dataset.id); return true; }
   return _peG(m, now);
 }; }
@@ -369,7 +414,7 @@ function segPrompt() { const s = segNear(); return 'F: falar com ' + s.n + ' (se
 function segMenu(id) {
   const s = (G.segs || []).find(x => x.id === id); if (!s) { const d = document.getElementById('segmenu'); if (d) d.remove(); return; }
   const opt = (o, ic, t, sub) => '<button class="lift-btn" data-o="' + o + '"><span class="lift-n">' + ic + '</span><span><b>' + t + '</b><br><small>' + sub + '</small></span></button>';
-  const html = '<div style="padding:8px 14px 0;font-size:14px;opacity:.85">' + s.n + ' · ' + SEG_TR[s.tr].n + ' · ' + (s.w ? s.w + ' ouro/dia' : 'teste, sem salário') + ' · vida ' + s.hp + '/' + s.maxHp + (s.warn ? ' · <b style="color:#e88">salário atrasado</b>' : '') + '</div><div class="lift-list" style="padding-top:8px">' +
+  const html = '<div style="padding:8px 14px 0;font-size:14px;opacity:.85">' + s.n + ' · ' + SEG_TR[s.tr].n + ' · ' + (s.w ? s.w + ' ouro/dia' : 'teste, sem salário') + ' · vida ' + s.hp + '/' + s.maxHp + (s.warn ? ' · <b style="color:#e88">salário atrasado</b>' : '') + (s.jail ? ' · <b style="color:#e88">preso (' + s.jail + ' s; fiança com o carcereiro)</b>' : '') + '</div><div class="lift-list" style="padding-top:8px">' +
     (s.mode !== 'follow' ? opt('follow', '🛡', 'Me acompanhe', 'Anda com você; quando você entra num prédio, vigia a porta.') : '') + (s.mode !== 'post' ? opt('post', '📍', 'Vigie aqui', 'Fica neste ponto e enfrenta quem chegar.') : '') + (s.mode !== 'home' ? opt('home', '🏠', 'Guarde a minha casa', 'Fica de guarda na porta de casa.') : '') + opt('entrance', '🚪', 'Vigie a entrada do elevador', 'Fica na porta do corredor do elevador do prédio do dojô.') + opt('fire', '✋', 'Dispensar', 'Encerra o contrato.') + '</div>';
   const d = staffPanel('segmenu', s.n + ' · segurança', html); d.dataset.id = id;
   d.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const o = b.dataset.o; if (o === 'fire' && !confirm('Dispensar ' + s.n + '?')) return; d.remove(); Net.send({ t: 'emp', a: 'sorder', id, o }); });

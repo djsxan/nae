@@ -848,7 +848,7 @@ const NPC_DIALOG = {
   tailor: { greet: 'Bem-vindo ao Ateliê Real. Aqui só entra o que há de mais fino em Nae: armaduras de gala, mantos de seda e couro trabalhado à mão. Admire as vitrines.', opts: [
     ['O que está nas vitrines?', { local: 'As peças mais raras do reino, vestidas nos manequins lá fora. Elas trocam de tempos em tempos. Em breve poderão ser encomendadas, mas não serão baratas.' }],
     ['Como estou vestido?', { local: 'Hmm... o corte é honesto, mas o tecido já viu dias melhores. Volte quando quiser algo à altura do seu nome.' }]] },
-  jailer: { greet: 'Cadeia de Nae. Quem entra, cumpre a pena — ou paga a fiança.', opts: [] },
+  jailer: { greet: 'Cadeia de Nae. Quem entra, cumpre a pena — ou paga a fiança.', opts: [['Pagar a fiança do meu segurança (40 de ouro)', { a: 'segbail' }]] },
   executioner: { greet: 'A justiça de Nae é rápida e limpa. Traga o condenado caído até o cadafalso — carregue-o e aperte F aqui perto — e eu cuido do resto.', opts: [] },
   fruit: { greet: 'Frutas fresquinhas do pomar, colhidas hoje cedo! Maçã docinha, amora do mato... leva uma?', opts: [
     ['Tudo fresquinho?', { local: 'Colhido hoje cedo, juro pela minha avó!' }]] },
