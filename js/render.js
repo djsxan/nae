@@ -460,8 +460,8 @@ function drawHeroEntity(ctx, e, sx, sy, now) {
     ctx.imageSmoothingEnabled = true; pblit(ctx, woundOf(s, 3), sx, sy - 0.95 * (typeof HV !== 'undefined' ? HV : 25)); e._spr = null; return;
   }
   if (R3.ok && e.sleepB && !e.downed) {   // deitado na cama, dormindo
-    const P = { dir: e.dir || 0, walk: -1, down: true, bed: 1, nowp: 1, lost: e.lost || 0, pro: e.pro || 0 };
-    const s = e.isNpc ? npcSprite3D(e.kind, P) : heroSprite3D(e.cls, e.skin, e.color, P);
+    const pr = e.massageUntil > performance.now(), P = { dir: pr ? ((e.dir || 0) + 4) % 8 : (e.dir || 0), walk: -1, down: true, bed: 1, nowp: 1, lost: e.lost || 0, pro: e.pro || 0, prone: pr ? 1 : 0 };   /* de bruços o corpo tomba para o outro lado: gira para a cabeça ficar no travesseiro */   /* massagem: de bruços */
+    const s = pr && !e.isNpc && typeof massageSprite === 'function' ? massageSprite(e, P.dir) : e.isNpc ? npcSprite3D(e.kind, P) : heroSprite3D(e.cls, e.skin, e.color, P);
     ctx.imageSmoothingEnabled = true; pblit(ctx, s, sx, sy - 11); if (typeof drawZzz === 'function') drawZzz(ctx, sx, sy - 26, now); e._spr = null; return;
   }
   if (R3.ok && e.knockUntil && now < e.knockUntil && !e.downed) { const kf = FALLS['kp' + e.id]; if (now < e.knockUntil - 650 && kf) { drawFall(ctx, kf, sx, sy, now, 1, woundLevel(e)); e._spr = null; return; } }

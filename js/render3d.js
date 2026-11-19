@@ -112,6 +112,13 @@ function buildHumanoid(L, opts = {}) {
     const lap = mesh(boxG(0.04 * S, 0.34 * S, 0.02 * S), mat('#d8d2c4', 'cloth'), 0.02 * S, 0.02 * S, 0.142 * S); lap.rotation.z = 0.45; chest.add(lap);
     const ob = mesh(cylG(0.178 * S, 0.178 * S, 0.07 * S), mat('#141414', 'cloth'), 0, -0.07 * S, 0); ob.scale.set(1.08, 1, 0.8); spine.add(ob); R.gi = gm; }
   if (L.armor === 'vest') { const ap = mesh(boxG(0.22 * S, 0.5 * S, 0.02 * S), body2M, 0, -0.12 * S, 0.12 * S); chest.add(ap); }
+  if (L.obi) {   /* obi largo com faixa dourada, laço atrás e as caudas longas (darari) até os pés */
+    const om = mat(hx(L.obi), 'cloth'), og = mat(hx(L.obiGold || '#d4a94a'), 'gold'); const ob = mesh(cylG(0.185 * S, 0.185 * S, 0.17 * S), om, 0, -0.04 * S, 0); ob.scale.set(1.08, 1, 0.82); spine.add(ob);
+    for (const yy of [-0.005, -0.075]) { const st = mesh(cylG(0.188 * S, 0.188 * S, 0.014 * S), og, 0, yy * S, 0); st.scale.set(1.08, 1, 0.83); spine.add(st); }
+    const kn = mesh(boxG(0.24 * S, 0.14 * S, 0.08 * S), om, 0, -0.03 * S, -0.17 * S); spine.add(kn);
+    for (const s2 of [-1, 1]) { const tl2 = mesh(boxG(0.1 * S, 0.62 * S, 0.02 * S), om, s2 * 0.055 * S, -0.38 * S, -0.2 * S); tl2.rotation.x = 0.06; spine.add(tl2); const tg = mesh(boxG(0.102 * S, 0.02 * S, 0.022 * S), og, s2 * 0.055 * S, -0.66 * S, -0.215 * S); spine.add(tg); } }
+  if (L.collar) { const cl = mesh(cylG(0.075 * S, 0.09 * S, 0.05 * S, 12), mat(hx(L.collar), 'cloth'), 0, 0.25 * S, 0.01 * S); cl.scale.set(1, 1, 0.8); chest.add(cl); }
+  if (L.sakura && robe) { const pk = mat('#f4b8c8', 'cloth'), wh = mat('#fbeef0', 'cloth'); for (let q = 0; q < 16; q++) { const t = 0.15 + (q % 8) * 0.1, a = (q * 2.399) % (Math.PI * 2) - Math.PI / 2, rr = (0.17 + t * t * 0.17 + t * 0.05) * S + 0.004 * S; if (Math.sin(a) < -0.3) continue; const fl2 = mesh(sphG(0.022 * S), q % 3 ? pk : wh, Math.cos(a) * rr, -0.04 * S - t * 0.82 * S, Math.sin(a) * rr * 0.82); fl2.scale.set(1, 1, 0.4); spine.add(fl2); } }   /* flores de cerejeira no quimono */
   if (L.apron) {   /* avental de serviço: peitilho, saia até os joelhos e laço na cintura */
     const am = mat(hx(L.apron), 'cloth'); chest.add(mesh(boxG(0.2 * S, 0.2 * S, 0.016 * S), am, 0, 0.0, 0.135 * S));
     const sk = mesh(boxG(0.3 * S, 0.42 * S, 0.016 * S), am, 0, -0.3 * S, robe ? 0.2 * S : 0.15 * S); sk.rotation.x = robe ? -0.16 : -0.08; spine.add(sk);
@@ -144,6 +151,7 @@ function buildHumanoid(L, opts = {}) {
     const fM = L.gi ? mat(hx(L.gi), 'cloth') : L.armor === 'plate' ? bodyM : L.armor === 'leather' ? body2M : robe ? mat(hx(L.body), 'cloth') : skinM;
     el.add(mesh(capG(robe ? 0.075 * S : 0.05 * S, 0.18 * S), fM, 0, -0.12 * S, 0));
     if (robe) { const cuff = mesh(torG(0.075 * S, 0.012 * S), trimM, 0, -0.22 * S, 0); cuff.rotation.x = Math.PI / 2; el.add(cuff); }
+    if (L.furisode) { const sl = mesh(boxG(0.025 * S, 0.44 * S, 0.22 * S), mat(hx(L.body), 'cloth'), side * 0.03 * S, -0.26 * S, -0.06 * S); el.add(sl); const sl2 = mesh(boxG(0.026 * S, 0.06 * S, 0.22 * S), mat(hx(L.collar || '#c8302a'), 'cloth'), side * 0.03 * S, -0.46 * S, -0.06 * S); el.add(sl2); }   /* mangas longas penduradas */
     const hand = joint(el, 0, -0.27 * S, 0);
     hand.add(mesh(sphG(0.045 * S), L.armor === 'plate' ? bodyM : skinM, 0, 0, 0));
     return { sh, el, hand };
@@ -203,6 +211,11 @@ function buildHead(head, L, S, skinM, accM, trimM) {
     cap.rotation.x = -0.42;   // inclina para trás: a franja sobe acima dos olhos e a nuca fica coberta
     if (L.hairStyle === 'long') { const back = mesh(capG(0.09 * S, 0.22 * S), hairM, 0, -0.12 * S, -0.05 * S); back.scale.set(1.1, 1, 0.6); head.add(back); }
   }
+  if (L.nihongami) {   /* coque de maiko: volume no alto, abas dos lados, flores e pingentes dourados */
+    const hm = mat(hx(L.hair || '#0e0a0a'), 'hair'); const top = mesh(sphG(0.085 * S), hm, 0, 0.12 * S, -0.03 * S); top.scale.set(1.2, 0.8, 1); head.add(top); for (const s2 of [-1, 1]) { const wg = mesh(sphG(0.06 * S), hm, s2 * 0.1 * S, 0.03 * S, -0.03 * S); wg.scale.set(0.8, 1, 1.1); head.add(wg); } const bk = mesh(sphG(0.07 * S), hm, 0, 0.02 * S, -0.11 * S); head.add(bk);
+    const fl = ['#e83a5a', '#f4b8c8', '#ffffff', '#e8c040', '#c8302a']; for (let q = 0; q < 9; q++) { const a = -0.9 + q * 0.22; head.add(mesh(sphG(0.022 * S), mat(fl[q % 5], 'cloth'), Math.sin(a) * 0.11 * S, 0.1 * S + Math.cos(a * 2) * 0.02 * S, 0.02 * S - Math.abs(a) * 0.03 * S)); }
+    for (let q = 0; q < 4; q++) head.add(mesh(boxG(0.006 * S, 0.07 * S, 0.004 * S), mat('#d4a94a', 'gold'), 0.08 * S + q * 0.008 * S, 0.02 * S - q * 0.004 * S, 0.03 * S)); head.add(mesh(sphG(0.012 * S), mat('#d4a94a', 'gold'), -0.06 * S, 0.17 * S, 0)); }
+  if (L.lips) head.add(mesh(boxG(0.022 * S, 0.008 * S, 0.006 * S), mat(hx(L.lips), 'skin'), 0, -0.047 * S, 0.096 * S));
   if (L.fez) {   /* fez de feltro com borla preta */
     const fm = mat(hx(L.fez), 'cloth'), fz = mesh(cylG(0.075 * S, 0.095 * S, 0.12 * S, 16), fm, 0, 0.11 * S, -0.005 * S); head.add(fz); head.add(mesh(cylG(0.075 * S, 0.075 * S, 0.006 * S, 16), mat('#6a1410', 'cloth'), 0, 0.172 * S, -0.005 * S));
     const ts = mesh(cylG(0.006 * S, 0.012 * S, 0.1 * S, 6), mat('#141010', 'cloth'), 0.05 * S, 0.12 * S, -0.06 * S); ts.rotation.z = -0.35; head.add(ts); }

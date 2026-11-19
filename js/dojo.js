@@ -145,6 +145,11 @@ function drawWader(ctx, e, sx, sy, now) {
   ctx.lineWidth = 0.4; const ph = (now / (e.walking ? 600 : 1500)) % 1; ctx.strokeStyle = 'rgba(255,255,255,' + (0.55 * (1 - ph)).toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(sx, wy + 1, 5 + ph * 9, 1.8 + ph * 3, 0, 0, 7); ctx.stroke();
   ctx.restore();
 }
+function massageSprite(e, dir) {   /* de bruços e de sunga durante a massagem */
+  const lk = e.cls + ':' + e.skin + ':' + e.color, P1 = { dir: dir | 0, walk: -1, down: true, bed: 1, nowp: 1 };
+  return cache3('mass|' + lk + '|' + (dir | 0), () => { const L = lookFor('bath:' + lk, () => { const L0 = heroLook(e.cls, e.skin, e.color); return Object.assign(L0, { hair: L0.hair || '#4a3424', armor: 'bare', body: L0.skin, body2: L0.skin, legs: L0.skin, boots: L0.skin, head: 'none', cape: false, weapon: null, shield: null, pauldron: null, quiver: false, extra: null, pattern: null, trunks: BATH_TRUNKS[e.cls] || '#2a3a5a' }); });
+    let R = _rigs.get('bath:' + lk); if (!R) { R = buildHumanoid(L); _rigs.set('bath:' + lk, R); } const Q = buildPose(e.cls, P1); applyPose(R, Q, P1, 0); return shoot3D(R, P1.dir, Math.PI / 2, false); }, 'mass|' + e.id);
+}
 function wadingNow(e) { return R3.ok && !e.bathing && !e.downed && (e.fl || 0) > 0 && e.fb != null && typeof inOfuroWater === 'function' && inOfuroWater(BUILDINGS[e.fb], e.fl, e.rx, e.ry); }
 // a roupa (na cor da vocação) e a arma penduradas no cabideiro
 function drawRack(ctx, e, sx, sy) {   /* a roupa (na cor da vocação) dobrada no deque, com a toalha por cima e a arma deitada ao lado */
@@ -159,7 +164,7 @@ function drawRack(ctx, e, sx, sy) {   /* a roupa (na cor da vocação) dobrada n
 // ---------- bonecos de treino: F perto de um makiwara ou mokujin; o boneco balança quando apanha ----------
 function dummyNear() { const me = G.me; if (!me || me.downed || me.bathing || G.training) return null; let best = null, bd = 1.7; for (const q of DUMMIES) { if ((q.fl || 0) !== (me.fl || 0)) continue; const dd = Math.hypot(me.x - q.x, me.y - q.y); if (dd < bd) { bd = dd; best = q; } } return best; }
 if (typeof progEvent === 'function') { const _peT = progEvent; progEvent = function (m, now) {
-  if (m.t === 'train') { G.training = !!m.on; return true; }
+  if (m.t === 'train') { G.training = !!m.on; if (m.on && G.me && DUMMIES[m.i]) { const q = DUMMIES[m.i]; G.me.dir = dirFromVec(q.x - q.fx, q.y - q.fy, G.me.dir); } return true; }   /* treinando: de frente para o boneco, sem girar com o mouse */
   if (m.t === 'tub') { tubRecv(m); return true; }
   if (m.t === 'dummyhit') { const q = DUMMIES[m.i]; if (q) setTimeout(() => { const w = tileW(q.x, q.y, 22); for (let k = 0; k < 4; k++) spawnPart('dust', w.x + (Math.random() - 0.5) * 6, w.y + (Math.random() - 0.5) * 4); if (q.t === 'makiwara') for (let k = 0; k < 2; k++) spawnPart('sparkle', w.x, w.y, { color: 'rgba(230,200,120,A)', life: 350 }); }, m.d || 0); return true; }
   return _peT(m, now);
@@ -214,7 +219,7 @@ function drawOfuroFx(ctx, P, now) {
   ctx.restore();
   if (T.lever) drawCascade(ctx, b, me.fl, P, now, base + 0.33 * HV, hW - 0.33);   /* as bicas correm com a alavanca para baixo */
   const hot = lv > 0.05 && !T.cold, filling = T.lever && lv < 1;
-  if (hot && G.view && Math.random() < 0.12 + 0.3 * lv + (filling ? 0.3 : 0)) { const [vx, vy] = at(0.3 + Math.random() * 1.4, 0.3 + Math.random() * 1.4); spawnPart('smoke', vx - G.view.ox, vy - G.view.oy - 2, { color: '#ffffff' }); }   /* vapor */
+  if (hot && G.view && Math.random() < 0.025 + 0.06 * lv + (filling ? 0.05 : 0)) { const [vx, vy] = at(0.3 + Math.random() * 1.4, 0.3 + Math.random() * 1.4); spawnPart('smoke', vx - G.view.ox, vy - G.view.oy - 2, { color: '#ffffff' }); }   /* vapor */
   const busy = lv >= 0.5 && Object.values(G.players).some(q => q.bathing && q.fb === me.fb && q.fl === O2.fl); if (busy && !G.ofuroOn) G.ofuroOn = now; if (!busy) G.ofuroOn = 0;   /* os jatos ligam quando alguém entra e ficam ligados enquanto houver gente */
   if (!busy) return;
   const on = Math.min(1, (now - G.ofuroOn) / 1500);
@@ -300,7 +305,7 @@ function drawCascade(ctx, b, fl, P, now, raise, hitH = -0.02) {   /* cortina d'�
   for (let k = 0; k < 10; k++) { const q = (now / 900 + k / 10) % 1, [hx, hy] = hits[k % N]; ctx.fillStyle = 'rgba(255,255,255,' + (0.7 * (1 - q)).toFixed(2) + ')'; ctx.fillRect(hx + Math.sin(k * 2.1) * 3 * q, hy + q * 5, 0.45, 0.45); }   /* bolhas espalhando */
   ctx.restore();
   if (G.view && Math.random() < 0.55) { const [hx, hy] = hits[Math.floor(Math.random() * N)]; spawnPart('sparkle', hx - G.view.ox + (Math.random() - 0.5) * 2, hy - G.view.oy - 1, { color: 'rgba(225,248,255,A)', vx: (Math.random() - 0.5) * 0.05, vy: -0.03 - Math.random() * 0.04, life: 400 }); }   /* respingos */
-  if (G.view && Math.random() < 0.12) spawnPart('smoke', cx - G.view.ox, cy - G.view.oy - 4, { color: '#ffffff' });   /* névoa da queda */
+  if (G.view && Math.random() < 0.035) spawnPart('smoke', cx - G.view.ox, cy - G.view.oy - 4, { color: '#ffffff' });   /* névoa da queda */
 }
 
 // ---------- portas de correr dos apartamentos: abrem deslizando quando alguém chega perto e fecham sozinhas ----------

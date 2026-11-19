@@ -713,6 +713,7 @@ function bandage(p) {
 }
 function damagePlayer(p, raw, m, delay = 0, zone = null, exactPart = null) {
   if (p.dev) return;   // o Tecelão não se fere
+  p._hitT = now_(); if (m && m.npc && typeof segDefendNpc === 'function') segDefendNpc(m.id, p);   /* os seguranças defendem de sentinelas e moradores */
   if (p.sleep != null) p.sleep = null;
   if (p.downed) {
     // lobos atacam quem está caído: a pessoa sangra mais rápido
@@ -2011,7 +2012,7 @@ function npcDamage(n, dmg, p) {
   if (p) witnessCrime(p, n.x, n.y, n.downed ? 'murder' : 'assault');
   if (n.carrying) { npcDropCarried(n); n.mission = null; sys(n.name + ' largou o preso!'); }   // resgate: atacar o guarda que leva alguém
   if (n.kind === 'executioner') abortExecution('O carrasco foi atacado! A execução foi interrompida.');
-  if (n.seg) { n.hp -= dmg; sfx(n.x, n.y, '-' + dmg, '#ff8a6a'); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'hurt', ms: 300 }); if (n.hp <= 0 && typeof segKilled === 'function') { segKilled(n, p); return; } if (p && !n.fight) n.fight = { id: p.id, until: now + 20000 }; return; }   /* segurança atacado: revida (e pode morrer) */
+  if (n.seg) { if (n.downed) { if (typeof segKilled === 'function') segKilled(n, p); return; } n.hp -= dmg; sfx(n.x, n.y, '-' + dmg, '#ff8a6a'); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'hurt', ms: 300 }); if (n.hp <= 0) { n.hp = 0; n.downed = { until: now + 90000 }; n.fight = null; n.fightN = null; n.monT = null; n.kill = null; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'hurt', ms: 500 }); const q2 = typeof empOwnerP === 'function' && empOwnerP(n.seg); if (q2) tell(q2, n.name.split(',')[0] + ' caiu! Socorra ou ele morre.'); return; } if (p && !n.fight) n.fight = { id: p.id, until: now + 20000 }; return; }   /* segurança atacado: revida (e pode morrer) */
   if (n.downed) { npcDie(n, p); return; }
   n.hp -= dmg; sfx(n.x, n.y, '-' + dmg, '#ff8a6a'); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'hurt', ms: 300 });
   if (n.kind === 'guard' && p) { n.aggro = p.id; p.wanted = Math.max(p.wanted || 0, now + 300000); Net.toAll({ t: 'wanted', id: p.id, ms: p.wanted - now }); }
@@ -2031,10 +2032,10 @@ function npcReact(n, p, now) {
 }
 function npcFightTick(n, now, dt) {
   const q = S.players[n.fight.id]; if (!q || q.downed || q.dev || now > n.fight.until || dist(n.x, n.y, q.x, q.y) > 14) { n.fight = null; n.goHome = true; return false; }
-  const d = dist(n.x, n.y, q.x, q.y); if (d > 1.3) { npcWalk(n, q.x, q.y, 2.1, dt); return true; }
+  const d = dist(n.x, n.y, q.x, q.y); { const [sx, sy] = attackSlot(n, q), ds = dist(n.x, n.y, sx, sy); if (d > 1.6 || (ds > 0.35 && d > 0.7 && (sx !== q.x || sy !== q.y))) { npcWalk(n, sx, sy, d > 3 ? 2.1 : 1.5, dt); if (d > 1.6) return true; } }
   n.dir = dirFromVecS(q.x - n.x, q.y - n.y);
   if (now >= (n.nextAtk || 0)) { n.nextAtk = now + 1500; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'atk_slashR', ms: 900, tx: q.x, ty: q.y });
-    setTimeout(() => { if (n.dead || n.downed || !S.players[q.id] || q.downed || dist(n.x, n.y, q.x, q.y) > 1.8) return; if (now_() < (q.dodgeUntil || 0)) { near(q.x, q.y, { t: 'whiff', id: q.id }); return; } if (q.parry) { q.cst -= 10; near(q.x, q.y, { t: 'clang', x: (n.x + q.x) / 2, y: (n.y + q.y) / 2 }); sendStat(q); return; } damagePlayer(q, rint(7, 13), { x: n.x, y: n.y, name: n.name }, 0, 'torso'); }, 480); }
+    setTimeout(() => { if (n.dead || n.downed || !S.players[q.id] || q.downed || dist(n.x, n.y, q.x, q.y) > 1.8) return; if (now_() < (q.dodgeUntil || 0)) { near(q.x, q.y, { t: 'whiff', id: q.id }); return; } if (q.parry) { q.cst -= 10; near(q.x, q.y, { t: 'clang', x: (n.x + q.x) / 2, y: (n.y + q.y) / 2 }); sendStat(q); return; } damagePlayer(q, rint(7, 13), { x: n.x, y: n.y, name: n.name, id: n.id, npc: 1 }, 0, 'torso'); }, 480); }
   return true;
 }
 function npcFleeTick(n, now, dt) {
@@ -2087,9 +2088,18 @@ function startExecutionOld(v, by) {
   setTimeout(() => { const q = S.players[v.id]; if (!q) return; q.execAt = 0; if (!q.downed) return; q.downed = null; severPlayer(q, 'head', { x: STAGE.x, y: STAGE.y + 1, name: 'o Carrasco' }); }, 2600);
   return true;
 }
+function guardsOn(pid, self) { let c = 0; for (const o of Object.values(S.npcs)) if (o !== self && o.kind === 'guard' && !o.dead && !o.downed && (o.arrest === pid || o.aggro === pid || o.goFetch === pid || (o.lead && o.lead.id === pid) || o.carrying === pid)) c++; return c; }   /* quantas sentinelas já cuidam desse jogador */
+// lugar em volta do alvo para cada atacante (não se amontoam: cada um ataca de um lado)
+function attackSlot(n, tgt) {
+  const crew = Object.values(S.npcs).filter(o => !o.dead && !o.downed && (o.arrest === tgt.id || o.aggro === tgt.id || (o.fight && o.fight.id === tgt.id)) && dist(o.x, o.y, tgt.x, tgt.y) < 6).sort((a, b) => (a.id < b.id ? -1 : 1));
+  const k = Math.max(0, crew.indexOf(n)), N = Math.max(1, crew.length); if (N < 2) return [tgt.x, tgt.y];
+  const base = Math.atan2(crew[0].y - tgt.y, crew[0].x - tgt.x), a = base + k * (Math.PI * 2 / N), r = 1.0;
+  const x = tgt.x + Math.cos(a) * r, y = tgt.y + Math.sin(a) * r; return npcStand(x, y, 0.2) ? [x, y] : [tgt.x, tgt.y];
+}
 function guardThink(n, now, dt) {
   n.walk = false;
   if (n.lead) { leadTick(n, now, dt); return; }
+  if (n.fightSeg) { const t = S.npcs[n.fightSeg]; if (!t || t.dead || now > (n.fightSegT || 0)) n.fightSeg = null; else { const d = dist(n.x, n.y, t.x, t.y); if (d > 1.3) { npcWalk(n, t.x, t.y, 2.3, dt); return; } n.dir = dirFromVecS(t.x - n.x, t.y - n.y); if (now >= (n.nextAtk || 0)) { n.nextAtk = now + 1400; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'atk_slashR', ms: 900, tx: t.x, ty: t.y }); setTimeout(() => { if (!n.dead && !n.downed && S.npcs[t.id] && !t.dead && dist(n.x, n.y, t.x, t.y) < 1.9) npcDamage(t, rint(14, 22), null); }, 420); } return; } }   /* briga com um segurança contratado */
   if (n.escort) {   // (antigo) escoltando um preso até a cela
     const q = S.players[n.escort]; if (!q || q.downed) { if (q) { q.escortBy = null; q.dragBy = null; } n.escort = null; return; }
     const J = jailSpot(); if (!J) { n.escort = null; q.escortBy = null; q.dragBy = null; return; }
@@ -2109,6 +2119,7 @@ function guardThink(n, now, dt) {
   // carregando alguém: procurado vai ao cadafalso; ferido inocente vai à sacerdotisa
   if (n.carrying) {
     const q = S.players[n.carrying]; if (!q || !q.downed) { if (q) npcDropCarried(n); else n.carrying = null; return; }
+    n.carryT = n.carryT || now; if (now - n.carryT > 70000) { n.carryT = 0; const v = npcDropCarried(n); if (v) { if (n.mission === 'stage' && STAGE.x >= 0) { v.x = STAGE.x - 1.6; v.y = STAGE.y + 1.2; if (!startExecution(v, n.name)) tell(v, 'Sem carrasco, a sentinela te larga no cadafalso.'); } else { v.x = TEMPLE_SPAWN.x; v.y = TEMPLE_SPAWN.y; if (npcAlive('priest')) revivePlayer(v, 0.35, 'Irmã Lúmina'); } Net.toOne(v.id, { t: 'tp', x: v.x, y: v.y, z: 0, fl: 0, fb: -1 }); } n.mission = null; return; }   /* caminho travado: chega de qualquer jeito */
     q.x = n.x; q.y = n.y; q.downed.until = Math.max(q.downed.until, now + 4000);
     if (n.mission === 'stage' && STAGE.x >= 0) { if (npcWalk(n, STAGE.x - 1.6, STAGE.y + 1.2, 1.7, dt)) { const v = npcDropCarried(n); if (v && !startExecution(v, n.name)) tell(v, 'Sem carrasco, a sentinela te larga no cadafalso.'); n.mission = null; } }
     else { const tx = TEMPLE_SPAWN.x, ty = TEMPLE_SPAWN.y; if (npcWalk(n, tx, ty, 1.7, dt)) { const v = npcDropCarried(n); n.mission = null; if (v && npcAlive('priest')) { revivePlayer(v, 0.35, 'Irmã Lúmina'); tell(v, 'A sentinela te trouxe até a Irmã Lúmina.'); } } }
@@ -2116,7 +2127,7 @@ function guardThink(n, now, dt) {
   }
   // procurados à vista: persegue e ataca; caído, carrega
   let tgt = null, bd = 14;
-  for (const q of Object.values(S.players)) { if (q.dev || q.carriedBy || q.execAt || q.condemned || q.bound || q.jailUntil > now || q.escortBy || q.surrendered || !(now < (q.wanted || 0) || n.aggro === q.id || n.arrest === q.id)) continue; const d = dist(n.x, n.y, q.x, q.y), mine = n.arrest === q.id && now < (q.wanted || 0); if ((d < bd && (d < 3 || sightClear(n.x, n.y, q.x, q.y))) || (mine && d < 40)) { bd = mine ? -1 : d; tgt = q; } }
+  for (const q of Object.values(S.players)) { if (q.dev || q.carriedBy || q.execAt || q.condemned || q.bound || q.jailUntil > now || q.escortBy || q.surrendered || !(now < (q.wanted || 0) || n.aggro === q.id || n.arrest === q.id)) continue; if (n.arrest !== q.id && n.aggro !== q.id && guardsOn(q.id, n) >= 2) continue; const d = dist(n.x, n.y, q.x, q.y), mine = n.arrest === q.id && now < (q.wanted || 0); if ((d < bd && (d < 3 || sightClear(n.x, n.y, q.x, q.y))) || (mine && d < 40)) { bd = mine ? -1 : d; tgt = q; } }
   if (tgt) bd = dist(n.x, n.y, tgt.x, tgt.y);
   if (tgt && n.arrest !== tgt.id && !tgt.downed) { n.arrest = tgt.id; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'shout', txt: ['Pare! Em nome de Nae!', 'Alto lá! Largue a arma!', 'Renda-se!'][Math.floor(Math.random() * 3)], ms: 1 }); }
   if (!tgt && n.arrest) { const q = S.players[n.arrest]; if (!q || !(now < (q.wanted || 0)) || q.jailUntil > now) n.arrest = null; }
@@ -2127,11 +2138,11 @@ function guardThink(n, now, dt) {
   }
   if (tgt) {
     if (tgt.downed) { if (dist(n.x, n.y, tgt.x, tgt.y) < 1.3) { if (Object.values(S.npcs).some(o => o.lead && o.lead.id === tgt.id)) return; n.aggro = null; n.arrest = null; startLead(n, tgt, tgt.murderer ? 'stage' : 'jail', now); } else npcWalk(n, tgt.x, tgt.y, 2.3, dt); return; }
-    if (bd > 1.3) { npcWalk(n, tgt.x, tgt.y, 2.3, dt); return; }
+    { const [sx, sy] = attackSlot(n, tgt), ds = dist(n.x, n.y, sx, sy); if (bd > 1.6 || (ds > 0.35 && bd > 0.7 && (sx !== tgt.x || sy !== tgt.y))) { npcWalk(n, sx, sy, bd > 3 ? 2.3 : 1.6, dt); if (bd > 1.6) return; } }
     if (now >= (n.nextAtk || 0)) {
       n.nextAtk = now + 1400; n.face = Math.atan2(tgt.y - n.y, tgt.x - n.x);
       near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'atk_slashR', ms: 900, tx: tgt.x, ty: tgt.y });
-      setTimeout(() => { if (n.dead || n.downed || !S.players[tgt.id] || tgt.downed || dist(n.x, n.y, tgt.x, tgt.y) > 1.8) return; if (now_() < (tgt.dodgeUntil || 0)) { near(tgt.x, tgt.y, { t: 'whiff', id: tgt.id }); return; } if (tgt.parry) { tgt.cst -= 16; near(tgt.x, tgt.y, { t: 'clang', x: (n.x + tgt.x) / 2, y: (n.y + tgt.y) / 2 }); if (tgt.cst <= 0) guardBreak(tgt, now_()); sendStat(tgt); return; } damagePlayer(tgt, rint(16, 26), { x: n.x, y: n.y, name: n.name }, 0, 'torso'); }, 480);
+      setTimeout(() => { if (n.dead || n.downed || !S.players[tgt.id] || tgt.downed || dist(n.x, n.y, tgt.x, tgt.y) > 1.8) return; if (now_() < (tgt.dodgeUntil || 0)) { near(tgt.x, tgt.y, { t: 'whiff', id: tgt.id }); return; } if (tgt.parry) { tgt.cst -= 16; near(tgt.x, tgt.y, { t: 'clang', x: (n.x + tgt.x) / 2, y: (n.y + tgt.y) / 2 }); if (tgt.cst <= 0) guardBreak(tgt, now_()); sendStat(tgt); return; } damagePlayer(tgt, rint(16, 26), { x: n.x, y: n.y, name: n.name, id: n.id, npc: 1 }, 0, 'torso'); }, 480);
     }
     return;
   }
@@ -2172,6 +2183,7 @@ function npcTick(now, dt) {
   if (now - (S.visT || 0) > 1500) { S.visT = now; const night = typeof dayInfoS === 'function' ? dayInfoS().night : false, want = night ? 5 : 15, have = Object.values(S.npcs).filter(n => n.transient && !n.bizWorker && !n.bard && !n.collector && !n.emp && !n.seg).length; if (have < want && Math.random() < 0.5 && Object.keys(S.players).length) visSpawn(now); for (const n of Object.values(S.npcs)) if (n.transient && (n.dead || now - n.born > 600000) && !n.dragBy) visGone(n); }
   for (const n of Object.values(S.npcs)) {
     if (n.dead) continue;
+    if (n.downed && n.seg && typeof segDownTick === 'function') { segDownTick(n, now, dt); continue; }
     if (n.downed) { npcCrawl(n, now, dt); if (now > n.downed.until && !n.dragBy) { n.downed = null; n.hp = Math.round(n.maxHp * 0.3); n.goHome = n.id !== 'fruit'; sys(n.name + ' se levantou, ferido.'); } continue; }
     if (n.fight && npcFightTick(n, now, dt)) continue;
     if (n.flee && npcFleeTick(n, now, dt)) continue;
@@ -2376,6 +2388,7 @@ function startLead(n, q, dest, now) {
 }
 function leadTick(n, now, dt) {
   const L = n.lead, q = S.players[L.id];
+  if (q && L.phase === 'walk') { L.t0 = L.t0 || now; if (now - L.t0 > 90000) { if (L.dest === 'stage') { n.lead = null; q.dragBy = null; q.x = STAGE.x - 1.6; q.y = STAGE.y + 1.2; Net.toOne(q.id, { t: 'tp', x: q.x, y: q.y, z: 0, fl: 0, fb: -1 }); startExecution(q, n.name); return; } const c = JAILCELLS[L.cell]; if (c) { n.x = c.door[0]; n.y = c.door[1]; q.x = c.spot[0]; q.y = c.spot[1]; Net.toOne(q.id, { t: 'tp', x: q.x, y: q.y, z: 0, fl: 0, fb: -1 }); } } }   /* escolta travada no caminho: chega de qualquer jeito */
   if (!q || (q.downed && L.dest === 'jail')) { if (q) q.dragBy = null; if (L.cell != null && cellsState()[L.cell] && String(cellsState()[L.cell].who).startsWith('res:')) cellsState()[L.cell].who = null; n.lead = null; return; }
   q.lastMv = now; q.walking = false;
   if (L.phase === 'cuff') { if (now >= L.t) { bindPlayer(q, 'cuffs'); L.phase = 'walk'; } return; }
@@ -3485,7 +3498,7 @@ function residentTick(n, now, dt) {
   if (act === 'social' && n.gold < 3) act = 'home';   /* sem dinheiro, nada de taverna */
   if (S.simEv && S.simEv.party > gameNow() && act !== 'sleep') act = 'social';   /* festa: todo mundo na taverna */
   if (act !== n.act) { if (n.act === 'social' && (act === 'home' || act === 'sleep') && hr >= 20.5 && Math.random() < 0.4) n.drunkT = now + 150000; seatFree(n); n.act = act; n.sleeping = false; const [tx, ty] = resSpot(n, act); n.rpath = planRoute(n, tx, ty); n.arrived = false; }
-  if (n.rpath && n.rpath.length) { const [wx, wy] = n.rpath[0]; if (npcWalk(n, wx, wy, 1.15, dt) || dist(n.x, n.y, wx, wy) < 0.45 || (n.seatK != null && n.rpath.length === 1 && dist(n.x, n.y, wx, wy) < 1.3)) { n.rpath.shift(); if (!n.rpath.length) { n.arrived = true; n.x = wx; n.y = wy; if (n.seatK != null) { const s = WORLD.seats[n.seatK]; n.x = s.x; n.y = s.y; n.dir = s.dir; n.sitting = true; } } } return; }
+  if (n.rpath && n.rpath.length) { const [wx, wy] = n.rpath[0], seatNear = n.seatK != null && n.rpath.length === 1 && dist(n.x, n.y, wx, wy) < 1.3; if (seatNear || npcWalk(n, wx, wy, 1.15, dt) || dist(n.x, n.y, wx, wy) < 0.45) { n.rpath.shift(); if (!n.rpath.length) { n.arrived = true; if (n.seatK != null || dist(n.x, n.y, wx, wy) < 0.25) { n.x = wx; n.y = wy; } if (n.seatK != null) { const s = WORLD.seats[n.seatK]; n.x = s.x; n.y = s.y; n.dir = s.dir; n.sitting = true; } } } return; }
   if (n.sitting) n.doze = n.drunkT > now && hr >= 21;   // bêbado cochila na mesa
   // chegou: efeito da atividade
   if (act === 'sleep') { n.sleeping = true; N.rest = Math.min(100, N.rest + dt * perDay * 14); }

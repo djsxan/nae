@@ -21,7 +21,29 @@ function estateEvent(m) {
   if (m.rs) G.est.rs = m.rs; if (m.biz) G.est.biz = m.biz; if (m.ten) G.est.ten = m.ten; if (m.cour) G.est.cour = m.cour; if (m.bank != null) G.bankG = m.bank;
   if (typeof hubRender === 'function') hubRender();
   if (estOpen()) estRender();
+  if (chestOpenNow()) chestRender();
   return true;
+}
+// ---------- baú da casa: painel próprio no estilo da troca (Guardar / Pegar), com 1, 5 ou tudo ----------
+const chestOpenNow = () => { const el = document.getElementById('chestp'); return el && !el.classList.contains('hidden'); };
+function chestOpen() { G.chestTab = G.chestTab || 'put'; chestRender(); }
+function chestRender() {
+  const M = G.est && G.est.mine, me = G.me; let d = document.getElementById('chestp'); if (!M || !me) { if (d) d.classList.add('hidden'); return; }
+  if (!d) { d = document.createElement('div'); d.id = 'chestp'; d.className = 'gpanel'; document.body.appendChild(d); }
+  const PP = PROPS_BY[M.pid], cap = PP && PP.suite ? 96 : 48, ch = M.chest || {}, inv = me.inv || {}, used = Object.keys(ch).length;
+  const row = (k, q, a) => { const L = LOOT[k]; if (!L) return ''; const b = (n, t) => '<button class="est-btn" data-a="' + a + '" data-k="' + k + '" data-n="' + n + '">' + t + '</button>';
+    return '<div class="tr-row"><span class="tr-ic" style="color:' + L.color + '">' + L.icon + '</span><span class="tr-nm">' + L.name + '<small>' + (a === 'put' ? 'na mochila: ' : 'no baú: ') + q + (a === 'put' && ch[k] ? ' · no baú: ' + ch[k] : '') + '</small></span><span style="display:flex;gap:4px">' + b(1, '1') + (q > 1 ? b(Math.min(5, q), q >= 5 ? '5' : String(q)) : '') + (q > 1 ? b(q, 'Tudo') : '') + '</span></div>'; };
+  const putList = Object.keys(inv).filter(k => LOOT[k] && inv[k] > 0).map(k => row(k, inv[k], 'put')).join('') || '<div class="gp-note">Sua mochila está vazia.</div>';
+  const takeList = Object.keys(ch).filter(k => LOOT[k] && ch[k] > 0).map(k => row(k, ch[k], 'take')).join('') || '<div class="gp-note">O baú está vazio.</div>';
+  d.innerHTML = '<div class="gp-head"><span>🧰 Baú · ' + (PP ? PP.name.split(' ·')[0] : 'casa') + '</span><span class="gp-gold">' + used + '/' + cap + ' tipos</span><button class="gp-x" id="ch-x">✕</button></div>' +
+    '<div class="gm-sub tr-tabs"><button data-ct="put"' + (G.chestTab === 'put' ? ' class="on"' : '') + '>Guardar</button><button data-ct="take"' + (G.chestTab === 'take' ? ' class="on"' : '') + '>Pegar</button></div>' +
+    '<div class="tr-list">' + (G.chestTab === 'put' ? putList : takeList) + '</div>' +
+    (G.chestTab === 'put' ? '<div style="padding:6px 12px 10px"><button class="est-btn" id="ch-all">Guardar tudo da mochila</button></div>' : '<div class="gp-note">O baú é só seu: o que fica aqui não cai quando você cai.</div>');
+  d.classList.remove('hidden');
+  d.querySelector('#ch-x').onclick = () => d.classList.add('hidden');
+  d.querySelectorAll('[data-ct]').forEach(b => b.onclick = () => { G.chestTab = b.dataset.ct; chestRender(); });
+  d.querySelectorAll('[data-a]').forEach(b => b.onclick = () => Net.send({ t: 'estate', a: b.dataset.a, k: b.dataset.k, q: +b.dataset.n }));
+  const all = d.querySelector('#ch-all'); if (all) all.onclick = () => { for (const k of Object.keys(inv)) if (LOOT[k] && inv[k] > 0) Net.send({ t: 'estate', a: 'put', k, q: inv[k] }); };
 }
 const estOpen = () => { const el = document.getElementById('estate'); return el && !el.classList.contains('hidden'); };
 const estMine = pid => (G.est.mine && G.est.mine.pid === pid) || G.est.biz.some(b => b.pid === pid);
@@ -186,6 +208,7 @@ function estatePrompt() {
   return '';
 }
 function estateF() {
+  if (estChestHere()) { chestOpen(); return true; }   /* perto do baú: o painel do baú */
   if (estInHome()) { estToggle(true, 'mine'); return true; }
   const b = estInBiz(); if (b) { bizOpen(b.pid); return true; }
   const P = estNearSign(); if (P) { estToggle(true, P.kind === 'bank' || P.kind === 'hotel' ? 'shop' : P.kind, P.id); return true; }

@@ -244,7 +244,7 @@ function interiorLayout0(b, fl = 0) {
     const tw = o.w || 1, th = o.h || 1;
     if (!o.force) for (let a = 0; a < tw; a++) for (let c = 0; c < th; c++) if (!can(i + a, j + c)) return false;
     for (let a = 0; a < tw; a++) for (let c = 0; c < th; c++) taken.add(key(i + a, j + c));
-    F.push({ t, i, j, w: tw, h: th, block: o.block !== false, seat: o.seat, v: o.v || 0, cab: o.cab, inner: o.inner, adj: o.adj, wp: o.wp });
+    F.push({ t, i, j, w: tw, h: th, block: o.block !== false, seat: o.seat, v: o.v || 0, cab: o.cab, inner: o.inner, adj: o.adj, wp: o.wp, ox: o.ox || 0 });
     return true;
   };
   let npc = null;
@@ -321,7 +321,7 @@ function interiorLayout0(b, fl = 0) {
       put('plantpot', 7, 4, { block: false }); put('andon', 7, 2, { block: false }); keep(6, 2); keep(5, 2); keep(2, 4); keep(3, 4); keep(2, 3); keep(3, 3);   // porta do hall e porta de correr da varanda livres
       put('ofuro', 0, 0, { w: 2, h: 2, block: false }); put('andon', 0, 2, { block: false });   /* ala do banho (a cortina separa da cama) */
       put('suitechest', 3, 0); put('platbed', 4, 0, { w: 2, h: 2, block: false });   /* armário-baú laqueado ao lado da cama, do lado sul */
-      put('kotatsu', 3, 2, { block: false }); put('zaisu', 3, 1, { v: 0, block: false }); put('zaisu', 3, 3, { v: 2, block: false, force: 1 }); put('zaisu', 2, 2, { v: 1, block: false }); put('zaisu', 4, 2, { v: 3, block: false });   /* mesinha centralizada com quatro cadeiras baixas (zaisu) */ put('zengarden', 0, 3, { w: 2, h: 2 }); put('jkitchen', 4, 4, { w: 2 });   /* cozinha no canto perto da varanda */
+      put('kotatsu', 3, 2, { block: false, ox: -0.5 }); put('zaisu', 3, 1, { v: 0, block: false, ox: -0.5 }); put('zaisu', 3, 3, { v: 2, block: false, force: 1, ox: -0.5 }); put('zaisu', 2, 2, { v: 1, block: false, ox: -0.3 }); put('zaisu', 4, 2, { v: 3, block: false, ox: -0.7 });   /* meio tile ao sul: centralizado entre a cama e a banheira */   /* mesinha centralizada com quatro cadeiras baixas (zaisu) */ put('zengarden', 0, 3, { w: 2, h: 2 }); put('jkitchen', 4, 4, { w: 2 });   /* cozinha no canto perto da varanda */
     }
   } else if (k === 'shop' && b.deco === 'greenhouse') {   // Boticário de Elva: gavetinhas e potes no fundo, alambique, balcão com balança e almofariz, canteiros, plantas que brilham, vasos pendurados, ervas secando e o tanque
     if (w === 5 && h === 5 && (b.realDoor || b.door) === 'N') {   /* porta no fundo da vista: o alto fica na parede direita, o baixo do lado da câmera */
@@ -1071,9 +1071,9 @@ function generateWorld() {
       for (const f of interiorLayout(b, fl).F) { const cx = f.i + f.w / 2, cz = f.j + f.h / 2, [x, y] = localToWorld(b, cx, cz), A = aptAt(bi, fl, x, y); if (!A) continue;
         if (f.t === 'futon' || f.t === 'platbed') { const [x0, y0] = localToWorld(b, cx, f.j + 0.3), [x1, y1] = localToWorld(b, cx, f.j + f.h - 0.3); BEDS.push({ x, y, dx: x1 - x0, dy: y1 - y0, bi, fl, apt: A.key }); }
         if (f.t === 'tansu') APT_CHESTS.push({ x, y, bi, fl, apt: A.key }); if (f.t === 'chest' || f.t === 'suitechest') APT_CHESTS.unshift({ x, y, bi, fl, apt: A.key });   /* a suíte tem um armário-baú ao lado da cama */
-        if (f.t === 'zaisu') { const R = [[0, 1], [1, 0], [0, -1], [-1, 0]][f.v || 0], [tx, ty] = localToWorld(b, cx + R[0], cz + R[1]); seats.push({ x, y, dir: vecDir8(tx - x, ty - y), h: 0.1, bi, fl, low: 1 }); }   /* almofada: senta no chão, virado para a mesinha */
+        if (f.t === 'zaisu') { const R = [[0, 1], [1, 0], [0, -1], [-1, 0]][f.v || 0], [x, y] = localToWorld(b, cx + (f.ox || 0), cz), [tx, ty] = localToWorld(b, cx + (f.ox || 0) + R[0], cz + R[1]); seats.push({ x, y, dir: vecDir8(tx - x, ty - y), h: 0.1, bi, fl, low: 1 }); }   /* almofada: senta no chão, virado para a mesinha */
         if (f.t === 'irori' || f.t === 'jkitchen') KITCHENS.push({ x, y, bi, fl });
-        if (f.t === 'zengarden') { const [dx, dy] = localToWorld(b, f.i + 1.45, f.j + 0.6), [tx, ty] = localToWorld(b, f.i + 2.5, f.j + 0.6); DUMMIES.push({ x: dx, y: dy, bi, fl, t: 'makiwara', fx: tx, fy: ty, apt: A.key, priv: 1 }); } } } });
+        if (f.t === 'zengarden') { const [dx, dy] = localToWorld(b, f.i + 1.45, f.j + 0.6), [tx, ty] = localToWorld(b, f.i + 2.3, f.j + 0.6); DUMMIES.push({ x: dx, y: dy, bi, fl, t: 'makiwara', fx: tx, fy: ty, apt: A.key, priv: 1 }); } } } });
   // ---- chão da cidade: pedra gasta, terra nas vielas, grama nos cantos, lajes na avenida ----
   for (let y = y0 + 2; y <= y1 - 2; y++) for (let x = x0 + 2; x <= x1 - 2; x++) {
     const i = idx(x, y);

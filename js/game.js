@@ -157,9 +157,9 @@ function clientOnServer(m) {
     case 'anim': {
       const e = (m.w === 'p' ? G.players : m.w === 'n' ? G.npcs : G.monsters)[m.id];
       if (!e) break;
-      e.anim = { a: m.a, t0: now, tx: m.tx, ty: m.ty, ms: m.ms, W: m.W, ang: m.ang, reach: m.reach, arc: m.arc, tool: m.tool }; e.emote = null;
+      if (!(m.a === 'talk' && e.anim && e.anim.a !== 'talk' && now - e.anim.t0 < (e.anim.ms || 0))) e.anim = { a: m.a, t0: now, tx: m.tx, ty: m.ty, ms: m.ms, W: m.W, ang: m.ang, reach: m.reach, arc: m.arc, tool: m.tool }; e.emote = null;   /* uma fala não interrompe a animação em andamento */
       if (m.tool && m.i) { const ti = m.i, tl = m.tool; if (m.w === 'p') e.dir = dirFromVec((ti % MAP_W) - e.rx, Math.floor(ti / MAP_W) - e.ry, e.dir); later(tl === 'sickle' ? 380 : 330, () => gatherFx(ti, tl)); }
-      if (m.w === 'n') { if (m.a === 'adore' && m.ms > 3000) { e.bubble = { t: '✦', until: now + m.ms }; e.reactT = now + m.ms; if (m.tx != null) e.dir = dirFromVec(m.tx - e.rx, m.ty - e.ry, e.dir); } else if (m.a === 'look' && e.bubble && e.bubble.t === '✦') e.bubble = null; if (m.a === 'shout') { e.bubble = { t: m.txt || 'Guardas!', until: now + 2500 }; e.anim = null; } if (m.a === 'talk') { e.bubble = { t: m.txt || '...', until: now + 2600 + (m.txt || '').length * 60 }; e.anim = null; } if (m.a === 'mercy') { e.bubble = { t: m.txt || 'Misericórdia!', until: now + 3000 }; e.anim = null; } }
+      if (m.w === 'n') { if (m.a === 'adore' && m.ms > 3000) { e.bubble = { t: '✦', until: now + m.ms }; e.reactT = now + m.ms; if (m.tx != null) e.dir = dirFromVec(m.tx - e.rx, m.ty - e.ry, e.dir); } else if (m.a === 'look' && e.bubble && e.bubble.t === '✦') e.bubble = null; if (m.a === 'shout') { e.bubble = { t: m.txt || 'Guardas!', until: now + 2500 }; e.anim = null; } if (m.a === 'talk') { e.bubble = { t: m.txt || '...', until: now + 2600 + (m.txt || '').length * 60 }; if (!(e.anim && e.anim.a !== 'talk' && now - e.anim.t0 < (e.anim.ms || 0))) e.anim = null; } if (m.a === 'mercy') { e.bubble = { t: m.txt || 'Misericórdia!', until: now + 3000 }; e.anim = null; } }
       if (m.a === 'execute' && m.id === G.myId) later(380, () => { G.shake = Math.max(G.shake, 6); });
       if (m.tx != null && m.w === 'p' && m.a !== 'spin') e.dir = dirFromVec(m.tx - e.rx, m.ty - e.ry, e.dir);
 
@@ -471,7 +471,7 @@ function updateLocal(now, dt) {
   }
   const stF = (me.crouch ? 1 : 0) | (me.slide ? 2 : 0);
   if (G.mouseS) G.mouseW = screenToWorld(G.mouseS[0], G.mouseS[1]);   // o cursor parado continua apontando para o mesmo lugar da TELA quando a câmera anda
-  if ((combatFacing() || G.parrying) && G.mouseW && !me.sit && !me.bathing && me.sleep == null) { let a = Math.atan2(G.mouseW.y - me.y, G.mouseW.x - me.x);   /* sentado ou deitado: não gira com o mouse */
+  if ((combatFacing() || G.parrying) && G.mouseW && !me.sit && !me.bathing && !G.training && me.sleep == null) { let a = Math.atan2(G.mouseW.y - me.y, G.mouseW.x - me.x);   /* sentado ou deitado: não gira com o mouse */
     { let best = null, bd = 3.4; for (const id in G.monsters) { const q = G.monsters[id]; if (q.dieAt || !q.visible || Math.abs((q.z || 0) - (me.z || 0)) > 0.5) continue; const d = dist(q.rx, q.ry, me.x, me.y), aq = Math.atan2(q.ry - me.y, q.rx - me.x); let df = Math.abs(aq - a) % (Math.PI * 2); if (df > Math.PI) df = Math.PI * 2 - df; if (d < bd && df < 0.95) { bd = d; best = aq; } }
       for (const id in G.players) { const q = G.players[id]; if (id === G.myId || !q.visible || q.downed || q.isNpc) continue; const d = dist(q.rx, q.ry, me.x, me.y), aq = Math.atan2(q.ry - me.y, q.rx - me.x); let df = Math.abs(aq - a) % (Math.PI * 2); if (df > Math.PI) df = Math.PI * 2 - df; if (d < bd && df < 0.95) { bd = d; best = aq; } }
       if (best != null) a = best; }   /* assistência de mira: o inimigo perto, na direção do cursor */
@@ -1081,7 +1081,7 @@ window.addEventListener('keydown', e => {
   const k = e.key.toLowerCase();
   if (typeof obsKey === 'function' && obsKey(k, e)) { e.preventDefault(); return; }
   if (G.paused) { if (typeof gmKey === 'function' && gmKey(k, e)) e.preventDefault(); return; }
-  if (k === 'escape') { if (G.dialog) { closeDialog(); return; } for (const id of ['bankp', 'biz', 'jobboard', 'counterp', 'estate', 'bizhub', 'roompw-ask', 'tradep']) { const el = $(id); if (el && !el.classList.contains('hidden') && el.parentNode === document.body && getComputedStyle(el).display !== 'none') { if (id === 'biz' && typeof bizClose === 'function') bizClose(); else if (id === 'estate') estToggle(false); else if (id === 'bizhub') hubToggle(false); else el.classList.add('hidden'); return; } } if (typeof emToggle === 'function') emToggle(); else togglePause(); return; }
+  if (k === 'escape') { if (G.dialog) { closeDialog(); return; } for (const id of ['chestp', 'bankp', 'biz', 'jobboard', 'counterp', 'estate', 'bizhub', 'roompw-ask', 'tradep']) { const el = $(id); if (el && !el.classList.contains('hidden') && el.parentNode === document.body && getComputedStyle(el).display !== 'none') { if (id === 'biz' && typeof bizClose === 'function') bizClose(); else if (id === 'estate') estToggle(false); else if (id === 'bizhub') hubToggle(false); else el.classList.add('hidden'); return; } } if (typeof emToggle === 'function') emToggle(); else togglePause(); return; }
   if (k >= '1' && k <= '4') { castSkill(+k - 1); return; }
   if (k === '5' && G.me && SKILLS[G.me.cls].length > 4) { if (!e.repeat) castSkill(4); return; }
   if (k === 'q') { drinkPot('hp'); return; }
