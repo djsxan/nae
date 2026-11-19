@@ -1003,6 +1003,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     const p = iso(b.x - 0.5, b.y - 0.5), bx = p.sx + ox, by = p.sy + oy;
     if (bx < -1100 || bx > vw + 1100 || by < -1400 || by > vh + 700) return;
     if (bi === inB) { inside = { b, bi, sx: bx, sy: by }; return; }
+    if (G.dev && G.hideKinds && G.hideKinds.includes(b.kind)) return;   /* só para fotos de teste */
     const sp = buildingSprite(b, false); if (!sp) return;
     G.bldDrawn++;
     const cA = Math.floor(-sp.ax / 32), cB = Math.ceil((sp.w - sp.ax) / 32) - 1;
@@ -1090,7 +1091,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
         if (it.o === O.WATERFALL) { drawWaterfallLive(ctx, it.sx, it.sy, CLIFF_H[h], now); if (Math.random() < 0.5) spawnPart('mist', it.sx - ox + (Math.random() - 0.5) * 50, it.sy - oy + 18); }
         return;
       }
-      if (it.o === O.TOWER) { const p = iso(it.x - 0.5, it.y - 0.5), s = towerSprite(WORLD.tvar[it.y * MAP_W + it.x], WORLD.toff[it.y * MAP_W + it.x]); blitV(s, p.sx + ox, p.sy + oy, it.d); return; }
+      if (it.o === O.TOWER && G.dev && G.hideKinds && G.hideKinds.includes('tower')) { } else if (it.o === O.TOWER) { const p = iso(it.x - 0.5, it.y - 0.5), s = towerSprite(WORLD.tvar[it.y * MAP_W + it.x], WORLD.toff[it.y * MAP_W + it.x]); blitV(s, p.sx + ox, p.sy + oy, it.d); return; }
       const s = seasonTint(objSprite(it.o, it.x, it.y), it.o);
       if (s) { const shk = G.objShake && G.objShake[it.y * MAP_W + it.x], sw = (SWAY[it.o] ? wind(it.x, it.y, now) * SWAY[it.o] * (0.7 + ATM.wind * 0.6) : 0) + (shk && now < shk ? Math.sin(now / 35) * 0.06 * (shk - now) / 450 : 0); if (s.h > 60 && occTest(s, it.sx, it.sy, it.d)) pblit(ctx, s, it.sx, it.sy, 0.42); else drawSway(ctx, s, it.sx, it.sy, sw); }
       liveParts(ctx, it.o, it.sx, it.sy, it.x, it.y, now);

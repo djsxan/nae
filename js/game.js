@@ -832,7 +832,7 @@ const NPC_DIALOG = {
   courier1: { greet: "Pip, mensageiro! Levo e trago o que for, da vila até a Rua Nova, num pé só.", opts: [['Tem alguma entrega para mim?', { job: 'delivery' }], ['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
   courier2: { greet: "Lia Ventura. Conheço cada viela daqui até o rio. Ninguém me alcança.", opts: [['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
   courier3: { greet: "Tomé, carroceiro. Devagar, mas a carga chega inteira. Quase sempre.", opts: [['O que você faz?', { local: 'Quando alguém tem oficina e loja, eu levo a produção de uma para a outra. Se me atacarem no caminho, a carga se perde… então trate bem os mensageiros.' }]] },
-  agent: { greet: 'Bem-vinda, bem-vindo à Agência Mão Amiga! Gente de confiança para a sua casa: cozinham, arrumam, servem e carregam. Os candidatos mudam todo dia.', opts: [
+  agent: { greet: 'Salam! Bem-vindo à Casa das Mãos de Ouro. Sente-se, aceita um chá? Aqui você acha as mãos mais honestas de Nae: quem cozinha, arruma, carrega… e quem protege. Os candidatos mudam todo dia.', opts: [
     ['Ver os candidatos de hoje', { open: 'agency' }],
     ['Como funciona?', { local: 'Você precisa ter uma casa (alugada ou comprada). Escolha um candidato no quadro: cada um tem um jeito e um salário por dia. Na contratação eu cobro um dia de salário. Depois o salário sai sozinho todo dia, primeiro do banco. Sem dinheiro, o empregado avisa e, no dia seguinte, vai embora. Por enquanto, um doméstico por casa.' }],
     ['O que um doméstico faz?', { local: 'Em casa: cozinha com o que tiver no baú, arruma a cama (dormir em cama arrumada descansa mais), serve comida e água quando você chega com fome ou sede e, na suíte, prepara o banho. Fale com ele (F) para mandar seguir você, carregar coisas, levar tudo para casa ou fazer uma massagem. Seguindo você, ele coleta junto.' }]] },
@@ -993,6 +993,7 @@ function standUp() {
 }
 canvas.addEventListener('mousedown', e => {
   if (!G.started) return;
+  if (G.pickTarget && typeof staffPick === 'function' && e.button === 0) { staffPick(e); return; }   /* escolhendo o alvo de um trabalho sujo */
   if (inCombatZone() && !((G.dev || G.devTools) && G.devPlace) && !interactHere(e)) {
     const me = G.me;
     if (e.button === 3 || e.button === 4) { e.preventDefault(); strike('under'); return; }

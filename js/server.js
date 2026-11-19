@@ -1013,7 +1013,7 @@ function bathTick(now) {
     sendStat(p); }
 }
 function mageTick(now) {   /* brasa (animais recuam), flores (curam e acalmam) */
-  bathTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
+  bathTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
   for (const p of Object.values(S.players)) {
     if (p.cls !== 'mage' || !buffOn(p, 'ember') || p.downed) continue;
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(p.x, p.y, m.x, m.y) > 3.5) continue; m.flee = { from: p.id, until: now + 1800 }; if (m.aggro === p.id) m.aggro = null; m.atk = null; }
@@ -2001,7 +2001,7 @@ function dragCleanup() {
 const NPC_HP = { guard: 260, executioner: 220, captain: 240 };
 function initNpcs() {
   if (S.npcs) return; S.npcs = {};
-  for (const n of NPCS) S.npcs[n.id] = { id: n.id, kind: n.kind, role: n.role, bi: n.bi, home: n.home, name: n.name, route: n.route, ri: 0, patrol: n.patrol, sitting: n.sitting ? true : undefined, pairOf: n.pairOf, pairOff: n.pairOff, x: n.x, y: n.y, z: 0, postX: n.x, postY: n.y, hp: NPC_HP[n.kind] || 90, maxHp: NPC_HP[n.kind] || 90, downed: null, dead: false };
+  for (const n of NPCS) S.npcs[n.id] = { id: n.id, kind: n.kind, role: n.role, bi: n.bi, home: n.home, name: n.name, route: n.route, ri: 0, patrol: n.patrol, sitting: n.sitting ? true : undefined, kneel: n.kneel ? true : undefined, pairOf: n.pairOf, pairOff: n.pairOff, x: n.x, y: n.y, z: 0, postX: n.x, postY: n.y, hp: NPC_HP[n.kind] || 90, maxHp: NPC_HP[n.kind] || 90, downed: null, dead: false };
 }
 const npcAlive = id => { const n = S.npcs && S.npcs[id]; return !n || (!n.dead && !n.downed); };
 function npcDamage(n, dmg, p) {
@@ -3734,6 +3734,10 @@ function npcLoansHour() {
   for (let i = L.length - 1; i >= 0; i--) { const x = L[i];
     if (x.bad && Math.random() < 0.04) { L.splice(i, 1); const O = bankOwnerRec(); if (O && O.biz) bizLog(O.biz, x.n + ' sumiu sem pagar o empréstimo (' + x.left + ' perdidos).'); continue; }
     if (Math.random() < (x.bad ? 0.08 : 0.25)) { const v = Math.min(x.left, Math.max(5, Math.round(x.amt * 0.2))); x.left -= v; bankBook(v * 0.25, null); if (x.left <= 0) { L.splice(i, 1); bankBook(0, x.n + ' quitou o empréstimo.'); } } }   // o banco fica com os juros (parte da parcela)
+}
+function kneelTick(now) {   /* candidatos ajoelhados nas almofadas da agência (pose seiza repetida) */
+  if (now - (S.kneelT || 0) < 8500) return; S.kneelT = now;
+  for (const n of Object.values(S.npcs || {})) if (n.kneel && !n.dead && !n.downed) near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'seiza', ms: 9000 });
 }
 function dojoVisTick(now) {   /* de manhã (6–9 h) moradores; no fim da tarde (17–20 h) sentinelas de folga */
   if (now - (S.dojoVT || 0) < 15000 || !Object.keys(S.players).length || !DUMMIES.length) return; S.dojoVT = now; const hr = resHour();

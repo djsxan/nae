@@ -203,6 +203,10 @@ function buildHead(head, L, S, skinM, accM, trimM) {
     cap.rotation.x = -0.42;   // inclina para trás: a franja sobe acima dos olhos e a nuca fica coberta
     if (L.hairStyle === 'long') { const back = mesh(capG(0.09 * S, 0.22 * S), hairM, 0, -0.12 * S, -0.05 * S); back.scale.set(1.1, 1, 0.6); head.add(back); }
   }
+  if (L.fez) {   /* fez de feltro com borla preta */
+    const fm = mat(hx(L.fez), 'cloth'), fz = mesh(cylG(0.075 * S, 0.095 * S, 0.12 * S, 16), fm, 0, 0.11 * S, -0.005 * S); head.add(fz); head.add(mesh(cylG(0.075 * S, 0.075 * S, 0.006 * S, 16), mat('#6a1410', 'cloth'), 0, 0.172 * S, -0.005 * S));
+    const ts = mesh(cylG(0.006 * S, 0.012 * S, 0.1 * S, 6), mat('#141010', 'cloth'), 0.05 * S, 0.12 * S, -0.06 * S); ts.rotation.z = -0.35; head.add(ts); }
+  if (L.mustache) { const mm = mat(hx(L.mustache), 'hair'); for (const s of [-1, 1]) { const ms = mesh(boxG(0.045 * S, 0.012 * S, 0.014 * S), mm, s * 0.022 * S, -0.035 * S, 0.096 * S); ms.rotation.z = s * -0.25; head.add(ms); } }
   if (L.scarf) {   /* lenço amarrado na cabeça, com o nó atrás */
     const scm = mat(hx(L.scarf), 'cloth'); const sc = mesh(sphG(0.118 * S), scm, 0, 0.025 * S, -0.01 * S); sc.geometry = geo('scarf' + S, () => new THREE.SphereGeometry(0.118 * S, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.5)); sc.rotation.x = -0.5; head.add(sc);
     const kn = mesh(sphG(0.035 * S), scm, 0, -0.03 * S, -0.115 * S); head.add(kn); for (const s of [-1, 1]) { const tl = mesh(boxG(0.03 * S, 0.09 * S, 0.01 * S), scm, s * 0.025 * S, -0.08 * S, -0.115 * S); tl.rotation.z = s * 0.3; head.add(tl); } }
