@@ -160,6 +160,7 @@ input[type=text]:focus { border-color: var(--gold); box-shadow: 0 0 0 2px rgba(2
 #buffs { display: flex; gap: 4px; margin-top: 5px; flex-wrap: wrap; }
 .buff { width: 24px; height: 24px; border-radius: 50%; font-size: 10px; font-family: 'Alegreya Sans SC', sans-serif; font-weight: 700; display: flex; align-items: center; justify-content: center; color: #fff; text-shadow: 0 1px 2px #000; box-shadow: 0 0 0 1px #000, 0 0 0 2px var(--gold-d); }
 .buff.wall { background: radial-gradient(#e8c870, #8a6a24); } .buff.warcry { background: radial-gradient(#e86a5a, #6a1610); } .buff.agile { background: radial-gradient(#6ad8a8, #1e5a40); }
+.buff.sapling { background: radial-gradient(#9ae070, #2e6a1e); } .buff.sapling::after { content: "🌱"; font-size: 13px; }
 .buff.bless { background: radial-gradient(#f4e4a0, #a88a2a); } .buff.mead { background: radial-gradient(#e8a850, #7a4a14); } .buff.whet { background: radial-gradient(#c8ced6, #4a4e56); }
 
 #quests { top: 136px; left: 12px; width: 290px; padding: 10px 14px; font-size: 14px; }

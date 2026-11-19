@@ -1150,7 +1150,7 @@ function sapsSend(to) { const m = { t: 'saps', l: sapList().map(s => ({ id: s.id
 function sapTryWater(p, b, now) {   /* a Fonte sobre as flores do próprio mago faz nascer a muda */
   if (p.cls !== 'mage' || b.by !== p.id || b.sapDone) return false; if (elemStrength(p, 'earth') < SAP_NEED) return false;
   const key = estOwner(p), L = sapList(); if (L.some(s => s.owner === key)) { if (!p._sapWarn) { p._sapWarn = 1; tell(p, 'Você já tem uma muda plantada. Só uma por vez.'); } return false; }
-  let x = Math.round(b.x), y = Math.round(b.y); for (let r2 = 0; r2 < 3; r2++) { let ok = false; for (let dy = -r2; dy <= r2 && !ok; dy++) for (let dx = -r2; dx <= r2 && !ok; dx++) { const t = (y + dy) * MAP_W + (x + dx); if (inBounds(x + dx, y + dy) && WORLD.obj[t] === O.NONE && WORLD.bld[t] < 0 && WORLD.ground[t] !== T.WATER) { x += dx; y += dy; ok = true; } } if (ok) break; }
+  let x = Math.round(b.x), y = Math.round(b.y); { const T0 = (b.tiles || []).filter(i => WORLD.bld[i] < 0 && WORLD.ground[i] !== T.WATER); if (T0.length) { const cx = T0.reduce((a2, i) => a2 + i % MAP_W, 0) / T0.length, cy = T0.reduce((a2, i) => a2 + Math.floor(i / MAP_W), 0) / T0.length; T0.sort((i, j) => Math.hypot(i % MAP_W - cx, Math.floor(i / MAP_W) - cy) - Math.hypot(j % MAP_W - cx, Math.floor(j / MAP_W) - cy)); x = T0[0] % MAP_W; y = Math.floor(T0[0] / MAP_W); } }   /* nasce no meio do campo de flores */
   const k = strongestEl(p, ['earth', 'water', 'wind']); b.sapDone = 1;
   L.push({ id: 'sap' + now, x, y, owner: key, ownName: p.name, by: p.id, k, t: Date.now() }); estateSave(); sapsSend();
   near(x, y, { t: 'sapborn', x, y, k }); info(p, 'A água encontra as flores e uma muda rompe a terra! ' + ({ earth: 'Um pequeno carvalho', water: 'Um pequeno salgueiro', wind: 'Uma pequena cerejeira' })[k] + ' agora cura, devolve mana, protege e acalma os bichos em volta.'); useGain(p, 'el_earth', 3); return true;
@@ -1161,7 +1161,7 @@ function sapTick(now) {   /* a cada 2 s: bônus para quem está perto da muda */
     for (const q of Object.values(S.players)) { if (q.downed || (q.fl || 0) !== 0 || dist(q.x, q.y, s.x, s.y) > R) continue; let any = false;
       if (q.hp < q.maxHp) { const h = Math.max(2, Math.round(q.maxHp * 0.03)); q.hp = Math.min(q.maxHp, q.hp + h); sfx(q.x, q.y, '+' + h, '#7ad860', 60); any = true; }
       if ((q.mp || 0) < (q.maxMp || 0)) { q.mp = Math.min(q.maxMp, q.mp + Math.max(1, q.maxMp * 0.04)); any = true; }
-      q.cst = Math.min(cstMaxOf(q), (q.cst ?? 0) + 15); q._sapT = now + 2600; if (any || 1) sendStat(q); }
+      q.cst = Math.min(cstMaxOf(q), (q.cst ?? 0) + 15); q._sapT = now + 2600; q.buffs.sapling = now + 2600; if (any || 1) sendStat(q); }
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(m.x, m.y, s.x, s.y) > R + 1.5) continue; m.calmUntil = now + 2600; m.aggro = null; m.atk = null; m.flee = null; } }
 }
 function mageTick(now) {   /* brasa (animais recuam), flores (curam e acalmam) */

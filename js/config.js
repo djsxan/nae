@@ -3,7 +3,7 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.87.0';
+const VERSION = 'v1.87.1';
 const VERSION_NAME = 'Nae · Muda';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
@@ -327,7 +327,7 @@ const RECIPES = {
 };
 const KNOCK_MS = 1700, PROSTH_PRICE = 30, RITUAL_PRICE = 120;
 const STRIKE_PART = { head: ['head', 'head', 'torso', 'armA'], legs: ['legL', 'legR', 'legL', 'torso'], torso: ['torso', 'torso', 'armA', 'armB'] };
-const BUFF_NAMES = { luck: 'Sorte do Dragão', tipsy: 'Tonto (cerveja)', breath: 'Elixir do Fôlego', warm: 'Elixir da Brasa', weaver: 'Bênção do Tecelão', warcry: 'Grito de Guerra', wall: 'Muralha de Ferro', agile: 'Passo Ágil', bless: 'Bênção da Aurora', mead: 'Hidromel', whet: 'Lâmina Afiada', rested: 'Bem descansado' };
+const BUFF_NAMES = { luck: 'Sorte do Dragão', tipsy: 'Tonto (cerveja)', breath: 'Elixir do Fôlego', warm: 'Elixir da Brasa', weaver: 'Bênção do Tecelão', warcry: 'Grito de Guerra', wall: 'Muralha de Ferro', agile: 'Passo Ágil', bless: 'Bênção da Aurora', mead: 'Hidromel', whet: 'Lâmina Afiada', rested: 'Bem descansado', sapling: 'Sob a muda: cura, mana, fôlego, casca protetora (-15% de dano) e bichos calmos' };
 const BUFF_BITS = { wall: 16, agile: 32, bless: 64, warcry: 128 };
 
 const need = l => Math.floor(20 * Math.pow(l, 1.75));
