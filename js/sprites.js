@@ -406,7 +406,13 @@ function buildPose(cls, P) {
   }
   if (P.armw && !P.act) { Q.aA = [Q.tl * -0.5, 0.18, 0.12]; Q.wp = cls === 'knight' ? Q.aA[0] + Q.aA[2] + 0.2 : Q.wp; }
   if (P.sit === 'g') { Q.lA = [2.45, -2.35]; Q.lB = [2.2, -2.0]; Q.drop = 12; Q.aA = [1.15, 0.35, 1.35]; Q.aB = [1.05, 0.4, 1.25]; Q.tl = -0.22; Q.ht = 0.12; }
-  if (P.med) { const br = Math.sin((P.med - 1) / 6 * Math.PI * 2); Q.lA = [1.5, -2.6, 0, -0.75]; Q.lB = [1.5, -2.6, 0, 0.75]; Q.drop = 12; Q.aA = [0.42, 0.5, 0.95]; Q.aB = [0.42, 0.5, 0.95]; Q.tl = 0.03 + br * 0.03; Q.ht = 0.1 + br * 0.03; Q.wp = 0; }   /* lótus: pernas cruzadas, mãos nos joelhos, respiração lenta */
+  if (P.med) { const br = Math.sin((P.med - 1) / 6 * Math.PI * 2), el = P.medEl || 'fire';   /* cada elemento tem a sua pose de meditação */
+    if (el === 'fire') { Q.lA = [1.45, -2.75]; Q.lB = [1.45, -2.75]; Q.drop = 8; Q.aA = [1.25, 0.3, 1.55]; Q.aB = [1.25, 0.3, 1.55]; Q.tl = 0.08 + br * 0.03; Q.ht = 0.28 + br * 0.03; Q.wp = 0; Q.nowp = 1; }   /* Fogo: ajoelhado, as duas palmas para cima segurando uma chama na frente do peito */
+    else if (el === 'water') { const wv = Math.sin((P.med - 1) / 6 * Math.PI * 2); Q.lA = [0.02, -0.04]; Q.lB = [1.15, -2.2, 0.15, 0.2]; Q.aA = [1.35 + wv * 0.25, 1.25, 0.35 + wv * 0.3]; Q.aB = [1.35 - wv * 0.25, 1.25, 0.35 - wv * 0.3]; Q.tl = 0.02; Q.ht = 0.05; Q.sway = wv * 0.04; Q.nowp = 1; }   /* Água: em pé numa perna, a outra dobrada no joelho, braços abertos ondulando como correnteza */
+    else if (el === 'earth') { Q.lA = [1.5, -2.6, 0, -0.75]; Q.lB = [1.5, -2.6, 0, 0.75]; Q.drop = 12; Q.aA = [-0.2, 0.55, 0.15]; Q.aB = [-0.2, 0.55, 0.15]; Q.tl = 0.18 + br * 0.02; Q.ht = 0.22; Q.nowp = 1; }   /* Terra: pernas cruzadas, braços estendidos para baixo com as palmas espalmadas no chão */
+    else if (el === 'wind') { Q.lA = [0.25, -0.35]; Q.lB = [0.05, -0.15]; Q.aA = [1.55 + br * 0.08, 1.45, 0.1]; Q.aB = [1.55 - br * 0.08, 1.45, 0.1]; Q.tl = -0.1; Q.ht = -0.15; Q.nowp = 1; Q.airLie = 1; }   /* Ar: deitado de costas no ar, braços abertos e pernas soltas */
+    else { Q.lA = [0.02, -0.04]; Q.lB = [0.02, -0.04]; Q.aA = [2.75 + br * 0.06, 0.45, 0.25]; Q.aB = [2.75 - br * 0.06, 0.45, 0.25]; Q.tl = -0.12; Q.ht = -0.45 + br * 0.04; Q.nowp = 1; }   /* Luz: em pé, braços erguidos para o céu, rosto voltado para cima */
+    Q.wp = 0; }
   else if (P.sit) { Q.lA = [1.5, -1.55]; Q.lB = [1.45, -1.5]; Q.drop = 12; Q.aA = [0.45, 0.25, 0.7]; Q.aB = [0.45, 0.25, 0.7]; Q.tl = -0.02; }
   if (P.tied) { Q.aA = [-0.45, -0.28, 0.35]; Q.aB = [-0.45, -0.28, 0.35]; Q.tl = 0.12; Q.ht = 0.3; Q.tie = P.tied; Q.nowp = 1; }   // mãos amarradas atrás das costas
   if (P.nowp) Q.nowp = 1;

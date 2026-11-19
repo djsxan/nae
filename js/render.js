@@ -384,7 +384,7 @@ function heroPoseFor(e, now) {
   if (e.cast && e.cast.end > now) P.act = { k: e.cast.el === 'fire' && e.cls === 'mage' ? 'castup' : 'cast', f: Math.floor(now / 70) % 12 };
   if (!P.act && e.emote && !e.walking) { const ms = ACT_MS[e.emote.k], t = (now - e.emote.t0) / ms; if (e.emote.k === 'dance') P.act = { k: 'dance', f: Math.floor(t * 12) % 12 }; else if (e.emote.k === 'adore') P.act = { k: 'adore', f: t < 0.8 ? Math.floor(t * 12) : 9 }; else if (t < 1) P.act = { k: e.emote.k + (e.cls === 'knight' && ACTS[e.emote.k + '_k'] ? '_k' : ''), f: Math.min(11, Math.floor(t * 12)) }; else e.emote = null; }
   else if (e.walking && e.emote) e.emote = null;
-  if (e.medit && !P.act && !e.walking) { P.sit = 'g'; P.walk = -1; P.med = 1 + Math.floor(((now - e.medit.t0) % 5200) / 5200 * 6); return P; }   /* meditando em lótus */
+  if (e.medit && !P.act && !e.walking) { const el = e.medit.el; P.sit = el === 'earth' || el === 'fire' ? 'g' : false; P.walk = -1; P.medEl = el; P.nowp = 1; P.med = 1 + Math.floor(((now - e.medit.t0) % (el === 'water' ? 3600 : 5200)) / (el === 'water' ? 3600 : 5200) * 6); return P; }   /* meditando: a pose do elemento */
   if (!e.isNpc && e.flame && now < e.flame.until && e.cls === 'mage') { P.act = { k: 'flamecast', f: (Math.floor(now / 80) % 6) * 2 }; delete P.shea; }   /* Chamas: cajado à frente, nas mãos, com o tremor do recuo */
   if (e.sit && !P.act) { P.sit = e.sit.chair ? 'c' : 'g'; P.walk = -1; e._sseed = e._sseed ?? Math.random() * 20000; const sv = Math.floor((now + e._sseed) / 6500) % 3; if (sv) P.sv = sv; return P; }
   if (!e.isNpc) {
@@ -486,6 +486,7 @@ function drawHeroEntity(ctx, e, sx, sy, now) {
     if (!P.act && e.hitAt && now - e.hitAt < 300) P.act = { k: 'hurt', f: Math.min(11, Math.floor((now - e.hitAt) / 300 * 12)) };
     if (e.custP && e.custP.stool && typeof drawStool === 'function') drawStool(ctx, sx, sy);
     let s = null; if (typeof TOWS !== 'undefined') for (const k in TOWS) { const f = TOWS[k]; if (f.combined && f.c === e) { s = carrySprite(e, f, P); if (s && !e.isNpc) s = woundOf(s, woundLevel(e)); break; } }
+    if (!s && e.isNpc && G.entDeaths && G.entDeaths[e.id] && typeof entDrawDeath === 'function' && entDrawDeath(ctx, e, sx, sy, now)) return;   /* a guardiã desaba */
     if (!s && e.isNpc && e.kind && e.kind.startsWith('ent_') && typeof entSprite3D === 'function') { s = entSprite3D(e, P); if (G.ents[e.id] && G.ents[e.id].sl && typeof drawZzz === 'function') drawZzz(ctx, sx, sy - s.ay * 0.6, now); }   /* guardiã do mago */
     if (!s) s = e.isNpc ? npcSprite3D(e.kind, P) : woundOf(heroSprite3D(e.cls, e.skin, e.color, P), woundLevel(e));
     ctx.imageSmoothingEnabled = true;
@@ -494,7 +495,7 @@ function drawHeroEntity(ctx, e, sx, sy, now) {
     if (e !== G.me && e.anim && e.anim.W && e.anim.reach && now - e.anim.t0 < e.anim.W + 120) drawTelegraph(ctx, e, sx, sy, now);
     if (e.skin === 'weaver') drawWeaverAura(ctx, sx, sy, now);
     if (e.skin === 'weaver') sy -= 14 + Math.sin(now / 600) * 3;
-    const msy = sy; if (e.medit && typeof drawMeditAura === 'function') { drawMeditAura(ctx, e, sx, msy, now, 0); const lt = Math.min(1, Math.max(0, (now - e.medit.t0 - 2500) / 1800)); sy -= lt * (8 + Math.sin(now / 900) * 1.6); }   /* levita depois de uns segundos */
+    const msy = sy; if (e.medit && typeof drawMeditAura === 'function') { drawMeditAura(ctx, e, sx, msy, now, 0); const lt = Math.min(1, Math.max(0, (now - e.medit.t0 - 2500) / 1800)), lev = { fire: 0, water: 0, earth: 8, wind: 26, holy: 4 }[e.medit.el] ?? 8; sy -= lt * (lev + Math.sin(now / 900) * (lev ? 1.6 : 0)); }   /* levita depois de uns segundos */
     pblit(ctx, s, sx, sy);
     if (e.medit && typeof drawMeditAura === 'function') drawMeditAura(ctx, e, sx, msy, now, 1); e._spr = s; e._sx = sx; e._sy = sy; e._drawT = now; if (s.spout) { e._spout = [sx - s.ax + s.spout[0], sy - s.ay + s.spout[1]]; e._spoutT = now; } if (s.tip) { e._tip = [sx - s.ax + s.tip[0] - G.view.ox, sy - s.ay + s.tip[1] - G.view.oy]; e._tipT = now; }
     if (e.hitAt && now - e.hitAt < 110) pblit(ctx, whiteOf(s, 'w3|' + e.id + (e.cls || e.kind)), sx, sy, 0.65);

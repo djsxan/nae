@@ -1069,9 +1069,10 @@ function meditTick(now) {
     if (now - M.tick < 1000) continue; M.tick = now;
     const dg = meditDanger(p); if (dg && dist(p.x, p.y, dg.x, dg.y) < 5) { meditStop(p, 'Um perigo interrompe a meditação!'); continue; }
     if (now - (M.boT || 0) > 10000) { M.boT = now; M.bo = meditBoost(p, M.el); }
-    const deep = Math.min(1, (now - M.t0) / 20000), g = (0.22 + 0.18 * deep) * (M.bo ? 1.6 : 1);   /* quanto mais tempo, mais fundo */
+    const deep = Math.min(1, (now - M.t0) / 20000), tr = now - M.t0 >= 60000, g = (0.22 + 0.18 * deep) * (M.bo ? 1.6 : 1) * (tr ? 1.5 : 1);   /* quanto mais tempo, mais fundo; depois de 1 minuto, o transe profundo */
+    if (tr && !M.trance) { M.trance = 1; tell(p, 'Transe profundo: a aura dobra, a perícia sobe 50% mais rápido e o corpo se recupera mais.'); }
     useGain(p, 'el_' + M.el, g); M.gain += g;
-    p.hp = Math.min(p.maxHp, p.hp + Math.max(1, Math.round(p.maxHp * 0.025))); p.mp = Math.min(p.maxMp, (p.mp || 0) + Math.max(1, p.maxMp * 0.05)); p.cst = Math.min(cstMaxOf(p), (p.cst ?? 0) + 12);
+    { const rk = tr ? 1.5 : 1; p.hp = Math.min(p.maxHp, p.hp + Math.max(1, Math.round(p.maxHp * 0.025 * rk))); p.mp = Math.min(p.maxMp, (p.mp || 0) + Math.max(1, p.maxMp * 0.05 * rk)); p.cst = Math.min(cstMaxOf(p), (p.cst ?? 0) + 12 * rk); }
     p.food = Math.max(0, (p.food ?? 100) - 0.09); p.water = Math.max(0, (p.water ?? 100) - 0.08);
     if (p.food <= 0 || p.water <= 0) { meditStop(p, p.food <= 0 ? 'A fome tira a concentração.' : 'A sede tira a concentração.'); continue; }
     if (Math.floor((now - M.t0) / 1000) % 2 === 0) sendStat(p);
@@ -1153,7 +1154,7 @@ function elemStrength(p, el) { const br = (TREE.mage || []).find(b => b.name ===
 function strongestEl(p, among) { let best = among[0], bv = -1; for (const el of among) { const v2 = elemStrength(p, el); if (v2 > bv) { bv = v2; best = el; } } return best; }
 const SAP_NEED = 25;   /* força de Terra para a água fazer nascer a muda */
 function sapList() { S.estate.saps = S.estate.saps || []; return S.estate.saps; }
-function sapsSend(to) { const m = { t: 'saps', l: sapList().map(s => ({ id: s.id, x: s.x, y: s.y, k: s.k, t: s.t, own: s.ownName })) }; if (to) Net.toOne(to, m); else Net.toAll(m); }
+function sapsSend(to) { const m = { t: 'saps', l: sapList().map(s => ({ id: s.id, x: s.x, y: s.y, k: s.k, t: s.t, own: s.ownName, g: s.g || 0.2 })) }; if (to) Net.toOne(to, m); else Net.toAll(m); }
 function sapTryWater(p, b, now) {   /* a Fonte sobre as flores do próprio mago faz nascer a muda */
   if (p.cls !== 'mage' || b.by !== p.id || b.sapDone) return false; if (elemStrength(p, 'earth') < SAP_NEED) return false;
   const key = estOwner(p), L = sapList(); if (L.some(s => s.owner === key)) { if (!p._sapWarn) { p._sapWarn = 1; tell(p, 'Você já tem uma muda plantada. Só uma por vez.'); } return false; }
@@ -1164,7 +1165,7 @@ function sapTryWater(p, b, now) {   /* a Fonte sobre as flores do próprio mago 
 }
 function sapTick(now) {   /* a cada 2 s: bônus para quem está perto da muda */
   const L = (S.estate && S.estate.saps) || []; if (!L.length || now - (S.sapT || 0) < 2000) return; S.sapT = now;
-  for (const s of L) { const R = 3.2;
+  for (const s of L) { const R = 3.2; if (typeof sapGrowth === 'function') { const g = sapGrowth(s); if (g - (s.g || 0.2) >= 0.04) { s.g = g; sapsSend(); estateSave(); } }   /* a muda cresce */
     for (const q of Object.values(S.players)) { if (q.downed || (q.fl || 0) !== 0 || dist(q.x, q.y, s.x, s.y) > R) continue; let any = false;
       if (q.hp < q.maxHp) { const h = Math.max(2, Math.round(q.maxHp * 0.03)); q.hp = Math.min(q.maxHp, q.hp + h); sfx(q.x, q.y, '+' + h, '#7ad860', 60); any = true; }
       if ((q.mp || 0) < (q.maxMp || 0)) { q.mp = Math.min(q.maxMp, q.mp + Math.max(1, q.maxMp * 0.04)); any = true; }

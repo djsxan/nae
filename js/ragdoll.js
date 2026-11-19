@@ -11,6 +11,7 @@ const v3 = (x = 0, y = 0, z = 0) => new THREE.Vector3(x, y, z);
 
 // ---------- esqueleto 3D de quem caiu ----------
 function rigOf(f) {
+  if (f.entRig) return f.entRig;
   if (f.hero) { const lk = f.hero.cls + ':' + f.hero.skin + ':' + f.hero.color; if (!_rigs.get(lk)) heroSprite3D(f.hero.cls, f.hero.skin, f.hero.color, { dir: 0, walk: -1 }); return _rigs.get(lk); }
   if (MON_LOOK[f.type]) { if (!_rigs.get('mon:' + f.type)) monSprite3D(f.type, -1, -1, 0); return _rigs.get('mon:' + f.type); }
   if (f.type === 'dragon') { if (!_dragon) _dragon = buildDragon(); return _dragon; }
@@ -34,7 +35,7 @@ function ragStart(f, R) {
   const prev = {}, [ix, iz] = mapToModel(f.ix, f.iy), hgt = pts.hed.y;
   for (const k in pts) { const up = pts[k].y / hgt, sp = (0.6 + up * 2.6) * f.force; prev[k] = pts[k].clone().sub(v3(ix * sp * RAG_DT, (up * 0.8 + (Math.random() - 0.5) * 0.3) * RAG_DT, iz * sp * RAG_DT)); }
   const len = {}; for (const [a, b] of RAG_BONES) len[a + b] = pts[a].distanceTo(pts[b]);
-  f.rag = { pts, prev, len, pel0: pts.pel.clone(), still: 0, hipY: R.hips.position.y };
+  f.rag = { pts, prev, len, pel0: pts.pel.clone(), still: 0, hipY: R.hips.position.y * (R.entBody ? R.entBody.scale.y : 1) };
 }
 function ragStep(f) {
   const { pts, prev, len } = f.rag; let maxV = 0;
@@ -139,7 +140,7 @@ function gibSprite(e, k, part) {
 }
 // ---------- foto do esqueleto na pose atual ----------
 function rigShot(f, R, keep) {
-  const { renderer, scene, cam } = R3, big = f.type === 'dragon', K = big ? DRAGON_K : 1, Qd = big ? DRAGON_Q : 1;
+  const { renderer, scene, cam } = R3, big = f.type === 'dragon' || !!f.entK, K = f.entK || (big ? DRAGON_K : 1), Qd = f.entK ? 1 : big ? DRAGON_Q : 1;   /* a guardiã também cai num quadro maior */
   const saved = [cam.left, cam.right, cam.top, cam.bottom];
   if (big) { cam.left *= K; cam.right *= K; cam.top *= K; cam.bottom *= K; cam.updateProjectionMatrix(); }
   const W = Math.round(FRAME_W * PXU * K * Qd), H = Math.round(FRAME_H * PXU * K * Qd), rs = big;   /* só o dragão muda o tamanho do buffer (realocar a cada quadro pesava muito) */ if (rs) renderer.setSize(W, H, false);
@@ -156,7 +157,7 @@ function rigShot(f, R, keep) {
 function startFall(o) {
   if (!R3.ok || FALLS[o.key]) return FALLS[o.key];
   const f = FALLS[o.key] = { ...o, t0: performance.now(), force: o.force || 1, ox: 0, oy: 0, done: false };
-  f.mode = o.hero || MON_LOOK[o.type] ? 'rag' : QUAD_RAG.has(o.type) ? 'quad' : 'rigid';
+  f.mode = o.mode || (o.hero || MON_LOOK[o.type] ? 'rag' : QUAD_RAG.has(o.type) ? 'quad' : 'rigid');
   const R = rigOf(f); if (!R) { delete FALLS[o.key]; return null; }
   if (f.mode === 'rag') ragStart(f, R); else if (f.mode === 'quad') quadStart(f, R); else rigidStart(f, R);
   if (SET.phys === 'staged') {   // calcula a pose final de uma vez e só gira o desenho na tela durante a queda

@@ -427,7 +427,7 @@ function applyPose(R, Q, P, walkPh) {
     }
     pos.needsUpdate = true; R.cape.geometry.computeVertexNormals();
   }
-  if (R.robe) { R.robe.rotation.z = Math.sin(walkPh) * (P.walk >= 0 ? 0.05 : 0); const k = P.sit ? 0.48 : 1, md = !!P.med, S0 = R.robeS; const rw = R.robeW || 1; R.robe.scale.set(rw, k, 0.82 * rw); R.robe.position.z = 0; R.robe.rotation.x = P.sit ? -0.5 : 0; if (R.hem) { R.hem.position.y = -0.04 * S0 - 0.82 * S0 * k; R.hem.position.z = P.sit ? 0.18 * S0 : 0; R.hem.scale.set(rw, 0.82 * rw, 1); }
+  if (R.robe) { R.robe.rotation.z = Math.sin(walkPh) * (P.walk >= 0 ? 0.05 : 0); const k = P.sit ? 0.48 : 1, md = !!P.med && ['earth', 'fire'].includes(P.medEl || 'earth'), S0 = R.robeS; const rw = R.robeW || 1; R.robe.scale.set(rw, k, 0.82 * rw); R.robe.position.z = 0; R.robe.rotation.x = P.sit ? -0.5 : 0; if (R.hem) { R.hem.position.y = -0.04 * S0 - 0.82 * S0 * k; R.hem.position.z = P.sit ? 0.18 * S0 : 0; R.hem.scale.set(rw, 0.82 * rw, 1); }
     if (md) { R.robe.scale.set(1.32, 0.2, 1.12); R.robe.rotation.x = 0.06; R.robe.position.z = 0.05 * S0; if (R.hem) { R.hem.position.y = -0.04 * S0 - 0.82 * S0 * 0.2; R.hem.position.z = 0.05 * S0; R.hem.scale.set(1.32, 1.12, 1); } }   /* lótus: a túnica se abre em volta das pernas cruzadas */
     if (md && !R.lap) { const lp = new THREE.Group(), cm = R.robe.material; const m1 = mesh(sphG(0.2 * S0), cm, 0, -0.1 * S0, 0.1 * S0); m1.scale.set(1.85, 0.72, 1.35); lp.add(m1); for (const s of [-1, 1]) { const f = mesh(capG(0.028 * S0, 0.26 * S0), cm, s * 0.1 * S0, -0.1 * S0, 0.2 * S0); f.rotation.set(Math.PI / 2 - 0.25, 0, s * 0.35); lp.add(f); } R.spine.add(lp); R.lap = lp; }   /* tecido dobrado no colo, com duas pregas */
     if (R.lap) R.lap.visible = md; }   // sentado: a saia cobre só até o assento
@@ -588,7 +588,7 @@ function applyLost(R, mask = 0, pro = 0) {
   if (R.shield) R.shield.visible = !lost('armB');
   for (const k in R.stumps) { R.stumps[k].visible = lost(k) && !pr(k); if (R.pegs[k]) R.pegs[k].visible = lost(k) && pr(k); }
 }
-function pose3Key(P) { return (P.dir | 0) + '|' + (P.med ? 'md' + P.med : '') + (P.bed ? 'bd' : '') + (P.shea ? 'S' : '') + (P.shb ? 'B' : '') + (P.tool ? 'T' + P.tool : '') + (P.gait ? 'g' + P.gait : '') + (P.hold ? 'o' + P.hold : '') + (P.walk >= 0 ? (P.run ? 'r' : 'w') + P.walk : '') + (P.act ? P.act.k + P.act.f : '') + (P.idle ? P.idle.k + P.idle.f : '') + (P.sit ? 's' + P.sit + (P.sv || '') : '') + (P.smk != null ? 'k' + Math.floor(P.smk * 8) + (P.cig ? 'cg' : '') : '') + (P.eat != null ? 'e' + Math.floor(P.eat * 8) : '') + (P.carry ? 'c' : '') + (P.down ? 'd' + (P.prone ? 'p' : '') : '') + (P.nowp ? 'nw' : '') + (P.wpn === 'halberd' ? 'hb' : '') + (P.crawl ? 'cw' + P.crawl : '') + (P.drag ? 'D' + P.drag : '') + (P.tied ? 'T' + P.tied : '') + (P.surr ? 'U' : '') + (P.led ? 'L' : '') + (P.held ? 'H' + P.held + (P.held === 2 ? Math.floor(Date.now() / 90) % 4 : '') : '') + (P.cr ? 'K' : '') + (P.sl ? 'L' : '') + (P.hs ? 'h' + P.hs : '') + (P.br != null ? 'b' + P.br : '') + (P.limp ? 'm' + P.limp : '') + (P.armw ? 'W' : '') + (P.lost ? 'X' + P.lost + '_' + (P.pro || 0) : ''); }
+function pose3Key(P) { return (P.dir | 0) + '|' + (P.med ? 'md' + P.med + (P.medEl || '') : '') + (P.bed ? 'bd' : '') + (P.shea ? 'S' : '') + (P.shb ? 'B' : '') + (P.tool ? 'T' + P.tool : '') + (P.gait ? 'g' + P.gait : '') + (P.hold ? 'o' + P.hold : '') + (P.walk >= 0 ? (P.run ? 'r' : 'w') + P.walk : '') + (P.act ? P.act.k + P.act.f : '') + (P.idle ? P.idle.k + P.idle.f : '') + (P.sit ? 's' + P.sit + (P.sv || '') : '') + (P.smk != null ? 'k' + Math.floor(P.smk * 8) + (P.cig ? 'cg' : '') : '') + (P.eat != null ? 'e' + Math.floor(P.eat * 8) : '') + (P.carry ? 'c' : '') + (P.down ? 'd' + (P.prone ? 'p' : '') : '') + (P.nowp ? 'nw' : '') + (P.wpn === 'halberd' ? 'hb' : '') + (P.crawl ? 'cw' + P.crawl : '') + (P.drag ? 'D' + P.drag : '') + (P.tied ? 'T' + P.tied : '') + (P.surr ? 'U' : '') + (P.led ? 'L' : '') + (P.held ? 'H' + P.held + (P.held === 2 ? Math.floor(Date.now() / 90) % 4 : '') : '') + (P.cr ? 'K' : '') + (P.sl ? 'L' : '') + (P.hs ? 'h' + P.hs : '') + (P.br != null ? 'b' + P.br : '') + (P.limp ? 'm' + P.limp : '') + (P.armw ? 'W' : '') + (P.lost ? 'X' + P.lost + '_' + (P.pro || 0) : ''); }
 function heroSprite3D(cls, skin, color, P) {
   const lk = cls + ':' + skin + ':' + color + (P.wpn === 'halberd' && !P.uni ? ':hb' : '') + (P.uni ? ':u' + P.uni : '') + (P.cloak && !P.uni ? ':k' + P.cloak : '');
   return cache3('h3|' + lk + '|' + pose3Key(P) , () => {
@@ -597,7 +597,7 @@ function heroSprite3D(cls, skin, color, P) {
     const Q = buildPose(cls, P);
     applyLost(R, P.lost || 0, P.pro || 0);
     applyPose(R, Q, P, P.walk >= 0 ? P.walk / 12 * Math.PI * 2 : 0);
-    return shoot3D(R, P.dir | 0, P.down ? (P.prone ? Math.PI / 2 : -Math.PI / 2) : 0, P.sit === 'g');
+    return shoot3D(R, P.dir | 0, P.down ? (P.prone ? Math.PI / 2 : -Math.PI / 2) : P.med && P.medEl === 'wind' ? -Math.PI / 2 * 0.9 : 0, P.sit === 'g' && !(P.med && P.medEl !== 'earth' && P.medEl !== 'fire'));   /* Ar: deitado no ar */
   }, 'h|' + lk + (P.down ? 'd' + (P.prone ? 'p' : '') : '') + (P.drag ? 'D' + P.drag : '') + (P.tied ? 'T' + P.tied : '') + (P.surr ? 'U' : '') + (P.led ? 'L' : '') + (P.held ? 'H' + P.held + (P.held === 2 ? Math.floor(Date.now() / 90) % 4 : '') : '') + (P.dir | 0));
 }
 function npcSprite3D(kind, P) {
@@ -909,7 +909,7 @@ function sheathProps(R, P) {
       else { const sc = mesh(boxG(0.075, Math.max(0.2, -bb.min.y - 0.05), 0.035), mat('#3a2414', 'leather'), 0, (bb.min.y - 0.05) / 2 - 0.02, 0); c.add(sc); const tip = mesh(boxG(0.08, 0.04, 0.04), mat('#9a7a3a', 'gold'), 0, bb.min.y - 0.03, 0); c.add(tip); R.hips.add(g); g.position.set(0.2, -0.02, 0.04); g.rotation.set(-0.42, 0, 0.16); }   // bainha na cintura
       R.sheath = g;
     }
-    if (R.sheath) R.sheath.visible = on;
+    if (R.sheath) R.sheath.visible = on && !P.med;   /* meditando: a arma fica guardada fora de vista */
   }
   if (!on) return;
   if (R.weapon && R.weapon.bow) { const o = R.weapon.obj; o.position.set(0.05, 0.04, -0.2); o.rotation.set(0.05, 0, -0.5); if (R.weapon.bow.arrow) R.weapon.bow.arrow.visible = false; }
