@@ -146,8 +146,8 @@ function rigShot(f, R, keep) {
   if (f.hero || MON_LOOK[f.type]) applyLost(R, f.lost || 0, f.pro || 0);
   scene.add(R.root); renderer.render(scene, cam); scene.remove(R.root);
   if (big) { [cam.left, cam.right, cam.top, cam.bottom] = saved; cam.updateProjectionMatrix(); }
-  if (rs) renderer.setSize(R3.W, R3.H, false);
   const c = keep ? document.createElement('canvas') : (f._cv || (f._cv = document.createElement('canvas'))); if (c.width !== W) c.width = W; if (c.height !== H) c.height = H; const x = c.getContext('2d'); x.clearRect(0, 0, W, H); x.drawImage(renderer.domElement, 0, 0);
+  if (rs) renderer.setSize(R3.W, R3.H, false);   /* depois de copiar */
   return { c, w: FRAME_W * K, h: FRAME_H * K, ax: FRAME_W * K / 2, ay: FOOT_Y * K, painted: true, hd: true };
 }
 

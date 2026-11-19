@@ -486,6 +486,7 @@ function drawHeroEntity(ctx, e, sx, sy, now) {
     if (!P.act && e.hitAt && now - e.hitAt < 300) P.act = { k: 'hurt', f: Math.min(11, Math.floor((now - e.hitAt) / 300 * 12)) };
     if (e.custP && e.custP.stool && typeof drawStool === 'function') drawStool(ctx, sx, sy);
     let s = null; if (typeof TOWS !== 'undefined') for (const k in TOWS) { const f = TOWS[k]; if (f.combined && f.c === e) { s = carrySprite(e, f, P); if (s && !e.isNpc) s = woundOf(s, woundLevel(e)); break; } }
+    if (!s && e.isNpc && e.kind && e.kind.startsWith('ent_') && typeof entSprite3D === 'function') { s = entSprite3D(e, P); if (G.ents[e.id] && G.ents[e.id].sl && typeof drawZzz === 'function') drawZzz(ctx, sx, sy - s.ay * 0.6, now); }   /* guardiã do mago */
     if (!s) s = e.isNpc ? npcSprite3D(e.kind, P) : woundOf(heroSprite3D(e.cls, e.skin, e.color, P), woundLevel(e));
     ctx.imageSmoothingEnabled = true;
     softDab(ctx, sx, sy, 10, '#000000', 0.35);

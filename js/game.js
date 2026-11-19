@@ -1001,7 +1001,8 @@ function standUp() {
 }
 canvas.addEventListener('mousedown', e => {
   if (!G.started) return;
-  if (G.pickTarget && typeof staffPick === 'function' && e.button === 0) { staffPick(e); return; }   /* escolhendo o alvo de um trabalho sujo */
+  if (G.pickTarget && typeof staffPick === 'function' && e.button === 0) { staffPick(e); return; }
+  if (G.entPick && e.button === 0) { G.entPick = false; const mon = typeof monsterUnderMouse === 'function' ? monsterUnderMouse(e.clientX, e.clientY) : null; if (mon) Net.send({ t: 'ent', a: 'order', o: 'attack', id: mon.id }); else showToast('Nenhum inimigo ali.'); return; }   /* alvo da guardiã */   /* escolhendo o alvo de um trabalho sujo */
   if (inCombatZone() && !((G.dev || G.devTools) && G.devPlace) && !interactHere(e)) {
     const me = G.me;
     if (e.button === 3 || e.button === 4) { e.preventDefault(); strike('under'); return; }
@@ -1103,6 +1104,8 @@ window.addEventListener('keydown', e => {
   if (k === 'f' && !e.repeat && typeof liftNear === 'function' && liftNear()) { liftMenu(); return; }
   if (k === 'f' && !e.repeat && typeof leverNear === 'function' && leverNear()) { Net.send({ t: 'tub' }); return; }
   if (k === 'f' && !e.repeat && typeof ofuroNear === 'function' && ofuroNear()) { bathEnter(); return; }
+  if (k === 'f' && !e.repeat && typeof sapNearMine === 'function' && sapNearMine() && G.me.cls === 'mage') { Net.send({ t: 'ent', a: 'wake' }); return; }   /* despertar a muda */
+  if (k === 'f' && !e.repeat && typeof entNear === 'function' && entNear()) { entMenu(entNear()); return; }   /* ordens para a guardiã */
   if (k === 'f' && !e.repeat && typeof purseNear === 'function' && purseNear()) { Net.send({ t: 'emp', a: 'purse', id: purseNear().id }); return; }   /* bolsa caída no chão */
   if (k === 'f' && !e.repeat && typeof dummyNear === 'function' && dummyNear() && !G.training) { const fd = typeof dummyFacing === 'function' ? dummyFacing() : null; Net.send({ t: 'train', a: 'start', i: fd ? DUMMIES.indexOf(fd) : undefined }); return; }   /* arqueiro: o boneco para onde está virado */
   if (k === 'f' && !e.repeat && openNearChest(1.8)) return;
@@ -2284,7 +2287,7 @@ function drawShopScene(ctx, now) {
   }
 }
 function drawBlockHud(ctx, now) {
-  drawTradeFx(ctx, now); drawShopScene(ctx, now); if (typeof drawFlameFx === 'function') drawFlameFx(ctx, now); if (G.me) { const un = !!(G.me.shea || G.training || G.me.bathing || G.me.downed || G.me.medit); if (un !== G._unarmed) { G._unarmed = un; document.body.classList.toggle('unarmed', un); } } if (typeof staffFrame === 'function') staffFrame(now);
+  drawTradeFx(ctx, now); drawShopScene(ctx, now); if (typeof drawFlameFx === 'function') drawFlameFx(ctx, now); if (typeof drawEntFx === 'function') drawEntFx(ctx, now); if (G.me) { const un = !!(G.me.shea || G.training || G.me.bathing || G.me.downed || G.me.medit); if (un !== G._unarmed) { G._unarmed = un; document.body.classList.toggle('unarmed', un); } } if (typeof staffFrame === 'function') staffFrame(now);
   if (G.tradeAt) { const tp = $('tradep'); if (!tp || tp.classList.contains('hidden')) { G.tradeAt = null; G.trade = null; } else if (dist(G.me.x, G.me.y, G.tradeAt.x, G.tradeAt.y) > 4) { tp.classList.add('hidden'); G.tradeAt = null; G.trade = null; } }   // longe do vendedor: fecha a troca
   const me = G.me; if (!me || !G.parrying) return; const ox = G.view.ox, oy = G.view.oy, P = iso(me.rx, me.ry), cx = P.sx + ox, cy = P.sy + oy - 26, f = me.fa ?? 0;
   const sh = me.cls === 'knight' && (me.shp ?? 100) > 0 && me.wpn !== 'halberd' && !me.shea;

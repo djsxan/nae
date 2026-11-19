@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.87.1';
-const VERSION_NAME = 'Nae · Muda';
+const VERSION = 'v1.88.0';
+const VERSION_NAME = 'Nae · Guardiã';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -188,6 +188,7 @@ const LOOT = {
   hardwood: { name: 'Madeira nobre',     price: 12, icon: '🟫', color: '#7a4a2a', desc: 'Carvalho de veio fino. Rara e valiosa.' },
   ore:      { name: 'Minério',           price: 4,  icon: '🪨', color: '#8a8a90', desc: 'Pedra com metal. Vende no Empório ou vai para a forja.' },
   flaxraw:  { name: 'Linho cru',         price: 3,  icon: '🌾', color: '#d8c890', desc: 'Fibra para tecido e bandagens.' },
+  entseed: { name: 'Semente da guardiã', price: 0, icon: '🌰', color: '#a87a40', desc: 'Deixada pela árvore guardiã ao secar. Um mago a planta fora da cidade (clique) e uma muda nova nasce.' },
   silverleaf: { name: 'Folha-de-prata',  price: 15, icon: '🍃', color: '#c8e0e8', desc: 'Erva rara que brilha ao luar. Boticários pagam bem.' },
   wheat: { name: 'Trigo', price: 2, icon: '🌾', color: '#e2c060', desc: 'Espigas da fazenda da Vila. Duas viram um pão no fogão; o moinho faz farinha.' },
   elixir_breath: { name: 'Elixir do Fôlego', price: 45, icon: '🧪', color: '#7ad8e8', desc: 'Por 3 minutos o fôlego não acaba. Da alquimista Morgana.' },

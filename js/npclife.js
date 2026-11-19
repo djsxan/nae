@@ -33,6 +33,7 @@ function updateNpcMotion(now, dt) {
 // NPC caído ou morto: deitado; puxado: arrastado; nas costas de alguém: não aparece no chão
 function drawNpcState(ctx, e, sx, sy, now) {
   if (e.onBackBy) return true;
+  if (e.kind && e.kind.startsWith('ent_')) return false;   /* a guardiã se desenha sozinha (tronco seco incluído) */
   if (e.npSleep && !e.npDown && !e.npDead) { const s = npcSprite3D(e.kind, { dir: e.dir || 0, walk: -1, down: true }); ctx.imageSmoothingEnabled = true; pblit(ctx, s, sx, sy); if (typeof drawZzz === 'function') drawZzz(ctx, sx, sy - 22, now); return true; }   // dormindo
   if (!(e.npDown || e.npDead)) return false;
   if (typeof TOWS !== 'undefined' && TOWS['n:' + e.id] && drawTow(ctx, 'n:' + e.id, now)) return true;

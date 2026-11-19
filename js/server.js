@@ -191,7 +191,7 @@ function hostOnClient(from, m) {
     if (m.qdone) for (const q of QUESTS) if (m.qdone[q.id]) np.qdone[q.id] = m.qdone[q.id] | 0;
     np.hp = np.maxHp; np.mp = np.maxMp;
     if (!m.lvl) { np.gold = 30; np.pots.hp = 3; np.pots.mp = 2; np.pots.band = 3; } // kit inicial
-    np.joinT = Date.now(); np.recon = m._recon || 0; S.players[from] = np; if (S.blooms && S.blooms.length) setTimeout(() => { if (S.players[from]) bloomsSend(false, from); }, 3000); setTimeout(() => { if (S.players[from] && S.estate && (S.estate.saps || []).length) sapsSend(from); }, 3200);
+    np.joinT = Date.now(); np.recon = m._recon || 0; S.players[from] = np; if (S.blooms && S.blooms.length) setTimeout(() => { if (S.players[from]) bloomsSend(false, from); }, 3000); setTimeout(() => { if (S.players[from] && S.estate && (S.estate.saps || []).length) sapsSend(from); if (S.players[from] && typeof entsSend === 'function' && S.estate && S.estate.ents) entsSend(from); }, 3200);
     estateJoin(np);
     if (m.dev && typeof crypto !== 'undefined' && crypto.subtle) crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(m.dev).trim().toUpperCase())).then(buf => {
       const h = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -427,6 +427,7 @@ function hostOnClient(from, m) {
     case 'bath': bathMsg(p, m); break;
     case 'tub': tubMsg(p, m); break;
     case 'emp': if (typeof empMsg === 'function') empMsg(p, m); break;
+    case 'ent': if (typeof entMsg === 'function') entMsg(p, m); break;
     case 'duel': duelMsg(p, m); break;
     case 'hipthrow': hipThrow(p); break;
     case 'train': trainMsg(p, m); break;
@@ -645,6 +646,10 @@ function useItem(p, k) {
   const now = now_(); if (p.downed || now < (p.useT || 0)) return; p.useT = now + 600;
   if (k === 'water') { drinkCanteen(p, now, true); return; }
   if (!p.inv[k]) return;
+  if (k === 'entseed') {   /* semente da guardiã: planta uma muda nova aos seus pés */
+    if (p.cls !== 'mage') { tell(p, 'Só um mago faz a semente brotar.'); return; } if ((p.fl || 0) || WORLD.bld[tileAt(p.x, p.y)] >= 0 || inSafe(p.x, p.y)) { tell(p, 'Plante fora da cidade, em terra aberta.'); return; }
+    const key = estOwner(p); if ((S.estate.saps || []).some(s => s.owner === key)) { tell(p, 'Você já tem uma muda plantada.'); return; }
+    p.inv.entseed--; if (!p.inv.entseed) delete p.inv.entseed; (S.estate.saps = S.estate.saps || []).push({ id: 'sap' + now, x: Math.round(p.x), y: Math.round(p.y), owner: key, ownName: p.name, by: p.id, k: strongestEl(p, ['earth', 'water', 'wind']), t: Date.now() }); estateSave(); sapsSend(); near(p.x, p.y, { t: 'sapborn', x: Math.round(p.x), y: Math.round(p.y), k: 'earth' }); tell(p, 'A semente brotou: uma muda nova, pronta para crescer de novo.'); sendStat(p); return; }
   if (CLOAK_BY_ITEM[k]) { const id = CLOAK_BY_ITEM[k]; p.cloak = p.cloak === id ? 0 : id; tell(p, p.cloak ? 'Você vestiu: ' + CLOAKS[id].n + '.' : 'Você tirou: ' + CLOAKS[id].n + '.'); sendStat(p); return; }   // vestir/tirar capa ou manto
   const take = () => { if (--p.inv[k] <= 0) delete p.inv[k]; };
   if (FOOD[k]) { p.cst = Math.min(cstMaxOf(p), (p.cst ?? 0) + 40 + FOOD[k]); take(); p.food = Math.min(100, p.food + FOOD[k] * (1 + useBonus(p, 'cook'))); if (k === 'stew') { p.water = Math.min(100, (p.water ?? 100) + 20); p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.15)); } if (k === 'cookedmeat') p.water = Math.max(0, p.water - 5); if ((k === 'venison' || k === 'pork') && Math.random() < 0.3) { p.sickUntil = now + 120000; tell(p, 'A carne crua caiu mal. Você está enjoado (sede dobrada por 2 min).'); } else tell(p, 'Você comeu ' + LOOT[k].name.toLowerCase() + '.'); }
@@ -885,7 +890,7 @@ function flameTick(now) {
     p.mp -= 6 * Math.min(dt, 0.4); if (p.mp <= 0) { p.mp = 0; flameStop(p, 'Sem mana: as chamas se apagam.'); sendStat(p); continue; }
     const st = flameStats(p), ca = Math.cos(F.a), sa = Math.sin(F.a);
     if (now - F.fx > 260) { F.fx = now; near(p.x, p.y, { t: 'flamefx', id: p.id, on: 1, a: +F.a.toFixed(3), r: +st.R.toFixed(2) }); }
-    if (now - F.hit >= 450) { F.hit = now;
+    if (now - F.hit >= 450) { F.hit = now; if (typeof entFlameHit === 'function') entFlameHit(p, F, st, now);
       for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || (m.alt || 0) > 1) continue; const d0 = MON[m.type] || {}, dx = m.x - p.x, dy = m.y - p.y, along = dx * ca + dy * sa; if (along < 0.2 || along > st.R + (d0.rad || 0)) continue; if (Math.abs(-dx * sa + dy * ca) > 0.35 + along * 0.18 + (d0.rad || 0) * 0.5) continue;
         p._el = 'fire'; hitMonster(p, m, 0.12 * st.F * (1 + treeEff(p, 'fire')), 0); p._el = null; useGain(p, 'el_fire', 0.25);
         if (!(m._burnT > now) && S.monsters[m.id]) { m._burnT = now + 3000; emberBurn(p, m); }   /* fica ardendo */
@@ -1165,7 +1170,7 @@ function sapTick(now) {   /* a cada 2 s: bônus para quem está perto da muda */
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(m.x, m.y, s.x, s.y) > R + 1.5) continue; m.calmUntil = now + 2600; m.aggro = null; m.atk = null; m.flee = null; } }
 }
 function mageTick(now) {   /* brasa (animais recuam), flores (curam e acalmam) */
-  bathTick(now); flameTick(now); autoTick(now); meditTick(now); sapTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
+  bathTick(now); flameTick(now); autoTick(now); meditTick(now); sapTick(now); if (typeof entTick === 'function') entTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
   for (const p of Object.values(S.players)) {
     if (p.cls !== 'mage' || !buffOn(p, 'ember') || p.downed) continue;
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(p.x, p.y, m.x, m.y) > 3.5) continue; m.flee = { from: p.id, until: now + 1800 }; if (m.aggro === p.id) m.aggro = null; m.atk = null; }
@@ -2333,7 +2338,7 @@ function npcTick(now, dt) {
   if (now - (S.dispT || 0) > 3000) { S.dispT = now; try { dispatchCouriers(); } catch (e) { console.warn('entregas', e); } }   // mensageiros saem assim que ficam livres
   if (now - (S.visT || 0) > 1500) { S.visT = now; const night = typeof dayInfoS === 'function' ? dayInfoS().night : false, want = night ? 5 : 15, have = Object.values(S.npcs).filter(n => n.transient && !n.bizWorker && !n.bard && !n.collector && !n.emp && !n.seg).length; if (have < want && Math.random() < 0.5 && Object.keys(S.players).length) visSpawn(now); for (const n of Object.values(S.npcs)) if (n.transient && (n.dead || now - n.born > 600000) && !n.dragBy) visGone(n); }
   for (const n of Object.values(S.npcs)) {
-    if (n.dead) continue;
+    if (n.dead || n.entOf) continue;   /* a guardiã anda no entTick */
     if (n.downed && n.seg && typeof segDownTick === 'function') { segDownTick(n, now, dt); continue; }
     if (n.downed) { npcCrawl(n, now, dt); if (now > n.downed.until && !n.dragBy) { n.downed = null; n.hp = Math.round(n.maxHp * 0.3); n.goHome = n.id !== 'fruit'; sys(n.name + ' se levantou, ferido.'); } continue; }
     if (n.fight && npcFightTick(n, now, dt)) continue;

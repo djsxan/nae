@@ -601,6 +601,7 @@ function heroSprite3D(cls, skin, color, P) {
   }, 'h|' + lk + (P.down ? 'd' + (P.prone ? 'p' : '') : '') + (P.drag ? 'D' + P.drag : '') + (P.tied ? 'T' + P.tied : '') + (P.surr ? 'U' : '') + (P.led ? 'L' : '') + (P.held ? 'H' + P.held + (P.held === 2 ? Math.floor(Date.now() / 90) % 4 : '') : '') + (P.dir | 0));
 }
 function npcSprite3D(kind, P) {
+  if (kind && kind.startsWith('ent_') && typeof entSprite3D === 'function') return entSprite3D({ id: Object.keys(G.ents || {}).find(id => G.npcs[id] && G.npcs[id].kind === kind) || '_cut', kind }, P);   /* guardiã do mago */
   return cache3('n3|' + kind + '|' + pose3Key(P), () => {
     const L = lookFor('npc:' + kind, NPC_LOOKS[kind]);
     const R = rigFor('npc:' + kind, L, NPC_SCALE[kind] ? { scale: NPC_SCALE[kind] } : undefined);
