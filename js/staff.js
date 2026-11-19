@@ -390,7 +390,7 @@ function drawCookFx(ctx, P, now) {   /* panela ou frigideira no fogão, chamas, 
   }
 }
 function drawStaffFx(ctx, P, now) {
-  const me = G.me; if (!me) return; drawCookFx(ctx, P, now);
+  const me = G.me; if (!me) return; drawCookFx(ctx, P, now); if (typeof drawFurnFire === 'function') drawFurnFire(ctx, P, now);
   if (G.skTray && me.fl) for (const bi in G.skTray) { if (+bi !== me.fb || G.skTray[bi] !== 'rim') continue; if (Object.values(G.players).some(e => e.bdrink && e.bathing && e.fb === +bi)) continue; const b = BUILDINGS[+bi], raise = me.fl * (bldDims(b).H / floorsOf(b)) * HV, [x0, y0] = localToWorld(b, SAKE_RIM[0], SAKE_RIM[1]), q = P(x0, y0, 0), s2 = sakeTraySprite(sakeTrayYaw({ fb: +bi }), { bottle: true, cup: true, lvl: 0 }); ctx.save(); ctx.imageSmoothingEnabled = true; pblit(ctx, s2, q[0], q[1] - raise - 0.32 * HV); ctx.restore(); }   /* bandeja esperando a doméstica buscar */
   const keys = Object.keys(G.bedMess || {}); if (!keys.length) return; const myFl = me.fl || 0, myB = myFl ? me.fb : bldAt(me.x, me.y);
   for (const k of keys) { const bd = BEDS[+k]; if (!bd || bd.bi !== myB || (bd.fl || 0) !== myFl) continue; const b = BUILDINGS[bd.bi], raise = myFl * (bldDims(b).H / floorsOf(b)) * HV;

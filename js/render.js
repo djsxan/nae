@@ -189,6 +189,8 @@ function drawEffects1(ctx, ox, oy, now) {
       }
       case 'bigboom': {   // clarão, bola de fogo crescendo, onda de choque no chão, fumaça subindo e brasas voando
         const k = easeOut(Math.min(1, t * 1.6)), fade = 1 - t;
+        if (!e._fx && typeof addScorch === 'function') { e._fx = 1; addScorch(e.x, e.y, 34, 60000, true); for (let q = 0; q < 14; q++) fireSmokeAt(cx - G.view.ox + (Math.random() - 0.5) * 30, cy - G.view.oy - 14 - Math.random() * 18, true, 5 + Math.random() * 4); sparkBurst(cx - G.view.ox, cy - G.view.oy - 14, FIRE_PAL[1], 26); }   /* fumaça, faíscas e o chão queimado */
+        if (t < 0.55 && typeof fireTongue === 'function') { ctx.save(); const R = 10 + easeOut(t / 0.55) * 40, al = 1 - t / 0.55; for (let q = 0; q < 12; q++) { const a = q / 12 * 6.283 + e.seed, ux = Math.cos(a), uy = Math.sin(a) * 0.55, l = Math.hypot(ux, uy); fireTongue(ctx, cx + ux * R * 0.6, cy - 12 + uy * R * 0.6, ux / l, uy / l, 8 + R * 0.25, 4 + R * 0.12, FIRE_PAL[0].mid, 0.7 * al, FIRE_PAL[1].core); } ctx.restore(); }   /* labaredas estourando para fora */
         if (t < 0.18) { ctx.fillStyle = 'rgba(255,245,220,' + (0.5 * (1 - t / 0.18)) + ')'; ctx.fillRect(-2000, -2000, 6000, 6000); }   // clarão
         ctx.strokeStyle = 'rgba(255,200,140,' + (0.8 * fade) + ')'; ctx.lineWidth = 2.5 * fade + 0.5; ctx.beginPath(); ctx.ellipse(cx, cy, 8 + easeOut(t) * 70, (8 + easeOut(t) * 70) / 2, 0, 0, 7); ctx.stroke();   // onda no chão
         ctx.fillStyle = 'rgba(40,20,10,' + (0.35 * fade) + ')'; ctx.beginPath(); ctx.ellipse(cx, cy, 12 + k * 40, 6 + k * 20, 0, 0, 7); ctx.fill();   // chão chamuscado
@@ -383,6 +385,7 @@ function heroPoseFor(e, now) {
   if (!P.act && e.emote && !e.walking) { const ms = ACT_MS[e.emote.k], t = (now - e.emote.t0) / ms; if (e.emote.k === 'dance') P.act = { k: 'dance', f: Math.floor(t * 12) % 12 }; else if (e.emote.k === 'adore') P.act = { k: 'adore', f: t < 0.8 ? Math.floor(t * 12) : 9 }; else if (t < 1) P.act = { k: e.emote.k + (e.cls === 'knight' && ACTS[e.emote.k + '_k'] ? '_k' : ''), f: Math.min(11, Math.floor(t * 12)) }; else e.emote = null; }
   else if (e.walking && e.emote) e.emote = null;
   if (e.medit && !P.act && !e.walking) { P.sit = 'g'; P.walk = -1; P.med = 1 + Math.floor(((now - e.medit.t0) % 5200) / 5200 * 6); return P; }   /* meditando em lótus */
+  if (!e.isNpc && e.flame && now < e.flame.until && e.cls === 'mage') { P.act = { k: 'flamecast', f: (Math.floor(now / 80) % 6) * 2 }; delete P.shea; }   /* Chamas: cajado à frente, nas mãos, com o tremor do recuo */
   if (e.sit && !P.act) { P.sit = e.sit.chair ? 'c' : 'g'; P.walk = -1; e._sseed = e._sseed ?? Math.random() * 20000; const sv = Math.floor((now + e._sseed) / 6500) % 3; if (sv) P.sv = sv; return P; }
   if (!e.isNpc) {
     if (e.slide) { P.sl = 1; P.walk = -1; P.run = 0; P.act = null; return P; }
@@ -490,7 +493,7 @@ function drawHeroEntity(ctx, e, sx, sy, now) {
     if (e.skin === 'weaver') sy -= 14 + Math.sin(now / 600) * 3;
     const msy = sy; if (e.medit && typeof drawMeditAura === 'function') { drawMeditAura(ctx, e, sx, msy, now, 0); const lt = Math.min(1, Math.max(0, (now - e.medit.t0 - 2500) / 1800)); sy -= lt * (8 + Math.sin(now / 900) * 1.6); }   /* levita depois de uns segundos */
     pblit(ctx, s, sx, sy);
-    if (e.medit && typeof drawMeditAura === 'function') drawMeditAura(ctx, e, sx, msy, now, 1); e._spr = s; e._sx = sx; e._sy = sy; e._drawT = now; if (s.spout) { e._spout = [sx - s.ax + s.spout[0], sy - s.ay + s.spout[1]]; e._spoutT = now; }
+    if (e.medit && typeof drawMeditAura === 'function') drawMeditAura(ctx, e, sx, msy, now, 1); e._spr = s; e._sx = sx; e._sy = sy; e._drawT = now; if (s.spout) { e._spout = [sx - s.ax + s.spout[0], sy - s.ay + s.spout[1]]; e._spoutT = now; } if (s.tip) { e._tip = [sx - s.ax + s.tip[0] - G.view.ox, sy - s.ay + s.tip[1] - G.view.oy]; e._tipT = now; }
     if (e.hitAt && now - e.hitAt < 110) pblit(ctx, whiteOf(s, 'w3|' + e.id + (e.cls || e.kind)), sx, sy, 0.65);
     return;
   }
@@ -572,8 +575,10 @@ function drawMonsterEntity(ctx, e, sx, sy, now) {
     softDab(ctx, sx, sy, MON[e.type].big ? 34 : 18, '#000000', 0.35 * alpha);
     if (e.type === 'wisp') G.lights.push({ x: sx, y: sy - 46, r: 70, c: '140,255,200', a: 0.9 * alpha });
     const fall = e.fallAt ? fallAngle(now - e.fallAt) * (kb.dx >= 0 ? 1 : -1) : 0;
+    const chC = typeof charOf === 'function' ? charOf(e.id, now) : 0; if (chC > 0.02) { ctx.save(); ctx.filter = charFilter(chC); }   /* carbonizado pelo fogo */
     if (fall) { ctx.save(); ctx.translate(sx, sy + sink); ctx.rotate(fall); pblit(ctx, s, 0, 0, alpha); ctx.restore(); }
     else pblit(ctx, s, sx, sy + sink, alpha);
+    if (chC > 0.02) ctx.restore();
     if (e.hitAt && now - e.hitAt < 110 && !fall) pblit(ctx, whiteOf(s, `wm|${e.type}|${f}|${atk}|${e.dir || 0}|${hurtF}`), sx, sy + sink, 0.7 * alpha);
     if (e.flags & 1 && Math.random() < 0.2) spawnPart('snow', sx - G.view.ox + (Math.random() - 0.5) * 24, sy - G.view.oy - Math.random() * 40);
     if (e.flags & 2) for (let k = 0; k < 3; k++) { const a = now / 180 + k * 2.1; dab(ctx, sx + Math.cos(a) * 12, sy - MON_H[e.type] * 0.55 - 4 + Math.sin(a) * 4, 2, 2, '#f0d040'); }
@@ -939,8 +944,10 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     }
     if (typeof drawZones === 'function') drawZones(ctx, now, P);
     if (typeof drawBowGround === 'function') drawBowGround(ctx, now, P);
+    if (typeof drawScorch === 'function') drawScorch(ctx, now, P);   /* chão queimado e brasas */
+    for (const f of G.fires) if (f.until <= now && !f._ash && typeof addScorch === 'function') { f._ash = 1; addScorch(f.x, f.y, 9 + 6 * (f.r || 1), 60000, true); }   /* o mato queimado vira cinza */
     G.fires = G.fires.filter(f => f.until > now);
-    for (const f of G.fires) { if (now < f.t0) continue; const [fx, fy] = P(f.x, f.y, f.z), fade = Math.min(1, (f.until - now) / 800); ctx.globalAlpha = fade; liveFlame(ctx, fx, fy, 1.1 * f.r, now, f.x * 13 + f.y); ctx.globalAlpha = 1; G.lights.push({ x: fx, y: fy - 14, r: 60, c: '255,150,60', a: fade, flick: 1 }); if (Math.random() < 0.05) spawnPart('smoke', fx - G.view.ox, fy - G.view.oy - 20); }
+    for (const f of G.fires) { if (now < f.t0) continue; const [fx, fy] = P(f.x, f.y, f.z), fade = Math.min(1, (f.until - now) / 800); ctx.globalAlpha = fade; liveFlame(ctx, fx, fy, 1.1 * f.r, now, f.x * 13 + f.y); if (Math.random() < 0.07 && typeof fireSmokeAt === 'function') fireSmokeAt(fx - G.view.ox + (Math.random() - 0.5) * 8, fy - G.view.oy - 22, false, 4); ctx.globalAlpha = 1; G.lights.push({ x: fx, y: fy - 14, r: 60, c: '255,150,60', a: fade, flick: 1 }); if (Math.random() < 0.05) spawnPart('smoke', fx - G.view.ox, fy - G.view.oy - 20); }
   }
   // 3c) objetos arremessados
   G.throws = (G.throws || []).filter(t => now - t.t0 < t.ms + 50);
@@ -1072,7 +1079,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       const c = it.corpse; if (c.onBack) return; if (typeof TOWS !== 'undefined' && TOWS['c:' + c.id]) { drawTow(ctx, 'c:' + c.id, now); return; } let f = FALLS['m' + c.id];
       const live = G.monsters[c.id]; if (!f && live && live.dieAt && now - live.dieAt < 1500) return;   // a queda ao vivo ainda vai começar
       if (!f && R3.ok) { f = startFall({ lost: c.lost || 0, key: 'm' + c.id, type: c.type, x: c.x, y: c.y, dir: c.id % 8, ix: c.ix, iy: c.iy, cls: 'knight', big: MON[c.type].big, force: 1 }); if (f) f.fromCorpse = true; }
-      if (f) { if (f.fromCorpse && !f.done && !f.staged) { for (let k = 0; k < 400 && !stepAny(f); k++); } drawFall(ctx, f, it.sx, it.sy, now, 1, c.type !== 'dragon' && MON_LOOK[c.type] ? 2 : 0); }
+      if (f) { if (f.fromCorpse && !f.done && !f.staged) { for (let k = 0; k < 400 && !stepAny(f); k++); } const chC = typeof charOf === 'function' ? charOf(c.id, now) : 0; if (chC > 0.02) { ctx.save(); ctx.filter = charFilter(chC); } drawFall(ctx, f, it.sx, it.sy, now, 1, c.type !== 'dragon' && MON_LOOK[c.type] ? 2 : 0); if (chC > 0.02) { ctx.restore(); drawEmberCracks(ctx, c.id, it.sx, it.sy + 8, now, chC, 10); } }   /* o corpo queimado continua carbonizado */
       { const ca = G.corpseArrows && G.corpseArrows[c.id]; if (ca) drawStuck(ctx, { arrows: ca.arrows, dir: ca.dir }, it.sx, it.sy, now, ca.dir); }
       if (!c.looted && dist(c.x, c.y, G.me.x, G.me.y) < 1.7) { const t = now / 300; for (let k = 0; k < 2; k++) dab(ctx, it.sx + Math.cos(t + k * 3) * 10, it.sy - 10 + Math.sin(t + k) * 4, 2, 2, '#ffe890'); }
       if (G.loot && G.loot.id === c.id) { const k = Math.min(1, (now - G.loot.t0) / 1300); ctx.strokeStyle = '#ffe890'; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(it.sx, it.sy - 34, 9, -Math.PI / 2, -Math.PI / 2 + k * Math.PI * 2); ctx.stroke(); }
@@ -1116,7 +1123,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     const e = it.e;
     ctx.imageSmoothingEnabled = false;
     if (it.k === 1) {
-      drawMonsterEntity(ctx, e, it.sx, it.sy, now); if (e.burnUntil > now && typeof drawOnFire === 'function') drawOnFire(ctx, it.sx, it.sy, now, (e.rx || 0) * 7.1); if (e.carrying && G.players[e.carrying]) drawCarried(ctx, G.players[e.carrying], it.sx, it.sy - (MON[e.type].big ? 20 : 0)); if (e.arrows && !FALLS['m' + e.id]) drawStuck(ctx, e, it.sx, it.sy, now);
+      drawMonsterEntity(ctx, e, it.sx, it.sy, now); if (typeof drawSoot === 'function' && e.charUntil > now) drawSoot(ctx, e, it.sx, it.sy, now); if (e.burnUntil > now && typeof drawOnFire === 'function') drawOnFire(ctx, it.sx, it.sy, now, (e.rx || 0) * 7.1); if (e.carrying && G.players[e.carrying]) drawCarried(ctx, G.players[e.carrying], it.sx, it.sy - (MON[e.type].big ? 20 : 0)); if (e.arrows && !FALLS['m' + e.id]) drawStuck(ctx, e, it.sx, it.sy, now);
     } else if (it.k === 3) {
       if (typeof drawNpcState === 'function' && drawNpcState(ctx, e, it.sx, it.sy, now)) { if (e.npDead && !e.onBackBy) labels.push({ sx: it.sx, sy: it.sy - 22, name: e.name + ' (morto)', color: '#8a8a8a', npc: e, e }); return; }
       if (typeof drawPackage === 'function' && (e.isNpc || (e.stb & 16))) drawPackage(ctx, e.isNpc ? e : { pkg: true, walking: e.walking, walkDist: e.walkDist }, it.sx, it.sy, now);

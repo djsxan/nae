@@ -286,6 +286,7 @@ function buildWeapon(L, S, trimM) {
     else { obj.add(mesh(sphG(0.065 * S), orbM, 0, -1.12 * S, 0)); }
     if (k === 'staff') for (let a = 0; a < 3; a++) { const cl = mesh(cylG(0.008 * S, 0.008 * S, 0.12 * S, 5), trimM, Math.cos(a * 2.1) * 0.05 * S, -1.07 * S, Math.sin(a * 2.1) * 0.05 * S); cl.rotation.z = Math.cos(a * 2.1) * 0.5; obj.add(cl); }
     if (k === 'druidstaff') for (let a = 0; a < 6; a++) { const lf = mesh(sphG(0.03 * S), mat(a % 2 ? '#5aa23a' : '#7cc24a', 'cloth'), Math.cos(a) * 0.08 * S, -1.04 * S - (a % 3) * 0.03 * S, Math.sin(a) * 0.08 * S); lf.scale.set(1, 0.4, 1.6); obj.add(lf); }
+    { const tp = new THREE.Object3D(); tp.position.set(0, -1.12 * S, 0); obj.add(tp); W.tip = tp; }   /* ponta do cajado: de onde sai o jato de fogo */
     // o cajado é segurado no meio, com o cristal para cima: inverte
     W.flip = false;
   } else if (k === 'bow' || k === 'frostbow' || k === 'elfbow') {
@@ -389,7 +390,7 @@ function applyPose(R, Q, P, walkPh) {
   { const bm = (Q.broom || 0) > 0.5; if (bm && !R.broom) { const g = new THREE.Group(), wd = mat('#7a5a34', 'wood'); g.add(mesh(cylG(0.012, 0.012, 1.15, 6), wd, 0, -0.2, 0)); const br = mesh(coneG(0.09, 0.26, 8), mat('#c8a860', 'cloth'), 0, -0.85, 0); br.rotation.x = Math.PI; g.add(br); g.rotation.x = 0.5; R.A.hand.add(g); R.broom = g; } if (R.broom) R.broom.visible = bm; if (bm && R.weapon && !R.weapon.bow) R.weapon.obj.visible = false; }
   { const ha = (Q.harrow || 0) > 0.5; if (ha && !R.harrow) { const g = new THREE.Group(); g.add(mesh(cylG(0.006, 0.006, 0.72, 5), mat('#6a4a2a', 'wood'), 0, -0.02, 0)); g.add(mesh(coneG(0.014, 0.05, 4), mat('#8a8f96', 'metal'), 0, 0.36, 0)); for (const s of [-1, 1]) { const f = mesh(boxG(0.003, 0.08, 0.03), mat('#e8e0cc', 'cloth'), s * 0.008, -0.34, 0); g.add(f); } R.B.hand.add(g); R.harrow = g; } if (R.harrow) R.harrow.visible = ha; }
   { const oc = (Q.ochoko || 0) > 0.5; if (oc && !R.ochoko) { const g = new THREE.Group(), c = sakeCup(true); c.position.set(0, -0.03, 0.05); g.add(c); g.scale.setScalar(1.5); R.B.hand.add(g); R.ochoko = g; } if (R.ochoko) R.ochoko.visible = oc; }   /* copinho de saquê (porcelana com sakura) */
-  { const tk = (Q.tokk || 0) > 0.5; if (tk && !R.tokk) { const g = new THREE.Group(), b = sakeBottle(); b.position.set(0, -0.06, 0); g.add(b); g.userData.sp = b.userData.sp; g.scale.setScalar(1.5); R.A.hand.add(g); R.tokk = g; } if (R.tokk) { R.tokk.visible = tk; R.tokk.userData.tilt = Q.tokt || 0; } R._tuck = Q.tuck || 0; R._sway = P && P.walk >= 0 ? Math.sin(P.walk / 12 * Math.PI * 2) * 0.16 : 0; }   /* tokkuri na mão: fica de pé e inclina para servir (ver shoot3D) */
+  { const tk = (Q.tokk || 0) > 0.5; if (tk && !R.tokk) { const g = new THREE.Group(), b = sakeBottle(); b.position.set(0, -0.06, 0); g.add(b); g.userData.sp = b.userData.sp; g.scale.setScalar(1.5); R.A.hand.add(g); R.tokk = g; } if (R.tokk) { R.tokk.visible = tk; R.tokk.userData.tilt = Q.tokt || 0; } R._tuck = Q.tuck || 0; R._tipOn = Q.ftip || 0; R._sway = P && P.walk >= 0 ? Math.sin(P.walk / 12 * Math.PI * 2) * 0.16 : 0; }   /* tokkuri na mão: fica de pé e inclina para servir (ver shoot3D) */
   { const cg = (Q.cig || 0) > 0.5; if (cg && !R.cig) { const g = new THREE.Group(); const c = mesh(cylG(0.005, 0.005, 0.07, 6), mat('#f4f0e8', 'cloth'), 0, -0.01, 0.05); c.rotation.x = Math.PI / 2; g.add(c); g.add(mesh(sphG(0.007), mat('#ff6020', 'cloth'), 0, -0.01, 0.087)); R.A.hand.add(g); R.cig = g; } if (R.cig) R.cig.visible = cg; }   /* cigarro */
   { const pp = (Q.pipe || 0) > 0.5; if (pp && !R.pipe) { const g = new THREE.Group(), wd = mat('#4a2e1a', 'wood'); g.add(mesh(cylG(0.006, 0.006, 0.12, 6), wd, 0, -0.02, 0.06)); g.children[0].rotation.x = Math.PI / 2; g.add(mesh(cylG(0.018, 0.014, 0.035, 8), wd, 0, 0.0, 0.12)); R.A.hand.add(g); R.pipe = g; } if (R.pipe) R.pipe.visible = pp; }
   holdProps(R, Q);
@@ -554,7 +555,8 @@ function shoot3D(R, dir, extraRotX, groundSit) {
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   c.getContext('2d').drawImage(renderer.domElement, 0, 0);
   const out = { c, w: FRAME_W, h: FRAME_H, ax: FRAME_W / 2, ay: FOOT_Y, painted: true, hd: true };
-  if (R.tokk && R.tokk.visible && R.tokk.userData.sp) out.spout = projArt(R.tokk.userData.sp);   /* onde fica o bico da garrafa no quadro */
+  if (R.tokk && R.tokk.visible && R.tokk.userData.sp) out.spout = projArt(R.tokk.userData.sp);
+  if (R._tipOn > 0.5 && R.weapon && R.weapon.tip) out.tip = projArt(R.weapon.tip);   /* ponta do cajado no quadro */   /* onde fica o bico da garrafa no quadro */
   return out;
 }
 const SPR3 = new Map();

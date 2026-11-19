@@ -20,7 +20,7 @@ if (typeof progEvent === 'function') { const _pe = progEvent; progEvent = functi
   if (m.t === 'medit') { const e = G.players[m.id]; if (e) e.medit = m.on ? { el: m.el, t0: now } : null; if (e === G.me && !m.on) { const d = document.getElementById('meditmenu'); if (d) d.remove(); } return true; }
   if (m.t === 'flamefx') { const e = G.players[m.id]; if (e) e.flame = m.on ? { a: m.a, r: m.r, until: now + 450 } : null; return true; }
   if (m.t === 'ember') { const e = G.players[m.id]; if (e) e.emberUntil = m.ms ? now + m.ms : 0; return true; }
-  if (m.t === 'mburn') { const e = G.monsters[m.id]; if (e) e.burnUntil = now + m.ms; return true; }
+  if (m.t === 'mburn') { const e = G.monsters[m.id]; { const C = G.charMap[m.id]; G.charMap[m.id] = { c: Math.min(1, (C ? charOf(m.id, now) : 0) + 0.4), t: now }; } if (e) { e.burnUntil = now + m.ms; e.charUntil = now + m.ms + 20000; if (G.view) { const p = iso(e.rx, e.ry); sparkBurst(p.sx, p.sy - 18, FIRE_PAL[1], 12); } } return true; }   /* faíscas no impacto; chamuscado por 20 s */
   return _pe(m, now);
 }; }
 
@@ -31,52 +31,155 @@ function flameAngle() { const me = G.me; if (!me) return 0; if (!G.mouseW) retur
 function flameKey(e) { const me = G.me; if (!me || me.cls !== 'mage' || (typeof slotTreeNode === 'function' && slotTreeNode(0)) || !SKILLS.mage[0] || SKILLS.mage[0].id !== 'ember') return false; if (!e.repeat) flameStart(); return true; }
 function flameStart() { const me = G.me; if (!me || me.downed || G.flame.on) return; if ((me.mp || 0) < 2) { showToast('Mana insuficiente.'); return; } G.flame.on = true; Net.send({ t: 'flame', on: 1, a: flameAngle() }); }
 function flameStop() { if (!G.flame.on) return; G.flame.on = false; Net.send({ t: 'flame', on: 0 }); }
-setInterval(() => { if (!G.flame.on || !G.me) return; if (G.me.downed) { flameStop(); return; } Net.send({ t: 'flame', on: 1, a: flameAngle() }); }, 150);
+setInterval(() => { if (!G.flame.on || !G.me) return; if (G.me.downed) { flameStop(); return; } const a = flameAngle(); G.me.dir = dirFromVec(Math.cos(a), Math.sin(a), G.me.dir); Net.send({ t: 'flame', on: 1, a }); }, 150);   /* o mago se vira para onde o jato vai */
 window.addEventListener('blur', () => flameStop());
-function drawFlameFx(ctx, now) {
-  for (const id in G.players) { const e = G.players[id], F = e.flame; if (!F || now > F.until || !e.visible) continue;
-    if (!e.anim || now - e.anim.t0 > (e.anim.ms || 600)) e.anim = { a: 'cast', t0: now, ms: 600 };
-    const ox = G.view.ox, oy = G.view.oy, hp = iso(e.rx + Math.cos(F.a) * 0.3, e.ry + Math.sin(F.a) * 0.3), hx = hp.sx + ox, hy = hp.sy + oy - (R3.ok ? 28 : 36);
-    const tp = iso(e.rx + Math.cos(F.a) * F.r, e.ry + Math.sin(F.a) * F.r), tx = tp.sx + ox, ty = tp.sy + oy - 14, L = Math.hypot(tx - hx, ty - hy) || 1, ux = (tx - hx) / L, uy = (ty - hy) / L, px = -uy, py = ux;
-    ctx.save(); ctx.globalCompositeOperation = 'lighter';
-    for (let layer = 0; layer < 3; layer++) { const W = [14, 9, 4][layer], cols = [['rgba(255,70,10,0.0)', 'rgba(255,90,20,0.55)', 'rgba(255,60,10,0)'], ['rgba(255,150,40,0.1)', 'rgba(255,170,60,0.7)', 'rgba(255,120,30,0)'], ['rgba(255,250,220,0.9)', 'rgba(255,230,140,0.75)', 'rgba(255,200,80,0)']][layer];
-      const g = ctx.createLinearGradient(hx, hy, tx, ty); g.addColorStop(0, cols[0]); g.addColorStop(0.35, cols[1]); g.addColorStop(1, cols[2]); ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(hx + px * 1.5, hy + py * 1.5);
-      const N = 10; for (let k = 1; k <= N; k++) { const t = k / N, wob = Math.sin(now / 60 + k * 1.7 + layer) * 2.5 * t, w = 1.5 + W * t + wob; ctx.lineTo(hx + ux * L * t + px * w, hy + uy * L * t + py * w); }
-      for (let k = N; k >= 1; k--) { const t = k / N, wob = Math.cos(now / 55 + k * 1.3 + layer) * 2.5 * t, w = 1.5 + W * t + wob; ctx.lineTo(hx + ux * L * t - px * w, hy + uy * L * t - py * w); } ctx.closePath(); ctx.fill(); }
-    ctx.restore();
-    if (G.view) for (let k = 0; k < 3; k++) { const t = Math.random(); spawnPart('ember', hx + ux * L * t + px * (Math.random() - 0.5) * 16 * t - ox, hy + uy * L * t + py * (Math.random() - 0.5) * 16 * t - oy, { vx: ux * 0.08, vy: uy * 0.08 - 0.03 }); }
-    if (Math.random() < 0.25 && G.view) spawnPart('smoke', tx - ox, ty - oy - 4, { color: '#5a4a40' });
-    G.lights.push({ x: hx + ux * L * 0.5, y: hy + uy * L * 0.5, r: 90 + L * 0.8, c: '255,150,60', a: 0.9, flick: 1 });
-  }
+// ---------- FOGO: jato do mago em dois estilos (pintado com fumaça / realista volumétrico) ----------
+G.fireStyle = G.fireStyle || 'painted';
+G.fireP = G.fireP || [];   /* partículas em coordenadas do mundo (arte), para o jato e a fumaça seguirem a câmera */
+const FIRE_PAL = [   /* a cor esquenta com a maestria: laranja/vermelho -> núcleo amarelo-branco -> núcleo azul-branco */
+  { core: [255, 214, 140], hot: [255, 150, 50], mid: [236, 84, 24], edge: [150, 30, 14] },
+  { core: [255, 246, 200], hot: [255, 196, 80], mid: [252, 120, 30], edge: [190, 44, 16] },
+  { core: [224, 242, 255], hot: [150, 200, 255], mid: [255, 214, 110], edge: [236, 96, 26] }];
+function firePal(k) { const i = k < 0.38 ? 0 : k < 0.78 ? 1 : 2; return FIRE_PAL[i]; }
+const lerpC = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+function fireCol(pal, s) {   /* s: 0 (recém-saído, mais quente) a 1 (fim da chama) */
+  if (s < 0.18) return lerpC(pal.core, pal.hot, s / 0.18); if (s < 0.5) return lerpC(pal.hot, pal.mid, (s - 0.18) / 0.32); return lerpC(pal.mid, pal.edge, Math.min(1, (s - 0.5) / 0.5)); }
+const rgba = (c, a) => 'rgba(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ',' + Math.max(0, Math.min(1, a)).toFixed(3) + ')';
+function flameGeom(e, F, now) {   /* de onde o jato sai (ponta do cajado) e até onde vai, em coordenadas de arte do mundo */
+  const tipOk = e._tip && now - (e._tipT || 0) < 600, hp = iso(e.rx + Math.cos(F.a) * 0.3, e.ry + Math.sin(F.a) * 0.3);
+  const t0 = tipOk ? e._tip : [hp.sx, hp.sy - 34], ep = iso(e.rx + Math.cos(F.a) * F.r, e.ry + Math.sin(F.a) * F.r), t1 = [ep.sx, ep.sy - 6];
+  const dx = t1[0] - t0[0], dy = t1[1] - t0[1], L = Math.hypot(dx, dy) || 1; return { x0: t0[0], y0: t0[1], ux: dx / L, uy: dy / L, px: -dy / L, py: dx / L, L, k: Math.max(0, Math.min(1, (F.r - 2.5) / 3.5)) };
 }
-// ---------- meditação: escolher o elemento e a aura de cada um ----------
-const MEDIT_UI = [['fire', '🔥', 'Fogo', 'Rende mais perto de fogueiras e forjas.'], ['water', '💧', 'Água', 'Rende mais perto de rios, lagos e do ofurô.'], ['earth', '🌿', 'Terra', 'Rende mais na grama e na floresta.'], ['wind', '🌬', 'Ar', 'Rende mais no alto ou em campo aberto.'], ['holy', '☀', 'Luz', 'Rende mais ao sol, de dia.']];
-function meditPick() {
-  if (!G.me || G.me.cls !== 'mage') return; if (G.me.medit) { Net.send({ t: 'medit', on: 0 }); return; }
-  const html = '<div style="padding:8px 14px 0;font-size:14px;opacity:.85">Sente em lótus e concentre-se num elemento: sobe a barra dele no Progresso e recupera vida, mana e fôlego. Ande para parar.</div><div class="lift-list" style="padding-top:8px">' + MEDIT_UI.map(([k, ic, n, sub]) => '<button class="lift-btn" data-el="' + k + '"><span class="lift-n">' + ic + '</span><span><b>' + n + '</b><br><small>' + sub + '</small></span></button>').join('') + '</div>';
-  const d = staffPanel('meditmenu', 'Meditar', html); d.querySelectorAll('[data-el]').forEach(b => b.onclick = () => { d.remove(); G.path = null; G.pathGoal = null; G.me.walking = false; Net.send({ t: 'medit', on: 1, el: b.dataset.el }); });
+function fireSpawn(e, F, g, now, dt) {
+  const real = G.fireStyle === 'real', n = real ? Math.round(36 * dt / 16) + 1 : Math.round(12 * dt / 16) + 1;
+  for (let i = 0; i < n; i++) { const life = real ? 380 + Math.random() * 260 : 420 + Math.random() * 220, sp = (g.L / life) * (0.9 + Math.random() * 0.25);
+    G.fireP.push({ k: 'f', x: g.x0 + g.px * (Math.random() - 0.5) * 2, y: g.y0 + g.py * (Math.random() - 0.5) * 2, vx: g.ux * sp, vy: g.uy * sp, sp: (Math.random() - 0.5) * (real ? 0.06 : 0.13), t0: now, life, seed: Math.random() * 100, pal: firePal(g.k), px: g.px, py: g.py, w: real ? 2.5 + Math.random() * 3 : 2.2 + Math.random() * 2.2, real }); }
+  if (Math.random() < (real ? 0.9 : 0.45)) G.fireP.push({ k: 'e', x: g.x0 + g.ux * g.L * Math.random() * 0.8, y: g.y0 + g.uy * g.L * Math.random() * 0.8, vx: g.ux * 0.12 + (Math.random() - 0.5) * 0.06, vy: g.uy * 0.12 - 0.05 - Math.random() * 0.04, t0: now, life: 500 + Math.random() * 600, pal: firePal(g.k) });   /* brasa */
 }
-const AURA_C = { fire: ['255,120,40', '255,200,90'], water: ['40,130,230', '160,220,255'], earth: ['90,140,50', '150,105,60'], wind: ['120,200,180', '235,255,250'], holy: ['255,220,120', '255,250,215'] };
-function drawMeditAura(ctx, e, sx, sy, now, front) {
-  const M = e.medit, el = M.el, C = AURA_C[el] || AURA_C.fire, age = (now - M.t0) / 1000, k = Math.min(1, age / 2.5), lev = Math.min(1, Math.max(0, (age - 2.5) / 1.8)), cy = sy - 10 - lev * 8, T = now / 1000;
-  ctx.save(); ctx.globalCompositeOperation = el === 'fire' || el === 'holy' ? 'lighter' : 'source-over';   /* fogo e luz brilham; água, terra e ar têm cor própria */
-  if (!front) {   /* chão: círculo do elemento */
-    const g = ctx.createRadialGradient(sx, sy, 2, sx, sy, 20); g.addColorStop(0, 'rgba(' + C[0] + ',' + (0.42 * k).toFixed(2) + ')'); g.addColorStop(1, 'rgba(' + C[0] + ',0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(sx, sy, 20, 9, 0, 0, 7); ctx.fill();
-    ctx.strokeStyle = 'rgba(' + C[0] + ',' + (0.85 * k).toFixed(2) + ')'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.ellipse(sx, sy, 15, 6.6, 0, 0, 7); ctx.stroke(); ctx.strokeStyle = 'rgba(' + C[1] + ',' + (0.6 * k).toFixed(2) + ')'; ctx.lineWidth = 0.4; ctx.beginPath(); ctx.ellipse(sx, sy, 17.5, 7.7, 0, 0, 7); ctx.stroke();
-    for (let i = 0; i < 5; i++) { const a = T * 0.4 + i * 1.2566; ctx.beginPath(); ctx.arc(sx + Math.cos(a) * 15, sy + Math.sin(a) * 6.6, 0.9, 0, 7); ctx.fillStyle = 'rgba(' + C[1] + ',' + (0.7 * k).toFixed(2) + ')'; ctx.fill(); }
-    if (el === 'water') for (let i = 0; i < 3; i++) { const q = ((T * 0.5 + i / 3) % 1); ctx.strokeStyle = 'rgba(' + C[1] + ',' + (0.55 * (1 - q) * k).toFixed(2) + ')'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.ellipse(sx, sy, 6 + q * 18, (6 + q * 18) * 0.44, 0, 0, 7); ctx.stroke(); }   /* ondas no chão */
-    if (el === 'holy') { const g2 = ctx.createLinearGradient(0, sy - 60, 0, sy); g2.addColorStop(0, 'rgba(' + C[1] + ',0)'); g2.addColorStop(1, 'rgba(' + C[0] + ',' + (0.28 * k).toFixed(2) + ')'); ctx.fillStyle = g2; ctx.fillRect(sx - 9, sy - 60, 18, 60); }   /* coluna de luz */
-  }
-  const orb = (n, rx, ry, spd, draw) => { for (let i = 0; i < n; i++) { const a = T * spd + i * Math.PI * 2 / n, s = Math.sin(a); if ((s > 0) !== !!front) continue; draw(sx + Math.cos(a) * rx, cy + s * ry, a, i); } };
-  if (el === 'fire') { orb(6, 13, 5, 1.1, (x, y, a, i) => { const f = 2.2 + Math.sin(T * 9 + i) * 0.8; const g = ctx.createRadialGradient(x, y, 0, x, y, f * 2); g.addColorStop(0, 'rgba(255,240,180,' + (0.9 * k).toFixed(2) + ')'); g.addColorStop(0.5, 'rgba(255,130,40,' + (0.6 * k).toFixed(2) + ')'); g.addColorStop(1, 'rgba(255,60,10,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y - f * 0.6, f, f * 1.7, 0, 0, 7); ctx.fill(); });
-    if (front && Math.random() < 0.3 && G.view) spawnPart('ember', sx + (Math.random() - 0.5) * 22 - G.view.ox, sy - 4 - G.view.oy, { vx: (Math.random() - 0.5) * 0.02, vy: -0.05 }); }
-  if (el === 'water') orb(5, 12, 5, 0.8, (x, y, a) => { ctx.fillStyle = 'rgba(' + C[1] + ',' + (0.85 * k).toFixed(2) + ')'; ctx.beginPath(); ctx.moveTo(x, y - 2.6); ctx.quadraticCurveTo(x + 1.7, y, x, y + 1.3); ctx.quadraticCurveTo(x - 1.7, y, x, y - 2.6); ctx.fill(); });   /* gotas em órbita */
-  if (el === 'earth') orb(6, 14, 5.5, 0.45, (x, y, a, i) => { const bob = Math.sin(T * 1.5 + i) * 1.4; if (i % 2) { ctx.fillStyle = 'rgba(150,115,80,' + (0.95 * k).toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(x, y + bob, 1.8, 1.3, a, 0, 7); ctx.fill(); } else { ctx.fillStyle = 'rgba(120,190,80,' + (0.9 * k).toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(x, y + bob, 2, 0.9, a + T, 0, 7); ctx.fill(); } });   /* pedrinhas e folhas flutuando */
-  if (el === 'wind') { ctx.lineCap = 'round'; for (let i = 0; i < 4; i++) { const a0 = T * 2.2 + i * 1.57, hgt = ((T * 0.6 + i / 4) % 1); for (let s = 0; s < 6; s++) { const a = a0 + s * 0.22, sn = Math.sin(a); if ((sn > 0) !== !!front) continue; const rr = 13 - hgt * 5; ctx.strokeStyle = 'rgba(' + C[1] + ',' + Math.min(1, 0.3 * s * k * (1 - hgt * 0.7)).toFixed(2) + ')'; ctx.lineWidth = 1.7; ctx.beginPath(); ctx.arc(sx, sy - 4 - hgt * 34, rr, a - 0.2, a, false); ctx.stroke(); } } }   /* redemoinho que sobe */
-  if (el === 'holy') { orb(7, 10, 4, 0.6, (x, y, a, i) => { const tw = 0.6 + Math.sin(T * 4 + i * 2) * 0.4; ctx.fillStyle = 'rgba(255,245,200,' + (tw * k).toFixed(2) + ')'; ctx.beginPath(); ctx.arc(x, y - 6 + Math.sin(T + i) * 3, 0.8 + tw * 0.6, 0, 7); ctx.fill(); });
-    if (front) { ctx.strokeStyle = 'rgba(255,230,150,' + (0.75 * k).toFixed(2) + ')'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.ellipse(sx, cy - 30, 6, 2, 0, 0, 7); ctx.stroke(); } }   /* auréola */
+function fireStep(now, dt) {
+  const out = [];
+  for (const q of G.fireP) { const age = now - q.t0; if (age > q.life) { if (q.k === 'f' && Math.random() < (q.real ? 0.35 : 0.7)) out.push({ k: 's', x: q.x, y: q.y - 2, vx: q.vx * 0.2, vy: q.vy * 0.2 - 0.02, t0: now, life: 1600 + Math.random() * 1400, r: q.real ? 4 : 4.5, real: q.real }); continue; }   /* a chama que morre vira fumaça */
+    if (q.k === 'f') { const s = age / q.life, wob = Math.sin(now / 45 + q.seed) * 0.6; q.x += (q.vx + q.px * q.sp * 6 * s + q.px * wob * 0.04) * dt; q.y += (q.vy + q.py * q.sp * 6 * s + q.py * wob * 0.04 - 0.004 * s) * dt; q.vx *= 0.995; q.vy *= 0.995; }   /* abre em cone e sobe um pouco no fim */
+    else if (q.k === 's') { q.x += q.vx * dt; q.y += q.vy * dt; q.vx *= 0.985; q.vy = q.vy * 0.985 - 0.00012 * dt; q.r += 0.012 * dt; }   /* fumaça: desacelera, sobe e se espalha */
+    else if (q.k === 'e') { q.x += q.vx * dt; q.y += q.vy * dt; q.vy += 0.00022 * dt; }   /* brasa cai */
+    out.push(q); }
+  G.fireP = out.length > 1600 ? out.slice(out.length - 1600) : out;
+}
+function fireTongue(ctx, x, y, ux, uy, len, w, col, a, core) {   /* uma língua de fogo pintada: cabeça arredondada à frente, cauda fina para trás */
+  const px = -uy, py = ux, hx = x + ux * len * 0.45, hy = y + uy * len * 0.45, tx = x - ux * len, ty = y - uy * len;
+  ctx.fillStyle = rgba(col, a); ctx.beginPath(); ctx.moveTo(tx, ty);
+  ctx.bezierCurveTo(x + px * w * 0.9 - ux * len * 0.3, y + py * w * 0.9 - uy * len * 0.3, hx + px * w * 0.75, hy + py * w * 0.75, hx + ux * w * 0.3, hy + uy * w * 0.3);
+  ctx.bezierCurveTo(hx - px * w * 0.75, hy - py * w * 0.75, x - px * w * 0.9 - ux * len * 0.3, y - py * w * 0.9 - uy * len * 0.3, tx, ty); ctx.fill();
+  if (core) { ctx.fillStyle = rgba(core, a * 0.9); ctx.beginPath(); ctx.ellipse(x + ux * len * 0.1, y + uy * len * 0.1, len * 0.42, w * 0.32, Math.atan2(uy, ux), 0, 7); ctx.fill(); }
+}
+function fireDraw(ctx, now) {
+  const ox = G.view.ox, oy = G.view.oy; if (!G.fireP.length) return;
+  ctx.save();
+  for (const q of G.fireP) if (q.k === 's') { const s = (now - q.t0) / q.life, a = (q.real ? 0.32 : 0.36) * Math.sin(Math.PI * Math.min(1, s * 1.4 + 0.08)) * (1 - s), g = ctx.createRadialGradient(q.x + ox, q.y + oy, 0, q.x + ox, q.y + oy, q.r); const c0 = q.dk ? '34,28,26' : '70,62,58', c1 = q.dk ? '52,46,44' : '96,88,84'; g.addColorStop(0, 'rgba(' + c0 + ',' + a.toFixed(3) + ')'); g.addColorStop(0.6, 'rgba(' + c1 + ',' + (a * 0.55).toFixed(3) + ')'); g.addColorStop(1, 'rgba(110,104,100,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(q.x + ox, q.y + oy, q.r, 0, 7); ctx.fill(); }   /* fumaça atrás do fogo */
+  const fl = G.fireP.filter(q => q.k === 'f' && !q.real);
+  for (const pass of [0, 1, 2]) {   /* pintado em camadas: contorno escuro, corpo da chama e o núcleo claro */
+    if (pass === 2) ctx.globalCompositeOperation = 'lighter';
+    for (const q of fl) { const s = (now - q.t0) / q.life, x = q.x + ox, y = q.y + oy, l = Math.hypot(q.vx, q.vy) || 1, ux = q.vx / l, uy = q.vy / l, len = 4 + s * 12 + Math.sin(now / 55 + q.seed) * 1.2, w = q.w * (0.7 + s * 2.1), fade = Math.pow(1 - s, 1.15);
+      if (pass === 0) { if (s > 0.15 && s < 0.7) fireTongue(ctx, x, y, ux, uy, len * 1.06, w * 1.12, q.pal.edge, 0.16 * fade, null); }   /* contorno leve, só no meio da chama */
+      else if (pass === 1) fireTongue(ctx, x, y, ux, uy, len, w, fireCol(q.pal, Math.min(1, s * 1.1 + 0.1)), (s < 0.45 ? 0.25 : 0.55) * fade, null);   /* as línguas aparecem mais no fim, onde o corpo se quebra */
+      else if (s < 0.5) fireTongue(ctx, x, y, ux, uy, len * 0.7, w * 0.5, lerpC(q.pal.core, [255, 255, 255], 0.25), 0.55 * (1 - s / 0.5), null); } }
+  ctx.globalCompositeOperation = 'lighter';
+  for (const q of G.fireP) { const s = (now - q.t0) / q.life; if (q.k === 'f' && q.real) { const col = fireCol(q.pal, s), x = q.x + ox, y = q.y + oy, rr = q.w * (1 + s * 2.6), g = ctx.createRadialGradient(x, y, 0, x, y, rr); g.addColorStop(0, rgba(col, 0.55 * (1 - s * 0.7))); g.addColorStop(0.5, rgba(col, 0.22 * (1 - s))); g.addColorStop(1, rgba(col, 0)); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, rr, 0, 7); ctx.fill(); }
+    else if (q.k === 'e') { const a = 1 - s; ctx.fillStyle = rgba(q.pal.hot, a); ctx.fillRect(q.x + ox - 0.4, q.y + oy - 0.4, 0.8, 0.8); } }
   ctx.restore();
-  if (front && G.lights && k > 0.3) G.lights.push({ x: sx, y: cy, r: 60, c: C[0], a: 0.55 * k, flick: el === 'fire' ? 1 : 0 });
+}
+// ---------- impactos: chamas que sobem (bicho em chamas, mato, fogueiras), chão queimado, fuligem e faíscas ----------
+function paintFlameUp(ctx, x, y, s, now, seed, pal) {   /* labareda vertical pintada: contorno escuro, corpo e núcleo, com 3 a 5 línguas balançando */
+  pal = pal || FIRE_PAL[0]; const N = 4, H = 16 * s;
+  ctx.save();
+  const tongue = (k, sc, col, a) => { const ph = now / (70 + k * 9) + seed + k * 1.7, sw = Math.sin(ph) * 2.2 * s + Math.sin(ph * 1.9) * 1.1 * s, hh = H * sc * (0.78 + 0.22 * Math.sin(ph * 1.3 + k)) * (k === 1 || k === 2 ? 1 : 0.72), w = 4.2 * s * sc * (k === 1 || k === 2 ? 1 : 0.75), bx = x + (k - 1.5) * 3.2 * s;
+    ctx.fillStyle = rgba(col, a); ctx.beginPath(); ctx.moveTo(bx - w, y); ctx.bezierCurveTo(bx - w * 1.1, y - hh * 0.45, bx + sw * 0.6 - w * 0.4, y - hh * 0.75, bx + sw, y - hh); ctx.bezierCurveTo(bx + sw * 0.6 + w * 0.4, y - hh * 0.75, bx + w * 1.1, y - hh * 0.45, bx + w, y); ctx.quadraticCurveTo(bx, y + w * 0.5, bx - w, y); ctx.fill(); };
+  for (let k = 0; k < N; k++) tongue(k, 1.12, pal.edge, 0.55);
+  for (let k = 0; k < N; k++) tongue(k, 0.95, pal.mid, 0.85);
+  ctx.globalCompositeOperation = 'lighter';
+  for (let k = 1; k < 3; k++) tongue(k, 0.6, pal.hot, 0.75);
+  { const g = ctx.createRadialGradient(x, y - H * 0.18, 0, x, y - H * 0.18, H * 0.4); g.addColorStop(0, rgba(pal.core, 0.9)); g.addColorStop(1, rgba(pal.hot, 0)); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y - H * 0.18, H * 0.32, H * 0.22, 0, 0, 7); ctx.fill(); }
+  { const g = ctx.createRadialGradient(x, y, 0, x, y, H * 1.1); g.addColorStop(0, rgba(pal.mid, 0.22)); g.addColorStop(1, rgba(pal.mid, 0)); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y, H * 1.1, H * 0.5, 0, 0, 7); ctx.fill(); }   /* brilho no chão */
+  ctx.restore();
+}
+function liveFlame(ctx, x, y, s, now, seed) { paintFlameUp(ctx, x, y, s * 1.05, now, seed || 0, FIRE_PAL[0]); }   /* todo fogo do jogo que usa liveFlame fica pintado */
+function fireSmokeAt(wx, wy, dark, r) { G.fireP.push({ k: 's', x: wx, y: wy, vx: (Math.random() - 0.5) * 0.004, vy: -0.022 - Math.random() * 0.01, t0: performance.now(), life: 1800 + Math.random() * 1400, r: r || 3.5, dk: dark ? 1 : 0 }); }
+function drawOnFire(ctx, x, y, now, seed) {   /* bicho (ou gente) em chamas: labaredas pelo corpo, fumaça escura e luz */
+  paintFlameUp(ctx, x - 5, y - 4, 0.55, now, seed); paintFlameUp(ctx, x + 5, y - 16, 0.48, now, seed + 3); paintFlameUp(ctx, x - 1, y - 28, 0.42, now, seed + 7);
+  G.lights.push({ x, y: y - 22, r: 75, c: '255,140,50', a: 0.9, flick: 1 }); if (Math.random() < 0.3) fireSmokeAt(x - G.view.ox + (Math.random() - 0.5) * 8, y - G.view.oy - 38, true, 3);
+}
+G.scorch = G.scorch || [];   /* marcas de queimado no chão (coordenadas do mapa) */
+function addScorch(x, y, size, ms, ember) { G.scorch.push({ x, y, r: size, t0: performance.now(), ms: ms || 30000, rot: Math.random() * 6.28, seed: Math.random() * 100, emb: ember !== false }); if (G.scorch.length > 220) G.scorch.shift(); }
+function drawScorch(ctx, now, P) {   /* mancha preta irregular que esmaece, com brasas acesas no começo */
+  G.scorch = G.scorch.filter(s => now - s.t0 < s.ms); if (!G.scorch.length) return;
+  ctx.save();
+  for (const s of G.scorch) { const [x, y] = P(s.x, s.y, 0), age = (now - s.t0) / s.ms, a = Math.min(1, (now - s.t0) / 400) * Math.min(1, (1 - age) * 1.6) * 0.62;
+    ctx.fillStyle = 'rgba(24,16,10,' + a.toFixed(3) + ')'; ctx.beginPath(); for (let k = 0; k < 9; k++) { const an = s.rot + k / 9 * 6.283, rr = s.r * (0.7 + 0.3 * Math.sin(s.seed + k * 2.3)); ctx.lineTo(x + Math.cos(an) * rr, y + Math.sin(an) * rr * 0.5); } ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(60,44,34,' + (a * 0.6).toFixed(3) + ')'; ctx.beginPath(); ctx.ellipse(x + s.r * 0.15, y - s.r * 0.05, s.r * 0.45, s.r * 0.2, s.rot, 0, 7); ctx.fill(); }   /* cinza no meio */
+  ctx.globalCompositeOperation = 'lighter';
+  for (const s of G.scorch) { if (!s.emb) continue; const t = now - s.t0; if (t > 9000) continue; const [x, y] = P(s.x, s.y, 0), a = (1 - t / 9000) * (0.6 + 0.4 * Math.sin(now / 130 + s.seed));
+    for (let k = 0; k < 4; k++) { const an = s.seed + k * 1.9, rr = s.r * 0.55 * ((k * 37 % 10) / 10); ctx.fillStyle = 'rgba(255,' + (110 + k * 25) + ',40,' + a.toFixed(3) + ')'; ctx.beginPath(); ctx.arc(x + Math.cos(an) * rr, y + Math.sin(an) * rr * 0.5, 0.55, 0, 7); ctx.fill(); } }   /* brasas acesas */
+  ctx.restore();
+}
+function sparkBurst(wx, wy, pal, n) { for (let k = 0; k < (n || 10); k++) { const a = Math.random() * 6.283, sp = 0.05 + Math.random() * 0.09; G.fireP.push({ k: 'e', x: wx, y: wy, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp * 0.6 - 0.05, t0: performance.now(), life: 350 + Math.random() * 450, pal: pal || FIRE_PAL[1] }); } }
+// ---------- carbonizado: cada queimadura escurece mais o bicho (e o corpo dele), com brasas nas rachaduras ----------
+G.charMap = G.charMap || {};
+function charOf(id, now) { const C = G.charMap[id]; if (!C) return 0; const age = now - C.t; if (age > 300000) { delete G.charMap[id]; return 0; } return C.c * (age < 120000 ? 1 : 1 - (age - 120000) / 180000); }
+function charFilter(c) { return 'brightness(' + (1 - 0.78 * c).toFixed(3) + ') saturate(' + (1 - 0.9 * c).toFixed(3) + ') contrast(' + (1 + 0.3 * c).toFixed(3) + ') sepia(' + (0.25 * c).toFixed(3) + ')'; }
+function drawEmberCracks(ctx, id, sx, sy, now, c, h) {   /* rachaduras em brasa sobre o corpo queimado */
+  if (c < 0.25) return; const C = G.charMap[id], hot = C ? Math.max(0, 1 - (now - C.t) / 25000) : 0; if (hot <= 0) return; const sd = (id || 0) * 1.37;
+  ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.lineCap = 'round';
+  for (let k = 0; k < 6; k++) { const x0 = sx + Math.sin(sd + k * 2.3) * 7, y0 = sy - 6 - ((k * 13 + sd * 5) % (h || 26)), fl = 0.55 + 0.45 * Math.sin(now / 160 + k * 1.7 + sd), a = hot * c * fl;
+    ctx.strokeStyle = 'rgba(255,' + (90 + k * 18) + ',30,' + a.toFixed(3) + ')'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x0 + 2 + (k % 3), y0 + 1.2); ctx.lineTo(x0 + 3.5, y0 - 0.8 + (k % 2)); ctx.stroke(); }
+  ctx.restore();
+}
+function drawSoot(ctx, e, sx, sy, now) {   /* chamuscado: manchas de fuligem e fiapos de fumaça por um tempo depois de queimar */
+  const left = (e.charUntil || 0) - now; if (left <= 0) return; const a = Math.min(1, left / 4000) * 0.45, sd = (e.id || 0) * 1.7;
+  ctx.save(); ctx.fillStyle = 'rgba(20,14,10,' + a.toFixed(3) + ')'; for (let k = 0; k < 5; k++) { const ox = Math.sin(sd + k * 2.1) * 6, oy = -8 - (k * 7 % 22); ctx.beginPath(); ctx.ellipse(sx + ox, sy + oy, 3 + (k % 2) * 1.5, 2, sd + k, 0, 7); ctx.fill(); } ctx.restore();
+  if (Math.random() < 0.06) fireSmokeAt(sx - G.view.ox + (Math.random() - 0.5) * 6, sy - G.view.oy - 20, true, 2.2);
+  drawEmberCracks(ctx, e.id, sx, sy, now, charOf(e.id, now), 26);
+}
+// ---------- fogo dos móveis: lareiras, forja, lareira da taverna e irori ganham chamas pintadas animadas ----------
+const FURN_FIRE = { fireplace: { h: 0.28, s: 0.75, w: 1 }, hearth: { h: 0.32, s: 1.05, w: 1 }, forge: { h: 0.46, s: 0.7, w: 2, sparks: 1 }, irori: { h: 0.06, s: 0.55, w: 1, smoke: 1 } };
+const _furnFire = new Map();
+function furnFires(bi, fl) {   /* lista (em cache) das bocas de fogo de um prédio/andar */
+  const key = bi + ':' + fl; if (_furnFire.has(key)) return _furnFire.get(key); const b = BUILDINGS[bi], out = [];
+  try { for (const f of interiorLayout(b, fl).F) { const D = FURN_FIRE[f.t]; if (!D) continue; const ci = f.i + (f.w - 1) / 2, cj = f.j + (f.h - 1) / 2; const [x, y] = fl ? localToWorld(b, f.i + f.w / 2, f.j + f.h / 2) : bLocal(b, ci, cj); out.push({ x, y, ...D, t: f.t, seed: x * 7 + y * 3 }); } } catch (e) { }
+  _furnFire.set(key, out); return out;
+}
+function drawFurnFire(ctx, P, now) {
+  const me = G.me; if (!me) return; const fl = me.fl || 0, bi = fl ? me.fb : (typeof bldAt === 'function' ? bldAt(me.x, me.y) : -1); if (bi == null || bi < 0 || !BUILDINGS[bi]) return;
+  const b = BUILDINGS[bi], raise = fl ? fl * (bldDims(b).H / floorsOf(b)) * HV : 0;
+  for (const F of furnFires(bi, fl)) { const q = P(F.x, F.y, 0), x = q[0], y = q[1] - raise - F.h * HV;
+    if (F.w > 1) { paintFlameUp(ctx, x - 6, y, F.s * 0.8, now, F.seed, FIRE_PAL[0]); paintFlameUp(ctx, x + 6, y, F.s * 0.8, now, F.seed + 4, FIRE_PAL[1]); } else paintFlameUp(ctx, x, y, F.s, now, F.seed, FIRE_PAL[0]);
+    G.lights.push({ x, y: y - 10, r: 60 + F.s * 40, c: '255,150,60', a: 0.95, flick: 1 });
+    if (F.sparks && Math.random() < 0.12) sparkBurst(x - G.view.ox + (Math.random() - 0.5) * 10, y - G.view.oy - 6, FIRE_PAL[1], 3);   /* forja: faíscas */
+    if (F.smoke && Math.random() < 0.05) fireSmokeAt(x - G.view.ox, y - G.view.oy - 16, false, 3); }
+}
+G.fireLast = G.fireLast || 0;
+function drawFlameFx(ctx, now) {
+  const dt = Math.min(50, now - (G.fireLast || now)); G.fireLast = now;
+  for (const id in G.players) { const e = G.players[id], F = e.flame; if (!F || now > F.until || !e.visible) continue;
+    const g = flameGeom(e, F, now), ox = G.view.ox, oy = G.view.oy, pal = firePal(g.k);
+    fireSpawn(e, F, g, now, dt);
+    if (now - (e._scT || 0) > 110) { e._scT = now; const t = 0.35 + Math.random() * 0.65, j = (Math.random() - 0.5) * 0.5; addScorch(e.rx + Math.cos(F.a) * F.r * t - Math.sin(F.a) * j * t, e.ry + Math.sin(F.a) * F.r * t + Math.cos(F.a) * j * t, 9 + Math.random() * 8 * t, 30000); }   /* o jato chamusca o chão */
+    ctx.save(); ctx.globalCompositeOperation = 'lighter';
+    if (G.fireStyle !== 'real') {   /* corpo contínuo do jato: cone pintado em três camadas, com a borda ondulando */
+      const N = 16, BL = g.L * 0.62, W1 = Math.max(6, g.L * 0.17), X0 = g.x0 + ox, Y0 = g.y0 + oy;   /* o corpo cobre a primeira parte; o resto se quebra em línguas */
+      const layer = (wm, stops, mode, ph) => { ctx.globalCompositeOperation = mode; const gr = ctx.createLinearGradient(X0, Y0, X0 + g.ux * BL, Y0 + g.uy * BL); for (const [o, c, al] of stops) gr.addColorStop(o, rgba(c, al)); ctx.fillStyle = gr; ctx.beginPath(); ctx.moveTo(X0 + g.px * 0.8, Y0 + g.py * 0.8);
+        const side = sg => { for (let k = 1; k <= N; k++) { const kk = sg > 0 ? k : N + 1 - k, t = kk / N, w = (1.2 + W1 * Math.pow(t, 0.75) + (Math.sin(now / 58 + kk * 1.9 + ph + (sg > 0 ? 0 : 2.3)) * 2.2 + Math.sin(now / 31 + kk * 3.7 + ph) * 1.1) * t) * wm, ex = X0 + g.ux * BL * t, ey = Y0 + g.uy * BL * t; ctx.lineTo(ex + g.px * w * sg, ey + g.py * w * sg); if (sg > 0 && k === N) ctx.quadraticCurveTo(ex + g.ux * w * 0.9, ey + g.uy * w * 0.9, ex - g.px * w, ey - g.py * w); } };
+        side(1); side(-1); ctx.closePath(); ctx.fill(); };
+      layer(1.1, [[0, pal.edge, 0.0], [0.1, pal.edge, 0.35], [0.6, pal.edge, 0.25], [1, pal.edge, 0]], 'source-over', 4.1);   /* borda vermelho-escura irregular */
+      layer(1, [[0, pal.mid, 0.0], [0.08, pal.mid, 0.6], [0.6, pal.mid, 0.4], [1, pal.mid, 0]], 'source-over', 0);   /* corpo laranja */
+      layer(0.62, [[0, pal.core, 0.95], [0.3, pal.hot, 0.7], [0.75, pal.mid, 0.25], [1, pal.mid, 0]], 'lighter', 1.3);   /* miolo quente */
+      layer(0.28, [[0, [255, 255, 255], 0.95], [0.25, pal.core, 0.8], [0.55, pal.hot, 0.25], [0.8, pal.hot, 0]], 'lighter', 2.6);   /* núcleo claro */
+      ctx.globalCompositeOperation = 'lighter'; }
+    const gl = ctx.createRadialGradient(g.x0 + ox, g.y0 + oy, 0, g.x0 + ox, g.y0 + oy, 7); gl.addColorStop(0, rgba([255, 255, 255], 0.9)); gl.addColorStop(0.4, rgba(pal.core, 0.6)); gl.addColorStop(1, rgba(pal.hot, 0)); ctx.fillStyle = gl; ctx.beginPath(); ctx.arc(g.x0 + ox, g.y0 + oy, 7, 0, 7); ctx.fill();   /* clarão no cristal */
+    ctx.restore();
+    { const ep = iso(e.rx + Math.cos(F.a) * F.r * 0.6, e.ry + Math.sin(F.a) * F.r * 0.6), gx = ep.sx + ox, gy = ep.sy + oy, rr = 10 + g.L * 0.45, gg = ctx.createRadialGradient(gx, gy, 0, gx, gy, rr); ctx.save(); ctx.globalCompositeOperation = 'lighter'; gg.addColorStop(0, rgba(pal.hot, 0.28 * (1 + Math.sin(now / 50) * 0.15))); gg.addColorStop(1, rgba(pal.mid, 0)); ctx.fillStyle = gg; ctx.beginPath(); ctx.ellipse(gx, gy, rr, rr * 0.5, 0, 0, 7); ctx.fill(); ctx.restore(); }   /* o chão brilha sob o jato */
+    const lx = g.x0 + ox + g.ux * g.L * 0.5, ly = g.y0 + oy + g.uy * g.L * 0.5; G.lights.push({ x: lx, y: ly, r: 110 + g.L * 0.9, c: pal.mid.map(v => v | 0).join(','), a: 0.95, flick: 1 });
+  }
+  fireStep(now, dt); fireDraw(ctx, now);
 }
 function drawEmberHand(ctx, e, sx, sy, now) {
   const side = DIR_VIEW && DIR_VIEW[e.dir || 0] === 'W' ? -1 : 1, hx = sx + side * 11, hy = sy - (R3.ok ? 31 : 41), fl = Math.min(1, (e.emberUntil - now) / 500);
