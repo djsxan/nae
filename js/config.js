@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.81.0';
-const VERSION_NAME = 'Nae · Chamas';
+const VERSION = 'v1.82.0';
+const VERSION_NAME = 'Nae · Lótus';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -435,6 +435,7 @@ function cleanTree(cls, lvl, t) {
 // ============================================================
 const USE = {
   sword:  { name: 'Espada', cat: 'Armas', K: 450, desc: 'Golpes de espada: mais dano corpo a corpo.' },
+  halberd: { name: 'Alabarda', cat: 'Armas', K: 450, desc: 'Golpes de alabarda: mais dano com a arma longa.' },
   dagger: { name: 'Adaga', cat: 'Armas', K: 450, desc: 'Golpes de adaga: mais dano corpo a corpo.' },
   staff:  { name: 'Cajado', cat: 'Armas', K: 450, desc: 'Golpes de cajado: mais dano corpo a corpo.' },
   bow:    { name: 'Arco', cat: 'Armas', K: 500, desc: 'Flechas disparadas: mais dano à distância.' },
@@ -465,6 +466,7 @@ const SENSEI_MOVES = {
 const hasMove = (p, k) => !!(p && p.feats && p.feats.mv && p.feats.mv[k]);
 const useLvl = (p, k) => Math.floor(100 * (1 - Math.exp(-((p.use && p.use[k]) || 0) / USE[k].K)));
 const useBonus = (p, k) => useLvl(p, k) / 100 * USE_MAX_BONUS;
+const meleeUseOf = p => p.cls === 'knight' && p.wpn === 'halberd' ? 'halberd' : MELEE_USE[p.cls];   /* a alabarda tem a sua própria perícia */
 const MELEE_USE = { knight: 'sword', archer: 'dagger', mage: 'staff' }, RANGED_USE = { knight: 'sword', archer: 'bow', mage: 'magic' };
 const maxHpOf = p => Math.floor(maxHpFor(p.cls, p.lvl) * (1 + treeEff(p, 'hp') + useBonus(p, 'vigor')));
 // varinhas: o mago usa sozinho a melhor que carregar

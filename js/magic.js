@@ -17,6 +17,7 @@ if (typeof buildHotbar === 'function') { const _bh = buildHotbar; buildHotbar = 
 
 // ---------- eventos das magias ----------
 if (typeof progEvent === 'function') { const _pe = progEvent; progEvent = function (m, now) {
+  if (m.t === 'medit') { const e = G.players[m.id]; if (e) e.medit = m.on ? { el: m.el, t0: now } : null; if (e === G.me && !m.on) { const d = document.getElementById('meditmenu'); if (d) d.remove(); } return true; }
   if (m.t === 'flamefx') { const e = G.players[m.id]; if (e) e.flame = m.on ? { a: m.a, r: m.r, until: now + 450 } : null; return true; }
   if (m.t === 'ember') { const e = G.players[m.id]; if (e) e.emberUntil = m.ms ? now + m.ms : 0; return true; }
   if (m.t === 'mburn') { const e = G.monsters[m.id]; if (e) e.burnUntil = now + m.ms; return true; }
@@ -47,6 +48,35 @@ function drawFlameFx(ctx, now) {
     if (Math.random() < 0.25 && G.view) spawnPart('smoke', tx - ox, ty - oy - 4, { color: '#5a4a40' });
     G.lights.push({ x: hx + ux * L * 0.5, y: hy + uy * L * 0.5, r: 90 + L * 0.8, c: '255,150,60', a: 0.9, flick: 1 });
   }
+}
+// ---------- meditação: escolher o elemento e a aura de cada um ----------
+const MEDIT_UI = [['fire', '🔥', 'Fogo', 'Rende mais perto de fogueiras e forjas.'], ['water', '💧', 'Água', 'Rende mais perto de rios, lagos e do ofurô.'], ['earth', '🌿', 'Terra', 'Rende mais na grama e na floresta.'], ['wind', '🌬', 'Ar', 'Rende mais no alto ou em campo aberto.'], ['holy', '☀', 'Luz', 'Rende mais ao sol, de dia.']];
+function meditPick() {
+  if (!G.me || G.me.cls !== 'mage') return; if (G.me.medit) { Net.send({ t: 'medit', on: 0 }); return; }
+  const html = '<div style="padding:8px 14px 0;font-size:14px;opacity:.85">Sente em lótus e concentre-se num elemento: sobe a barra dele no Progresso e recupera vida, mana e fôlego. Ande para parar.</div><div class="lift-list" style="padding-top:8px">' + MEDIT_UI.map(([k, ic, n, sub]) => '<button class="lift-btn" data-el="' + k + '"><span class="lift-n">' + ic + '</span><span><b>' + n + '</b><br><small>' + sub + '</small></span></button>').join('') + '</div>';
+  const d = staffPanel('meditmenu', 'Meditar', html); d.querySelectorAll('[data-el]').forEach(b => b.onclick = () => { d.remove(); G.path = null; G.pathGoal = null; G.me.walking = false; Net.send({ t: 'medit', on: 1, el: b.dataset.el }); });
+}
+const AURA_C = { fire: ['255,120,40', '255,200,90'], water: ['40,130,230', '160,220,255'], earth: ['90,140,50', '150,105,60'], wind: ['120,200,180', '235,255,250'], holy: ['255,220,120', '255,250,215'] };
+function drawMeditAura(ctx, e, sx, sy, now, front) {
+  const M = e.medit, el = M.el, C = AURA_C[el] || AURA_C.fire, age = (now - M.t0) / 1000, k = Math.min(1, age / 2.5), lev = Math.min(1, Math.max(0, (age - 2.5) / 1.8)), cy = sy - 10 - lev * 8, T = now / 1000;
+  ctx.save(); ctx.globalCompositeOperation = el === 'fire' || el === 'holy' ? 'lighter' : 'source-over';   /* fogo e luz brilham; água, terra e ar têm cor própria */
+  if (!front) {   /* chão: círculo do elemento */
+    const g = ctx.createRadialGradient(sx, sy, 2, sx, sy, 20); g.addColorStop(0, 'rgba(' + C[0] + ',' + (0.42 * k).toFixed(2) + ')'); g.addColorStop(1, 'rgba(' + C[0] + ',0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(sx, sy, 20, 9, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(' + C[0] + ',' + (0.85 * k).toFixed(2) + ')'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.ellipse(sx, sy, 15, 6.6, 0, 0, 7); ctx.stroke(); ctx.strokeStyle = 'rgba(' + C[1] + ',' + (0.6 * k).toFixed(2) + ')'; ctx.lineWidth = 0.4; ctx.beginPath(); ctx.ellipse(sx, sy, 17.5, 7.7, 0, 0, 7); ctx.stroke();
+    for (let i = 0; i < 5; i++) { const a = T * 0.4 + i * 1.2566; ctx.beginPath(); ctx.arc(sx + Math.cos(a) * 15, sy + Math.sin(a) * 6.6, 0.9, 0, 7); ctx.fillStyle = 'rgba(' + C[1] + ',' + (0.7 * k).toFixed(2) + ')'; ctx.fill(); }
+    if (el === 'water') for (let i = 0; i < 3; i++) { const q = ((T * 0.5 + i / 3) % 1); ctx.strokeStyle = 'rgba(' + C[1] + ',' + (0.55 * (1 - q) * k).toFixed(2) + ')'; ctx.lineWidth = 0.6; ctx.beginPath(); ctx.ellipse(sx, sy, 6 + q * 18, (6 + q * 18) * 0.44, 0, 0, 7); ctx.stroke(); }   /* ondas no chão */
+    if (el === 'holy') { const g2 = ctx.createLinearGradient(0, sy - 60, 0, sy); g2.addColorStop(0, 'rgba(' + C[1] + ',0)'); g2.addColorStop(1, 'rgba(' + C[0] + ',' + (0.28 * k).toFixed(2) + ')'); ctx.fillStyle = g2; ctx.fillRect(sx - 9, sy - 60, 18, 60); }   /* coluna de luz */
+  }
+  const orb = (n, rx, ry, spd, draw) => { for (let i = 0; i < n; i++) { const a = T * spd + i * Math.PI * 2 / n, s = Math.sin(a); if ((s > 0) !== !!front) continue; draw(sx + Math.cos(a) * rx, cy + s * ry, a, i); } };
+  if (el === 'fire') { orb(6, 13, 5, 1.1, (x, y, a, i) => { const f = 2.2 + Math.sin(T * 9 + i) * 0.8; const g = ctx.createRadialGradient(x, y, 0, x, y, f * 2); g.addColorStop(0, 'rgba(255,240,180,' + (0.9 * k).toFixed(2) + ')'); g.addColorStop(0.5, 'rgba(255,130,40,' + (0.6 * k).toFixed(2) + ')'); g.addColorStop(1, 'rgba(255,60,10,0)'); ctx.fillStyle = g; ctx.beginPath(); ctx.ellipse(x, y - f * 0.6, f, f * 1.7, 0, 0, 7); ctx.fill(); });
+    if (front && Math.random() < 0.3 && G.view) spawnPart('ember', sx + (Math.random() - 0.5) * 22 - G.view.ox, sy - 4 - G.view.oy, { vx: (Math.random() - 0.5) * 0.02, vy: -0.05 }); }
+  if (el === 'water') orb(5, 12, 5, 0.8, (x, y, a) => { ctx.fillStyle = 'rgba(' + C[1] + ',' + (0.85 * k).toFixed(2) + ')'; ctx.beginPath(); ctx.moveTo(x, y - 2.6); ctx.quadraticCurveTo(x + 1.7, y, x, y + 1.3); ctx.quadraticCurveTo(x - 1.7, y, x, y - 2.6); ctx.fill(); });   /* gotas em órbita */
+  if (el === 'earth') orb(6, 14, 5.5, 0.45, (x, y, a, i) => { const bob = Math.sin(T * 1.5 + i) * 1.4; if (i % 2) { ctx.fillStyle = 'rgba(150,115,80,' + (0.95 * k).toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(x, y + bob, 1.8, 1.3, a, 0, 7); ctx.fill(); } else { ctx.fillStyle = 'rgba(120,190,80,' + (0.9 * k).toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(x, y + bob, 2, 0.9, a + T, 0, 7); ctx.fill(); } });   /* pedrinhas e folhas flutuando */
+  if (el === 'wind') { ctx.lineCap = 'round'; for (let i = 0; i < 4; i++) { const a0 = T * 2.2 + i * 1.57, hgt = ((T * 0.6 + i / 4) % 1); for (let s = 0; s < 6; s++) { const a = a0 + s * 0.22, sn = Math.sin(a); if ((sn > 0) !== !!front) continue; const rr = 13 - hgt * 5; ctx.strokeStyle = 'rgba(' + C[1] + ',' + Math.min(1, 0.3 * s * k * (1 - hgt * 0.7)).toFixed(2) + ')'; ctx.lineWidth = 1.7; ctx.beginPath(); ctx.arc(sx, sy - 4 - hgt * 34, rr, a - 0.2, a, false); ctx.stroke(); } } }   /* redemoinho que sobe */
+  if (el === 'holy') { orb(7, 10, 4, 0.6, (x, y, a, i) => { const tw = 0.6 + Math.sin(T * 4 + i * 2) * 0.4; ctx.fillStyle = 'rgba(255,245,200,' + (tw * k).toFixed(2) + ')'; ctx.beginPath(); ctx.arc(x, y - 6 + Math.sin(T + i) * 3, 0.8 + tw * 0.6, 0, 7); ctx.fill(); });
+    if (front) { ctx.strokeStyle = 'rgba(255,230,150,' + (0.75 * k).toFixed(2) + ')'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.ellipse(sx, cy - 30, 6, 2, 0, 0, 7); ctx.stroke(); } }   /* auréola */
+  ctx.restore();
+  if (front && G.lights && k > 0.3) G.lights.push({ x: sx, y: cy, r: 60, c: C[0], a: 0.55 * k, flick: el === 'fire' ? 1 : 0 });
 }
 function drawEmberHand(ctx, e, sx, sy, now) {
   const side = DIR_VIEW && DIR_VIEW[e.dir || 0] === 'W' ? -1 : 1, hx = sx + side * 11, hy = sy - (R3.ok ? 31 : 41), fl = Math.min(1, (e.emberUntil - now) / 500);

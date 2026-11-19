@@ -62,7 +62,7 @@ function useHtml() {
   for (const c in cats) {
     h += '<div class="us-cat">' + c + '</div>';
     for (const k of cats[c]) {
-      if ((k === 'sword' && me.cls !== 'knight') || (k === 'dagger' && me.cls !== 'archer') || (k === 'staff' && me.cls !== 'mage') || (k === 'bow' && me.cls !== 'archer') || (k === 'magic' && me.cls !== 'mage')) continue;
+      if (((k === 'sword' || k === 'halberd') && me.cls !== 'knight') || (k === 'dagger' && me.cls !== 'archer') || (k === 'staff' && me.cls !== 'mage') || (k === 'bow' && me.cls !== 'archer') || (k === 'magic' && me.cls !== 'mage')) continue;
       const l = useLvl(me, k), b = Math.round(useBonus(me, k) * 1000) / 10;
       h += '<div class="us-row" title="' + USE[k].desc + '"><span>' + USE[k].name + '</span><div class="us-bar"><i style="width:' + l + '%"></i></div><b>' + l + '</b><small>+' + b + '%</small></div>';
     }

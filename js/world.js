@@ -309,8 +309,8 @@ function interiorLayout0(b, fl = 0) {
     const keep = (i, j) => taken.add(key(i, j));
     if (fl === 0) {
       keep(6, 4); put('umbrella', 7, 4, { block: false }); put('andon', 7, 2, { block: false }); put('plantpot', 7, 3, { block: false });
-      put('kamiza', 2, 0, { w: 2 }); put('makiwara', 0, 1); put('makiwara', 0, 3); put('mokujin', 5, 1); put('mokujin', 5, 3);
-      F.push({ t: 'tatami', i: 1, j: 1, w: 4, h: 4, block: false, v: 0 }); put('bokkenrack', 5, 0);   /* tatame por baixo de tudo (pisável, inclusive o caminho da porta) */ put('andon', 0, 0, { block: false }); put('andon', 4, 0, { block: false }); put('andon', 0, 4, { block: false });
+      put('kamiza', 2, 0, { w: 2 }); put('makiwara', 0, 1); put('makiwara', 0, 3); put('mokujin', 5, 1); put('mokujin', 5, 3); put('waitbench', 1, 0, { seat: 7, v: 1, block: false }); put('waitbench', 4, 0, { seat: 7, v: 1, block: false });   /* banquinhos na parede oeste, de frente para o tatame */
+      F.push({ t: 'tatami', i: 1, j: 1, w: 4, h: 4, block: false, v: 0 }); put('bokkenrack', 5, 0);   /* tatame por baixo de tudo (pisável, inclusive o caminho da porta) */ put('andon', 0, 0, { block: false }); put('andon', 5, 4, { block: false }); put('andon', 0, 4, { block: false });
     } else if (fl < floorsOf(b) - 1) {
       for (const i of [6, 7]) for (const j of [2, 3, 4]) keep(i, j); keep(4, 4); keep(4, 3); keep(1, 4); keep(1, 3);   // patamar (2 casas) e portas para a varanda livres
       // apto A (i 3..5 e o antigo hall i 6, j 2..4)

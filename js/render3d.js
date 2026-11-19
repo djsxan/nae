@@ -151,10 +151,12 @@ function buildHumanoid(L, opts = {}) {
     const fM = L.gi ? mat(hx(L.gi), 'cloth') : L.armor === 'plate' ? bodyM : L.armor === 'leather' ? body2M : robe ? mat(hx(L.body), 'cloth') : skinM;
     el.add(mesh(capG(robe ? 0.075 * S : 0.05 * S, 0.18 * S), fM, 0, -0.12 * S, 0));
     if (robe) { const cuff = mesh(torG(0.075 * S, 0.012 * S), trimM, 0, -0.22 * S, 0); cuff.rotation.x = Math.PI / 2; el.add(cuff); }
-    if (L.furisode) { const sl = mesh(boxG(0.025 * S, 0.44 * S, 0.22 * S), mat(hx(L.body), 'cloth'), side * 0.03 * S, -0.26 * S, -0.06 * S); el.add(sl); const sl2 = mesh(boxG(0.026 * S, 0.06 * S, 0.22 * S), mat(hx(L.collar || '#c8302a'), 'cloth'), side * 0.03 * S, -0.46 * S, -0.06 * S); el.add(sl2); }   /* mangas longas penduradas */
+    let slv = null; if (L.furisode) { slv = new THREE.Group(); slv.position.set(side * 0.02 * S, -0.1 * S, 0); el.add(slv); const cm = mat(hx(L.body), 'cloth'), sh2 = new THREE.Shape(); sh2.moveTo(0, 0); sh2.lineTo(0.2 * S, 0); sh2.lineTo(0.2 * S, -0.34 * S); sh2.quadraticCurveTo(0.2 * S, -0.42 * S, 0.12 * S, -0.42 * S); sh2.lineTo(0.06 * S, -0.42 * S); sh2.quadraticCurveTo(0, -0.42 * S, 0, -0.34 * S); sh2.lineTo(0, 0);
+      const g2 = new THREE.ExtrudeGeometry(sh2, { depth: 0.022 * S, bevelEnabled: true, bevelThickness: 0.006 * S, bevelSize: 0.006 * S, bevelSegments: 2 }); g2.translate(-0.011 * S, 0, 0); const m2 = new THREE.Mesh(g2, cm); m2.rotation.y = -Math.PI / 2; m2.position.set(0, 0, 0.07 * S); slv.add(m2);
+      const fr = mesh(boxG(0.03 * S, 0.035 * S, 0.17 * S), mat(hx(L.collar || '#c8302a'), 'cloth'), 0, -0.385 * S, -0.03 * S); slv.add(fr); }   /* manga longa do furisode: tecido que cai na vertical do antebraço, com a barra arredondada */
     const hand = joint(el, 0, -0.27 * S, 0);
     hand.add(mesh(sphG(0.045 * S), L.armor === 'plate' ? bodyM : skinM, 0, 0, 0));
-    return { sh, el, hand };
+    return { sh, el, hand, slv };
   };
   R.A = arm(-1); R.B = arm(1);
   // pernas
@@ -366,8 +368,8 @@ function applyPose(R, Q, P, walkPh) {
   set(R.A.sh, -Q.aA[0], Q.ay || 0, -Q.aA[1]); set(R.A.el, -Math.max(0, Q.aA[2]) + Math.min(0, Q.aA[2]) * -1 * -1, 0, 0);
   set(R.B.sh, -Q.aB[0], 0, Q.aB[1]); set(R.B.el, -Math.max(0, Q.aB[2]) + Math.min(0, Q.aB[2]) * -1 * -1, 0, 0);
   R.A.el.rotation.x = -Q.aA[2]; R.B.el.rotation.x = -Q.aB[2];
-  set(R.LA.hp, -Q.lA[0], 0, 0); R.LA.kn.rotation.x = -Q.lA[1];
-  set(R.LB.hp, -Q.lB[0], 0, 0); R.LB.kn.rotation.x = -Q.lB[1];
+  set(R.LA.hp, -Q.lA[0], Q.lA[2] || 0, Q.lA[3] || 0); R.LA.kn.rotation.x = -Q.lA[1];
+  set(R.LB.hp, -Q.lB[0], Q.lB[2] || 0, Q.lB[3] || 0); R.LB.kn.rotation.x = -Q.lB[1];
   R.LA.ft.rotation.x = Q.lA[0] + Q.lA[1]; R.LB.ft.rotation.x = Q.lB[0] + Q.lB[1];
   // arma: ângulo absoluto no plano do corpo
   if (R.weapon) {
@@ -388,6 +390,9 @@ function applyPose(R, Q, P, walkPh) {
     if (R.wrist) { for (const k of ['A', 'B']) { R.wrist[k].visible = tk > 0; R.wrist[k].cuff.visible = tk === 2; R.wrist[k].rope.visible = tk === 1; } R.wrist.chain.visible = tk === 2; } }
   { const bm = (Q.broom || 0) > 0.5; if (bm && !R.broom) { const g = new THREE.Group(), wd = mat('#7a5a34', 'wood'); g.add(mesh(cylG(0.012, 0.012, 1.15, 6), wd, 0, -0.2, 0)); const br = mesh(coneG(0.09, 0.26, 8), mat('#c8a860', 'cloth'), 0, -0.85, 0); br.rotation.x = Math.PI; g.add(br); g.rotation.x = 0.5; R.A.hand.add(g); R.broom = g; } if (R.broom) R.broom.visible = bm; if (bm && R.weapon && !R.weapon.bow) R.weapon.obj.visible = false; }
   { const ha = (Q.harrow || 0) > 0.5; if (ha && !R.harrow) { const g = new THREE.Group(); g.add(mesh(cylG(0.006, 0.006, 0.72, 5), mat('#6a4a2a', 'wood'), 0, -0.02, 0)); g.add(mesh(coneG(0.014, 0.05, 4), mat('#8a8f96', 'metal'), 0, 0.36, 0)); for (const s of [-1, 1]) { const f = mesh(boxG(0.003, 0.08, 0.03), mat('#e8e0cc', 'cloth'), s * 0.008, -0.34, 0); g.add(f); } R.B.hand.add(g); R.harrow = g; } if (R.harrow) R.harrow.visible = ha; }
+  { const oc = (Q.ochoko || 0) > 0.5; if (oc && !R.ochoko) { const g = new THREE.Group(), c = sakeCup(true); c.position.set(0, -0.03, 0.05); g.add(c); g.scale.setScalar(1.5); R.B.hand.add(g); R.ochoko = g; } if (R.ochoko) R.ochoko.visible = oc; }   /* copinho de saquê (porcelana com sakura) */
+  { const tk = (Q.tokk || 0) > 0.5; if (tk && !R.tokk) { const g = new THREE.Group(), b = sakeBottle(); b.position.set(0, -0.06, 0); g.add(b); g.userData.sp = b.userData.sp; g.scale.setScalar(1.5); R.A.hand.add(g); R.tokk = g; } if (R.tokk) { R.tokk.visible = tk; R.tokk.userData.tilt = Q.tokt || 0; } R._tuck = Q.tuck || 0; }   /* tokkuri na mão: fica de pé e inclina para servir (ver shoot3D) */
+  { const cg = (Q.cig || 0) > 0.5; if (cg && !R.cig) { const g = new THREE.Group(); const c = mesh(cylG(0.005, 0.005, 0.07, 6), mat('#f4f0e8', 'cloth'), 0, -0.01, 0.05); c.rotation.x = Math.PI / 2; g.add(c); g.add(mesh(sphG(0.007), mat('#ff6020', 'cloth'), 0, -0.01, 0.087)); R.A.hand.add(g); R.cig = g; } if (R.cig) R.cig.visible = cg; }   /* cigarro */
   { const pp = (Q.pipe || 0) > 0.5; if (pp && !R.pipe) { const g = new THREE.Group(), wd = mat('#4a2e1a', 'wood'); g.add(mesh(cylG(0.006, 0.006, 0.12, 6), wd, 0, -0.02, 0.06)); g.children[0].rotation.x = Math.PI / 2; g.add(mesh(cylG(0.018, 0.014, 0.035, 8), wd, 0, 0.0, 0.12)); R.A.hand.add(g); R.pipe = g; } if (R.pipe) R.pipe.visible = pp; }
   holdProps(R, Q);
   // arco e escudo seguem a mão, mas ficam "de pé" (orientados pelo tronco)
@@ -423,12 +428,63 @@ function applyPose(R, Q, P, walkPh) {
     }
     pos.needsUpdate = true; R.cape.geometry.computeVertexNormals();
   }
-  if (R.robe) { R.robe.rotation.z = Math.sin(walkPh) * (P.walk >= 0 ? 0.05 : 0); const k = P.sit ? 0.48 : 1; R.robe.scale.y = k; R.robe.rotation.x = P.sit ? -0.5 : 0; if (R.hem) { R.hem.position.y = -0.04 * R.robeS - 0.82 * R.robeS * k; R.hem.position.z = P.sit ? 0.18 * R.robeS : 0; } }   // sentado: a saia cobre só até o assento
+  if (R.robe) { R.robe.rotation.z = Math.sin(walkPh) * (P.walk >= 0 ? 0.05 : 0); const k = P.sit ? 0.48 : 1, md = !!P.med, S0 = R.robeS; R.robe.scale.set(1, k, 0.82); R.robe.position.z = 0; R.robe.rotation.x = P.sit ? -0.5 : 0; if (R.hem) { R.hem.position.y = -0.04 * S0 - 0.82 * S0 * k; R.hem.position.z = P.sit ? 0.18 * S0 : 0; R.hem.scale.set(1, 0.82, 1); }
+    if (md) { R.robe.scale.set(1.32, 0.2, 1.12); R.robe.rotation.x = 0.06; R.robe.position.z = 0.05 * S0; if (R.hem) { R.hem.position.y = -0.04 * S0 - 0.82 * S0 * 0.2; R.hem.position.z = 0.05 * S0; R.hem.scale.set(1.32, 1.12, 1); } }   /* lótus: a túnica se abre em volta das pernas cruzadas */
+    if (md && !R.lap) { const lp = new THREE.Group(), cm = R.robe.material; const m1 = mesh(sphG(0.2 * S0), cm, 0, -0.1 * S0, 0.1 * S0); m1.scale.set(1.85, 0.72, 1.35); lp.add(m1); for (const s of [-1, 1]) { const f = mesh(capG(0.028 * S0, 0.26 * S0), cm, s * 0.1 * S0, -0.1 * S0, 0.2 * S0); f.rotation.set(Math.PI / 2 - 0.25, 0, s * 0.35); lp.add(f); } R.spine.add(lp); R.lap = lp; }   /* tecido dobrado no colo, com duas pregas */
+    if (R.lap) R.lap.visible = md; }   // sentado: a saia cobre só até o assento
+}
+
+// ---------- jogo de saquê: porcelana creme com sakura pintada à mão ----------
+let _skTex = null, _skMat = null;
+function sakuraTex() {
+  if (_skTex) return _skTex; const c = document.createElement('canvas'); c.width = 512; c.height = 256; const x = c.getContext('2d');
+  const gr = x.createLinearGradient(0, 0, 0, 256); gr.addColorStop(0, '#f7f0e2'); gr.addColorStop(1, '#efe4cf'); x.fillStyle = gr; x.fillRect(0, 0, 512, 256);
+  let sd = 7; const rnd = () => (sd = (sd * 16807) % 2147483647) / 2147483647;
+  x.strokeStyle = 'rgba(92,64,52,0.85)'; x.lineCap = 'round';
+  const br = [[20, 200, 150, 120, 260, 60], [270, 230, 360, 150, 500, 110]]; for (const [a, b, c2, d, e, f] of br) { x.lineWidth = 5; x.beginPath(); x.moveTo(a, b); x.quadraticCurveTo(c2, d + 30, e, f); x.stroke(); x.lineWidth = 2.5; for (let k = 0; k < 4; k++) { const t = 0.2 + k * 0.2, px = a + (e - a) * t, py = b + (f - b) * t + 10; x.beginPath(); x.moveTo(px, py); x.lineTo(px + 18 + rnd() * 20, py - 26 - rnd() * 18); x.stroke(); } }   /* galhos */
+  const flower = (fx, fy, r, op) => { x.save(); x.translate(fx, fy); x.rotate(rnd() * 6.28); for (let p = 0; p < 5; p++) { x.rotate(Math.PI * 2 / 5); const g = x.createRadialGradient(0, -r * 0.55, 1, 0, -r * 0.55, r * 0.7); g.addColorStop(0, 'rgba(250,214,224,' + op + ')'); g.addColorStop(1, 'rgba(226,128,156,' + op + ')'); x.fillStyle = g; x.beginPath(); x.moveTo(0, 0); x.bezierCurveTo(-r * 0.55, -r * 0.35, -r * 0.45, -r * 1.05, -r * 0.08, -r * 0.98); x.lineTo(0, -r * 0.86); x.lineTo(r * 0.08, -r * 0.98); x.bezierCurveTo(r * 0.45, -r * 1.05, r * 0.55, -r * 0.35, 0, 0); x.fill(); }
+    x.fillStyle = 'rgba(176,52,82,0.9)'; x.beginPath(); x.arc(0, 0, r * 0.18, 0, 7); x.fill(); x.fillStyle = '#e8c060'; for (let k = 0; k < 6; k++) { const a = k * 1.05; x.fillRect(Math.cos(a) * r * 0.28 - 1, Math.sin(a) * r * 0.28 - 1, 2, 2); } x.restore(); };
+  for (const [a, b, c2, d, e, f] of br) for (let k = 0; k < 6; k++) { const t = 0.15 + k * 0.15 + rnd() * 0.05; flower(a + (e - a) * t + (rnd() - 0.5) * 30, b + (f - b) * t - 10 + (rnd() - 0.5) * 30, 15 + rnd() * 9, 0.95); }
+  for (let k = 0; k < 14; k++) flower(rnd() * 512, rnd() * 256, 5 + rnd() * 4, 0.55);   /* pétalas soltas */
+  x.fillStyle = '#2f4a7a'; x.fillRect(0, 0, 512, 7); x.fillStyle = 'rgba(47,74,122,0.5)'; x.fillRect(0, 9, 512, 2);   /* fio azul na boca */
+  _skTex = new THREE.CanvasTexture(c); _skTex.encoding = THREE.sRGBEncoding; _skTex.wrapS = THREE.RepeatWrapping; _skTex.anisotropy = 4; return _skTex;
+}
+function sakeMat() { return _skMat || (_skMat = new THREE.MeshStandardMaterial({ map: sakuraTex(), roughness: 0.22, metalness: 0, side: THREE.DoubleSide })); }
+function lathe(pts, seg = 28) { const g = new THREE.LatheGeometry(pts.map(p => new THREE.Vector2(p[0], p[1])), seg); g.computeVertexNormals(); return g; }
+function sakeBottle() {   /* tokkuri bojudo de gargalo fino e boca aberta; ~22 cm */
+  const g = new THREE.Group(), pts = [[0, 0], [0.03, 0], [0.042, 0.006], [0.054, 0.024], [0.06, 0.05], [0.058, 0.08], [0.048, 0.108], [0.03, 0.13], [0.017, 0.15], [0.0135, 0.17], [0.014, 0.19], [0.019, 0.205], [0.024, 0.212], [0.021, 0.216], [0.012, 0.21], [0.009, 0.19]];
+  const b = new THREE.Mesh(lathe(pts), sakeMat()); g.add(b); const sp = new THREE.Object3D(); sp.position.set(0, 0.215, 0.022); g.add(sp); g.userData.sp = sp; return g;
+}
+function sakeCup(full) {   /* ochoko baixinho de borda levemente aberta, com saquê dentro */
+  const g = new THREE.Group(), pts = [[0, 0.004], [0.017, 0.0], [0.02, 0.006], [0.03, 0.016], [0.038, 0.034], [0.041, 0.042], [0.039, 0.044], [0.035, 0.038], [0.027, 0.02], [0.016, 0.011], [0, 0.01]];
+  g.add(new THREE.Mesh(lathe(pts, 24), sakeMat())); const lq = new THREE.Mesh(new THREE.CircleGeometry(1, 20), mat('#f1e7c4', 'gem', { roughness: 0.05, transparent: true, opacity: 0.88 })); lq.rotation.x = -Math.PI / 2; g.add(lq); g.userData.lq = lq; sakeLevel(g, full ? 1 : 0); return g;
+}
+function sakeLevel(g, l) { const lq = g.userData.lq; if (!lq) return; lq.visible = l > 0.02; const y = 0.012 + 0.026 * l, rr = 0.017 + (0.0355 - 0.017) * Math.min(1, (y - 0.011) / 0.027); lq.position.y = y; lq.scale.set(rr, rr, 1); }
+let _skSet = null;
+function sakeTrayRig() {
+  if (_skSet) return _skSet; const root = new THREE.Group(), wd = mat('#d9bb8c', 'wood'), wd2 = mat('#c7a372', 'wood');
+  root.add(mesh(boxG(0.36, 0.014, 0.2), wd, 0, 0.007, 0)); for (const [x0, z0, w, d] of [[0, 0.094, 0.36, 0.012], [0, -0.094, 0.36, 0.012], [0.174, 0, 0.012, 0.2], [-0.174, 0, 0.012, 0.2]]) root.add(mesh(boxG(w, 0.026, d), wd2, x0, 0.02, z0));   /* bandeja de hinoki com bordinha */
+  const bt = sakeBottle(); bt.position.set(0.085, 0.014, 0); root.add(bt); const cp = sakeCup(true); cp.position.set(-0.09, 0.014, 0.01); root.add(cp);
+  const cm = new THREE.Object3D(); cm.position.set(-0.09, 0.05, 0.01); root.add(cm); _skSet = { root, bt, cp, cm }; return _skSet;
+}
+function projArt(o) { o.getWorldPosition(tmpV); tmpV.project(R3.cam); return [(tmpV.x + 1) / 2 * FRAME_W, (1 - tmpV.y) / 2 * FRAME_H]; }
+function sakeTraySprite(yaw, st) {   /* bandeja na borda do ofurô, fotografada em 3D; st: garrafa/copo na bandeja e o nível */
+  return cache3('sk|' + yaw.toFixed(2) + '|' + (st.bottle ? 1 : 0) + (st.cup ? 1 : 0) + '|' + st.lvl.toFixed(2), () => {
+    const K = sakeTrayRig(), { renderer, scene, cam, W, H } = R3; K.bt.visible = !!st.bottle; K.cp.visible = !!st.cup; sakeLevel(K.cp, st.lvl);
+    K.root.rotation.set(0, yaw, 0); K.root.position.set(0, 0, 0); K.root.scale.setScalar(1.5); K.root.updateMatrixWorld(true);
+    scene.add(K.root); renderer.render(scene, cam); scene.remove(K.root);
+    const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(renderer.domElement, 0, 0);
+    return { c, w: FRAME_W, h: FRAME_H, ax: FRAME_W / 2, ay: FOOT_Y, painted: true, hd: true, cup: projArt(K.cm) };
+  });
 }
 
 // ---------- foto do modelo ----------
 const _rigs = new Map();
 const tmpV = typeof THREE !== 'undefined' ? new THREE.Vector3() : null;
+const _hq = typeof THREE !== 'undefined' ? new THREE.Quaternion() : null, _hq2 = typeof THREE !== 'undefined' ? new THREE.Quaternion() : null;
+function hangWorld(o, R, tiltX) {   /* deixa o objeto de pé no mundo (só o giro do corpo), com uma inclinação para a frente */
+  o.parent.getWorldQuaternion(_hq); _hq.invert(); _hq2.copy(R.root.quaternion); if (tiltX) { const t = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1, 0, 0), tiltX); _hq2.multiply(t); } o.quaternion.copy(_hq.multiply(_hq2));
+}
 function shoot3D(R, dir, extraRotX, groundSit) {
   const { renderer, scene, cam, W, H } = R3;
   // direção na tela -> giro do modelo
@@ -438,6 +494,7 @@ function shoot3D(R, dir, extraRotX, groundSit) {
   // apoia o pé mais baixo no chão
   R.root.position.set(0, 0, 0);
   R.root.updateMatrixWorld(true);
+  { let ch = false; for (const A of [R.A, R.B]) if (A && A.slv) { hangWorld(A.slv, R, 0); A.slv.scale.set(R._tuck > 0.5 ? 0.6 : 1, R._tuck > 0.5 ? 0.12 : 1, R._tuck > 0.5 ? 0.5 : 1); ch = true; } if (R.tokk && R.tokk.visible) { hangWorld(R.tokk, R, R.tokk.userData.tilt || 0); ch = true; } if (ch) R.root.updateMatrixWorld(true); }   /* mangas caem na vertical; garrafa de pé */
   if (!extraRotX) {
     let minY = Infinity;
     for (const f of [R.LA.ft, R.LB.ft]) { f.getWorldPosition(tmpV); minY = Math.min(minY, tmpV.y); }
@@ -450,11 +507,14 @@ function shoot3D(R, dir, extraRotX, groundSit) {
     const bb = new THREE.Box3().setFromObject(R.root); R.root.position.y = -bb.min.y + 0.01;
   }
   scene.add(R.root);
+  R.root.updateMatrixWorld(true);
   renderer.render(scene, cam);
   scene.remove(R.root);
   const c = document.createElement('canvas'); c.width = W; c.height = H;
   c.getContext('2d').drawImage(renderer.domElement, 0, 0);
-  return { c, w: FRAME_W, h: FRAME_H, ax: FRAME_W / 2, ay: FOOT_Y, painted: true, hd: true };
+  const out = { c, w: FRAME_W, h: FRAME_H, ax: FRAME_W / 2, ay: FOOT_Y, painted: true, hd: true };
+  if (R.tokk && R.tokk.visible && R.tokk.userData.sp) out.spout = projArt(R.tokk.userData.sp);   /* onde fica o bico da garrafa no quadro */
+  return out;
 }
 const SPR3 = new Map();
 R3.budget = 99; R3.last = new Map();
@@ -485,7 +545,7 @@ function applyLost(R, mask = 0, pro = 0) {
   if (R.shield) R.shield.visible = !lost('armB');
   for (const k in R.stumps) { R.stumps[k].visible = lost(k) && !pr(k); if (R.pegs[k]) R.pegs[k].visible = lost(k) && pr(k); }
 }
-function pose3Key(P) { return (P.dir | 0) + '|' + (P.bed ? 'bd' : '') + (P.shea ? 'S' : '') + (P.shb ? 'B' : '') + (P.tool ? 'T' + P.tool : '') + (P.gait ? 'g' + P.gait : '') + (P.hold ? 'o' + P.hold : '') + (P.walk >= 0 ? (P.run ? 'r' : 'w') + P.walk : '') + (P.act ? P.act.k + P.act.f : '') + (P.idle ? P.idle.k + P.idle.f : '') + (P.sit ? 's' + P.sit + (P.sv || '') : '') + (P.smk != null ? 'k' + Math.floor(P.smk * 8) : '') + (P.eat != null ? 'e' + Math.floor(P.eat * 8) : '') + (P.carry ? 'c' : '') + (P.down ? 'd' + (P.prone ? 'p' : '') : '') + (P.nowp ? 'nw' : '') + (P.wpn === 'halberd' ? 'hb' : '') + (P.crawl ? 'cw' + P.crawl : '') + (P.drag ? 'D' + P.drag : '') + (P.tied ? 'T' + P.tied : '') + (P.surr ? 'U' : '') + (P.led ? 'L' : '') + (P.held ? 'H' + P.held + (P.held === 2 ? Math.floor(Date.now() / 90) % 4 : '') : '') + (P.cr ? 'K' : '') + (P.sl ? 'L' : '') + (P.hs ? 'h' + P.hs : '') + (P.br != null ? 'b' + P.br : '') + (P.limp ? 'm' + P.limp : '') + (P.armw ? 'W' : '') + (P.lost ? 'X' + P.lost + '_' + (P.pro || 0) : ''); }
+function pose3Key(P) { return (P.dir | 0) + '|' + (P.med ? 'md' + P.med : '') + (P.bed ? 'bd' : '') + (P.shea ? 'S' : '') + (P.shb ? 'B' : '') + (P.tool ? 'T' + P.tool : '') + (P.gait ? 'g' + P.gait : '') + (P.hold ? 'o' + P.hold : '') + (P.walk >= 0 ? (P.run ? 'r' : 'w') + P.walk : '') + (P.act ? P.act.k + P.act.f : '') + (P.idle ? P.idle.k + P.idle.f : '') + (P.sit ? 's' + P.sit + (P.sv || '') : '') + (P.smk != null ? 'k' + Math.floor(P.smk * 8) + (P.cig ? 'cg' : '') : '') + (P.eat != null ? 'e' + Math.floor(P.eat * 8) : '') + (P.carry ? 'c' : '') + (P.down ? 'd' + (P.prone ? 'p' : '') : '') + (P.nowp ? 'nw' : '') + (P.wpn === 'halberd' ? 'hb' : '') + (P.crawl ? 'cw' + P.crawl : '') + (P.drag ? 'D' + P.drag : '') + (P.tied ? 'T' + P.tied : '') + (P.surr ? 'U' : '') + (P.led ? 'L' : '') + (P.held ? 'H' + P.held + (P.held === 2 ? Math.floor(Date.now() / 90) % 4 : '') : '') + (P.cr ? 'K' : '') + (P.sl ? 'L' : '') + (P.hs ? 'h' + P.hs : '') + (P.br != null ? 'b' + P.br : '') + (P.limp ? 'm' + P.limp : '') + (P.armw ? 'W' : '') + (P.lost ? 'X' + P.lost + '_' + (P.pro || 0) : ''); }
 function heroSprite3D(cls, skin, color, P) {
   const lk = cls + ':' + skin + ':' + color + (P.wpn === 'halberd' && !P.uni ? ':hb' : '') + (P.uni ? ':u' + P.uni : '') + (P.cloak && !P.uni ? ':k' + P.cloak : '');
   return cache3('h3|' + lk + '|' + pose3Key(P) , () => {

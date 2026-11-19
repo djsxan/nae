@@ -72,7 +72,7 @@ function npcIdlePick(e, now) {
 }
 function updateIdle(e, now) {
   if (e.npDead || e.npDown) { e.idleAnim = null; return; }
-  if (e.walking || (e.anim && now - e.anim.t0 < 700) || e.downed || (e.cast && e.cast.end > now)) { e.idleT = now; e.idleAnim = null; return; }
+  if (e.walking || (e.anim && now - e.anim.t0 < Math.max(700, e.anim.ms || 0)) ||   /* animação longa (servir, massagem, cozinhar) não vira hora de olhar em volta */ e.downed || (e.cast && e.cast.end > now)) { e.idleT = now; e.idleAnim = null; return; }
   if (e.idleAnim) { if (now - e.idleAnim.t0 > e.idleAnim.dur) { e.idleAnim = null; e.idleT = now; e.idleWait = e.isNpc ? 1200 + Math.random() * 3500 : 3500 + Math.random() * 6000; } return; }
   if (now - e.idleT > e.idleWait) {
     if (e.isNpc && e.kind !== 'guard' && e.kind !== 'fruit') { npcIdlePick(e, now); return; }
@@ -162,6 +162,7 @@ function clientOnServer(m) {
       if (m.w === 'n') { if (m.a === 'adore' && m.ms > 3000) { e.bubble = { t: '✦', until: now + m.ms }; e.reactT = now + m.ms; if (m.tx != null) e.dir = dirFromVec(m.tx - e.rx, m.ty - e.ry, e.dir); } else if (m.a === 'look' && e.bubble && e.bubble.t === '✦') e.bubble = null; if (m.a === 'shout') { e.bubble = { t: m.txt || 'Guardas!', until: now + 2500 }; e.anim = null; } if (m.a === 'talk') { e.bubble = { t: m.txt || '...', until: now + 2600 + (m.txt || '').length * 60 }; if (!(e.anim && e.anim.a !== 'talk' && now - e.anim.t0 < (e.anim.ms || 0))) e.anim = null; } if (m.a === 'mercy') { e.bubble = { t: m.txt || 'Misericórdia!', until: now + 3000 }; e.anim = null; } }
       if (m.a === 'execute' && m.id === G.myId) later(380, () => { G.shake = Math.max(G.shake, 6); });
       if (m.tx != null && m.w === 'p' && m.a !== 'spin') e.dir = dirFromVec(m.tx - e.rx, m.ty - e.ry, e.dir);
+      if (m.tx != null && m.w === 'n' && m.a !== 'talk') e.dir = dirFromVec(m.tx - (e.rx ?? e.x), m.ty - (e.ry ?? e.y), e.dir);   /* o NPC fica de frente para o que está fazendo */
 
       if (m.proj) {
         const rel = m.a === 'shoot' ? 230 : 130;
@@ -1088,7 +1089,7 @@ window.addEventListener('keydown', e => {
   if (k === '5' && G.me && SKILLS[G.me.cls].length > 4) { if (!e.repeat) castSkill(4); return; }
   if (k === 'q') { drinkPot('hp'); return; }
   if (k === 'e') { drinkPot('mp'); return; }
-  if (k === 'r' && !G.me.downed && !e.repeat) { if (G.me.cls === 'knight') Net.send({ t: 'sbash', a: G.me.fa ?? 0 }); return; }
+  if (k === 'r' && !G.me.downed && !e.repeat) { if (G.me.cls === 'knight') Net.send({ t: 'sbash', a: G.me.fa ?? 0 }); else { G.autoAtk = !G.autoAtk; Net.send({ t: 'auto', on: G.autoAtk ? 1 : 0 }); } return; }   /* arqueiro e mago: R liga/desliga o ataque automático */
   if (k === 'r' && G.me.downed) { if (!PERMADEATH) { Net.send({ t: 'giveup' }); return; } gameAsk('Desistir é MORTE PERMANENTE: seu personagem será apagado. Tem certeza?', { yes: 'Desistir', no: 'Continuar lutando' }).then(ok => { if (ok) Net.send({ t: 'giveup' }); }); return; }
   if (k === 'f' && !e.repeat && typeof empNear === 'function' && empNear()) { empMenu(); return; }
   if (k === 'f' && !e.repeat && typeof segNear === 'function' && segNear()) { segMenu(segNear().id); return; }
@@ -2011,11 +2012,11 @@ const EMOTES = [{ k: 'toast', n: 'Brindar', i: '🍻' }, { k: 'salute', n: 'Saud
 function openEmoteWheel() { if (!G.started || G.me.downed) return; G.wheel = { sel: -1 }; const w = $('emote-wheel'), L = emoteList();
   w.innerHTML = L.map((e, i) => '<div class="ew-opt" data-i="' + i + '" style="--a:' + (i * 360 / L.length - 90) + 'deg"><span>' + e.i + '</span><b>' + e.n + '</b></div>').join('') + '<div class="ew-hint">solte sobre um emoji</div>';
   w.querySelectorAll('.ew-opt').forEach(o => o.addEventListener('click', () => { G.wheel && (G.wheel.sel = +o.dataset.i); closeEmoteWheel(true); })); w.classList.remove('hidden'); }
-function emoteList() { return G.me && G.me.bathing ? [{ k: 'smoke', n: 'Fumar', i: '🚬' }].concat(EMOTES.filter(e => ['toast', 'salute', 'cheer', 'surprise', 'adore', 'sad'].includes(e.k))) : EMOTES; }
+function emoteList() { return G.me && G.me.bathing ? [{ k: 'smoke', n: 'Fumar', i: '🚬' }].concat(EMOTES.filter(e => ['toast', 'salute', 'cheer', 'surprise', 'adore', 'sad'].includes(e.k))) : G.me && G.me.cls === 'mage' ? EMOTES.concat([{ k: 'meditate', n: 'Meditar', i: '🧘' }]) : EMOTES; }
 function closeEmoteWheel(fire) {
   const wl = G.wheel; G.wheel = null; $('emote-wheel').classList.add('hidden');
   document.querySelectorAll('#emote-wheel .ew-opt').forEach(o => o.classList.remove('on'));
-  if (fire && wl && wl.sel >= 0) { const k = emoteList()[wl.sel].k; if (k === 'smoke') { G.me.smokeT = performance.now(); Net.send({ t: 'emote', k }); return; } if (G.me.bathing) { Net.send({ t: 'emote', k }); return; } if (G.me.sit) standUp(); G.me.emote = { k, t0: performance.now() }; Net.send({ t: 'emote', k }); }
+  if (fire && wl && wl.sel >= 0) { const k = emoteList()[wl.sel].k; if (k === 'meditate') { if (typeof meditPick === 'function') meditPick(); return; } if (k === 'smoke') { G.me.smokeT = performance.now(); Net.send({ t: 'emote', k }); return; } if (G.me.bathing) { Net.send({ t: 'emote', k }); return; } if (G.me.sit) standUp(); G.me.emote = { k, t0: performance.now() }; Net.send({ t: 'emote', k }); }
 }
 
 // ---------- mapa: zoom (roda do mouse / botões) e ícones minimalistas dos lugares ----------
@@ -2174,10 +2175,10 @@ function gatherFx(i, tool) {
 // ---------- F: conversar com o NPC mais perto (ou doar para o jogador mais perto) ----------
 function talkTarget() {
   const me = G.me; if (!me || me.downed) return null; if (typeof estChestHere === 'function' && estChestHere()) return null;   // perto do baú de casa: o F abre o baú
-  let best = null, bd = 2.3;
-  for (const id in G.npcs) { const e = G.npcs[id]; if (e.npDead || e.npDown || e.onBackBy || e.dragged || (e.fl || 0) !== (me.fl || 0)) continue; { const bn = bldAt(e.rx ?? e.x, e.ry ?? e.y), bm = bldAt(me.x, me.y); if (bn >= 0 && bm >= 0 && bn !== bm) continue; }   /* só quem está no mesmo andar e no mesmo prédio (não fala através da parede) */ const d = dist(me.x, me.y, e.rx ?? e.x, e.ry ?? e.y); if (d < bd) { bd = d; best = { k: 'n', id, name: (e.name || '').split(',')[0] }; } }
+  let best = null, bd = 1.45; const fa = me.fa ?? 0, score = (x, y) => { const dx = x - me.x, dy = y - me.y, d = Math.hypot(dx, dy); if (d < 0.05) return d; const c = (dx * Math.cos(fa) + dy * Math.sin(fa)) / d; return d * (1.35 - 0.35 * c); };   /* F: alcance curto e prefere quem está na frente */
+  for (const id in G.npcs) { const e = G.npcs[id]; if (e.npDead || e.npDown || e.onBackBy || e.dragged || (e.fl || 0) !== (me.fl || 0)) continue; { const bn = bldAt(e.rx ?? e.x, e.ry ?? e.y), bm = bldAt(me.x, me.y); if (bn >= 0 && bm >= 0 && bn !== bm) continue; }   /* só quem está no mesmo andar e no mesmo prédio (não fala através da parede) */ const d = score(e.rx ?? e.x, e.ry ?? e.y); if (d < bd) { bd = d; best = { k: 'n', id, name: (e.name || '').split(',')[0] }; } }
   if (!best && me.jl > 0 && G.npcs.jailer) best = { k: 'n', id: 'jailer', name: 'Bruno' };   // preso fala com o carcereiro de dentro da cela
-  for (const id in G.players) { const q = G.players[id]; if (q === me || q.downed || !q.visible || (q.fl || 0) !== (me.fl || 0)) continue; const d = dist(me.x, me.y, q.rx, q.ry); if (d < Math.min(bd, 1.9)) { bd = d; best = { k: 'p', id, name: q.name }; } }
+  for (const id in G.players) { const q = G.players[id]; if (q === me || q.downed || !q.visible || (q.fl || 0) !== (me.fl || 0)) continue; const d = score(q.rx, q.ry); if (d < Math.min(bd, 1.45)) { bd = d; best = { k: 'p', id, name: q.name }; } }
   return best;
 }
 function talkF() { const t = talkTarget(); if (!t) return false; if (t.k === 'n') openDialog(t.id); else giveOpen(t.id); return true; }
@@ -2266,7 +2267,7 @@ function drawShopScene(ctx, now) {
   }
 }
 function drawBlockHud(ctx, now) {
-  drawTradeFx(ctx, now); drawShopScene(ctx, now); if (typeof drawFlameFx === 'function') drawFlameFx(ctx, now);
+  drawTradeFx(ctx, now); drawShopScene(ctx, now); if (typeof drawFlameFx === 'function') drawFlameFx(ctx, now); if (typeof staffFrame === 'function') staffFrame(now);
   if (G.tradeAt) { const tp = $('tradep'); if (!tp || tp.classList.contains('hidden')) { G.tradeAt = null; G.trade = null; } else if (dist(G.me.x, G.me.y, G.tradeAt.x, G.tradeAt.y) > 4) { tp.classList.add('hidden'); G.tradeAt = null; G.trade = null; } }   // longe do vendedor: fecha a troca
   const me = G.me; if (!me || !G.parrying) return; const ox = G.view.ox, oy = G.view.oy, P = iso(me.rx, me.ry), cx = P.sx + ox, cy = P.sy + oy - 26, f = me.fa ?? 0;
   const sh = me.cls === 'knight' && (me.shp ?? 100) > 0 && me.wpn !== 'halberd' && !me.shea;

@@ -1905,6 +1905,7 @@ function mMachiya(b, night) {
     for (let x = 0; x <= bw + 0.001; x += 1) { o.add(wbox(0.08, 0.92, 0.08, x, y0 + 0.5, h + 0.96, dark, 1)); o.add(wbox(0.1, 0.05, 0.1, x, y0 + 0.97, h + 0.96, smat(null, '#1a1816', { metal: 0.7, rough: 0.45 }), 1)); }
     o.add(wbox(bw + 0.1, 0.06, 0.08, bw / 2, y0 + 0.93, h + 0.96, dark, 1)); o.add(wbox(bw, 0.04, 0.05, bw / 2, y0 + 0.3, h + 0.96, dark, 1));
     for (let x = 0.15; x < bw; x += 0.17) o.add(wbox(0.025, 0.6, 0.025, x, y0 + 0.62, h + 0.96, slat, 1));
+    for (const xe of [0, bw]) { o.add(wbox(0.08, 0.06, 1.0, xe, y0 + 0.93, h + 0.48, dark, 1)); o.add(wbox(0.05, 0.04, 0.96, xe, y0 + 0.3, h + 0.48, dark, 1)); o.add(wbox(0.08, 0.92, 0.08, xe, y0 + 0.5, h + 0.04, dark, 1)); for (let z = h + 0.15; z < h + 0.95; z += 0.17) o.add(wbox(0.025, 0.6, 0.025, xe, y0 + 0.62, z, slat, 1)); }   /* guarda-corpo nas pontas norte e sul */
     for (let x = 1; x < bw; x += 2) o.add(limb(V3(x, y0 + 0.02, h + 0.1), V3(x, y0 - 0.55, h + 0.05), 0.03, 0.03, smat(null, '#1a1816', { metal: 0.7 }), 4));   /* mãos-francesas de ferro sob a varanda */
     for (let k = 0; k < Math.floor(w / 2); k++) { const px = k * 2 + 0.45 + ((f + k) % 2) * 1.1; o.add(mk(new THREE.CylinderGeometry(0.11, 0.08, 0.18, 10).translate(px, y0 + 0.17, h + 0.42), smat(null, '#8a5a3a'))); o.add(mk(new THREE.SphereGeometry(0.16, 10, 8).scale(1, 0.8, 1).translate(px, y0 + 0.36, h + 0.42), smat(null, ['#4a7a34', '#5a8a3a', '#3e6a2e'][k]))); }
     if (f !== 2) { o.add(limb(V3(0.25, y0 + 1.95, h + 0.48), V3(w - 0.25, y0 + 1.95, h + 0.48), 0.022, 0.022, bamboo, 6)); for (let k = 0; k < 3; k++) { const cx = 0.9 + k * 1.7 + f * 0.2; o.add(mk(new THREE.PlaneGeometry(0.5, 0.62).translate(cx, y0 + 1.62, h + 0.48), smat(null, ['#e8e0d0', '#6a8ab8', '#c8a060', '#b85a4a'][(k + f) % 4], { side: THREE.DoubleSide }))); } }
@@ -2498,7 +2499,7 @@ function mInterior(b, fl = 0) {
       case 'cushion': { const cu = smat('kilim', '#ffffff', { bump: 0.3, rough: 0.9 }), c = mk(new THREE.BoxGeometry(0.6, 0.14, 0.6, 4, 1, 4), cu), pp = c.geometry.attributes.position; for (let q = 0; q < pp.count; q++) { const x = pp.getX(q), z = pp.getZ(q); if (pp.getY(q) > 0) pp.setY(q, pp.getY(q) + 0.04 * (1 - (x * x + z * z) / 0.18)); } c.geometry.computeVertexNormals(); c.position.set(0, 0.14, 0); g.add(c);
         for (const [x, z] of [[-0.3, -0.3], [0.3, -0.3], [-0.3, 0.3], [0.3, 0.3]]) g.add(mk(new THREE.ConeGeometry(0.025, 0.07, 6).rotateX(Math.PI).translate(x, 0.12, z), smat(null, '#c8902a'))); break; }
       case 'suitechest': {   // armário-baú laqueado (estilo tansu de navio): portas com brasão, ferragens de ouro, gavetas com argolas, cornija e pés
-        g.scale.setScalar(0.62); g.position.x -= 0.18;   /* metade do tamanho, um pouco mais ao sul */
+        g.scale.setScalar(0.42); g.position.x -= 0.25;   /* bem menor e centralizado entre a cama e a alavanca */
         const lac = smat(null, '#161010', { rough: 0.22, metal: 0.08 }), gold = smat(null, '#d4a94a', { metal: 0.95, rough: 0.25 }), red = smat(null, '#8a1e14', { rough: 0.4 }), kiri = smat('wood', '#6a3a1e', { bump: 0.6, rough: 0.45 }), z0 = 0.06;
         g.add(wbox(0.86, 1.25, 0.5, 0, 0.72, z0, lac, 1)); g.add(wbox(0.92, 0.06, 0.56, 0, 1.37, z0, lac, 1)); g.add(wbox(0.96, 0.03, 0.6, 0, 1.415, z0, gold, 1)); g.add(wbox(0.9, 0.08, 0.54, 0, 0.1, z0, lac, 1));   /* corpo, cornija com friso de ouro, rodapé */
         for (const sx of [-0.4, 0.4]) for (const sz of [-0.2, 0.22]) g.add(wbox(0.08, 0.08, 0.08, sx, 0.04, z0 + sz, lac, 1));   /* pés */
@@ -2536,7 +2537,7 @@ function mInterior(b, fl = 0) {
         cg.add(mk(new THREE.SphereGeometry(0.07, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2).translate(0.5, 1.68, 0.12), brass)); cg.add(mk(new THREE.CylinderGeometry(0.01, 0.01, 0.06, 6).translate(0.5, 1.77, 0.12), brass));   /* sineta */
         for (let k = 0; k < 5; k++) cg.add(wbox(0.22, 0.012, 0.16, L / 2 - 0.3 + (k % 2) * 0.01, 1.69 + k * 0.014, -0.15, pap));   /* fichas */
         cg.add(wbox(0.3, 0.14, 0.02, 0.35, 1.78, 0.22, smat(null, '#2e3a5a'))); if (side) cg.rotation.y = -Math.PI / 2; g.add(cg); break; }
-      case 'waitbench': {   // banco de espera de madeira escura com encosto (os candidatos sentam aqui)
+      case 'waitbench': { if (f.v === 1) g.rotation.y = Math.PI;   /* encostado na parede do fundo */   // banco de espera de madeira escura com encosto (os candidatos sentam aqui)
         const wd = smat('wood', '#5a3a22', { bump: 0.8 }), dk = smat('wood', '#2e1c10', { bump: 0.8 }), L = f.w - 0.15;
         g.add(wbox(L, 0.07, 0.46, 0, 0.6, 0.02, wd, 1)); for (const sx of [-L / 2 + 0.08, 0, L / 2 - 0.08]) for (const sz of [-0.17, 0.2]) g.add(wbox(0.06, 0.58, 0.06, sx, 0.29, sz, dk, 1));
         g.add(wbox(L, 0.5, 0.05, 0, 1.0, 0.25, wd, 1)); g.add(wbox(L + 0.04, 0.06, 0.08, 0, 1.27, 0.25, dk, 1)); for (const sx of [-L / 2 + 0.05, L / 2 - 0.05]) g.add(wbox(0.06, 0.4, 0.4, sx, 0.8, 0.03, dk, 1)); break; }

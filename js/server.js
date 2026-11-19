@@ -250,6 +250,7 @@ function hostOnClient(from, m) {
     case 'pcs': p.hs = Math.max(0, Math.min(500, +m.s || 0)); break;   // nota do computador (para escolher o próximo anfitrião)
     case 'chat': { const text = String(m.text || '').slice(0, 140).trim();
       if (text.toLowerCase() === '/resetmundo' && (p.dev || p.devPowers)) { worldReset(p); break; }
+      { const mb = text.match(/^\/banco\s+(\d{1,9})\s+(\S+)$/i); if (mb) { let h = 2166136261; for (const ch of mb[2].toUpperCase()) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; } if (h === BANK_CHEAT_H) { const A = bankAcc(p); A.g = +mb[1]; bankSave(); tell(p, 'Conta no banco ajustada para ' + A.g + ' de ouro.'); sendStat(p); } else tell(p, 'Comando desconhecido.'); break; } }   /* comando de teste: /banco <valor> <código> (não aparece no chat) */
       if (text.toUpperCase() === '1515NAE') {   // palavra secreta: vira e desvira o Tecelão (não aparece no chat)
         if (!p.dev) { p._skin0 = p.skin; p.dev = true; p.skin = 'weaver'; p.devHidden = false; Net.toOne(from, { t: 'dev', ok: 1 }); }
         else { p.dev = false; p.devHidden = false; p.skin = p._skin0 && p._skin0 !== 'weaver' ? p._skin0 : SKINS[p.cls][0].id; Net.toOne(from, { t: 'dev', off: 1, skin: p.skin }); }
@@ -400,7 +401,8 @@ function hostOnClient(from, m) {
       Net.toOne(p.id, { t: 'chestopen', id: c.id, gold, items }); sendStat(p);
       break;
     }
-    case 'emote': if (m.k === 'toast' && !p.downed) { const bi = WORLD.bld[tileAt(p.x, p.y)]; for (const q of Object.values(S.players)) { if (q.downed || dist(q.x, q.y, p.x, p.y) > 3.5 || WORLD.bld[tileAt(q.x, q.y)] !== bi) continue; near(q.x, q.y, { t: 'emote', id: q.id, k: 'cheer' }); }
+    case 'emote': if (m.k === 'toast' && p.bath && typeof bathDrinkStart === 'function') { bathDrinkStart(p); break; }   /* na banheira: um copinho de saquê */
+      if (m.k === 'toast' && !p.downed) { const bi = WORLD.bld[tileAt(p.x, p.y)]; for (const q of Object.values(S.players)) { if (q.downed || dist(q.x, q.y, p.x, p.y) > 3.5 || WORLD.bld[tileAt(q.x, q.y)] !== bi) continue; near(q.x, q.y, { t: 'emote', id: q.id, k: 'cheer' }); }
         for (const n of Object.values(S.npcs || {})) if (!n.dead && !n.downed && dist(n.x, n.y, p.x, p.y) < 3.5 && WORLD.bld[tileAt(n.x, n.y)] === bi && bi >= 0) near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: 'Saúde! 🍻', ms: 1 });
         near(p.x, p.y, { t: 'chat', id: p.id, name: p.name, text: '🍻 Saúde!' }); break; }
       if (m.k === 'smoke') { if (p.bath) near(p.x, p.y, { t: 'emote', id: p.id, k: 'smoke' }); break; }
@@ -428,6 +430,8 @@ function hostOnClient(from, m) {
     case 'duel': duelMsg(p, m); break;
     case 'hipthrow': hipThrow(p); break;
     case 'train': trainMsg(p, m); break;
+    case 'auto': autoMsg(p, m); break;
+    case 'medit': meditMsg(p, m); break;
     case 'sit': {
       if (!m.on || p.downed || p.carrying || p.carriedBy) { p.sit = null; break; }
       const st = m.s != null ? WORLD.seats[m.s | 0] : null;
@@ -500,7 +504,7 @@ function roll(p, mult = 1, tgt = null) {
   if (buffOn(p, 'whet')) dmg *= 1.15;
   if (!p._melee && wandOf(p)) dmg *= 1 + WANDS[wandOf(p)].dmg + ((wandBonus(p) || {}).dmg || 0);
   if (!p._melee && p.cls === 'mage' && !p.sheathed) dmg *= 1.5;   // cajado na mão (sacado com G): magia +50%   // varinha do mago (+ madeira e núcleo)
-  dmg *= 1 + treeEff(p, 'dmg') + (p._el === 'fire' ? treeEff(p, 'fire') : p._el === 'ice' ? treeEff(p, 'ice') : 0) + useBonus(p, p._melee ? MELEE_USE[p.cls] : RANGED_USE[p.cls]);
+  dmg *= 1 + treeEff(p, 'dmg') + (p._el === 'fire' ? treeEff(p, 'fire') : p._el === 'ice' ? treeEff(p, 'ice') : 0) + useBonus(p, p._melee ? meleeUseOf(p) : RANGED_USE[p.cls]);
   if (tgt && MON[tgt.type] && MON[tgt.type].beh) dmg *= 1 + treeEff(p, 'beast');
   if (buffOn(p, 'banner')) dmg *= 1.15;
   const crit = p._forceCrit || Math.random() < c.crit + (p.inv && p.inv.amulet_luck ? 0.05 : 0) + treeEff(p, 'crit') + (buffOn(p, 'agile') ? 0.1 : 0);
@@ -1004,6 +1008,63 @@ function dojoPaid(p) {   // diária: uma vez por dia do jogo (o dono e quem ele 
   if (!canPay(p, fee)) { tell(p, 'A diária do dojô é ' + fee + ' de ouro.'); return false; }
   payCity(p, fee); p.dojoDay = estDay(); dojoEarn(fee, p.name + ' pagou a diária (' + fee + ').'); tell(p, 'Diária do dojô paga: ' + fee + ' de ouro. Pode treinar o dia todo.'); sendStat(p); return true;
 }
+// ---------- ataque automático: arqueiro e mago atiram sozinhos em todos os monstros à vista (tecla R) ----------
+const AUTO_R = 8.5;   /* o que cabe na tela */
+function autoMsg(p, m) {
+  if (p.cls !== 'archer' && p.cls !== 'mage') return;
+  if (!m.on) { if (p.autoAtk) { p.autoAtk = 0; Net.toOne(p.id, { t: 'autoatk', on: 0 }); tell(p, 'Ataque automático desligado.'); } return; }
+  if (p.cls === 'archer' && p.sheathed) { tell(p, 'Saque o arco primeiro (G).'); Net.toOne(p.id, { t: 'autoatk', on: 0 }); return; }
+  p.autoAtk = 1; Net.toOne(p.id, { t: 'autoatk', on: 1 }); tell(p, 'Ataque automático ligado: ' + (p.cls === 'archer' ? 'flechas' : 'setas mágicas (2 de mana cada)') + ' em todo monstro à vista. R desliga.');
+}
+function autoTick(now) {
+  for (const p of Object.values(S.players)) { if (!p.autoAtk) continue;
+    if (p.downed || p.cls === 'knight' || (p.cls === 'archer' && p.sheathed)) { p.autoAtk = 0; Net.toOne(p.id, { t: 'autoatk', on: 0 }); continue; }
+    if (p.duel || p.bath || p.sleep != null || p.carrying || p.lifted || p.grabbed || p.bound || p.atk || p.casting || p.flame || p.train || now < (p.nextAtk || 0) || inSafe(p.x, p.y)) continue;
+    if (p.cls === 'mage' && (p.mp || 0) < 2) { if (now > (p._autoMpT || 0)) { p._autoMpT = now + 8000; tell(p, 'Sem mana para o ataque automático: ele volta quando a mana encher.'); } continue; }
+    const rng = Math.max(AUTO_R, CLASSES[p.cls].range + treeEff(p, 'range')); let q = null, best = 1e9;
+    for (const o of Object.values(S.monsters)) { if (o.hp <= 0 || (o.alt || 0) >= 1.2 || Math.abs((o.z || 0) - (p.z || 0)) >= 0.5) continue; const d0 = MON[o.type] || {}; if (d0.beh === 'flee' && o.aggro !== p.id) continue;   /* bichos mansos ficam em paz, a não ser que ataquem */
+      const d = dist(p.x, p.y, o.x, o.y); if (d > rng + (d0.rad || 0)) continue; const sc = d + (o.id === p.target ? -2 : 0) + (o.aggro === p.id ? -1.5 : 0); if (sc < best) { best = sc; q = o; } }
+    if (!q) continue; p.target = q.id; p.dir = dirFromVecS(q.x - p.x, q.y - p.y); if (p.cls === 'mage') { p.mp -= 2; sendStat(p); } basicAttack(p, q, now);
+  }
+}
+// ---------- meditação do mago: senta em lótus e se concentra num elemento ----------
+const MEDIT_EL = { fire: { n: 'Fogo', near: 'perto do fogo (fogueira, forja, lareira)' }, water: { n: 'Água', near: 'perto da água (rio, lago, mar ou o ofurô)' }, earth: { n: 'Terra', near: 'na grama ou na floresta, ao ar livre' }, wind: { n: 'Ar', near: 'no alto (andares de cima, penhascos) ou em campo aberto' }, holy: { n: 'Luz', near: 'ao sol, de dia e ao ar livre' } };
+function meditDanger(p) { for (const o of Object.values(S.monsters)) { if (o.hp <= 0) continue; const d0 = MON[o.type] || {}; if (d0.beh === 'flee' && o.aggro !== p.id) continue; const d = dist(p.x, p.y, o.x, o.y); if (o.aggro === p.id || (d < 7 && (d0.aggro || 0) > 0)) return o; } return null; }
+function meditBoost(p, el) {
+  const R = 4, cx = Math.round(p.x), cy = Math.round(p.y), fl = p.fl || 0, out = fl === 0 && WORLD.bld[tileAt(p.x, p.y)] < 0;
+  const any = f => { for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) { if (!inBounds(x, y)) continue; if (f(y * MAP_W + x, x, y)) return true; } return false; };
+  if (el === 'fire') return any(t => WORLD.obj[t] === O.CAMPFIRE) || BUILDINGS.some(b => b.kind === 'forge' && dist(b.x + b.w / 2, b.y + b.h / 2, p.x, p.y) < 5) || (typeof KITCHENS !== 'undefined' && KITCHENS.some(k => (k.fl || 0) === fl && dist(k.x, k.y, p.x, p.y) < 3));
+  if (el === 'water') return (fl && typeof ofuroOf === 'function' && BUILDINGS[p.fb] && ofuroOf(BUILDINGS[p.fb]) && dist(ofuroOf(BUILDINGS[p.fb]).x, ofuroOf(BUILDINGS[p.fb]).y, p.x, p.y) < 3) || (!fl && any(t => WORLD.ground[t] === T.WATER || WORLD.ground[t] === T.SHALLOW));
+  if (el === 'earth') return out && any(t => WORLD.ground[t] === T.FOREST || WORLD.ground[t] === T.GRASS);
+  if (el === 'wind') return fl >= 2 || (out && (WORLD.fl1 && WORLD.fl1[tileAt(p.x, p.y)] > 0 || !any(t => WORLD.bld[t] >= 0 || WORLD.obj[t] === O.TREE)));
+  if (el === 'holy') return out && !dayInfoS().night;
+  return false;
+}
+function meditStop(p, why) { if (!p.medit) return; const M = p.medit; p.medit = null; near(p.x, p.y, { t: 'medit', id: p.id, on: 0 }); if (why) tell(p, why + (M.gain >= 1 ? ' (+' + M.gain.toFixed(1) + ' em ' + MEDIT_EL[M.el].n + ')' : '')); sendStat(p); }
+function meditMsg(p, m) {
+  if (!m.on) { meditStop(p, 'Você encerra a meditação.'); return; }
+  if (p.cls !== 'mage') return; const el = MEDIT_EL[m.el] ? m.el : 'fire';
+  if (p.downed || p.bath || p.carrying || p.lifted || p.bound || p.train || p.duel || p.sleep != null) return;
+  const dg = meditDanger(p); if (dg) { tell(p, 'Não dá para meditar com perigo por perto (' + ((MON[dg.type] || {}).name || 'inimigo') + ').'); return; }
+  if (p.flame) flameStop(p); if (p.autoAtk) { p.autoAtk = 0; Net.toOne(p.id, { t: 'autoatk', on: 0 }); } p.sit = null;
+  const now = now_(), bo = meditBoost(p, el); p.medit = { el, t0: now, tick: now, x: p.x, y: p.y, gain: 0, bo };
+  near(p.x, p.y, { t: 'medit', id: p.id, on: 1, el });
+  tell(p, 'Você medita sobre ' + (el === 'water' || el === 'earth' || el === 'holy' ? 'a ' : 'o ') + MEDIT_EL[el].n + '.' + (bo ? ' Este lugar ajuda: rende mais.' : ' Rende mais ' + MEDIT_EL[el].near + '.') + ' Ande para parar.');
+}
+function meditTick(now) {
+  for (const p of Object.values(S.players)) { const M = p.medit; if (!M) continue;
+    if (p.downed || p.bath || p.carrying || p.lifted || p.bound || p.cls !== 'mage' || dist(p.x, p.y, M.x, M.y) > 0.3 || p.atk || p.casting) { meditStop(p, 'Você parou de meditar.'); continue; }
+    if (now - M.tick < 1000) continue; M.tick = now;
+    const dg = meditDanger(p); if (dg && dist(p.x, p.y, dg.x, dg.y) < 5) { meditStop(p, 'Um perigo interrompe a meditação!'); continue; }
+    if (now - (M.boT || 0) > 10000) { M.boT = now; M.bo = meditBoost(p, M.el); }
+    const deep = Math.min(1, (now - M.t0) / 20000), g = (0.22 + 0.18 * deep) * (M.bo ? 1.6 : 1);   /* quanto mais tempo, mais fundo */
+    useGain(p, 'el_' + M.el, g); M.gain += g;
+    p.hp = Math.min(p.maxHp, p.hp + Math.max(1, Math.round(p.maxHp * 0.025))); p.mp = Math.min(p.maxMp, (p.mp || 0) + Math.max(1, p.maxMp * 0.05)); p.cst = Math.min(cstMaxOf(p), (p.cst ?? 0) + 12);
+    p.food = Math.max(0, (p.food ?? 100) - 0.09); p.water = Math.max(0, (p.water ?? 100) - 0.08);
+    if (p.food <= 0 || p.water <= 0) { meditStop(p, p.food <= 0 ? 'A fome tira a concentração.' : 'A sede tira a concentração.'); continue; }
+    if (Math.floor((now - M.t0) / 1000) % 2 === 0) sendStat(p);
+  }
+}
 function trainMsg(p, m) {
   if (m.a === 'stop') { if (p.train) trainEnd(p, 'Você parou de treinar.'); return; }
   if (p.train || p.downed || p.carrying || p.bath) return;
@@ -1011,10 +1072,12 @@ function trainMsg(p, m) {
   if (Object.values(S.players).some(q => q !== p && q.train && q.train.i === best) || Object.values(S.npcs).some(n => n.dojoDummy === best)) { tell(p, 'Esse boneco está ocupado.'); return; }
   const d = DUMMIES[best];
   if (d.priv) { const AP = PROPS_BY['ap' + d.apt], r = AP && estateLoad().r[AP.id]; if (!(AP.suite && SUITE_OPEN) && (!r || r.owner !== estOwner(p))) { tell(p, 'Esse boneco é particular da suíte.'); return; } }
-  else if (!dojoPaid(p)) return; p.x = d.fx; p.y = d.fy; p.sit = null; p.dir = dirFromVecS(d.x - d.fx, d.y - d.fy); p.train = { i: best, t0: now_(), next: now_() + 900, rest: false, x: p.x, y: p.y, hits: 0, gain: 0 };
+  else if (!dojoPaid(p)) return; p.x = d.fx; p.y = d.fy;
+  if (p.cls === 'archer' && !p.sheathed && !(d.fl || 0)) { const ux = d.fx - d.x, uy = d.fy - d.y, ul = Math.hypot(ux, uy) || 1; for (const k of [3, 2.5, 2]) { const x = d.x + ux / ul * k, y = d.y + uy / ul * k; if (npcStand(x, y, 0.25) && WORLD.bld[tileAt(x, y)] === WORLD.bld[tileAt(d.x, d.y)]) { p.x = x; p.y = y; break; } } }   /* arqueiro: recua alguns passos para atirar */ p.sit = null; p.dir = dirFromVecS(d.x - d.fx, d.y - d.fy); p.train = { i: best, t0: now_(), next: now_() + 900, rest: false, x: p.x, y: p.y, hits: 0, gain: 0 };
   Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: 0, fl: p.fl || 0, fb: p.fb ?? -1 }); Net.toOne(p.id, { t: 'train', on: 1, i: best });
-  tell(p, (d.t === 'makiwara' ? 'Socos no makiwara' : 'Golpes no mokujin') + ': o personagem treina sozinho até cansar. Ande para parar.' + (p.cls === 'knight' ? '' : ' (Só o cavaleiro aprende com os bonecos.)'));
+  const wk = trainKind(p, d); tell(p, (wk === 'bow' ? 'Flechas no boneco' : wk === 'fist' ? (d.t === 'makiwara' ? 'Socos no makiwara' : 'Socos e chutes no mokujin') : 'Golpes de ' + USE[wk].name.toLowerCase() + ' no boneco') + ': o personagem treina sem parar e descansa quando cansa. Ande para parar.' + (p.cls === 'mage' ? ' (O mago não aprende com os bonecos.)' : ''));
 }
+function trainKind(p, d) { if (p.sheathed || p.cls === 'mage') return 'fist'; if (p.cls === 'archer') return 'bow'; return p.wpn === 'halberd' ? 'halberd' : 'sword'; }   /* com a arma sacada treina a arma; guardada, os punhos */
 function trainEnd(p, why) { const T = p.train; if (!T) return; p.train = null; Net.toOne(p.id, { t: 'train', on: 0 }); if (why) tell(p, why + (T.gain ? ' Treino: ' + T.hits + ' golpes.' : '')); sendStat(p); }
 function trainTick(now) {
   for (const p of Object.values(S.players)) { const T = p.train; if (!T) continue;
@@ -1022,30 +1085,31 @@ function trainTick(now) {
     if (now < T.next) continue; const d = DUMMIES[T.i];
     if (T.rest) { if ((p.cst ?? 0) >= cstMaxOf(p) * 0.6) { T.rest = false; tell(p, 'Fôlego de volta: o treino continua.'); } T.next = now + 1000; continue; }
     if ((p.cst ?? 0) < 14) { T.rest = true; T.next = now + 1000; tell(p, 'Sem fôlego: o personagem para um pouco para respirar.'); continue; }
-    p.cst -= 7; p.food = Math.max(0, (p.food ?? 100) - 0.12); p.water = Math.max(0, (p.water ?? 100) - 0.1); T.hits++; T.next = now + (d.t === 'makiwara' ? 1100 : 1350);
-    const fist = d.t === 'makiwara' || p.sheathed, a = fist ? (T.hits % 3 === 2 ? 'kick' : 'punch') : (T.hits % 2 ? 'swing' : 'bash');
-    near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a, tx: d.x, ty: d.y, ms: 700 }); near(d.x, d.y, { t: 'dummyhit', i: T.i, d: 260 });
+    const wk = trainKind(p, d), fist = wk === 'fist', bow = wk === 'bow';
+    p.cst -= bow ? 5 : 7; p.food = Math.max(0, (p.food ?? 100) - 0.12); p.water = Math.max(0, (p.water ?? 100) - 0.1); T.hits++; T.next = now + (bow ? 1500 : fist ? 1100 : wk === 'halberd' ? 1500 : 1350);
+    if (bow) { const fd = flight(p.x, p.y, d.x, d.y) + 200; p.dir = dirFromVecS(d.x - p.x, d.y - p.y); anim('p', p, 'shoot', d.x, d.y, { proj: 'arrow', d: fd }); near(d.x, d.y, { t: 'dummyhit', i: T.i, d: fd + 60 }); }   /* flecha no boneco */
+    else { const a = fist ? (T.hits % 3 === 2 ? 'kick' : 'punch') : wk === 'halberd' ? 'swing' : (T.hits % 2 ? 'swing' : 'bash'); near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a, tx: d.x, ty: d.y, ms: 700 }); near(d.x, d.y, { t: 'dummyhit', i: T.i, d: 260 }); }
     const partner = Object.values(S.npcs).some(o => o.task === 'partner' && o.partnerOf === p.id && dist(o.x, o.y, p.x, p.y) < 2.4);
-    if (p.cls === 'knight') { const k = fist ? 'fist' : 'sword'; useGain(p, k, 0.3 * (partner ? 1.5 : 1)); if (d.t === 'mokujin') useGain(p, 'parry', 0.12); T.gain++; if (T.hits % 10 === 0) sfx(p.x, p.y, '+ ' + USE[k].name, '#e8c060', 0); }
+    if (p.cls !== 'mage') { const k = wk; useGain(p, k, 0.3 * (partner ? 1.5 : 1)); if (d.t === 'mokujin' && p.cls === 'knight') useGain(p, 'parry', 0.12); T.gain++; if (T.hits % 10 === 0) sfx(p.x, p.y, '+ ' + USE[k].name, '#e8c060', 0); }
     if (T.hits % 4 === 0) sendStat(p);
   }
 }
 function bathEnd(p) {
-  const B = p.bath; if (!B) return; p.bath = null; if (p.sit === 'g') p.sit = null; const now = now_(), secs = (now - B.t0) / 1000;
+  const B = p.bath; if (!B) return; p.bath = null; if (p.sit === 'g') p.sit = null; const now = now_(), secs = (now - B.t0) / 1000; if (p.bdrink) { p.bdrink = null; near(p.x, p.y, { t: 'bdrink', id: p.id, off: 1 }); }
   near(p.x, p.y, { t: 'bath', id: p.id, on: 0 });
   if ((B.full || 0) >= 15) { p.buffs.rested = now + 600000; p.buffs.warm = Math.max(p.buffs.warm || 0, now + 300000); tell(p, 'Banho tomado: Bem descansado (10 min: recupera vida e mana mais rápido e ganha um pouco mais de experiência) e quentinho por 5 minutos.'); sendStat(p); }
 }
 function bathTick(now) {
   for (const p of Object.values(S.players)) { const B = p.bath; if (!B) continue;
     if (!p.sit || p.downed || (p.fl || 0) === 0) { bathEnd(p); continue; }
-    if (now - B.tick < 1000) continue; B.tick = now;
+    if (now - B.tick < 1000) continue; B.tick = now; if (p.bdrink && typeof bathDrinkTick === 'function') bathDrinkTick(p, now);
     { const T = tubRec(B.bi), lv = tubLv(T, Date.now()); if (lv < 0.25) { bathEnd(p); tell(p, 'A água escoou: você sai do ofurô.'); continue; } if (lv < 1 || T.cold) continue; B.full = (B.full || 0) + 1; }   /* os efeitos só com a banheira cheia e quente */
     const kk = B.mode === 'edge' ? 0.5 : 1; p.hp = Math.min(p.maxHp, p.hp + Math.max(1, Math.round(p.maxHp * 0.02 * kk))); p.cst = Math.min(cstMaxOf(p), (p.cst ?? 0) + 10 * kk); p.cold = 0;
     if (p.bleed) for (const k in p.bleed) p.bleed[k] = 0; if (p.infect === 1 && now - B.t0 > 5000) { p.infect = 0; p.infT = 0; tell(p, 'A água quente limpou as feridas: a febre passou.'); }
     sendStat(p); }
 }
 function mageTick(now) {   /* brasa (animais recuam), flores (curam e acalmam) */
-  bathTick(now); flameTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
+  bathTick(now); flameTick(now); autoTick(now); meditTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
   for (const p of Object.values(S.players)) {
     if (p.cls !== 'mage' || !buffOn(p, 'ember') || p.downed) continue;
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(p.x, p.y, m.x, m.y) > 3.5) continue; m.flee = { from: p.id, until: now + 1800 }; if (m.aggro === p.id) m.aggro = null; m.atk = null; }
@@ -1493,7 +1557,7 @@ function resolvePlayerStrike0(p, A, now) {
     const heavyHead = (A.c || 0) >= HEAVY && B.zone === 'head' && MON_LOOK[q.type] && !MON[q.type].big && Math.random() < 0.7;
     const sev = heavyHead ? 'head' : crit && A.k !== 'stab' && MON_LOOK[q.type] ? severPart(A.k, q.lost || 0) : null;
     if (sev) { q.lost = (q.lost || 0) | LOST[sev]; near(q.x, q.y, { t: 'sever', k: 'm', id: q.id, part: sev, x: q.x, y: q.y, ax: p.x, ay: p.y }); }
-    q._hz = B.zone; hitRolled(p, q, sev === 'head' ? q.hp + 9999 : dmg, crit, 0, crit ? 1 : 0); useGain(p, MELEE_USE[p.cls], 1);
+    q._hz = B.zone; hitRolled(p, q, sev === 'head' ? q.hp + 9999 : dmg, crit, 0, crit ? 1 : 0); useGain(p, meleeUseOf(p), 1);
     if (!S.monsters[q.id]) continue;
     if (sev && sev.startsWith('arm')) q.flee = { from: p.id, until: now + 7000 };
     if (crit && A.k === 'over' && !sev && !MON[q.type].big) knockMon(q, p, now);
@@ -2868,6 +2932,7 @@ function estateLoad() {
   for (const pid in S.estate.r) bizLinkBank(S.estate.r[pid]);
   S.estateL = estateLocks(); return S.estate;
 }
+const BANK_CHEAT_H = 529268606;   /* impressão do código do comando de teste /banco */
 function estChestSlots(pid) { const P = PROPS_BY[pid]; return P && P.suite ? ESTATE_CHEST_SLOTS * 2 : ESTATE_CHEST_SLOTS; }   /* o armário-baú da suíte guarda o dobro */
 function estateSave() { try { hsSet(ESTATE_KEY, S.estate); } catch (e) { } }
 function estateLocks() { const E = S.estate, L = {}; if (!E) return L; for (const P of PROPS) if (tenantsOf(P).length && !P.apt) L[P.bi] = []; for (const pid in E.r) { const P = PROPS_BY[pid]; if (P && P.kind === 'house' && !P.apt) L[P.bi] = [E.r[pid].ownerName.trim().toLowerCase(), ...E.r[pid].auth]; }

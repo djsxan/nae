@@ -382,6 +382,7 @@ function heroPoseFor(e, now) {
   if (e.cast && e.cast.end > now) P.act = { k: e.cast.el === 'fire' && e.cls === 'mage' ? 'castup' : 'cast', f: Math.floor(now / 70) % 12 };
   if (!P.act && e.emote && !e.walking) { const ms = ACT_MS[e.emote.k], t = (now - e.emote.t0) / ms; if (e.emote.k === 'dance') P.act = { k: 'dance', f: Math.floor(t * 12) % 12 }; else if (e.emote.k === 'adore') P.act = { k: 'adore', f: t < 0.8 ? Math.floor(t * 12) : 9 }; else if (t < 1) P.act = { k: e.emote.k + (e.cls === 'knight' && ACTS[e.emote.k + '_k'] ? '_k' : ''), f: Math.min(11, Math.floor(t * 12)) }; else e.emote = null; }
   else if (e.walking && e.emote) e.emote = null;
+  if (e.medit && !P.act && !e.walking) { P.sit = 'g'; P.walk = -1; P.med = 1 + Math.floor(((now - e.medit.t0) % 5200) / 5200 * 6); return P; }   /* meditando em lótus */
   if (e.sit && !P.act) { P.sit = e.sit.chair ? 'c' : 'g'; P.walk = -1; e._sseed = e._sseed ?? Math.random() * 20000; const sv = Math.floor((now + e._sseed) / 6500) % 3; if (sv) P.sv = sv; return P; }
   if (!e.isNpc) {
     if (e.slide) { P.sl = 1; P.walk = -1; P.run = 0; P.act = null; return P; }
@@ -461,7 +462,7 @@ function drawHeroEntity(ctx, e, sx, sy, now) {
   }
   if (R3.ok && e.sleepB && !e.downed) {   // deitado na cama, dormindo
     const pr = e.massageUntil > performance.now(), P = { dir: pr ? ((e.dir || 0) + 4) % 8 : (e.dir || 0), walk: -1, down: true, bed: 1, nowp: 1, lost: e.lost || 0, pro: e.pro || 0, prone: pr ? 1 : 0 };   /* de bruços o corpo tomba para o outro lado: gira para a cabeça ficar no travesseiro */   /* massagem: de bruços */
-    const s = pr && !e.isNpc && typeof massageSprite === 'function' ? massageSprite(e, P.dir) : e.isNpc ? npcSprite3D(e.kind, P) : heroSprite3D(e.cls, e.skin, e.color, P);
+    const s = !e.isNpc && typeof massageSprite === 'function' ? massageSprite(e, P.dir, pr) : e.isNpc ? npcSprite3D(e.kind, P) : heroSprite3D(e.cls, e.skin, e.color, P);   /* na cama, sempre de sunga */
     ctx.imageSmoothingEnabled = true; pblit(ctx, s, sx, sy - 11); if (typeof drawZzz === 'function') drawZzz(ctx, sx, sy - 26, now); e._spr = null; return;
   }
   if (R3.ok && e.knockUntil && now < e.knockUntil && !e.downed) { const kf = FALLS['kp' + e.id]; if (now < e.knockUntil - 650 && kf) { drawFall(ctx, kf, sx, sy, now, 1, woundLevel(e)); e._spr = null; return; } }
@@ -487,7 +488,9 @@ function drawHeroEntity(ctx, e, sx, sy, now) {
     if (e !== G.me && e.anim && e.anim.W && e.anim.reach && now - e.anim.t0 < e.anim.W + 120) drawTelegraph(ctx, e, sx, sy, now);
     if (e.skin === 'weaver') drawWeaverAura(ctx, sx, sy, now);
     if (e.skin === 'weaver') sy -= 14 + Math.sin(now / 600) * 3;
-    pblit(ctx, s, sx, sy); e._spr = s; e._sx = sx; e._sy = sy;
+    const msy = sy; if (e.medit && typeof drawMeditAura === 'function') { drawMeditAura(ctx, e, sx, msy, now, 0); const lt = Math.min(1, Math.max(0, (now - e.medit.t0 - 2500) / 1800)); sy -= lt * (8 + Math.sin(now / 900) * 1.6); }   /* levita depois de uns segundos */
+    pblit(ctx, s, sx, sy);
+    if (e.medit && typeof drawMeditAura === 'function') drawMeditAura(ctx, e, sx, msy, now, 1); e._spr = s; e._sx = sx; e._sy = sy; e._drawT = now; if (s.spout) { e._spout = [sx - s.ax + s.spout[0], sy - s.ay + s.spout[1]]; e._spoutT = now; }
     if (e.hitAt && now - e.hitAt < 110) pblit(ctx, whiteOf(s, 'w3|' + e.id + (e.cls || e.kind)), sx, sy, 0.65);
     return;
   }
