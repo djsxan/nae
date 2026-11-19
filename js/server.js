@@ -991,8 +991,10 @@ function tubMsg(p, m) {
   const b = BUILDINGS[p.fb], O2 = ofuroOf(b); if (!O2 || (p.fl || 0) !== O2.fl || p.downed || p.bath) return;
   if (dist(p.x, p.y, O2.lever[0], O2.lever[1]) > 1.3) { tell(p, 'Chegue perto da alavanca na parede.'); return; }
   const T = tubRec(p.fb), now = Date.now(), lv = tubLv(T, now);
-  if (T.lever) { T.lever = 0; T.lv = lv; T.t = now; T.mode = lv > 0 ? 'drain' : ''; info(p, lv > 0 ? 'Alavanca para cima: as bicas fecham e o ofurô começa a esvaziar (1 min).' : 'Alavanca para cima: as bicas fecham.'); }
-  else { T.lever = 1; T.lv = lv; T.t = now; T.mode = 'fill'; if (lv < 1) { T.fullG = 0; T.cold = false; } info(p, lv < 1 ? 'Alavanca para baixo: a água quente começa a encher o ofurô (2 min).' : 'Alavanca para baixo: as bicas voltam a correr.'); }
+  const nx = ((T.lever | 0) + 1) % 3; T.lv = lv; T.t = now; T.lever = nx;   /* cima (vazia) > meio (enchendo) > baixo (água desligada, mantém) > cima */
+  if (nx === 1) { T.mode = 'fill'; if (lv < 1) { T.fullG = 0; T.cold = false; } info(p, lv < 1 ? 'Alavanca no meio: a cascata corre e o ofurô começa a encher (2 min).' : 'Alavanca no meio: a cascata volta a correr.'); }
+  else if (nx === 2) { T.mode = ''; if (lv >= 1 && !T.fullG) T.fullG = gameNow(); info(p, 'Alavanca para baixo: a água desliga e o ofurô fica ' + (lv >= 0.99 ? 'cheio' : 'com a água que tem') + '.'); }
+  else { T.mode = lv > 0 ? 'drain' : ''; info(p, lv > 0 ? 'Alavanca para cima: o ralo abre e o ofurô esvazia (1 min).' : 'Alavanca para cima: tudo desligado.'); }
   p.dir = dirFromVecS(O2.lever[0] - p.x, O2.lever[1] - p.y + 0.4); near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'lever', tx: O2.lever[0], ty: O2.lever[1] - 0.5, ms: 1100 });
   Net.toAll(tubPayload(p.fb)); estateSave();
 }

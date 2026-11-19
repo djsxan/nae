@@ -220,15 +220,15 @@ if (typeof progEvent === 'function') { const _peT = progEvent; progEvent = funct
 // ---------- hidromassagem: água agitada e espumante sobre os jatos, microbolhas subindo e estourando, vapor ----------
 // ---------- água do ofurô (lado do jogador): nível que sobe e desce com a alavanca da parede ----------
 G.tub = G.tub || {};
-function tubRecv(m) { const prev = G.tub[m.bi]; G.tub[m.bi] = { lv: m.lv, mode: m.mode, lever: m.lever, cold: !!m.cold, t: Date.now(), wetT: prev && prev.mode === 'drain' && m.mode === '' ? Date.now() : (prev && prev.wetT) || 0, flipT: prev && prev.lever !== m.lever ? Date.now() : (prev && prev.flipT) || 0 }; }
+function tubRecv(m) { const prev = G.tub[m.bi]; G.tub[m.bi] = { lv: m.lv, mode: m.mode, lever: m.lever, cold: !!m.cold, t: Date.now(), wetT: prev && prev.mode === 'drain' && m.mode === '' ? Date.now() : (prev && prev.wetT) || 0, flipT: prev && prev.lever !== m.lever ? Date.now() : (prev && prev.flipT) || 0, angFrom: prev && prev.lever !== m.lever ? (prev.ang ?? [1, 0, -1][prev.lever | 0]) : (prev && prev.angFrom) }; }
 function tubLvC(bi) { return tubLv(G.tub[bi], Date.now()); }
 function tubH(bi) { return 0.05 + 0.28 * tubLvC(bi); }   /* altura da superfície na tela (cheia = 0,33, a mesma dos banhistas) */
 function leverNear() { const me = G.me; if (!me || me.downed || me.bathing || !me.fl) return null; const b = BUILDINGS[me.fb], O2 = typeof ofuroOf === 'function' && ofuroOf(b); if (!O2 || me.fl !== O2.fl || !O2.lever) return null; return Math.hypot(me.x - O2.lever[0], me.y - O2.lever[1]) < 0.75 ? O2 : null; }
-function leverPrompt() { const T = G.tub[G.me.fb]; return T && T.lever ? 'F: levantar a alavanca (fecha as bicas e esvazia o ofurô)' : 'F: baixar a alavanca (enche o ofurô com água quente)'; }
+function leverPrompt() { const L = G.tub[G.me.fb] ? G.tub[G.me.fb].lever | 0 : 0; return ['F: alavanca para o meio (a cascata enche o ofurô)', 'F: alavanca para baixo (desliga a água e mantém o ofurô cheio)', 'F: alavanca para cima (esvazia o ofurô)'][L]; }
 function ofuroPrompt() { const T = G.tub[G.me.fb], lv = tubLvC(G.me.fb); if (lv >= 0.5) return lv < 1 ? 'F: tomar banho no ofurô (' + (T && T.mode === 'drain' ? 'esvaziando' : 'ainda enchendo') + ': os efeitos só com ele cheio)' : T && T.cold ? 'F: tomar banho no ofurô (a água esfriou: esvazie e encha de novo)' : 'F: tomar banho no ofurô'; return T && T.mode === 'fill' ? 'Ofurô enchendo… dá para entrar quando chegar na metade' : T && T.mode === 'drain' ? 'Ofurô esvaziando…' : 'Ofurô vazio · use a alavanca na parede, à direita'; }
 // alavanca de latão numa placa de jacarandá, na parede do fundo à direita da cascata: para cima = vazio, para baixo = enchendo
 function drawLever(ctx, T, pt) {
-  const tgt = T.lever ? -1 : 1, k = Math.min(1, Math.max(0, (Date.now() - (T.flipT || 0)) / 450)), e2 = k * k * (3 - 2 * k); T.ang = tgt * (2 * e2 - 1);   /* vira em 0,45 s */
+  const tgt = [1, 0, -1][T.lever | 0], a0 = T.angFrom ?? tgt, k = Math.min(1, Math.max(0, (Date.now() - (T.flipT || 0)) / 450)), e2 = k * k * (3 - 2 * k); T.ang = a0 + (tgt - a0) * e2;   /* três posições: cima, meio, baixo; vira em 0,45 s */
   const U = 2.5, V = 0.17, H0 = 0.62, poly = q => { ctx.beginPath(); ctx.moveTo(q[0][0], q[0][1]); for (let k = 1; k < q.length; k++) ctx.lineTo(q[k][0], q[k][1]); ctx.closePath(); };
   ctx.save(); poly([pt(U - 0.07, V, H0 - 0.25), pt(U + 0.07, V, H0 - 0.25), pt(U + 0.07, V, H0 + 0.25), pt(U - 0.07, V, H0 + 0.25)]); ctx.fillStyle = '#3a140a'; ctx.fill(); ctx.strokeStyle = '#c9a24a'; ctx.lineWidth = 0.5; ctx.stroke();
   const s0 = pt(U, V, H0 - 0.17), s1 = pt(U, V, H0 + 0.17); ctx.strokeStyle = '#120806'; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.moveTo(s0[0], s0[1]); ctx.lineTo(s1[0], s1[1]); ctx.stroke();   /* fenda */
@@ -246,7 +246,7 @@ function drawOfuroFx(ctx, P, now) {
   const A = 0.275, Z = 1.725, RIM = 0.39, poly = q => { ctx.beginPath(); ctx.moveTo(q[0][0], q[0][1]); for (let k = 1; k < q.length; k++) ctx.lineTo(q[k][0], q[k][1]); ctx.closePath(); }, quad = h => [pt(A, A, h), pt(Z, A, h), pt(Z, Z, h), pt(A, Z, h)];
   drawLever(ctx, T, pt);
   ctx.save(); poly(quad(RIM)); ctx.clip();   /* tudo de dentro da banheira só aparece pela abertura de cima */
-  const wetA = T.mode === 'drain' ? 1 : T.wetT && !T.lever ? Math.max(0, 1 - (Date.now() - T.wetT) / 120000) : 0;
+  const wetA = T.mode === 'drain' ? 1 : T.wetT && !(T.lever | 0) ? Math.max(0, 1 - (Date.now() - T.wetT) / 120000) : 0;
   if (wetA > 0) { const h0 = Math.max(0.05, hW);   /* madeira molhada onde a água estava, secando aos poucos */
     ctx.fillStyle = 'rgba(48,24,8,' + (0.42 * wetA).toFixed(3) + ')'; poly([pt(A, A, h0), pt(Z, A, h0), pt(Z, A, 0.33), pt(A, A, 0.33)]); ctx.fill(); poly([pt(Z, A, h0), pt(Z, Z, h0), pt(Z, Z, 0.33), pt(Z, A, 0.33)]); ctx.fill();
     ctx.strokeStyle = 'rgba(36,18,6,' + (0.8 * wetA).toFixed(3) + ')'; ctx.lineWidth = 1.1; ctx.beginPath(); const l0 = pt(A, A, 0.33), l1 = pt(Z, A, 0.33), l2 = pt(Z, Z, 0.33); ctx.moveTo(l0[0], l0[1]); ctx.lineTo(l1[0], l1[1]); ctx.lineTo(l2[0], l2[1]); ctx.stroke();   /* a linha d'água */
@@ -264,8 +264,8 @@ function drawOfuroFx(ctx, P, now) {
       for (let k = 0; k < 3; k++) { ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 0.4; ctx.beginPath(); for (let s = 0; s <= 24; s++) { const t = s / 24, a = rot + k * 2.09 + t * 4.2, r = R * (1 - t * 0.85); const x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r * 0.45; s ? ctx.lineTo(x, y) : ctx.moveTo(x, y); } ctx.stroke(); }
       for (let k = 0; k < 8; k++) { const q = (Date.now() / 900 + k / 8) % 1, a = rot * 1.5 + k * 0.8 + q * 3, r = R * (1 - q); ctx.fillStyle = 'rgba(255,255,255,' + (0.8 * (1 - q)).toFixed(2) + ')'; ctx.fillRect(cx + Math.cos(a) * r, cy + Math.sin(a) * r * 0.45, 0.45, 0.45); } } }
   ctx.restore();
-  if (T.lever) drawCascade(ctx, b, me.fl, P, now, base + 0.33 * HV, hW - 0.33);   /* as bicas correm com a alavanca para baixo */
-  const hot = lv > 0.05 && !T.cold, filling = T.lever && lv < 1;
+  if (T.lever === 1) drawCascade(ctx, b, me.fl, P, now, base + 0.33 * HV, hW - 0.33);   /* as bicas correm com a alavanca para baixo */
+  const hot = lv > 0.05 && !T.cold, filling = T.lever === 1 && lv < 1;
   if (hot && G.view && Math.random() < 0.025 + 0.06 * lv + (filling ? 0.05 : 0)) { const [vx, vy] = at(0.3 + Math.random() * 1.4, 0.3 + Math.random() * 1.4); spawnPart('smoke', vx - G.view.ox, vy - G.view.oy - 2, { color: '#ffffff' }); }   /* vapor */
   const busy = lv >= 0.5 && Object.values(G.players).some(q => q.bathing && q.fb === me.fb && q.fl === O2.fl); if (busy && !G.ofuroOn) G.ofuroOn = now; if (!busy) G.ofuroOn = 0;   /* os jatos ligam quando alguém entra e ficam ligados enquanto houver gente */
   if (!busy) return;
