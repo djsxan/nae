@@ -4,10 +4,11 @@
 // ============================================================
 const GAME_NAME = 'Nae';
 // brasão da família no poder: o castelo, os estandartes e as tapeçarias leem daqui (troca quando outra casa assume)
-const CASTLE_INT = typeof location !== 'undefined' && /[?&]castelo=1/.test(location.search);   /* térreo novo do castelo: só com ?castelo=1 até os outros andares ficarem prontos */
+const CASTLE_OPEN = true;   /* temporário: as sentinelas deixam qualquer um entrar no castelo para conferir os andares */
+const CASTLE_INT = true;   /* interior novo do castelo */
 const HERALD = { house: 'Aurenfell', name: 'Casa Aurenfell', field: '#9a2a1c', field2: '#6e1d14', metal: '#f1cf6a', charge: 'tower', motto: 'A Luz Não se Curva' };
-const VERSION = 'v1.94.0';
-const VERSION_NAME = 'Nae · Mesa Posta';
+const VERSION = 'v1.95.0';
+const VERSION_NAME = 'Nae · Salão do Trono';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -319,7 +320,7 @@ const LOST_NAMES = { head: 'a cabeça', armA: 'o braço da arma', armB: 'o outro
 const SEVER_FROM = { slashL: [['head', 0.35], ['armA', 0.35], ['armB', 0.3]], slashR: [['head', 0.35], ['armA', 0.35], ['armB', 0.3]], over: [['head', 0.25], ['armA', 0.4], ['armB', 0.35]], under: [['legL', 0.5], ['legR', 0.5]] };
 // ===== sobrevivência (fase 4) e morte permanente (fase 5) =====
 const SURV = { foodMin: 45, waterMin: 30, coldMin: 5, infectChance: 0.12 };   // minutos até esvaziar / esfriar
-const PERMADEATH = true;   // morrer (sangrar até o fim, desistir, decapitação) apaga o personagem; cair da conexão nunca mata
+const PERMADEATH = false;   // desligada por enquanto: quem morre acorda no Templo (perde metade do XP da fase). Antes: morrer (sangrar até o fim, desistir, decapitação) apaga o personagem; cair da conexão nunca mata
 const FOOD = { bread: 28, cookedmeat: 40, venison: 22, pork: 22, berries: 12, apple: 15, stew: 55, pie: 45 };
 // receitas do fogão (meat = carne crua de cervo ou javali)
 const RECIPES = {

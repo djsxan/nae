@@ -1401,7 +1401,7 @@ function mCastle(b, night) {
   const sandC = '#d2b07e', wallM = smat('stoneblock', sandC, { bump: 1.6 }), capM = smat('stoneblock', '#e2c898', { bump: 1 }), darkS = smat('stoneblock', '#9c7e56', { bump: 1.5 });
   const roofM = smat('slate', '#7a2a22', { bump: 1.6 }), gold = smat(null, '#e2b74e', { metal: 1, rough: 0.3 }), ir = IRON(), woodM = smat('wood', '#4a2c16', { bump: 1.5 });
   const glassM = night ? smat(null, '#ffd890', { emissive: '#ffb850', ei: 1.7, rough: 0.3 }) : smat(null, '#2a3a4a', { rough: 0.08, metal: 0.4 }), leadM = smat(null, '#2a2a2e', { metal: 0.6, rough: 0.5 });
-  const dc = doorCol(b) + 0.5, hx0 = dc - 3.5, hx1 = dc + 3.5, HH = H + 2.6;   /* salão do trono: 7 casas de largura no meio, mais alto */
+  const dc = doorCol(b) + 0.5, hx0 = dc - 6, hx1 = dc + 6, HH = H + 2.6;   /* salão do trono: 7 casas de largura no meio, mais alto */
   const crenel = (x0, x1, z, y, dir) => { const n = Math.max(1, Math.round((x1 - x0) * 2)); for (let k = 0; k < n; k++) { const u = x0 + (k + 0.5) * (x1 - x0) / n; if (k % 2 === 0) o.add(mk(dir ? new THREE.BoxGeometry(0.26, 0.42, 0.34).translate(z, y + 0.21, u) : new THREE.BoxGeometry(0.34, 0.42, 0.26).translate(u, y + 0.21, z), capM)); } };
   const gwin = (x, y, z, ry, wh, ww = 0.55) => { const g = grp();   /* janela gótica: arco pontudo, vitral e caixilho */
     g.add(mk(new THREE.BoxGeometry(ww + 0.18, wh + 0.1, 0.1), capM)); g.add(mk(new THREE.ConeGeometry(ww / 2 + 0.09, 0.5, 4, 1).rotateY(Math.PI / 4).scale(1, 1, 0.25).translate(0, wh / 2 + 0.22, 0), capM));
@@ -2268,7 +2268,8 @@ function mInterior(b, fl = 0) {
   const floorM = fl < 0 ? smat('stoneblock', '#5e584e', { bump: 1.5 }) : b.deco === 'machiya' ? (fl === 0 ? smat('oldplank', '#a8865a', { bump: 1.1 }) : fl >= nF - 1 ? smat('oldplank', '#2a1610', { bump: 0.5, rough: 0.28, metal: 0.08 }) : smat('tatami', '#ffffff', { bump: 0.6 })) : b.deco === 'greenhouse' ? smat('stoneblock', '#8e9286', { bump: 1 }) : b.kind === 'tavern' ? smat('oldplank', '#6a4a2c', { bump: 1.3 }) : b.deco === 'arcane' ? smat('oldplank', '#5a3e28', { bump: 1.3 }) : b.deco === 'tailor' ? smat('oldplank', '#8a5a4a', { bump: 1 }) : b.kind === 'shop' && b.v === 6 ? smat('stoneblock', '#3a3644', { bump: 0.8 }) : hotelI ? smat('oldplank', '#8a6440', { bump: 1.3 }) : b.kind === 'bank' ? smat('marblechk', '#ffffff', { bump: 0.4, rough: 0.35 }) : stoneK ? smat('stoneblock', b.kind === 'castle' ? '#a8a092' : '#8e887c', { bump: 1 }) : smat('wood', b.kind === 'stable' ? '#8a6a3e' : '#7a5232', { bump: 1.2 });
   const wallM = fl < 0 ? smat('brick', '#6e675c', { bump: 1.5 }) : b.deco === 'machiya' ? smat('plaster', '#e6dcc4', { bump: 0.5 }) : b.deco === 'greenhouse' ? smat(null, '#cfeedd', { rough: 0.05, metal: 0.25, transparent: true, opacity: 0.3 }) : b.kind === 'tavern' ? smat('oldplank', '#5e4028', { bump: 1.2 }) : b.deco === 'arcane' ? smat('oldplank', '#3a2a20', { bump: 1.2 }) : b.deco === 'tailor' ? smat('wallpaper', '#c89ac0', { bump: 0.5 }) : b.kind === 'shop' && b.v === 6 ? smat('stoneblock', '#4a4458', { bump: 1 }) : hotelI ? smat('wallpaper', '#ffffff', { bump: 0.5 }) : stoneK ? smat('brick', b.kind === 'castle' ? '#b4ad9c' : '#a29c90', { bump: 1.2 }) : smat('plaster', '#e2d6bc', { bump: 0.7 });
   const trimM = smat('wood', '#4a2f17'), hw = Math.min(H / nF, b.kind === 'castle' || b.kind === 'temple' ? 5 : 2.3), t = 0.16;
-  o.add(mk(wuv(new THREE.BoxGeometry(w, 0.06, h).translate(w / 2, 0.03, h / 2), 1), floorM));
+  if (b.kind === 'castle' && fl === 1) { o.add(mk(wuv(new THREE.BoxGeometry(6, 0.06, h).translate(3, 0.03, h / 2), 1), floorM)); o.add(mk(wuv(new THREE.BoxGeometry(6, 0.06, h).translate(w - 3, 0.03, h / 2), 1), floorM)); }   /* 1º andar do castelo: o meio é o vão do salão do trono, aberto */
+  else o.add(mk(wuv(new THREE.BoxGeometry(w, 0.06, h).translate(w / 2, 0.03, h / 2), 1), floorM));
   // quais paredes (no quadro local) ficam viradas para a câmera depende do lado da porta
   const knee = { S: ['front', 'right'], N: ['back', 'left'], E: ['front', 'left'], W: ['back', 'right'] }[b.realDoor || 'S'];
   const KH = 0.34, wallH = f => knee.includes(f) ? KH : hw, dx = doorCol(b) + 0.5;
@@ -2284,7 +2285,8 @@ function mInterior(b, fl = 0) {
   if (!knee.includes('front') && !(b.deco === 'machiya' && fl > 0)) o.add(mk(wuv(new THREE.BoxGeometry(1.2, hw - 1.3, t).translate(dx, 1.3 + (hw - 1.3) / 2, h - t / 2), 0.7), wallM));
   if (b.deco === 'machiya') machiyaInterior(o, b, fl, { w, h, hw, t, nF, knee });
   if (fl !== 0 && !knee.includes('front') && b.deco !== 'machiya') o.add(mk(wuv(new THREE.BoxGeometry(1.2, 1.3, t).translate(dx, 0.65, h - t / 2), 0.7), wallM));
-  if (fl > 0) o.add(mk(wuv(new THREE.BoxGeometry(w, 0.18, h).translate(w / 2, -0.09, h / 2), 1), smat('wood', '#4e3420', { bump: 1 })));
+  if (fl > 0 && b.kind === 'castle' && fl === 1) { for (const cx of [3, w - 3]) o.add(mk(wuv(new THREE.BoxGeometry(6, 0.18, h).translate(cx, -0.09, h / 2), 1), smat('wood', '#4e3420', { bump: 1 }))); }   /* sem laje no vão do salão */
+  else if (fl > 0) o.add(mk(wuv(new THREE.BoxGeometry(w, 0.18, h).translate(w / 2, -0.09, h / 2), 1), smat('wood', '#4e3420', { bump: 1 })));
   // janelas com luz entrando, só nas paredes inteiras
   // janelas de verdade (moldura, 4 vidros, travessas e parapeito) nas paredes inteiras
   const frameM = smat('wood', '#4a2f17'), glassW = smat(null, '#9fb4c0', { emissive: '#6a7a84', ei: 0.35, rough: 0.15, metal: 0.2 });
@@ -2352,7 +2354,7 @@ function mInterior(b, fl = 0) {
       o.add(mk(new THREE.BoxGeometry(alongX ? L + 0.04 : 0.1, 0.08, alongX ? 0.1 : L + 0.04).translate(cx, HH, cz), dk)); o.add(mk(new THREE.BoxGeometry(alongX ? L : 0.1, 0.06, alongX ? 0.1 : L).translate(cx, 0.03, cz), dk));
       for (const e of [0, 1]) { const px = alongX ? (e ? u1 : u0) : u0, pz = alongX ? v0 : (e ? v1 : v0); o.add(mk(new THREE.BoxGeometry(0.1, HH, 0.1).translate(px, HH / 2, pz), dk)); } }
   }
-  if (b.kind === 'castle' && fl === 0 && CASTLE_INT) { const sm = smat('stoneblock', '#cdb08a', { bump: 1.2 }), cap = smat('stoneblock', '#e2c898', { bump: 1 }), HH = 1.7;
+  if (b.kind === 'castle') { const sm = smat('stoneblock', fl < 0 ? '#8e7a62' : '#cdb08a', { bump: 1.2 }), cap = smat('stoneblock', '#e2c898', { bump: 1 }), HH = 1.7;
     for (const [u0, v0, u1, v1] of iwallsLocal(b, fl) || []) { const alongX = Math.abs(v0 - v1) < 0.01, L = alongX ? Math.abs(u1 - u0) : Math.abs(v1 - v0), cx = (u0 + u1) / 2, cz = (v0 + v1) / 2;
       o.add(mk(wuv(new THREE.BoxGeometry(alongX ? L : 0.22, HH, alongX ? 0.22 : L).translate(cx, HH / 2, cz), 0.5), sm)); o.add(mk(new THREE.BoxGeometry(alongX ? L + 0.06 : 0.3, 0.1, alongX ? 0.3 : L + 0.06).translate(cx, HH + 0.05, cz), cap)); } }
   // móveis
@@ -2639,6 +2641,11 @@ function mInterior(b, fl = 0) {
         const gb = grp(); gb.add(wbox(0.9, 0.7, 0.04, 0, 1.55, 0, smat('wood', '#3a2214'), 1)); gb.add(mk(new THREE.PlaneGeometry(0.82, 0.62).translate(0, 1.55, 0.025), smat('rates', '#ffffff', { rough: 0.6 })));
         gb.rotation.y = backX ? Math.PI / 2 : -Math.PI / 2; gb.position.set(backX ? -0.46 : 0.46, 0, 0); g.add(gb); break; }
       case 'pillar': { const mb = smat('stoneblock', '#efe9dc', { bump: 0.6 }), gold = smat(null, '#c9a24a', { metal: 1, rough: 0.3 }); g.add(mk(new THREE.BoxGeometry(0.62, 0.18, 0.62).translate(0, 0.09, 0), mb)); g.add(mk(new THREE.CylinderGeometry(0.22, 0.25, 3.0, 16).translate(0, 1.68, 0), mb)); g.add(mk(new THREE.BoxGeometry(0.6, 0.2, 0.6).translate(0, 3.28, 0), mb)); g.add(mk(new THREE.TorusGeometry(0.25, 0.03, 6, 16).rotateX(Math.PI / 2).translate(0, 0.3, 0), gold)); break; }
+      case 'gvoid': {   /* vão do pé-direito duplo do salão: buraco escuro com balaustrada em volta */
+        const st = smat('stoneblock', '#e2c898', { bump: 0.8 });
+        for (const sx of [-1, 1]) { g.add(wbox(0.12, 0.08, f.h - 0.1, sx * (f.w / 2 - 0.1), 0.9, 0, st, 1)); for (let k = 0; k <= f.h * 2; k++) g.add(mk(CYL(0.035, 0.05, 0.82, sx * (f.w / 2 - 0.1), 0.45, -f.h / 2 + 0.1 + k * (f.h - 0.2) / (f.h * 2), 6), st)); }
+        for (const sz of [-1, 1]) { g.add(wbox(f.w - 0.1, 0.08, 0.12, 0, 0.9, sz * (f.h / 2 - 0.1), st, 1)); for (let k = 0; k <= f.w * 2; k++) g.add(mk(CYL(0.035, 0.05, 0.82, -f.w / 2 + 0.1 + k * (f.w - 0.2) / (f.w * 2), 0.45, sz * (f.h / 2 - 0.1), 6), st)); }
+        break; }
       case 'swordthrone': {   /* Trono de Espadas, sóbrio: três degraus de pedra, espadas fundidas em leque atrás do encosto */
         const st = smat('stoneblock', '#8e7a5e', { bump: 1.2 }), steel = smat(null, '#9aa0a8', { metal: 0.9, rough: 0.32 }), dark = smat(null, '#4a4e56', { metal: 0.8, rough: 0.45 }), gold = smat(null, '#d4a94a', { metal: 1, rough: 0.3 }), red = cloth('#7a1a1c');
         for (let k = 0; k < 3; k++) g.add(wbox(2.8 - k * 0.5, 0.16, 1.7 - k * 0.38, 0, 0.08 + k * 0.16, 0.1 - k * 0.19, st, 1.2));   /* degraus */
@@ -2652,11 +2659,18 @@ function mInterior(b, fl = 0) {
         break; }
       case 'hpillar': { const sm = smat('stoneblock', '#d8bf94', { bump: 0.8 }), cap = smat('stoneblock', '#e8d4ae', { bump: 0.6 }), HP = Math.min(hw, 5) - 0.05;   /* coluna do salão: base, fuste canelado e capitel até o teto */
         g.add(wbox(0.7, 0.2, 0.7, 0, 0.1, 0, cap, 1)); g.add(mk(cylUV(new THREE.CylinderGeometry(0.24, 0.27, HP - 0.6, 16, 1).translate(0, 0.2 + (HP - 0.6) / 2, 0), 2, 1), sm)); g.add(mk(new THREE.CylinderGeometry(0.4, 0.26, 0.28, 16).translate(0, HP - 0.26, 0), cap)); g.add(wbox(0.72, 0.14, 0.72, 0, HP - 0.07, 0, cap, 1)); break; }
-      case 'dskull': {   /* crânio de dragão enorme sobre um pedestal baixo, olhando para o tapete */
-        const bone = smat('stoneblock', '#e6dcc4', { bump: 0.7 }), dk = smat(null, '#2a2420', { rough: 1 }), sk = grp(); g.add(wbox(0.9, 0.22, 0.9, 0, 0.11, 0, smat('stoneblock', '#8e7a5e'), 1));
-        sk.add(mk(new THREE.SphereGeometry(0.42, 14, 10).scale(1, 0.75, 1.1), bone)); sk.add(mk(new THREE.BoxGeometry(0.42, 0.26, 0.75).translate(0, -0.08, 0.62), bone)); sk.add(mk(new THREE.BoxGeometry(0.38, 0.1, 0.7).translate(0, -0.3, 0.55).rotateX(0.18), bone));   /* crânio, focinho, mandíbula */
-        for (const sx of [-1, 1]) { sk.add(mk(new THREE.SphereGeometry(0.11, 10, 8).translate(sx * 0.2, 0.08, 0.3), dk)); sk.add(mk(new THREE.ConeGeometry(0.07, 0.55, 8).rotateX(-1.9).translate(sx * 0.22, 0.25, -0.35), bone)); for (let k = 0; k < 4; k++) sk.add(mk(new THREE.ConeGeometry(0.025, 0.12, 5).rotateX(Math.PI).translate(sx * 0.17, -0.25, 0.4 + k * 0.17), bone)); }   /* órbitas, chifres, presas */
-        sk.scale.setScalar(1.6); sk.position.set(0, 0.85, 0); sk.rotation.y = f.flip ? -Math.PI / 2 : Math.PI / 2; g.add(sk); break; }
+      case 'dskull': {   /* crânio de dragão: crânio em cunha, focinho comprido, órbitas fundas, chifres curvos para trás, mandíbula aberta com presas */
+        const bone = smat('stoneblock', '#e8dcc0', { bump: 0.9 }), boneD = smat('stoneblock', '#b8a888', { bump: 0.9 }), dk = smat(null, '#1e1814', { rough: 1 }), sk = grp(); g.add(wbox(1.0, 0.18, 1.0, 0, 0.09, 0, smat('stoneblock', '#7a6a52'), 1));
+        const wedge = (w0, w1, h0, h1, L) => { const ge = new THREE.BoxGeometry(1, 1, L, 1, 1, 1), p = ge.attributes.position; for (let i = 0; i < p.count; i++) { const z = p.getZ(i), t = (z + L / 2) / L, ww = w0 + (w1 - w0) * t, hh = h0 + (h1 - h0) * t; p.setX(i, p.getX(i) * ww); p.setY(i, p.getY(i) * hh); } ge.computeVertexNormals(); return ge; };
+        sk.add(mk(wedge(0.62, 0.42, 0.42, 0.3, 0.5).translate(0, 0, -0.05), bone));   /* crânio */
+        sk.add(mk(wedge(0.42, 0.18, 0.28, 0.14, 0.75).translate(0, -0.04, 0.55), bone));   /* focinho */
+        sk.add(mk(wedge(0.4, 0.16, 0.08, 0.06, 0.8).rotateX(0.32).translate(0, -0.3, 0.5), boneD));   /* mandíbula aberta */
+        for (const sx of [-1, 1]) { sk.add(mk(new THREE.SphereGeometry(0.1, 10, 8).scale(1, 0.75, 1.1).translate(sx * 0.2, 0.1, 0.12), dk)); sk.add(mk(new THREE.SphereGeometry(0.035, 6, 5).translate(sx * 0.05, 0.05, 0.9), dk));   /* órbitas e narinas */
+          sk.add(mk(new THREE.BoxGeometry(0.1, 0.06, 0.32).translate(sx * 0.27, 0.2, 0.08), boneD));   /* sobrancelha óssea */
+          const pts = [V3(sx * 0.22, 0.18, -0.2), V3(sx * 0.38, 0.32, -0.45), V3(sx * 0.42, 0.36, -0.8), V3(sx * 0.32, 0.22, -1.05)], cv = new THREE.CatmullRomCurve3(pts); sk.add(mk(new THREE.TubeGeometry(cv, 10, 0.06, 6), boneD)); sk.add(mk(new THREE.ConeGeometry(0.06, 0.14, 6).rotateX(-Math.PI / 2).translate(sx * 0.3, 0.2, -1.12), boneD));   /* chifres curvos para trás */
+          for (let k = 0; k < 4; k++) { sk.add(mk(new THREE.ConeGeometry(0.025, 0.12, 5).rotateX(Math.PI).translate(sx * (0.15 - k * 0.025), -0.15, 0.35 + k * 0.15), bone)); sk.add(mk(new THREE.ConeGeometry(0.022, 0.1, 5).translate(sx * (0.14 - k * 0.024), -0.33, 0.32 + k * 0.15), bone)); } }   /* presas de cima e de baixo */
+        for (let k = 0; k < 3; k++) sk.add(mk(new THREE.ConeGeometry(0.045, 0.16, 5).rotateX(-0.9).translate(0, 0.22 - k * 0.02, -0.25 - k * 0.15), boneD));   /* crista */
+        sk.scale.setScalar(1.35); sk.position.set(0, 0.55, 0); sk.rotation.y = f.flip ? -Math.PI / 2 : Math.PI / 2; g.add(sk); break; }
       case 'tapestry': { const tm = new THREE.MeshStandardMaterial({ map: heraldTex('banner'), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.9 }), tp = mk(new THREE.PlaneGeometry(0.9, 2.7), tm); tp.position.set(0, 2.35, -0.3); g.add(tp); g.add(mk(CYL(0.025, 0.025, 1.1, 0, 0, 0, 6).rotateZ(Math.PI / 2).translate(0, 3.72, -0.3), smat(null, '#d4a94a', { metal: 1, rough: 0.3 }))); break; }   /* tapeçaria comprida com o brasão da casa */
       case 'brazier': { const ir = smat(null, '#2e2a28', { metal: 0.85, rough: 0.45 });   /* braseiro de ferro: tripé, bacia funda, brasas e chamas */
         for (let k = 0; k < 3; k++) { const a = k / 3 * Math.PI * 2 + 0.3, lg = mk(new THREE.BoxGeometry(0.05, 0.9, 0.05).translate(0, 0.42, 0), ir); lg.position.set(Math.cos(a) * 0.14, 0, Math.sin(a) * 0.14); lg.rotation.set(Math.sin(a) * 0.18, 0, -Math.cos(a) * 0.18); g.add(lg); }

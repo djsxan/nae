@@ -730,7 +730,7 @@ function damagePlayer(p, raw, m, delay = 0, zone = null, exactPart = null) {
   if (p.downed) {
     // lobos atacam quem está caído: a pessoa sangra mais rápido
     if (m && MON[m.type] && MON[m.type].beh === 'pred' && m.id != null && S.monsters[m.id] && !m.dragging && !p.dragBy && !p.carriedBy && !p.tied && Math.random() < 0.5) { m.dragging = p.id; m.dragUntil = now_() + 6000; p.dragBy = 'w:' + m.id; p.dragMode = 'foot'; }
-    if (m && MON[m.type] && MON[m.type].beh === 'pred') { p.downed.until -= 2500; near(p.x, p.y, { t: 'hit', k: 'p', id: p.id, x: p.x, y: p.y, dmg: 0, d: delay, ax: m.x, ay: m.y }); }
+    if (m && MON[m.type] && MON[m.type].beh === 'pred' && now_() > (p.downed.wolfT || 0)) { p.downed.wolfT = now_() + 1500; p.downed.until -= 800;   /* mordida em quem está caído: no máximo uma a cada 1,5 s, mesmo com a matilha toda (antes 2,5 s por mordida acabava o sangramento em segundos) */  near(p.x, p.y, { t: 'hit', k: 'p', id: p.id, x: p.x, y: p.y, dmg: 0, d: delay, ax: m.x, ay: m.y }); }
     return;
   }
   const c = CLASSES[p.cls];
@@ -4451,7 +4451,7 @@ const THREAT_LINES = { weapon: ['Guarde essa arma!', 'Estou mandando: guarde a a
 const bodyOf = q => { if (q.carrying) { const v = S.players[q.carrying]; return v ? { k: 'p', id: v.id, e: v, dead: false } : null; } if (q.drag) { const t = dragTarget(q.drag.k, q.drag.id); if (t && (q.drag.k === 'c' || t.downed || t.dead)) return { k: q.drag.k, id: q.drag.id, e: t, dead: q.drag.k === 'c' || !!t.dead }; } return null; };
 function trespassAt(q) {
   const bi = WORLD.bld[tileAt(q.x, q.y)], b = BUILDINGS[bi]; if (!b) return false;
-  if (b.kind === 'castle') return true;
+  if (b.kind === 'castle') return !CASTLE_OPEN;   /* por enquanto o castelo está aberto para conferir os andares */
   if (b.kind === 'bank') { const [dx, dy] = doorTile(b); return dist(q.x, q.y, dx, dy) > Math.max(b.w, b.h) - 2.6; }   // perto do cofre
   return false;
 }

@@ -133,10 +133,7 @@ function drawEffects1(ctx, ox, oy, now) {
         const px_ = a.x + (b.x - a.x) * t + ox, py_ = a.y + (b.y - a.y) * t + oy - Math.sin(t * Math.PI) * (e.kind === 'arrow' ? 6 : 3);
         const ang = Math.atan2(b.y - a.y, b.x - a.x);
         if (e.kind === 'arrow') {
-          ctx.fillStyle = '#e8dcc0';
-          for (let k = 0; k < 7; k++) ctx.fillRect(Math.round(px_ - Math.cos(ang) * k), Math.round(py_ - Math.sin(ang) * k), 1, 1);
-          ctx.fillStyle = '#c0c6ce'; ctx.fillRect(Math.round(px_ + Math.cos(ang)), Math.round(py_ + Math.sin(ang)), 1, 1);
-          ctx.fillStyle = '#b8382a'; ctx.fillRect(Math.round(px_ - Math.cos(ang) * 7), Math.round(py_ - Math.sin(ang) * 7), 1, 1);
+          if (typeof arrowShaft === 'function') { const dx = Math.cos(ang) * 32, dy = Math.sin(ang) * 32 - Math.cos(t * Math.PI) * 6; arrowShaft(ctx, px_, py_, dx, dy, 15, 0, true); }   /* a mesma flecha do tiro normal */
         } else if (e.kind === 'bolt') {
           glowDot(ctx, px_, py_, 5, 'rgba(240,235,255,1)', 'rgba(140,110,230,0)');
           if (Math.random() < 0.6) spawnPart('sparkle', px_ - ox, py_ - oy, { color: 'rgba(196,181,253,A)', life: 400 });
@@ -169,7 +166,7 @@ function drawEffects1(ctx, ox, oy, now) {
         ctx.strokeStyle = `rgba(190,245,200,${0.9 * (1 - t)})`; ctx.lineWidth = Math.max(1, 3 * (1 - t));
         ctx.beginPath(); ctx.moveTo(cx, cy - 10); ctx.lineTo(b.x + ox, b.y + oy - 10); ctx.stroke();
         const ax = cx + (b.x + ox - cx) * Math.min(1, t * 2), ay = cy - 10 + (b.y + oy - cy) * Math.min(1, t * 2);
-        ctx.fillStyle = '#efffe8'; ctx.fillRect(Math.round(ax) - 1, Math.round(ay) - 1, 3, 3);
+        if (typeof arrowShaft === 'function') arrowShaft(ctx, ax, ay, b.x + ox - cx, b.y + oy - cy + 10, 15, 0, true);   /* flecha perfurante: a flecha nova no rastro de luz */
         G.lights.push({ x: ax, y: ay, r: 20, c: '187,247,208', a: 0.8 });
         break;
       }
@@ -177,7 +174,7 @@ function drawEffects1(ctx, ox, oy, now) {
         for (let k = 0; k < 18; k++) {
           const tk = t * 1.6 - hash2(k, 1, e.seed) * 0.6; if (tk < 0 || tk > 1) continue;
           const tx = Math.round(cx + (hash2(k, 2, e.seed) - 0.5) * 60), ty = Math.round(cy + (hash2(k, 3, e.seed) - 0.5) * 26), yy = Math.round(ty - 70 * (1 - tk));
-          ctx.fillStyle = '#e8dcc0'; ctx.fillRect(tx, yy - 6, 1, 6); ctx.fillStyle = '#c0c6ce'; ctx.fillRect(tx, yy, 1, 1);
+          if (typeof arrowShaft === 'function') arrowShaft(ctx, tx, yy, 3, 40, 14, 0, true);   /* chuva de flechas: as flechas novas caindo */
           if (tk > 0.95) spawnPart('dust', tx - ox, ty - oy);
         }
         break;
@@ -1186,7 +1183,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     const ck = ff ? (ff.to < 0 ? fk : 0) + (ff.from < 0 ? 1 - fk : 0) : (myFl < 0 ? 1 : 0); G.cellarDark = ck > 0.5;
     ctx.fillStyle = 'rgba(' + Math.round(8 - 6 * ck) + ',' + Math.round(5 - 4 * ck) + ',' + Math.round(2 - 1 * ck) + ',' + (0.6 + 0.4 * ck) + ')'; ctx.fillRect(-20, -20, vw + 40, vh + 40);
     // cada andar tem uma opacidade (o seu = 1, o de baixo = 0.55); ao trocar de andar, mistura as duas situações
-    const tall = inside.b.deco === 'machiya', A = (st, f) => f === st ? 1 : (f === st - 1 || (tall && f < st)) && f >= 0 ? 0.55 : 0;   // o porão só aparece quando você está nele; no prédio do dojô dá para ver todos os andares de baixo
+    const tall = inside.b.deco === 'machiya', hallV = inside.b.kind === 'castle', A = (st, f) => f === st ? 1 : hallV && st === 1 && f === 0 ? 1 : (f === st - 1 || (tall && f < st)) && f >= 0 ? 0.55 : 0;   /* castelo: do 1º andar vê-se o salão do trono inteiro pelo vão */   // o porão só aparece quando você está nele; no prédio do dojô dá para ver todos os andares de baixo
     if (ff && fk >= 1) G.flFade = null;
     for (let f = minFl(inside.b); f < floorsOf(inside.b); f++) {
       const a = ff ? A(ff.from, f) * (1 - fk) + A(ff.to, f) * fk : A(myFl, f); if (a < 0.02) continue;
