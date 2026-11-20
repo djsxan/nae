@@ -182,7 +182,7 @@ const doorOf = b => { const [x, y] = doorTile(b), v = DOOR_V[b.door || 'S']; ret
 function stairKind(b, f) { return (b.stairs && b.stairs[f]) || 'wall'; }
 function stairSpec(b, f) {
   const [A, D] = bDims(b), k = stairKind(b, f);
-  if (b.kind === 'castle' && f < 0) return f === -1 ? { kind: 'wall', L: [1, 3], U: [1, 2], dv: [0, -1], entry: [1, 4], arrive: [1, 1], trig: [1, 2] } : { kind: 'wall', L: [2, 2], U: [2, 3], dv: [0, 1], entry: [2, 1], arrive: [2, 4], trig: [2, 3] };   /* corredor oeste: desce em vaivém até a cripta */
+  if (b.kind === 'castle' && f < 0) return f === -1 ? { kind: 'wall', L: [1, 3], U: [1, 2], dv: [0, -1], entry: [1, 4], arrive: [1, 1], trig: [1, 2] } : { kind: 'wall', L: [3, 4], U: [3, 3], dv: [0, -1], entry: [3, 5], arrive: [3, 2], trig: [3, 3] };   /* corredor oeste: desce em vaivém até a cripta (chega no corredor aberto, não atrás da escada) */
   if (k === 'grand') return f % 2 === 0 ? { kind: 'wall', L: [17, 3], U: [17, 2], dv: [0, -1], entry: [17, 4], arrive: [17, 1], trig: [17, 2] } : { kind: 'wall', L: [18, 2], U: [18, 3], dv: [0, 1], entry: [18, 1], arrive: [18, 4], trig: [18, 3] };   /* escadaria do castelo: lances alternados com patamar em cada andar */
   if (f < 0) { const c = b.cellar; return { kind: 'ladder', one: 1, cellar: 1, L: c, U: c, dv: [0, 0], entry: [c[0], c[1] + 1], arrive: [c[0], c[1] + 1], trig: c }; }   // porão: escada de mão até o alçapão do térreo
   if (k === 'lift') return { kind: k, one: 1, lift: 1, cab2: 1, L: [6, 0], U: [6, 0], dv: [0, 0], entry: [7, 2], arrive: [7, 2], trig: [6, 0] };   // elevador 2×2 do prédio japonês (corredor ao norte; a grade abre para o corredor)

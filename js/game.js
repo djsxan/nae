@@ -339,7 +339,7 @@ function monsterNear(x, y, r = 0.5) {
   return false;
 }
 function keepShut(x, y) { const me = G.me; if (!me || !G.pcF) return false; for (let k = 0; k < WORLD.gates.length; k++) { const gt = WORLD.gates[k]; if (gt.kind !== 'keep' || (G.pcF[k] || 0) < 0.5) continue; if (x > gt.x0 - 0.6 && x < gt.x1 + 0.6 && Math.abs(y - gt.y) < 0.6 && me.y > gt.y + 0.2) { if (performance.now() - (G._pcMsg || 0) > 4000) { G._pcMsg = performance.now(); showToast('A grade do castelo está baixada: só abre ao amanhecer.'); } return true; } } return false; }   /* de fora não entra à noite; quem está dentro pode sair */
-function freeAt(x, y, z) { if (G.dev && G.noclip) return true; if (keepShut(x, y)) return false; if (HOTEL_DOORS.size && G.me && !G.dev) { const q = HOTEL_DOORS.get(Math.round(y) * MAP_W + Math.round(x)); if (q != null && G.me.hroom !== q) return false; } if (typeof estLockedFor === 'function' && G.me && estLockedFor(G.me.x, G.me.y, x, y)) return false; if (typeof jailBlock === 'function' && JAILCELLS.length && jailBlock(x, y)) return false; const me = G.me; if (me && (me.fl || 0) !== 0) return canStandFloor(x, y, me.fb, me.fl, 0.22) && !(typeof aptBlocked === 'function' && G.est && aptBlocked(me.name, me.fb, me.fl, me.x, me.y, x, y, G.est.L)); return canStandZ(x, y, z, 0.22) && (z >= 0.5 || G.slide || !monsterNear(x, y)); }
+function freeAt(x, y, z) { if (G.dev && G.noclip) return true; if (keepShut(x, y)) return false; if (G.kjail && typeof kjailBlocked === 'function' && kjailBlocked({ kjail: G.kjail }, x, y)) return false; if (HOTEL_DOORS.size && G.me && !G.dev) { const q = HOTEL_DOORS.get(Math.round(y) * MAP_W + Math.round(x)); if (q != null && G.me.hroom !== q) return false; } if (typeof estLockedFor === 'function' && G.me && estLockedFor(G.me.x, G.me.y, x, y)) return false; if (typeof jailBlock === 'function' && JAILCELLS.length && jailBlock(x, y)) return false; const me = G.me; if (me && (me.fl || 0) !== 0) return canStandFloor(x, y, me.fb, me.fl, 0.22) && !(typeof aptBlocked === 'function' && G.est && aptBlocked(me.name, me.fb, me.fl, me.x, me.y, x, y, G.est.L)); return canStandZ(x, y, z, 0.22) && (z >= 0.5 || G.slide || !monsterNear(x, y)); }
 
 function myInput() {
   const k = G.keys;
@@ -1113,6 +1113,7 @@ window.addEventListener('keydown', e => {
   if (k === 'f' && !e.repeat && typeof leverNear === 'function' && leverNear()) { Net.send({ t: 'tub' }); return; }
   if (k === 'f' && !e.repeat && typeof ofuroNear === 'function' && ofuroNear()) { bathEnter(); return; }
 
+  if (k === 'f' && !e.repeat && typeof courtNear === 'function' && courtNear()) { Net.send({ t: 'court', a: 'open', id: courtNear().id }); return; }   /* corte do castelo */
   if (k === 'f' && !e.repeat && typeof entNear === 'function' && entNear()) { entMenu(entNear()); return; }   /* ordens para a guardiã */
   if (k === 'f' && !e.repeat && typeof entLogNear === 'function' && entLogNear()) { Net.send({ t: 'ent', a: 'log', id: entLogNear().id }); return; }   /* galho caído da guardiã: lenha */
   if (k === 'f' && !e.repeat && typeof mealNear === 'function' && mealNear()) { Net.send({ t: 'emp', a: 'mealeat' }); return; }   /* comer da bandeja na mesa baixa */

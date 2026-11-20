@@ -318,7 +318,7 @@ function hostOnClient(from, m) {
       break;
     }
     case 'floor': {
-      const b = BUILDINGS[m.b | 0], to = m.to | 0, fl = p.fl || 0, lift = b && stairKind(b, 0) === 'lift'; if (!b || p.downed || p.carriedBy || (lift ? to === fl : Math.abs(to - fl) !== 1) || to < minFl(b) || to >= floorsOf(b)) break;   /* elevador: qualquer andar */
+      const b = BUILDINGS[m.b | 0], to = m.to | 0, fl = p.fl || 0, lift = b && stairKind(b, 0) === 'lift'; if (!b || p.downed || p.carriedBy || p.kjail || (lift ? to === fl : Math.abs(to - fl) !== 1) || to < minFl(b) || to >= floorsOf(b)) break;   /* elevador: qualquer andar */
       if (lift && fl === 0 && WORLD.bld[tileAt(p.x, p.y)] !== (m.b | 0)) break;
       const sw = stairWorld(b, lift ? 0 : Math.min(fl, to)); if (dist(p.x, p.y, (sw.L[0] + sw.U[0]) / 2, (sw.L[1] + sw.U[1]) / 2) > 2.2) break;
       const [ax, ay] = to > fl ? sw.arrive : sw.entry; p.x = ax; p.y = ay; p.fl = to; p.fb = to !== 0 ? (m.b | 0) : -1; p.lastMv = now_(); p.sit = null;
@@ -428,6 +428,7 @@ function hostOnClient(from, m) {
     case 'tub': tubMsg(p, m); break;
     case 'emp': if (typeof empMsg === 'function') empMsg(p, m); break;
     case 'ent': if (typeof entMsg === 'function') entMsg(p, m); break;
+    case 'court': if (typeof courtMsg === 'function') courtMsg(p, m); break;
     case 'duel': duelMsg(p, m); break;
     case 'hipthrow': hipThrow(p); break;
     case 'train': trainMsg(p, m); break;
@@ -462,7 +463,7 @@ function handleMove(p, m) {
   const z = heightAt(x, y, p.z);
   const dt = Math.min(3, (now - p.lastMv) / 1000);   /* tolera até 3 s de atraso da rede */
   const maxStep = PLAYER_SPEED * (m.sl || now < (p.dodgeAllow || 0) ? RUN_MUL * 2.6 : m.r ? RUN_MUL * 1.5 : 1.7) * (dt + 0.25) + 0.4;
-  const ok = dist(p.x, p.y, x, y) <= maxStep && canStandZ(x, y, z, 0.18, p.fl || 0, p.fb ?? -1) && Math.abs(z - (+m.z || 0)) < 0.45;
+  const ok = dist(p.x, p.y, x, y) <= maxStep && canStandZ(x, y, z, 0.18, p.fl || 0, p.fb ?? -1) && Math.abs(z - (+m.z || 0)) < 0.45 && !(p.kjail && typeof kjailBlocked === 'function' && kjailBlocked(p, x, y));
   if (!ok || estateBlocked(p.name, p.x, p.y, x, y, S.estateL) || ((p.fl || 0) !== 0 && p.fb >= 0 && !p.dev && aptBlocked(p.name, p.fb, p.fl, p.x, p.y, x, y, S.estateL))) {
     const far = dist(p.x, p.y, x, y), lagOnly = far > maxStep && far < 10 && canStandZ(x, y, z, 0.18, p.fl || 0, p.fb ?? -1) && Math.abs(z - (+m.z || 0)) < 0.45 && !estateBlocked(p.name, p.x, p.y, x, y, S.estateL);
     if (lagOnly) return;   /* passo longo só por atraso: ignora (o próximo, com mais tempo passado, é aceito) em vez de puxar o jogador de volta */
@@ -1217,7 +1218,7 @@ function sapTick(now) {   /* a cada 2 s: bônus para quem está perto da muda */
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(m.x, m.y, s.x, s.y) > R + 1.5) continue; m.calmUntil = now + 2600; m.aggro = null; m.atk = null; m.flee = null; } }
 }
 function mageTick(now) {   /* brasa (animais recuam), flores (curam e acalmam) */
-  bathTick(now); flameTick(now); autoTick(now); meditTick(now); sapTick(now); lightWellTick(now); if (typeof entTick === 'function') entTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
+  bathTick(now); flameTick(now); autoTick(now); meditTick(now); sapTick(now); lightWellTick(now); if (typeof courtTick === 'function') courtTick(now); if (typeof entTick === 'function') entTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
   for (const p of Object.values(S.players)) {
     if (p.cls !== 'mage' || !buffOn(p, 'ember') || p.downed) continue;
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(p.x, p.y, m.x, m.y) > 3.5) continue; m.flee = { from: p.id, until: now + 1800 }; if (m.aggro === p.id) m.aggro = null; m.atk = null; }
@@ -2383,9 +2384,9 @@ function weaverFollow(n, now, dt) {
 function npcTick(now, dt) {
   initNpcs(); tavernTick(now); collectorSync(now); try { tonelTick(now); } catch (e) { console.warn('tonel', e); }
   if (now - (S.dispT || 0) > 3000) { S.dispT = now; try { dispatchCouriers(); } catch (e) { console.warn('entregas', e); } }   // mensageiros saem assim que ficam livres
-  if (now - (S.visT || 0) > 1500) { S.visT = now; const night = typeof dayInfoS === 'function' ? dayInfoS().night : false, want = night ? 5 : 15, have = Object.values(S.npcs).filter(n => n.transient && !n.bizWorker && !n.bard && !n.collector && !n.emp && !n.seg).length; if (have < want && Math.random() < 0.5 && Object.keys(S.players).length) visSpawn(now); for (const n of Object.values(S.npcs)) if (n.transient && (n.dead || now - n.born > 600000) && !n.dragBy) visGone(n); }
+  if (now - (S.visT || 0) > 1500) { S.visT = now; const night = typeof dayInfoS === 'function' ? dayInfoS().night : false, want = night ? 5 : 15, have = Object.values(S.npcs).filter(n => n.transient && !n.bizWorker && !n.bard && !n.collector && !n.emp && !n.seg && !n.court && !n.entOf).length; if (have < want && Math.random() < 0.5 && Object.keys(S.players).length) visSpawn(now); for (const n of Object.values(S.npcs)) if (n.transient && (n.dead || now - n.born > 600000) && !n.dragBy) visGone(n); }
   for (const n of Object.values(S.npcs)) {
-    if (n.dead || n.entOf) continue;   /* a guardiã anda no entTick */
+    if (n.dead || n.entOf || n.court) continue;   /* a guardiã anda no entTick; a corte do castelo no courtTick */
     if (n.downed && n.seg && typeof segDownTick === 'function') { segDownTick(n, now, dt); continue; }
     if (n.downed) { npcCrawl(n, now, dt); if (now > n.downed.until && !n.dragBy) { n.downed = null; n.hp = Math.round(n.maxHp * 0.3); n.goHome = n.id !== 'fruit'; sys(n.name + ' se levantou, ferido.'); } continue; }
     if (n.fight && npcFightTick(n, now, dt)) continue;
@@ -4451,7 +4452,7 @@ const THREAT_LINES = { weapon: ['Guarde essa arma!', 'Estou mandando: guarde a a
 const bodyOf = q => { if (q.carrying) { const v = S.players[q.carrying]; return v ? { k: 'p', id: v.id, e: v, dead: false } : null; } if (q.drag) { const t = dragTarget(q.drag.k, q.drag.id); if (t && (q.drag.k === 'c' || t.downed || t.dead)) return { k: q.drag.k, id: q.drag.id, e: t, dead: q.drag.k === 'c' || !!t.dead }; } return null; };
 function trespassAt(q) {
   const bi = WORLD.bld[tileAt(q.x, q.y)], b = BUILDINGS[bi]; if (!b) return false;
-  if (b.kind === 'castle') return !CASTLE_OPEN;   /* por enquanto o castelo está aberto para conferir os andares */
+  if (b.kind === 'castle') { if (CASTLE_OPEN || q.kjail) return false; const t = typeof crownRec === 'function' ? (crownRec().title[estOwner(q)] | 0) : 0, fl = q.fl || 0; if (fl === 0) return !(audienceOpen() || t >= 1); if (fl === 1) return t < 1; if (fl === 2) return t < 2; return t < 3; }   /* térreo no horário das audiências; 1º Escudeiro, 2º Cavaleiro, acima e subsolos só Lorde */   /* por enquanto o castelo está aberto para conferir os andares */
   if (b.kind === 'bank') { const [dx, dy] = doorTile(b); return dist(q.x, q.y, dx, dy) > Math.max(b.w, b.h) - 2.6; }   // perto do cofre
   return false;
 }
