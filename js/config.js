@@ -3,8 +3,10 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.90.0';
-const VERSION_NAME = 'Nae · Vento e Luz';
+// brasão da família no poder: o castelo, os estandartes e as tapeçarias leem daqui (troca quando outra casa assume)
+const HERALD = { house: 'Aurenfell', name: 'Casa Aurenfell', field: '#9a2a1c', field2: '#6e1d14', metal: '#f1cf6a', charge: 'tower', motto: 'A Luz Não se Curva' };
+const VERSION = 'v1.91.0';
+const VERSION_NAME = 'Nae · Casa Aurenfell';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)

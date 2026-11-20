@@ -117,7 +117,7 @@ const BUILDINGS = TEST3D ? [] : [
   { x: C - 22, y: C - 8, ...BH('shop', 5, 5, 3.8, 2.4, 'Arcanos & Varinhas', { v: 2, door: 'W', floors: 1, deco: 'arcane' }) },   // alta, estreita e antiga
   { x: C - 22, y: C + 10, ...BH('shop', 5, 4, 3.2, 2.0, 'Alfaiataria Real', { v: 3, door: 'N', floors: 1, deco: 'tailor', gen: { x: C - 22, y: C + 10, w: 5, h: 5, door: 'N' } }) },   // uma linha mais curta: corredor até a loja de elixir   // roxo-ameixa e dourado
   { x: C - 30, y: C - 6, ...BH('shop', 5, 4, 3.6, 2.6, 'Pergaminhos & Mapas', { v: 4, door: 'E' }) },   // 5×4: desceu 2 casas para o Dojô do Punho de Ferro crescer
-  { x: C - 5, y: C - 19, ...BH('castle', 12, 10, 10, 6.5, 'Castelo de Nae', { floors: 2 }) },
+  { x: C - 7, y: C - 20, ...BH('castle', 16, 9, 11, 7, 'Castelo de Nae', { floors: 2 }) },   // torre de menagem ao norte do pátio murado; o salão do trono fica no meio
   { x: C - 27, y: C - 30, ...BH('bank', 8, 12, 5.6, 2.4, 'Banco de Nae', { floors: 1, door: 'S', gen: { x: C - 31, y: C - 23, w: 6, h: 12, door: 'S' } }) },   // no fim da rua oeste, porta para o sul
   { x: C + 22, y: C + 20, ...BH('jail', 6, 8, 3.2, 2.4, 'Cadeia de Nae', { floors: 1, door: 'W' }) },
   { x: C - 16, y: C, ...BH('boutique', 5, 4, 4.2, 3.0, 'Ateliê Real de Nae', { floors: 1, door: 'S' }) },
@@ -1046,6 +1046,9 @@ function generateWorld() {
     { x: C - 72, y: C - 21, ...BH('workshop', 5, 4, 2.6, 2.4, 'Fazenda do Trigo Dourado', { wk: 'wheat', door: 'S', floors: 1 }) },
     { x: C - 65, y: C - 21, ...BH('workshop', 4, 4, 3.6, 2.6, 'Moinho do Vento Leste', { wk: 'mill', door: 'S', floors: 1 }) },
     { x: C + 4, y: C + 21, ...BH('workshop', 5, 4, 2.6, 1.9, 'Padaria da Praça', { wk: 'bakery', door: 'E', dcol: 2, floors: 1 }) });   // porta para a avenida da catedral   // casa nova na rua do banco, alinhada com as lojas   // porta direto na rua principal
+  if (!TEST3D) BUILDINGS.push(   // pátio interno do castelo (no fim da lista: não muda o número dos prédios salvos)
+    { x: C - 8, y: C - 9, ...BH('kstable', 4, 5, 2.4, 2.0, 'Estábulo Real', { floors: 1, door: 'E' }) },
+    { x: C + 6, y: C - 9, ...BH('kguard', 4, 5, 3.0, 1.8, 'Casa da Guarda', { floors: 1, door: 'W' }) });
   { const S0 = { 'Empório do Borin': { 0: 'ladder' }, 'Pergaminhos & Mapas': { 0: 'spiral' }, 'Imobiliária Chave de Bronze': { 0: 'ext' }, 'Casa Morvane': { 0: 'spiral', 1: 'ladder' }, 'Elixires da Lua Prateada': { 0: 'spiral' } };   // escadas: o resto usa a de parede
     for (const b of BUILDINGS) { if (S0[b.name]) b.stairs = S0[b.name]; else if (b.kind === 'manor') b.stairs = { 1: 'ladder' }; }
     const CEL = { 'Ronco do Dragão': [2, 0], 'Banco de Nae': [3, 1] }; for (const b of BUILDINGS) if (CEL[b.name]) b.cellar = CEL[b.name]; }   // porões: adega atrás do balcão da taverna, cofre embaixo do banco   // casarões: o sótão é pelo alçapão
@@ -1143,6 +1146,7 @@ function generateWorld() {
   // (o quintal da Marta agora fica na frente da casa nova, atrás do Boticário)
   // bandeiras do castelo e pátio interno
   for (const x of [KEEP.x0 + 4, KEEP.x1 - 4]) decoAny(x, KEEP.y1 + 2, O.BANNER);
+  decoAny(C - 3, C - 7, O.WELL);   /* poço do pátio interno */
   // pracinha do sul-oeste
   { const px = C - 17, py = C + 25; for (let yy = py - 3; yy <= py + 3; yy++) for (let xx = px - 4; xx <= px + 4; xx++) { const i = idx(xx, yy); if (bld[i] < 0 && !BLOCKING.has(obj[i])) { obj[i] = O.NONE; if (Math.hypot(xx - px, (yy - py) * 1.3) < 3.2) ground[i] = T.COBBLE; } }
     for (const [x, y, o] of [[px, py, O.WELL], [px - 3, py - 2, O.TREE], [px + 3, py + 2, O.TREE], [px - 2, py + 2, O.BENCH], [px + 2, py - 2, O.BENCH], [px + 3, py - 1, O.FLOWERBED], [px - 3, py + 1, O.FLOWERBED], [px, py - 3, O.LAMP], [px, py + 3, O.LAMP]]) decoAny(x, y, o); }

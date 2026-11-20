@@ -1162,7 +1162,7 @@ function cylUV(g, su, sv) {
 }
 function mTower(v, off) {
   const R = rng(1101 + v), o = grp(), spire = v === 3, r = 1.12, H = spire ? 9.5 : WALL_H;
-  const st = smat('brick', '#a29c90', { bump: 1.4 });
+  const st = spire ? smat('stoneblock', '#d2b07e', { bump: 1.5 }) : smat('brick', '#a29c90', { bump: 1.4 });   /* torres do castelo: arenito como a torre de menagem */
   o.add(mk(cylUV(new THREE.CylinderGeometry(r, r + 0.04, H, 28, 4, true).translate(0, H / 2, 0), 6, 1), st));
   o.add(mk(cylUV(new THREE.CylinderGeometry(r + 0.1, r + 0.14, 0.35, 28).translate(0, 0.175, 0), 6, 1), smat('stoneblock', '#8e897e')));
   // cornija e ameias
@@ -1180,7 +1180,7 @@ function mTower(v, off) {
   }
   // bandeira no alto
   if (spire) {
-    const roofM = smat('slate', '#3e4a66', { bump: 1.6 });
+    const roofM = smat('slate', '#7a2a22', { bump: 1.6 });
     o.add(mk(cylUV(new THREE.ConeGeometry(r + 0.28, 3.2, 28, 6, true).translate(0, H + 0.14 + 1.6, 0), 8, 1.2), roofM));
     o.add(mk(new THREE.SphereGeometry(0.09, 10, 8).translate(0, H + 3.4, 0), smat(null, '#e2b74e', { metal: 1, rough: 0.3 })));
     o.add(mk(CYL(0.015, 0.015, 0.9, 0, H + 3.8, 0, 6), DWOOD()));
@@ -1223,10 +1223,10 @@ function mCliff(h, v, snow) {
   return o;
 }
 // ---------- portão (arco + duas folhas de madeira) ----------
-function mGateHouse(gt, f) {
-  const n = gt.vert ? gt.y - gt.y0 + 1 : gt.x1 - gt.x0 + 1, main = gt.kind === 'main' || gt.kind === 'west', gh = main ? 6.4 : WALL_H, o = grp();
+function mGateHouse(gt, f, pc = 0) {
+  const keep = gt.kind === 'keep', n = gt.vert ? gt.y - gt.y0 + 1 : gt.x1 - gt.x0 + 1, main = gt.kind === 'main' || gt.kind === 'west', gh = main ? 6.4 : keep ? WALL_H + 0.8 : WALL_H, o = grp();
   const L = -(n - 0.5), Rr = 0.5, cx = -(n - 1) / 2, rx = (n - 0.3) / 2, spring = main ? 2.9 : 2.2, ry = Math.min(rx * 0.85, gh - spring - 0.5);
-  const st = smat('brick', '#a29c90', { bump: 1.4 }), capM = smat('stoneblock', '#b0a998', { bump: 1 });
+  const st = keep ? smat('stoneblock', '#d2b07e', { bump: 1.5 }) : smat('brick', '#a29c90', { bump: 1.4 }), capM = keep ? smat('stoneblock', '#e2c898', { bump: 1 }) : smat('stoneblock', '#b0a998', { bump: 1 });
   // parte de cima do arco
   const sh = new THREE.Shape(); sh.moveTo(L, spring); sh.lineTo(L, gh); sh.lineTo(Rr, gh); sh.lineTo(Rr, spring); sh.lineTo(cx + rx, spring);
   for (let k = 1; k <= 20; k++) { const t = k / 20 * Math.PI; sh.lineTo(cx + rx * Math.cos(t), spring + ry * Math.sin(t)); }
@@ -1261,12 +1261,18 @@ function mGateHouse(gt, f) {
     pv.rotation.y = (side === -1 ? 1 : -1) * ang * (gt.out > 0 ? 1 : -1);
     o.add(pv);
   }
+  if (keep) {   /* guarita do castelo: grade levadiça de ferro (desce à noite), brasão da casa e lanternas */
+    const ir2 = IRON(), gz = gt.out * 0.12, top = spring + ry, drop = Math.min(top - 0.25, gh - top - 0.1 + top * 0.6) * (1 - pc), g2 = grp();   /* recolhida dentro da muralha */ for (let k = 0; k <= 8; k++) { const xx = cx - rx + 0.08 + k * (rx * 2 - 0.16) / 8; g2.add(mk(new THREE.BoxGeometry(0.06, top + 0.1, 0.06).translate(xx, (top + 0.1) / 2, 0), ir2)); g2.add(mk(new THREE.ConeGeometry(0.05, 0.16, 4).rotateX(Math.PI).translate(xx, -0.06, 0), ir2)); }
+    for (let k = 1; k <= 5; k++) g2.add(mk(new THREE.BoxGeometry(rx * 2 - 0.1, 0.05, 0.07).translate(cx, k * top / 5.6, 0), ir2));
+    g2.position.set(0, drop, gz); o.add(g2);
+    const shp = new THREE.MeshStandardMaterial({ map: heraldTex('shield'), transparent: true, alphaTest: 0.5, roughness: 0.6, metalness: 0.2 }), sp = mk(new THREE.PlaneGeometry(0.75, 0.92), shp); sp.position.set(cx, top + 0.7, gt.out * 0.56); if (gt.out < 0) sp.rotation.y = Math.PI; o.add(sp);
+    for (const lx of [L + 0.12, Rr - 0.12]) o.add(mk(new THREE.BoxGeometry(0.14, 0.2, 0.14).translate(lx, 1.7, gt.out * 0.6), smat(null, '#ffd890', { emissive: '#ffbb60', ei: 1.4 }))); }
   if (gt.vert) { o.rotation.y = -Math.PI / 2; return grp(o); }   // portão na muralha oeste: gira 90°
   return o;
 }
 function gateHouseSprite(gi) {
-  const gt = WORLD.gates[gi], f = (G.gateF && G.gateF[gi]) || 0, q = Math.round(f * 4);
-  return scen3('gh|' + gi + '|' + q, () => mGateHouse(gt, q / 4)) || (q ? null : gateSprite(true));
+  const gt = WORLD.gates[gi], f = (G.gateF && G.gateF[gi]) || 0, q = Math.round(f * 4), pq = gt.kind === 'keep' ? Math.round(((G.pcF && G.pcF[gi]) || 0) * 6) : 0;
+  return scen3('gh|' + gi + '|' + q + '|' + pq, () => mGateHouse(gt, q / 4, pq / 6)) || (q ? null : gateSprite(true));
 }
 // ---------- torre-escada (3x3): por fora uma torre de pedra; cortada mostra a escada em espiral ----------
 function mStairTower(b, cut) {
@@ -1339,6 +1345,7 @@ const WSTYLE = {
   bakery: { wall: '#efd49a', roof: '#b4482a', tex: 'plaster', roofTex: 'shingle', trim: '#3e2412' },   // enxaimel cor de trigo, vigas escuras, telha vermelha
 };
 function styleOf(b) {
+  if (b.kind === 'kstable' || b.kind === 'kguard') return { wall: '#d2b07e', roof: '#7a2a22', tex: 'stoneblock', roofTex: 'slate', trim: '#4a2c16' };   /* pátio do castelo: arenito como a torre de menagem */
   if (b.deco === 'arcane') return { wall: '#3a2a20', roof: '#2c2a32', tex: 'oldplank', roofTex: 'slate', trim: '#a8823a' };   // varinhas: madeira quase preta, ouro gasto
   if (b.deco === 'tailor') return { wall: '#dccbaa', roof: '#33263a', tex: 'oldplank', roofTex: 'slate', trim: '#d4a94a' };   // alfaiataria: paredes bege, telhado ameixa e dourado
   if (b.kind === 'shop' && b.v === 6) return { wall: '#3e3a52', roof: '#24403e', tex: 'stoneblock', roofTex: 'slate', trim: '#c9a24a' };   // alquimista: pedra escura arroxeada, latão
@@ -1376,87 +1383,86 @@ function gwall(w, h, d, x, y, z, kind, hex, H, seed, sc = 0.7, bump = 1.2) {
   wuv(g, sc); grime(g, H, seed);
   return mk(g, smat(kind, hex, { vc: true, bump }));
 }
+// brasão da casa no poder (troca quando outra família assume o trono)
+let _heraldTex = {};
+function heraldTex(kind) {   /* 'banner': estandarte comprido de rabo de andorinha; 'shield': escudo */
+  const Hd = (typeof HERALD !== 'undefined' && HERALD) || { field: '#9a2a1c', field2: '#6e1d14', metal: '#f1cf6a', charge: 'tower' }, key = kind + Hd.house + Hd.charge; if (_heraldTex[key]) return _heraldTex[key];
+  const W = 128, Hh = kind === 'banner' ? 384 : 160, c = document.createElement('canvas'); c.width = W; c.height = Hh; const x = c.getContext('2d');
+  const shape = () => { x.beginPath(); if (kind === 'banner') { x.moveTo(0, 0); x.lineTo(W, 0); x.lineTo(W, Hh); x.lineTo(W / 2, Hh - 46); x.lineTo(0, Hh); } else { x.moveTo(6, 6); x.lineTo(W - 6, 6); x.lineTo(W - 6, Hh * 0.55); x.quadraticCurveTo(W - 8, Hh - 14, W / 2, Hh - 4); x.quadraticCurveTo(8, Hh - 14, 6, Hh * 0.55); } x.closePath(); };
+  shape(); const g = x.createLinearGradient(0, 0, 0, Hh); g.addColorStop(0, Hd.field); g.addColorStop(1, Hd.field2); x.fillStyle = g; x.fill(); x.save(); shape(); x.clip(); x.strokeStyle = Hd.metal; x.lineWidth = 10; shape(); x.stroke(); x.lineWidth = 2; x.globalAlpha = 0.6; x.strokeRect(14, 14, W - 28, Hh - 28); x.restore(); x.globalAlpha = 1;
+  const cy = kind === 'banner' ? 150 : 82, s = kind === 'banner' ? 1 : 0.62; x.save(); x.translate(W / 2, cy); x.scale(s, s); x.fillStyle = Hd.metal;
+  if (Hd.charge === 'tower') { x.fillRect(-18, -20, 36, 80); x.fillRect(-24, -30, 48, 12); for (let k = 0; k < 4; k++) x.fillRect(-24 + k * 14, -40, 8, 12); x.fillStyle = Hd.field2; x.beginPath(); x.arc(0, 4, 5, Math.PI, 0); x.rect(-5, 4, 10, 10); x.fill(); x.beginPath(); x.arc(0, 46, 8, Math.PI, 0); x.rect(-8, 46, 16, 14); x.fill();
+    x.fillStyle = '#ffb347'; x.beginPath(); x.moveTo(0, -84); x.bezierCurveTo(16, -64, 14, -52, 6, -42); x.bezierCurveTo(8, -54, 2, -58, 0, -64); x.bezierCurveTo(-2, -56, -10, -52, -6, -42); x.bezierCurveTo(-16, -54, -12, -68, 0, -84); x.fill(); x.fillStyle = '#fff1b0'; x.beginPath(); x.moveTo(0, -64); x.bezierCurveTo(6, -56, 5, -48, 0, -43); x.bezierCurveTo(-5, -48, -5, -56, 0, -64); x.fill(); }   /* Aurenfell: torre com a chama */
+  x.restore(); const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return (_heraldTex[key] = t); }
+function heraldBanner(w, h) { const g = new THREE.PlaneGeometry(w, h, 2, 8), p = g.attributes.position; for (let i = 0; i < p.count; i++) { const y = p.getY(i), k = (h / 2 - y) / h; p.setZ(i, Math.sin(k * 3.2) * 0.04 * k); } g.computeVertexNormals(); return mk(g, new THREE.MeshStandardMaterial({ map: heraldTex('banner'), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide, roughness: 0.85 })); }
+// Castelo de Nae: torre de menagem de arenito quente (Porto Real), telhados cônicos vermelho-escuros, salão do trono no meio
 function mCastle(b, night) {
-  const w = b.w, h = b.h, { H, RH } = bldDims(b), o = grp(), seed = 3.7;
-  const wallC = '#bab2a2', roofM = smat('slate', '#3a465e', { bump: 1.8 }), capM = smat('stoneblock', '#c8c0ae', { bump: 1 }), gold = smat(null, '#e2b74e', { metal: 1, rough: 0.3 });
-  const darkS = smat('stoneblock', '#8a857a', { bump: 1.5 }), ir = IRON(), woodM = smat('wood', '#5a3a1e', { bump: 1.5 });
-  const glassM = night ? smat(null, '#ffd890', { emissive: '#ffb850', ei: 1.6, rough: 0.3 }) : smat(null, '#24323e', { rough: 0.08, metal: 0.4 });
-  const leadM = smat(null, '#2a2a2e', { metal: 0.6, rough: 0.5 });
-  // paredes de cantaria (blocos grandes de pedra clara), base inclinada mais escura e cornija
-  o.add(gwall(w, H, h, w / 2, H / 2, h / 2, 'stoneblock', wallC, H, seed, 0.55, 1.6));
-  o.add(wbox(w + 0.3, 0.45, h + 0.3, w / 2, 0.225, h / 2, darkS, 1)); o.add(wbox(w + 0.16, 0.3, h + 0.16, w / 2, 0.6, h / 2, darkS, 1));
-  o.add(wbox(w + 0.1, 0.12, h + 0.1, w / 2, H * 0.52, h / 2, capM, 1));   // friso no meio da parede
-  o.add(wbox(w + 0.18, 0.16, h + 0.18, w / 2, H - 0.08, h / 2, capM, 1));
-  // janelas góticas: moldura, arco pontudo, vitral com caixilhos de chumbo, travessa e peitoril
-  const gwin = (x, y, z, ry, tall) => { const g = grp(); const ww = 0.5, wh = tall ? 1.4 : 0.85;
-    g.add(mk(new THREE.BoxGeometry(ww + 0.16, wh + 0.1, 0.09), capM)); g.add(mk(new THREE.ConeGeometry(ww / 2 + 0.08, 0.45, 4, 1).rotateY(Math.PI / 4).scale(1, 1, 0.25).translate(0, wh / 2 + 0.2, 0), capM));
-    g.add(mk(new THREE.BoxGeometry(ww, wh, 0.04).translate(0, 0, 0.03), glassM));
-    g.add(mk(new THREE.BoxGeometry(0.03, wh, 0.05).translate(0, 0, 0.05), leadM)); g.add(mk(new THREE.BoxGeometry(ww, 0.03, 0.05).translate(0, wh * 0.15, 0.05), leadM));
-    g.add(mk(new THREE.BoxGeometry(ww + 0.24, 0.07, 0.16).translate(0, -wh / 2 - 0.06, 0.06), capM));
-    g.position.set(x, y, z); g.rotation.y = ry; o.add(g); };
-  const dc = doorCol(b) + 0.5;
-  for (let k = 0; k < 6; k++) { const u = (k + 0.5) * w / 6; if (Math.abs(u - dc) > 1.5) gwin(u, 1.75, h + 0.03, 0, true); gwin(u, H - 1.25, h + 0.03, 0, false); }
-  for (let k = 0; k < 5; k++) { const u = (k + 0.5) * h / 5; gwin(w + 0.03, 1.75, u, Math.PI / 2, true); gwin(w + 0.03, H - 1.25, u, Math.PI / 2, false); }
-  // contrafortes entre as janelas (com topo inclinado)
-  const butt = (x, z, ry) => { const g = grp(); g.add(wbox(0.34, H * 0.8, 0.3, 0, H * 0.4, 0.15, capM, 1)); g.add(mk(new THREE.BoxGeometry(0.34, 0.5, 0.3).translate(0, 0.25, -0.15).rotateX(0.7).translate(0, H * 0.8 - 0.05, 0.28), capM)); g.position.set(x, 0, z); g.rotation.y = ry; o.add(g); };
-  for (let k = 1; k < 6; k++) { const u = k * w / 6; if (Math.abs(u - dc) > 1.9) butt(u, h, 0); }
-  for (let k = 1; k < 5; k++) butt(w, k * h / 5, Math.PI / 2);
-  // ameias com mísulas (machicólis) no alto das paredes
-  for (let k = 0; k < w * 2; k++) { o.add(mk(wuv(new THREE.BoxGeometry(0.3, 0.42, 0.24).translate(0.25 + k * 0.5, H + 0.21, h + 0.02), 1.5), capM)); o.add(mk(new THREE.BoxGeometry(0.12, 0.22, 0.14).translate(0.25 + k * 0.5, H - 0.27, h + 0.1), capM)); }
-  for (let k = 0; k < h * 2; k++) { o.add(mk(wuv(new THREE.BoxGeometry(0.24, 0.42, 0.3).translate(w + 0.02, H + 0.21, 0.25 + k * 0.5), 1.5), capM)); o.add(mk(new THREE.BoxGeometry(0.14, 0.22, 0.12).translate(w + 0.1, H - 0.27, 0.25 + k * 0.5), capM)); }
-  // telhado de ardósia de quatro águas, com cumeeira de chumbo e trapeiras
-  const ov = 0.1, A = V3(ov, H, ov), B = V3(w - ov, H, ov), C = V3(w - ov, H, h - ov), D = V3(ov, H, h - ov), r1 = V3(h / 2, H + RH, h / 2), r2 = V3(w - h / 2, H + RH, h / 2);
-  for (const f of [[D, C, r2, r1], [B, A, r1, r2], [A, D, r1], [C, B, r2]]) o.add(roofFace(f, roofM));
-  o.add(mk(new THREE.BoxGeometry(Math.max(0.2, w - h + 0.1), 0.08, 0.12).translate(w / 2, H + RH + 0.03, h / 2), leadM));
-  for (const t of [0.3, 0.7]) { const x = w * t, tt = 0.38, z = h - ov - tt * (h / 2 - ov), y = H + tt * RH, dg = grp();
-    dg.add(wbox(0.7, 0.75, 0.9, 0, 0.375, 0, capM, 1)); dg.add(mk(new THREE.BoxGeometry(0.4, 0.45, 0.03).translate(0, 0.4, 0.46), glassM)); dg.add(mk(new THREE.BoxGeometry(0.03, 0.45, 0.04).translate(0, 0.4, 0.475), leadM));
-    dg.add(mk(new THREE.ConeGeometry(0.58, 0.55, 4, 1).rotateY(Math.PI / 4).scale(1, 1, 1.4).translate(0, 1.0, -0.05), roofM)); dg.position.set(x, y - 0.25, z); o.add(dg); }
-  // torres nos cantos: cantaria, mísulas, parapeito com ameias, seteiras, telhado cônico e flâmula
-  for (const [tx, tz] of [[0, 0], [w, 0], [0, h], [w, h]]) {
-    const th = H + 3.6, tr = 1.05;
-    o.add(mk(cylUV(new THREE.CylinderGeometry(tr, tr + 0.12, th, 24, 4, true).translate(tx, th / 2, tz), 5, 1), smat('stoneblock', wallC, { bump: 1.6 })));
-    o.add(mk(cylUV(new THREE.CylinderGeometry(tr + 0.2, tr + 0.2, 0.45, 24, 1, true).translate(tx, 0.22, tz), 6, 1), darkS));
-    for (let k = 0; k < 14; k++) { const an = k / 14 * Math.PI * 2; o.add(mk(new THREE.BoxGeometry(0.14, 0.24, 0.16).translate(tx + Math.cos(an) * (tr + 0.08), th - 0.1, tz + Math.sin(an) * (tr + 0.08)), capM)); }
-    o.add(mk(cylUV(new THREE.CylinderGeometry(tr + 0.2, tr + 0.2, 0.42, 24, 1, true).translate(tx, th + 0.2, tz), 6, 1), capM));
-    for (let k = 0; k < 12; k += 2) { const an = k / 12 * Math.PI * 2; o.add(mk(new THREE.BoxGeometry(0.3, 0.3, 0.2).translate(tx + Math.cos(an) * (tr + 0.2), th + 0.55, tz + Math.sin(an) * (tr + 0.2)), capM)); }
-    o.add(mk(cylUV(new THREE.ConeGeometry(tr + 0.15, 2.5, 24, 4, true).translate(tx, th + 0.4 + 1.25, tz), 8, 1.2), roofM));
-    o.add(mk(new THREE.SphereGeometry(0.08, 10, 8).translate(tx, th + 2.95, tz), gold));
-    o.add(mk(CYL(0.015, 0.015, 0.8, tx, th + 3.3, tz, 6), DWOOD())); o.add(mk(new THREE.PlaneGeometry(0.55, 0.22, 3, 1).translate(tx + 0.28, th + 3.55, tz), smat('cloth', '#7a1a1c', { side: THREE.DoubleSide })));
-    for (const [an, yy] of [[Math.PI / 4, th * 0.42], [Math.PI / 4 + 0.8, th * 0.68], [Math.PI / 4 - 0.8, th * 0.68]]) { const wnd = mk(new THREE.BoxGeometry(0.12, 0.55, 0.1), glassM); wnd.position.set(tx + Math.cos(an) * tr, yy, tz + Math.sin(an) * tr); wnd.rotation.y = -an + Math.PI / 2; o.add(wnd); }
+  const w = b.w, h = b.h, { H } = bldDims(b), o = grp(), seed = 3.7;
+  const sandC = '#d2b07e', wallM = smat('stoneblock', sandC, { bump: 1.6 }), capM = smat('stoneblock', '#e2c898', { bump: 1 }), darkS = smat('stoneblock', '#9c7e56', { bump: 1.5 });
+  const roofM = smat('slate', '#7a2a22', { bump: 1.6 }), gold = smat(null, '#e2b74e', { metal: 1, rough: 0.3 }), ir = IRON(), woodM = smat('wood', '#4a2c16', { bump: 1.5 });
+  const glassM = night ? smat(null, '#ffd890', { emissive: '#ffb850', ei: 1.7, rough: 0.3 }) : smat(null, '#2a3a4a', { rough: 0.08, metal: 0.4 }), leadM = smat(null, '#2a2a2e', { metal: 0.6, rough: 0.5 });
+  const dc = doorCol(b) + 0.5, hx0 = dc - 3.5, hx1 = dc + 3.5, HH = H + 2.6;   /* salão do trono: 7 casas de largura no meio, mais alto */
+  const crenel = (x0, x1, z, y, dir) => { const n = Math.max(1, Math.round((x1 - x0) * 2)); for (let k = 0; k < n; k++) { const u = x0 + (k + 0.5) * (x1 - x0) / n; if (k % 2 === 0) o.add(mk(dir ? new THREE.BoxGeometry(0.26, 0.42, 0.34).translate(z, y + 0.21, u) : new THREE.BoxGeometry(0.34, 0.42, 0.26).translate(u, y + 0.21, z), capM)); } };
+  const gwin = (x, y, z, ry, wh, ww = 0.55) => { const g = grp();   /* janela gótica: arco pontudo, vitral e caixilho */
+    g.add(mk(new THREE.BoxGeometry(ww + 0.18, wh + 0.1, 0.1), capM)); g.add(mk(new THREE.ConeGeometry(ww / 2 + 0.09, 0.5, 4, 1).rotateY(Math.PI / 4).scale(1, 1, 0.25).translate(0, wh / 2 + 0.22, 0), capM));
+    g.add(mk(new THREE.BoxGeometry(ww, wh, 0.04).translate(0, 0, 0.035), glassM)); g.add(mk(new THREE.ConeGeometry(ww / 2, 0.42, 4, 1).rotateY(Math.PI / 4).scale(1, 1, 0.12).translate(0, wh / 2 + 0.19, 0.04), glassM));
+    g.add(mk(new THREE.BoxGeometry(0.03, wh, 0.05).translate(0, 0, 0.06), leadM)); for (const t of [-0.2, 0.15]) g.add(mk(new THREE.BoxGeometry(ww, 0.03, 0.05).translate(0, wh * t, 0.06), leadM));
+    g.add(mk(new THREE.BoxGeometry(ww + 0.26, 0.07, 0.18).translate(0, -wh / 2 - 0.06, 0.07), capM)); g.position.set(x, y, z); g.rotation.y = ry; o.add(g); };
+  /* alas: corpo principal de cantaria com base inclinada, friso e ameias */
+  o.add(gwall(w, H, h, w / 2, H / 2, h / 2, 'stoneblock', sandC, H, seed, 0.36, 1.6));
+  o.add(wbox(w + 0.34, 0.5, h + 0.34, w / 2, 0.25, h / 2, darkS, 1)); o.add(wbox(w + 0.18, 0.3, h + 0.18, w / 2, 0.65, h / 2, darkS, 1));
+  for (const yy of [H * 0.47, H - 0.08]) o.add(wbox(w + 0.14, 0.14, h + 0.14, w / 2, yy, h / 2, capM, 1));
+  crenel(0, hx0, h + 0.05, H, 0); crenel(hx1, w, h + 0.05, H, 0); crenel(0, h, -0.05, H, 1); crenel(0, h, w + 0.05, H, 1); crenel(0, w, -0.05, H, 0);
+  /* telhados das alas: águas vermelho-escuras atrás das ameias */
+  for (const [x0, x1] of [[0.3, hx0], [hx1, w - 0.3]]) { const A = V3(x0, H, 0.3), B = V3(x1, H, 0.3), C2 = V3(x1, H, h - 0.3), D = V3(x0, H, h - 0.3), m = (x0 + x1) / 2, r1 = V3(m, H + 2.2, h * 0.35), r2 = V3(m, H + 2.2, h * 0.65); for (const f of [[D, C2, r2, r1], [B, A, r1, r2], [A, D, r1], [C2, B, r2]]) o.add(roofFace(f, roofM)); }
+  /* janelas das alas: duas fileiras na frente e nas laterais, com contrafortes */
+  for (const [x0, x1] of [[0, hx0], [hx1, w]]) { const n = Math.max(1, Math.round((x1 - x0) / 1.6)); for (let k = 0; k < n; k++) { const u = x0 + (k + 0.5) * (x1 - x0) / n; gwin(u, 2.0, h + 0.04, 0, 1.5); gwin(u, H * 0.47 + 1.7, h + 0.04, 0, 1.1); if (k) { o.add(wbox(0.36, H * 0.75, 0.32, x0 + k * (x1 - x0) / n, H * 0.375, h + 0.16, capM, 1)); } } }
+  for (let k = 0; k < 5; k++) { const u = (k + 0.5) * h / 5; for (const [xx, ry] of [[w + 0.04, Math.PI / 2], [-0.04, -Math.PI / 2]]) { gwin(xx, 2.0, u, ry, 1.5); gwin(xx, H * 0.47 + 1.7, u, ry, 1.1); } }
+  /* salão do trono: bloco central mais alto com empena íngreme virada para o pátio */
+  { o.add(gwall(hx1 - hx0, HH, h, dc, HH / 2, h / 2, 'stoneblock', sandC, HH, seed + 3, 0.36, 1.6)); o.add(wbox(hx1 - hx0 + 0.16, 0.16, h + 0.16, dc, HH - 0.08, h / 2, capM, 1));
+    const RHh = 4.2, sh = new THREE.Shape(); sh.moveTo(-(hx1 - hx0) / 2 - 0.15, 0); sh.lineTo((hx1 - hx0) / 2 + 0.15, 0); sh.lineTo(0, RHh); sh.closePath();
+    const gab = mk(new THREE.ExtrudeGeometry(sh, { depth: 0.3, bevelEnabled: false }), wallM); gab.position.set(dc, HH, h - 0.3); o.add(gab); const gab2 = gab.clone(); gab2.position.z = 0; o.add(gab2);
+    for (const s of [-1, 1]) { const p = [V3(dc, HH + RHh, -0.2), V3(dc, HH + RHh, h + 0.2), V3(dc + s * ((hx1 - hx0) / 2 + 0.35), HH - 0.1, h + 0.2), V3(dc + s * ((hx1 - hx0) / 2 + 0.35), HH - 0.1, -0.2)]; o.add(roofFace(s > 0 ? p : [p[1], p[0], p[3], p[2]], roofM)); }
+    o.add(mk(new THREE.BoxGeometry(0.14, 0.12, h + 0.5).translate(dc, HH + RHh + 0.02, h / 2), gold));
+    for (const s of [-1, 1]) { const px = dc + s * ((hx1 - hx0) / 2); o.add(mk(cylUV(new THREE.CylinderGeometry(0.42, 0.48, HH + 1.6, 16, 2, true).translate(px, (HH + 1.6) / 2, h), 3, 1), wallM)); o.add(mk(cylUV(new THREE.ConeGeometry(0.55, 2.2, 16, 1, true).translate(px, HH + 1.6 + 1.1, h), 3, 1), roofM)); o.add(mk(new THREE.SphereGeometry(0.07, 8, 6).translate(px, HH + 2.75, h), gold)); }   /* pináculos dos cantos da empena */
+    /* rosácea de vitral na empena */
+    { const R0 = 1.25, cy = HH + 0.9, z = h + 0.06, rw = grp(); rw.add(mk(new THREE.TorusGeometry(R0 + 0.08, 0.14, 8, 40), capM)); rw.add(mk(new THREE.CircleGeometry(R0, 40), night ? smat(null, '#ffcf80', { emissive: '#ff9a40', ei: 1.8, rough: 0.3 }) : smat(null, '#3a2a5a', { rough: 0.1, metal: 0.3 })));
+      const cols = ['#c0392b', '#2e5aa0', '#e2b74e', '#2e8a5a']; for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2; const sp = mk(new THREE.BoxGeometry(0.05, R0, 0.04).translate(0, R0 / 2, 0.03), capM); sp.rotation.z = a; rw.add(sp); const pe = mk(new THREE.CircleGeometry(0.2, 12).translate(Math.cos(a + 0.26) * R0 * 0.66, Math.sin(a + 0.26) * R0 * 0.66, 0.02), night ? smat(null, cols[k % 4], { emissive: cols[k % 4], ei: 1.2 }) : smat(null, cols[k % 4], { rough: 0.2, metal: 0.2 })); rw.add(pe); }
+      rw.add(mk(new THREE.TorusGeometry(R0 * 0.36, 0.05, 6, 24).translate(0, 0, 0.03), capM)); rw.position.set(dc, cy, z); o.add(rw); }
+    /* janelas góticas altas dos dois lados da porta e da varanda */
+    for (const s of [-1, 1]) for (const dx of [1.6, 2.7]) gwin(dc + s * dx, 3.2, h + 0.05, 0, 3.4, 0.5);
+    /* brasão em escudo acima da rosácea */
+    { const sm = new THREE.MeshStandardMaterial({ map: heraldTex('shield'), transparent: true, alphaTest: 0.5, roughness: 0.6, metalness: 0.2 }), sp = mk(new THREE.PlaneGeometry(0.9, 1.1), sm); sp.position.set(dc, HH + 2.75, h + 0.08); o.add(sp); }
   }
-  // torre de menagem central (mais baixa que antes), com guaritas nos cantos
-  { const cx = w / 2, cz = 2.3, s2 = 3.2, th = H + 7.5;
-    o.add(gwall(s2, th, s2, cx, th / 2, cz, 'stoneblock', wallC, th, seed + 1, 0.55, 1.6));
-    o.add(wbox(s2 + 0.2, 0.16, s2 + 0.2, cx, th - 0.08, cz, capM, 1)); o.add(wbox(s2 + 0.1, 0.1, s2 + 0.1, cx, th * 0.6, cz, capM, 1));
-    for (const [x, z, ry] of [[cx, cz + s2 / 2 + 0.03, 0], [cx + s2 / 2 + 0.03, cz, Math.PI / 2]]) { gwin(x, th - 1.4, z, ry, true); gwin(x, th - 3.5, z, ry, false); }
-    o.add(mk(new THREE.ConeGeometry(s2 * 0.82, 3.6, 4, 1).rotateY(Math.PI / 4).translate(cx, th + 1.8, cz), roofM));
-    for (const [dx, dz] of [[1, 1], [-1, 1], [1, -1]]) { const bx = cx + dx * s2 / 2, bz = cz + dz * s2 / 2;
-      o.add(mk(cylUV(new THREE.CylinderGeometry(0.34, 0.34, 1.2, 14, 1, true).translate(bx, th - 0.4, bz), 3, 1), capM)); o.add(mk(new THREE.ConeGeometry(0.34, 0.5, 14).rotateX(Math.PI).translate(bx, th - 1.25, bz), capM));
-      o.add(mk(cylUV(new THREE.ConeGeometry(0.44, 1.2, 14, 1, true).translate(bx, th + 0.8, bz), 3, 1), roofM)); }
-    o.add(mk(new THREE.SphereGeometry(0.14, 10, 8).translate(cx, th + 3.7, cz), gold));
-    o.add(mk(CYL(0.02, 0.02, 1.2, cx, th + 4.3, cz, 6), DWOOD()));
-    o.add(mk(new THREE.PlaneGeometry(0.9, 0.5, 4, 1).translate(cx + 0.46, th + 4.6, cz), smat('cloth', '#7a1a1c', { side: THREE.DoubleSide })));
+  /* porta grande em arco com tachões, varanda real e estandartes */
+  { const dw = 2.0, dh = 3.3, z = h + 0.06; o.add(mk(new THREE.BoxGeometry(dw + 0.5, dh + 0.3, 0.14).translate(dc, (dh + 0.3) / 2, z), capM)); o.add(mk(new THREE.CylinderGeometry(dw / 2 + 0.25, dw / 2 + 0.25, 0.14, 20, 1, false, 0, Math.PI).rotateX(Math.PI / 2).rotateZ(Math.PI / 2).translate(dc, dh + 0.3, z), capM));
+    o.add(mk(new THREE.BoxGeometry(dw, dh, 0.06).translate(dc, dh / 2, z + 0.06), woodM)); o.add(mk(new THREE.CylinderGeometry(dw / 2, dw / 2, 0.06, 20, 1, false, 0, Math.PI).rotateX(Math.PI / 2).rotateZ(Math.PI / 2).translate(dc, dh, z + 0.06), woodM));
+    o.add(mk(new THREE.BoxGeometry(0.04, dh + dw / 2 - 0.1, 0.08).translate(dc, (dh + dw / 2) / 2, z + 0.1), ir)); for (let yy = 0.5; yy < dh; yy += 0.7) o.add(mk(new THREE.BoxGeometry(dw - 0.1, 0.06, 0.08).translate(dc, yy, z + 0.1), ir));
+    for (const s of [-0.3, 0.3]) o.add(mk(new THREE.TorusGeometry(0.11, 0.025, 6, 14).translate(dc + s, 1.5, z + 0.14), gold));
+    const by = 4.6, bd = 1.1, bw = 3.0; o.add(wbox(bw, 0.22, bd, dc, by, h + bd / 2, capM, 1));   /* varanda real sobre a porta */
+    for (let k = 0; k < 3; k++) o.add(mk(new THREE.BoxGeometry(0.22, 0.5, 0.6).translate(dc - bw / 2 + 0.3 + k * (bw - 0.6) / 2, by - 0.35, h + 0.3), capM));
+    for (let k = 0; k <= 10; k++) o.add(mk(CYL(0.045, 0.06, 0.62, dc - bw / 2 + 0.1 + k * (bw - 0.2) / 10, by + 0.42, h + bd - 0.08, 8), capM)); o.add(wbox(bw, 0.1, 0.14, dc, by + 0.78, h + bd - 0.08, capM, 1)); for (const s of [-1, 1]) o.add(wbox(0.14, 0.1, bd, dc + s * (bw / 2 - 0.07), by + 0.78, h + bd / 2, capM, 1));
+    o.add(mk(new THREE.BoxGeometry(1.2, 2.0, 0.05).translate(dc, by + 1.11, h + 0.05), glassM)); o.add(mk(new THREE.CylinderGeometry(0.6, 0.6, 0.05, 16, 1, false, 0, Math.PI).rotateX(Math.PI / 2).rotateZ(Math.PI / 2).translate(dc, by + 2.11, h + 0.05), glassM));   /* porta de vidro da varanda */
+    for (const s of [-1, 1]) { const bn = heraldBanner(0.85, 2.6); bn.position.set(dc + s * 2.15, by + 0.4, h + 0.12); o.add(bn); o.add(mk(CYL(0.025, 0.025, 1.0, dc + s * 2.15, by + 1.72, h + 0.12, 6).rotateZ(Math.PI / 2), gold)); }   /* estandartes da casa nos dois lados */
+    /* escadaria de entrada com estátuas nos pedestais */
+    for (let k = 0; k < 5; k++) o.add(wbox(3.4 - k * 0.06, 0.12, 0.42, dc, 0.06 + k * 0.0, h + 2.1 - k * 0.42, k % 2 ? capM : darkS, 1));
+    for (const s of [-1, 1]) { const px = dc + s * 2.3, pz = h + 1.3; o.add(wbox(0.7, 0.9, 0.7, px, 0.45, pz, capM, 1)); o.add(wbox(0.8, 0.1, 0.8, px, 0.95, pz, darkS, 1)); const st = grp(), sm = smat('stoneblock', '#c9c1b0', { bump: 0.6 });
+      st.add(mk(CYL(0.22, 0.32, 1.1, 0, 0.55, 0, 10), sm)); st.add(mk(new THREE.SphereGeometry(0.17, 10, 8).translate(0, 1.28, 0), sm)); st.add(mk(new THREE.BoxGeometry(0.08, 1.4, 0.08).translate(s * -0.28, 0.9, 0.05), sm)); st.add(mk(new THREE.BoxGeometry(0.3, 0.42, 0.06).translate(s * 0.26, 0.75, 0.16), sm));   /* guerreiro de pedra com lança e escudo */
+      st.position.set(px, 1.0, pz); o.add(st); }
   }
-  // entrada: casa da porta saliente com ameias, portal em arco, grade levadiça erguida, ponte levadiça baixada com correntes
-  { const g = grp(), dw = 1.6, dh = 2.8, gw = dw + 1.3, gh = dh + 1.6;
-    g.add(gwall(gw, gh, 0.5, 0, gh / 2, 0.2, 'stoneblock', wallC, gh, seed + 2, 0.55, 1.6));
-    for (let k = 0; k < 6; k++) g.add(mk(new THREE.BoxGeometry(0.28, 0.36, 0.22).translate(-gw / 2 + 0.24 + k * (gw - 0.48) / 5, gh + 0.18, 0.4), capM));
-    g.add(mk(new THREE.BoxGeometry(dw + 0.4, dh + 0.25, 0.1).translate(0, (dh + 0.25) / 2, 0.46), capM));
-    g.add(mk(new THREE.BoxGeometry(dw, dh, 0.06).translate(0, dh / 2, 0.5), smat(null, '#140e08', { rough: 1 })));   // passagem escura
-    g.add(mk(new THREE.CylinderGeometry(dw / 2, dw / 2, 0.06, 16, 1, false, 0, Math.PI).rotateX(Math.PI / 2).rotateZ(Math.PI / 2).translate(0, dh, 0.5), smat(null, '#140e08')));
-    for (let k = 0; k <= 7; k++) g.add(mk(new THREE.BoxGeometry(0.04, 0.55, 0.04).translate(-dw / 2 + 0.1 + k * (dw - 0.2) / 7, dh + 0.05, 0.55), ir));   // grade levadiça erguida (pontas aparecendo)
-    for (let k = 0; k <= 7; k++) g.add(mk(new THREE.ConeGeometry(0.035, 0.12, 4).rotateX(Math.PI).translate(-dw / 2 + 0.1 + k * (dw - 0.2) / 7, dh - 0.28, 0.55), ir));
-    g.add(mk(new THREE.BoxGeometry(dw - 0.1, 0.05, 0.04).translate(0, dh + 0.12, 0.56), ir));
-    const bl = 1.5; g.add(wbox(dw + 0.1, 0.1, bl, 0, 0.06, 0.55 + bl / 2, woodM, 1.5));   // ponte levadiça baixada
-    for (let k = 0; k < 6; k++) g.add(mk(new THREE.BoxGeometry(dw + 0.12, 0.012, 0.02).translate(0, 0.115, 0.6 + k * bl / 6), smat(null, '#2a1a0e')));
-    for (const zz of [0.75, 0.55 + bl - 0.2]) g.add(mk(new THREE.BoxGeometry(dw + 0.14, 0.03, 0.08).translate(0, 0.125, zz), ir));
-    for (const sx of [-1, 1]) { const p0 = V3(sx * (dw / 2 + 0.02), 0.13, 0.55 + bl - 0.15), p1 = V3(sx * (dw / 2 + 0.2), dh + 0.7, 0.48), L = p0.distanceTo(p1), c = mk(new THREE.CylinderGeometry(0.025, 0.025, L, 5), ir);
-      c.position.copy(p0).add(p1).multiplyScalar(0.5); c.quaternion.setFromUnitVectors(V3(0, 1, 0), p1.clone().sub(p0).normalize()); g.add(c);
-      g.add(mk(new THREE.CylinderGeometry(0.09, 0.09, 0.08, 10).rotateZ(Math.PI / 2).translate(sx * (dw / 2 + 0.2), dh + 0.7, 0.5), ir)); }
-    for (const sx of [-1.15, 1.15]) { g.add(mk(new THREE.PlaneGeometry(0.5, 1.5).translate(sx, 2.5, 0.47), smat('cloth', '#7a1a1c', { side: THREE.DoubleSide }))); g.add(mk(new THREE.CircleGeometry(0.15, 12).translate(sx, 2.8, 0.48), gold)); }
-    { const sh = mk(new THREE.CylinderGeometry(0.32, 0.32, 0.06, 6).rotateX(Math.PI / 2).translate(0, dh + 1.05, 0.48), smat(null, '#7a1a1c', { rough: 0.5 })); g.add(sh); g.add(mk(new THREE.SphereGeometry(0.1, 10, 8).translate(0, dh + 1.05, 0.52), gold)); }
-    for (const sx of [-1, 1]) g.add(mk(new THREE.BoxGeometry(0.14, 0.2, 0.14).translate(sx * (gw / 2 - 0.12), 1.7, 0.55), smat(null, '#ffd890', { emissive: '#ffbb60', ei: night ? 1.6 : 0.6 })));
-    g.position.set(dc, 0, h); o.add(g); }
+  /* torres redondas: as do norte são grandes (a do nordeste é a Torre do Rei, a mais alta) e duas torrinhas no sul */
+  const tower = (tx, tz, tr, th, cone, flag) => {
+    o.add(mk(cylUV(new THREE.CylinderGeometry(tr, tr + 0.14, th, 28, 4, true).translate(tx, th / 2, tz), 4, 0.7), wallM)); o.add(mk(cylUV(new THREE.CylinderGeometry(tr + 0.22, tr + 0.22, 0.5, 28, 1, true).translate(tx, 0.25, tz), 7, 1), darkS));
+    for (let k = 0; k < 18; k++) { const an = k / 18 * Math.PI * 2; o.add(mk(new THREE.BoxGeometry(0.14, 0.26, 0.18).translate(tx + Math.cos(an) * (tr + 0.09), th - 0.12, tz + Math.sin(an) * (tr + 0.09)), capM)); }
+    o.add(mk(cylUV(new THREE.CylinderGeometry(tr + 0.22, tr + 0.22, 0.45, 28, 1, true).translate(tx, th + 0.22, tz), 7, 1), capM));
+    o.add(mk(cylUV(new THREE.ConeGeometry(tr + 0.2, cone, 28, 4, true).translate(tx, th + 0.45 + cone / 2, tz), 9, 1.3), roofM)); o.add(mk(new THREE.SphereGeometry(0.09, 10, 8).translate(tx, th + 0.5 + cone, tz), gold));
+    for (let k = 0; k < 3; k++) { const an = Math.PI / 4 + (k - 1) * 0.7, yy = th * (0.35 + k * 0.2); const wnd = mk(new THREE.BoxGeometry(0.14, 0.6, 0.1), glassM); wnd.position.set(tx + Math.cos(an) * tr, yy, tz + Math.sin(an) * tr); wnd.rotation.y = -an + Math.PI / 2; o.add(wnd); }
+    if (flag) { o.add(mk(CYL(0.02, 0.02, 1.6, tx, th + cone + 1.3, tz, 6), DWOOD())); const bn = heraldBanner(0.7, 1.6); bn.rotation.y = Math.PI / 2; bn.position.set(tx, th + cone + 1.2, tz + 0.38); o.add(bn); } };
+  tower(0, 0, 1.55, H + 5.5, 3.6, 1); tower(w, 0, 2.15, H + 13, 5.8, 1);
+  { const tx = w, tz = 0, r = 2.15; for (const yy of [H + 2.2, H + 8.6]) { o.add(mk(cylUV(new THREE.CylinderGeometry(r + 0.18, r + 0.18, 0.22, 28, 1, true).translate(tx, yy, tz), 7, 1), capM)); for (let k = 0; k < 20; k++) { const an = k / 20 * Math.PI * 2; o.add(mk(new THREE.BoxGeometry(0.15, 0.24, 0.18).translate(tx + Math.cos(an) * (r + 0.1), yy - 0.22, tz + Math.sin(an) * (r + 0.1)), capM)); } }   /* frisos com mísulas */
+    for (let k = 0; k < 4; k++) { const an = Math.PI * 0.15 + k * 0.42, yy = H + 4 + (k % 2) * 3.4; gwin(tx + Math.cos(an) * (r + 0.02), yy, tz + Math.sin(an) * (r + 0.02), Math.PI / 2 - an, 1.3, 0.45); } }   /* janelas góticas dos aposentos reais */ tower(0, h, 0.95, H + 2.2, 2.4, 0); tower(w, h, 0.95, H + 2.2, 2.4, 0);
+  /* balcão da Torre do Rei, voltado para a cidade */
+  { const tx = w, tz = 0, yy = H + 6.5; o.add(mk(new THREE.CylinderGeometry(2.6, 2.4, 0.2, 28, 1, false, -Math.PI * 0.1, Math.PI * 0.7).translate(tx, yy, tz), capM)); for (let k = 0; k <= 12; k++) { const an = -Math.PI * 0.1 + k / 12 * Math.PI * 0.7; o.add(mk(CYL(0.04, 0.05, 0.5, tx + Math.sin(an) * 2.5, yy + 0.35, tz + Math.cos(an) * 2.5, 6), capM)); } }
   return o;
 }
 // monta o prédio no quadro local (porta virada para +z) e gira para o lado certo;
@@ -2196,6 +2202,9 @@ function mBuilding(b, night) {
     o.add(mk(new THREE.ExtrudeGeometry(tri, { depth: 0.9, bevelEnabled: false }).translate(w / 2, Hc + 0.38, h + 0.1), marble));
     o.add(mk(new THREE.CircleGeometry(0.28, 16).translate(w / 2, Hc + 0.72, h + 1.01), gold)); o.add(mk(new THREE.TorusGeometry(0.28, 0.03, 6, 20).translate(w / 2, Hc + 0.72, h + 1.02), gold));
   }
+  if (b.kind === 'kstable') { for (const zz of [h * 0.3, h * 0.7]) { const hy = mHay(); hy.position.set(w + 0.55, 0, zz); hy.rotation.y = Math.PI / 2; o.add(hy); } const ct = mCart(); ct.position.set(w + 0.9, 0, h + 0.4); ct.rotation.y = 0.4; o.add(ct); }   /* fardos de feno e a carroça na porta */
+  if (b.kind === 'kguard') { const ir3 = IRON(), wd = DWOOD(); for (const zz of [h * 0.25, h * 0.75]) { const r = grp(); r.add(mk(new THREE.BoxGeometry(0.08, 1.1, 0.9).translate(0, 0.55, 0), wd)); for (let k = 0; k < 4; k++) { r.add(mk(CYL(0.018, 0.018, 1.5, 0.1, 0.9, -0.33 + k * 0.22, 6), wd)); r.add(mk(new THREE.ConeGeometry(0.04, 0.2, 4).translate(0.1, 1.75, -0.33 + k * 0.22), ir3)); } r.position.set(-0.25, 0, zz); o.add(r); }   /* armeiros com lanças na porta */
+    for (let k = 0; k < Math.round(h * 2); k += 2) o.add(mk(new THREE.BoxGeometry(0.24, 0.36, 0.28).translate(-0.04, bldDims(b).H + 0.18, 0.25 + k * 0.5), smat('stoneblock', '#e2c898', { bump: 1 }))); }   /* ameias na fachada */
   if (b.kind === 'stable') { const hy = mHay(); hy.position.set(w + 0.5, 0, h * 0.5); hy.rotation.y = Math.PI / 2; o.add(hy); }
   if (b.kind === 'smith') { o.add(mk(CYL(0.3, 0.34, 0.5, w + 0.45, 0.25, 0.7, 12), smat('brick', '#6a665e'))); o.add(mk(CYL(0.26, 0.26, 0.03, w + 0.45, 0.51, 0.7, 12), smat(null, '#3a1208', { emissive: '#ff5a10', ei: 0.8 }))); }
   return o;

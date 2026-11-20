@@ -727,8 +727,8 @@ function liveParts(ctx, o, sx, sy, x, y, now) {
       ctx.beginPath(); ctx.moveTo(left, top);
       for (let k = 0; k <= 8; k++) { const t = k / 8; ctx.lineTo(left + t * 28, top + Math.sin(wv + t * 3) * 2.5 * t); }
       for (let k = 8; k >= 0; k--) { const t = k / 8; ctx.lineTo(left + t * 28 - 2 * t, top + 46 + Math.sin(wv + t * 3 + 1) * 3 * t - (t > 0.5 ? (t - 0.5) * 10 : 0)); }
-      ctx.closePath(); ctx.fillStyle = lgrad(ctx, left, 0, left + 28, 0, [[0, '#1e3058'], [0.5, '#2c447a'], [1, '#1a284a']]); ctx.fill();
-      dab(ctx, left + 13, top + 20 + Math.sin(wv + 1.5) * 1.5, 5, 5, '#c9a24a'); dab(ctx, left + 13, top + 20 + Math.sin(wv + 1.5) * 1.5, 2.4, 2.4, '#1e3058');
+      const HB = typeof HERALD !== 'undefined' ? HERALD : { field: '#2c447a', field2: '#1e3058', metal: '#c9a24a' }; ctx.closePath(); ctx.fillStyle = lgrad(ctx, left, 0, left + 28, 0, [[0, HB.field2], [0.5, HB.field], [1, HB.field2]]); ctx.fill();   /* as cores da casa no poder */
+      { const by = top + 20 + Math.sin(wv + 1.5) * 1.5; ctx.fillStyle = HB.metal; ctx.fillRect(left + 10, by - 4, 6, 12); ctx.fillRect(left + 9, by - 6, 8, 3); ctx.fillStyle = '#ffb347'; ctx.beginPath(); ctx.ellipse(left + 13, by - 9, 1.6, 3, 0, 0, 7); ctx.fill(); }
       break;
     }
     case O.FOUNTAIN: {

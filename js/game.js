@@ -338,7 +338,8 @@ function monsterNear(x, y, r = 0.5) {
   for (const id in G.monsters) { const m = G.monsters[id]; if (!m.dieAt && dist(m.rx, m.ry, x, y) < r) return true; }
   return false;
 }
-function freeAt(x, y, z) { if (G.dev && G.noclip) return true; if (HOTEL_DOORS.size && G.me && !G.dev) { const q = HOTEL_DOORS.get(Math.round(y) * MAP_W + Math.round(x)); if (q != null && G.me.hroom !== q) return false; } if (typeof estLockedFor === 'function' && G.me && estLockedFor(G.me.x, G.me.y, x, y)) return false; if (typeof jailBlock === 'function' && JAILCELLS.length && jailBlock(x, y)) return false; const me = G.me; if (me && (me.fl || 0) !== 0) return canStandFloor(x, y, me.fb, me.fl, 0.22) && !(typeof aptBlocked === 'function' && G.est && aptBlocked(me.name, me.fb, me.fl, me.x, me.y, x, y, G.est.L)); return canStandZ(x, y, z, 0.22) && (z >= 0.5 || G.slide || !monsterNear(x, y)); }
+function keepShut(x, y) { const me = G.me; if (!me || !G.pcF) return false; for (let k = 0; k < WORLD.gates.length; k++) { const gt = WORLD.gates[k]; if (gt.kind !== 'keep' || (G.pcF[k] || 0) < 0.5) continue; if (x > gt.x0 - 0.6 && x < gt.x1 + 0.6 && Math.abs(y - gt.y) < 0.6 && me.y > gt.y + 0.2) { if (performance.now() - (G._pcMsg || 0) > 4000) { G._pcMsg = performance.now(); showToast('A grade do castelo está baixada: só abre ao amanhecer.'); } return true; } } return false; }   /* de fora não entra à noite; quem está dentro pode sair */
+function freeAt(x, y, z) { if (G.dev && G.noclip) return true; if (keepShut(x, y)) return false; if (HOTEL_DOORS.size && G.me && !G.dev) { const q = HOTEL_DOORS.get(Math.round(y) * MAP_W + Math.round(x)); if (q != null && G.me.hroom !== q) return false; } if (typeof estLockedFor === 'function' && G.me && estLockedFor(G.me.x, G.me.y, x, y)) return false; if (typeof jailBlock === 'function' && JAILCELLS.length && jailBlock(x, y)) return false; const me = G.me; if (me && (me.fl || 0) !== 0) return canStandFloor(x, y, me.fb, me.fl, 0.22) && !(typeof aptBlocked === 'function' && G.est && aptBlocked(me.name, me.fb, me.fl, me.x, me.y, x, y, G.est.L)); return canStandZ(x, y, z, 0.22) && (z >= 0.5 || G.slide || !monsterNear(x, y)); }
 
 function myInput() {
   const k = G.keys;
@@ -1711,6 +1712,7 @@ function updateGates(dt) {
     for (const id in G.players) { const e = G.players[id]; if ((e.visible || id === G.myId) && (e.z || 0) < 0.5 && Math.abs(e.rx - cx) < hx && Math.abs(e.ry - cy) < hy) near = true; }
     const tgt = near ? 1 : 0;
     G.gateF[k] = clamp(G.gateF[k] + Math.sign(tgt - G.gateF[k]) * dt / 0.9, 0, 1);
+    if (gt.kind === 'keep') { G.pcF = G.pcF || []; const dn = typeof dayInfo === 'function' && dayInfo().night ? 1 : 0; G.pcF[k] = clamp((G.pcF[k] || 0) + Math.sign(dn - (G.pcF[k] || 0)) * dt / 4, 0, 1); if (G.pcF[k] > 0.5) G.gateF[k] = Math.max(0, G.gateF[k] - dt / 0.9); }   /* grade levadiça: desce ao anoitecer em 4 s */
   });
 }
 
