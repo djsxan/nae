@@ -179,7 +179,7 @@ function drawWader(ctx, e, sx, sy, now) {
   const P0 = heroPoseFor(e, now), lk = e.cls + ':' + e.skin + ':' + e.color, P1 = { dir: P0.dir | 0, walk: P0.walk, run: false };
   const s = cache3('wade|' + lk + '|' + pose3Key(P1), () => { const L = lookFor('bath:' + lk, () => { const L0 = heroLook(e.cls, e.skin, e.color); return Object.assign(L0, { hair: L0.hair || '#4a3424', armor: 'bare', body: L0.skin, body2: L0.skin, legs: L0.skin, boots: L0.skin, head: 'none', cape: false, weapon: null, shield: null, pauldron: null, quiver: false, extra: null, pattern: null, trunks: BATH_TRUNKS[e.cls] || '#2a3a5a' }); });
     let R = _rigs.get('bath:' + lk); if (!R) { R = buildHumanoid(L); _rigs.set('bath:' + lk, R); } const Q = buildPose(e.cls, P1); applyPose(R, Q, P1, P1.walk >= 0 ? P1.walk / 12 * Math.PI * 2 : 0); return shoot3D(R, P1.dir, 0, false); }, 'wade|' + e.id);
-  const wy = sy - (0.42 - 0.28 * (1 - tubLvC(e.fb))) * HV, x0 = sx - s.ax, y0 = sy - s.ay;
+  const wy = sy - (0.42 - 0.28 * (1 - tubLvC(e.fb != null && e.fb >= 0 ? e.fb : WORLD.bld[tileAt(e.rx, e.ry)]))) * HV, x0 = sx - s.ax, y0 = sy - s.ay;
   ctx.save(); ctx.imageSmoothingEnabled = true;
   ctx.save(); ctx.beginPath(); ctx.rect(x0 - 2, wy, s.w + 4, s.h); ctx.clip(); ctx.globalAlpha = 0.35; ctx.drawImage(s.c, x0, y0, s.w, s.h); ctx.restore();
   ctx.save(); ctx.beginPath(); ctx.rect(x0 - 2, y0 - 4, s.w + 4, wy - y0 + 4); ctx.clip(); ctx.drawImage(s.c, x0, y0, s.w, s.h); ctx.restore();
@@ -191,7 +191,7 @@ function massageSprite(e, dir, prone = true) {   /* deitado na cama, de sunga (d
   return cache3('mass|' + lk + '|' + (dir | 0) + (prone ? 'p' : 'b'), () => { const L = lookFor('bath:' + lk, () => { const L0 = heroLook(e.cls, e.skin, e.color); return Object.assign(L0, { hair: L0.hair || '#4a3424', armor: 'bare', body: L0.skin, body2: L0.skin, legs: L0.skin, boots: L0.skin, head: 'none', cape: false, weapon: null, shield: null, pauldron: null, quiver: false, extra: null, pattern: null, trunks: BATH_TRUNKS[e.cls] || '#2a3a5a' }); });
     let R = _rigs.get('bath:' + lk); if (!R) { R = buildHumanoid(L); _rigs.set('bath:' + lk, R); } const Q = buildPose(e.cls, P1); applyPose(R, Q, P1, 0); return shoot3D(R, P1.dir, prone ? Math.PI / 2 : -Math.PI / 2, false); }, 'mass|' + e.id);
 }
-function wadingNow(e) { return R3.ok && !e.bathing && !e.downed && (e.fl || 0) > 0 && e.fb != null && typeof inOfuroWater === 'function' && inOfuroWater(BUILDINGS[e.fb], e.fl, e.rx, e.ry); }
+function wadingNow(e) { if (!R3.ok || e.bathing || e.downed || !((e.fl || 0) > 0) || typeof inOfuroWater !== 'function') return false; const fb = e.fb != null && e.fb >= 0 ? e.fb : WORLD.bld[tileAt(e.rx, e.ry)]; return fb >= 0 && inOfuroWater(BUILDINGS[fb], e.fl, e.rx, e.ry); }   /* os outros jogadores não mandam o prédio: acha pela posição */
 // a roupa (na cor da vocação) e a arma penduradas no cabideiro
 function drawRack(ctx, e, sx, sy) {   /* a roupa (na cor da vocação) dobrada no deque, com a toalha por cima e a arma deitada ao lado */
   const B = e.bathing; if (B && B.rx != null) { const p = iso(B.rx, B.ry), p0 = iso(e.rx, e.ry), cx = sx + p.sx - p0.sx, cy = sy + p.sy - p0.sy; const col = { knight: '#6a7a8a', archer: '#4a6a3a', mage: '#7a2a2a' }[e.cls] || '#6a5a4a';

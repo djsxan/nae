@@ -427,7 +427,7 @@ if (typeof progEvent === 'function' && typeof G !== 'undefined') { const _peV = 
 function evoRing(ctx, cx, cy, R, ox, oy) { ctx.beginPath(); for (let i = 0; i <= 36; i++) { const a = i / 36 * 6.2832, p = iso(cx + Math.cos(a) * R, cy + Math.sin(a) * R); i ? ctx.lineTo(p.sx + ox, p.sy + oy) : ctx.moveTo(p.sx + ox, p.sy + oy); } }
 function evoWho(F) { const e = G.players && G.players[F.id]; return e && e.visible !== false ? e : null; }
 function drawEvoFx(ctx, now) { if (typeof drawPplTarget === 'function') drawPplTarget(ctx, now); now = performance.now();   /* mesmo relógio do início do efeito */
-  const ox = G.view.ox, oy = G.view.oy, T = now / 1000; G.evoFx = G.evoFx.filter(F => now - F.t0 < (F.ms || ({ gust: 1400, hand: 1700 }[F.k] || 1400)) + 300);
+  const ox = G.view.ox, oy = G.view.oy, T = now / 1000; G.evoFx = G.evoFx.filter(F => now - F.t0 < (F.ms || ({ gust: 1400, hand: 1700, enthl: 1000 }[F.k] || 1400)) + 300);
   for (const F of G.evoFx) { const t = now - F.t0; if (t < 0) continue; ctx.save();
     if (F.k === 'gust') {   /* Rajada: leque de vento (faixas brancas largas), folhas e poeira */
       const k = Math.min(1, t / 700), al = Math.max(0, 1 - Math.max(0, (t - 850) / 550)), P0 = iso(F.x, F.y);
@@ -461,6 +461,9 @@ function drawEvoFx(ctx, now) { if (typeof drawPplTarget === 'function') drawPplT
       softBeam(ctx, x, y - 110, y, 34, '255,230,150', 0.22 * al);
       if (G.view && Math.random() < 0.6) { const a = Math.random() * 6.28, r = Math.random() * 2.8, q = iso(F.x + Math.cos(a) * r, F.y + Math.sin(a) * r); spawnPart('sparkle', q.sx, q.sy, { color: 'rgba(255,240,180,A)', vx: 0, vy: -0.04, life: 1400 }); }
       if (G.lights) G.lights.push({ x, y: y - 8, r: 140, c: '255,225,140', a: 0.6 * al, flick: 0 }); }
+    else if (F.k === 'enthl') {   /* cura da guardiã: fio de seiva verde da árvore até a pessoa e folhinhas subindo */
+      const e2 = evoWho(F); if (e2) { const a = iso(F.fx, F.fy), p = iso(e2.rx, e2.ry), x0 = a.sx + ox, y0 = a.sy + oy - 40, x1 = p.sx + ox, y1 = p.sy + oy - 14, k = Math.min(1, t / 400), al = 1 - Math.max(0, (t - 500) / 500); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = 'rgba(150,240,110,' + (0.7 * al).toFixed(2) + ')'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x0, y0); ctx.quadraticCurveTo((x0 + x1) / 2, Math.min(y0, y1) - 30, x0 + (x1 - x0) * k, y0 + (y1 - y0) * k); ctx.stroke();
+        for (let i = 0; i < 5; i++) { const h = (t / 900 + i / 5) % 1; ctx.fillStyle = 'rgba(170,250,120,' + (al * (1 - h)).toFixed(2) + ')'; ctx.beginPath(); ctx.ellipse(x1 + Math.sin(i * 2.3) * 7, y1 - h * 22, 1.6, 0.8, i, 0, 7); ctx.fill(); } } }
     else if (F.k === 'deflect' || F.k === 'pshit') {   /* flecha desviada / golpe no escudo de luz */
       const e = evoWho(F); if (e) { const p = iso(e.rx, e.ry), x = p.sx + ox, y = p.sy + oy - 16, k = t / 400, al = 1 - Math.min(1, k); ctx.globalCompositeOperation = 'lighter'; ctx.strokeStyle = (F.k === 'pshit' ? 'rgba(255,230,150,' : 'rgba(230,255,245,') + al.toFixed(2) + ')'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.ellipse(x, y, 8 + k * 14, 10 + k * 16, 0, 0, 7); ctx.stroke(); } }
     ctx.restore(); }

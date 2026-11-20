@@ -91,6 +91,10 @@ function entRide(p, m) {
       setTimeout(() => { near(tx, ty, { t: 'entstomp', x: tx, y: ty }); for (const o of Object.values(S.monsters)) if (o.hp > 0 && dist(o.x, o.y, tx, ty) < 2.4) hit(o, 2.2, 1800); }, 1200); }   /* anciã: rocha ou tronco enorme que esmaga em área */
     return; }
 }
+function entHealTick(n, r, q, now) {   /* de longe ela também cura o mestre e os amigos perto dela */
+  if (now < (n.healT || 0)) return; n.healT = now + 3000; const R = 7, k = [0, 0.04, 0.055, 0.075][r.st] || 0.04; let any = false;
+  for (const p of Object.values(S.players)) { if (p.downed || (p.fl || 0) !== 0 || dist(p.x, p.y, n.x, n.y) > R || p.hp >= p.maxHp) continue; const h = Math.max(2, Math.round(p.maxHp * k)); p.hp = Math.min(p.maxHp, p.hp + h); sfx(p.x, p.y, '+' + h, '#8ae070', 0); near(p.x, p.y, { t: 'evofx', id: p.id, x: p.x, y: p.y, k: 'enthl', fx: n.x, fy: n.y }); sendStat(p); any = true; }
+  if (any) near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'castup', ms: 700 }); }
 function entTick(now) {
   const L = (S.estate && S.estate.ents) || {}; if (now - (S.entT || 0) < 100) return; const dt = Math.min(0.25, (now - (S.entT || now)) / 1000) || 0.1; S.entT = now;
   for (const key in L) { const r = L[key]; let n = S.npcs[entNid(key)]; if (!n) { n = entSpawn(key, r); }
@@ -109,8 +113,14 @@ function entTick(now) {
     if (n.entFight !== !!m) { n.entFight = !!m; entsSend(); }   /* o rosto franze quando luta */
     if (m) { n.sleepEnt = false; const d = dist(n.x, n.y, m.x, m.y), reach = 1.3 + r.st * 0.35;
       if (r.ranged) {   /* ordem "de longe": mantém distância (perto do mago, fora do jato) e só arremessa */
-        const keep = 4.5; if (d < keep - 0.8) { const a = Math.atan2(n.y - m.y, n.x - m.x); npcWalk(n, n.x + Math.cos(a) * 1.5, n.y + Math.sin(a) * 1.5, spd, dt); } else if (d > 8) npcWalk(n, m.x, m.y, spd, dt); else n.walk = false;
-        if (d < 8.5 && now >= (n.throwT || 0)) { n.throwT = now + [0, 2600, 2300, 2000][r.st]; const big = r.st === 3 && Math.random() < 0.45, log = r.st >= 2 && (big ? r.k !== 'earth' : Math.random() < 0.4), fl = Math.round(260 + d * 70);   /* broto: pedrinhas; adulta: pedras e galhos; anciã: troncos e pedras grandes */
+        let gx = null, gy = null;   /* fica ATRÁS do mago (do lado oposto ao inimigo), bem longe do jato de fogo */
+        if (q && !(q.fl || 0) && dist(q.x, q.y, n.x, n.y) < 14) { const qa = Math.atan2(q.y - m.y, q.x - m.x), back = 3.2 + r.st * 0.4; gx = q.x + Math.cos(qa) * back; gy = q.y + Math.sin(qa) * back;
+          if (q.flame) { const fa = q.flame.a, dx = gx - q.x, dy = gy - q.y, al = dx * Math.cos(fa) + dy * Math.sin(fa); if (al > -0.5) { gx = q.x - Math.cos(fa) * back; gy = q.y - Math.sin(fa) * back; } } }
+        else { const a = Math.atan2(n.y - m.y, n.x - m.x); gx = m.x + Math.cos(a) * 6.5; gy = m.y + Math.sin(a) * 6.5; }
+        const inJet = q && q.flame && (() => { const fa = q.flame.a, dx = n.x - q.x, dy = n.y - q.y, al = dx * Math.cos(fa) + dy * Math.sin(fa); return al > -0.3 && al < 8 && Math.abs(-dx * Math.sin(fa) + dy * Math.cos(fa)) < 1.6 + al * 0.25; })();
+        if (dist(n.x, n.y, gx, gy) > 0.8 || inJet) npcWalk(n, gx, gy, spd * (inJet ? 1.5 : 1), dt); else n.walk = false;
+        entHealTick(n, r, q, now);
+        if (d < 11 && now >= (n.throwT || 0)) { n.throwT = now + [0, 2600, 2300, 2000][r.st]; const big = r.st === 3 && Math.random() < 0.45, log = r.st >= 2 && (big ? r.k !== 'earth' : Math.random() < 0.4), fl = Math.round(260 + d * 70);   /* broto: pedrinhas; adulta: pedras e galhos; anciã: troncos e pedras grandes */
           n.dir = dirFromVecS(m.x - n.x, m.y - n.y); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'atk_over', ms: 900, tx: m.x, ty: m.y }); near(n.x, n.y, { t: 'entthrow', id: n.id, x0: n.x, y0: n.y, x1: m.x, y1: m.y, ms: fl, big: big ? 1 : 0, log: log ? (r.k === 'wind' ? 2 : 1) : 0, st: r.st });
           setTimeout(() => { if (!S.monsters[m.id]) return; const [a, b] = ENT_DMG[r.st], dmg = Math.round(rint(a, b) * (big ? 1.4 : r.st === 1 ? 0.6 : 0.85)); m.hp -= dmg; near(m.x, m.y, { t: 'hit', k: 'm', id: m.id, x: m.x, y: m.y, dmg, ax: n.x, ay: n.y }); if (big && MON[m.type] && !MON[m.type].big) m.stunUntil = Math.max(m.stunUntil || 0, now_() + 1200); if (m.hp <= 0) { if (q) killMonster(m, q, 0); else { delete S.monsters[m.id]; near(m.x, m.y, { t: 'mdie', id: m.id, d: 0 }); } } }, fl + 500); }
         continue; }
@@ -271,7 +281,7 @@ function sapNearMine() { const me = G.me; if (!me) return null; for (const s of 
 function entMenu(e) {
   const I = G.ents[e.id]; if (!I) return; const opt = (o, ic, t, sub) => '<button class="lift-btn" data-o="' + o + '"><span class="lift-n">' + ic + '</span><span><b>' + t + '</b><br><small>' + sub + '</small></span></button>';
   const html = '<div style="padding:8px 14px 0;font-size:14px;opacity:.85">' + ['', 'Broto', 'Adulta', 'Anciã'][I.st] + ' · vida ' + I.hp + '/' + I.max + (I.lost ? ' · sem ' + Object.keys(ENT_LOST).filter(k => I.lost & ENT_LOST[k]).length + ' galho(s), rebrotando' : '') + '</div><div class="lift-list" style="padding-top:8px">' +
-    (I.st >= 2 ? opt('ride', '🧙', 'Montar nas costas', 'Você sobe na guardiã e a controla: WASD anda, 1 a 4 são os golpes dela, F desce. Não entra perto da cidade.') : '') + opt('follow', '🌳', 'Me acompanhe', 'Anda com você fora da cidade e luta ao seu lado. Na cidade, ela espera dormindo num bosque.') + opt('guard', '📍', 'Guarde aqui', 'Fica neste ponto e enfrenta quem chegar.') + opt('rest', '💤', 'Descanse', 'Vai dormir no bosque mais perto até você chamar.') + opt('attack', '⚔', 'Ataque aquele alvo', 'Clique num inimigo para ela ir para cima.') + opt('ranged', '🪨', I.rg ? 'Voltar a lutar de perto' : 'Ataque de longe', I.rg ? 'Ela volta a ir para cima dos inimigos.' : 'Fica longe dos inimigos e só arremessa pedras, galhos e troncos (conforme a sua Terra): assim o fogo do seu cajado não a acerta.') + '</div>';
+    (I.st >= 2 ? opt('ride', '🧙', 'Montar nas costas', 'Você sobe na guardiã e a controla: WASD anda, 1 a 4 são os golpes dela, F desce. Não entra perto da cidade.') : '') + opt('follow', '🌳', 'Me acompanhe', 'Anda com você fora da cidade e luta ao seu lado. Na cidade, ela espera dormindo num bosque.') + opt('guard', '📍', 'Guarde aqui', 'Fica neste ponto e enfrenta quem chegar.') + opt('rest', '💤', 'Descanse', 'Vai dormir no bosque mais perto até você chamar.') + opt('attack', '⚔', 'Ataque aquele alvo', 'Clique num inimigo para ela ir para cima.') + opt('ranged', '🪨', I.rg ? 'Voltar a lutar de perto' : 'Ataque de longe e cura', I.rg ? 'Ela volta a ir para cima dos inimigos.' : 'Fica atrás de você, longe dos inimigos e do seu fogo, arremessa pedras, galhos e troncos (conforme a sua Terra) e cura você e os amigos perto dela.') + '</div>';
   const d = staffPanel('entmenu', ENT_NAME[{ ent_oak: 'earth', ent_willow: 'water', ent_cherry: 'wind' }[e.kind]] + ' · guardiã', html);
   d.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const o = b.dataset.o; d.remove(); if (o === 'ride') { Net.send({ t: 'ent', a: 'ride' }); return; } if (o === 'attack') { G.entPick = true; showToast('Clique no inimigo (Esc cancela).'); return; } Net.send({ t: 'ent', a: 'order', o }); });
 }
