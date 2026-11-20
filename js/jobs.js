@@ -22,6 +22,7 @@ function jobsPrompt() {
   if (typeof segNear === 'function' && segNear()) return segPrompt();   /* seus empregados: o F abre as ordens */
   if (typeof entLogNear === 'function' && entLogNear()) return 'F: recolher o galho (lenha)';
   if (G.riding) return 'F: descer da guardiã';
+  if (typeof infNear === 'function' && infNear()) return 'F: falar com Tomé, o Pregoeiro (influência na praça)';
   if (typeof houseNear === 'function' && houseNear()) return 'F: falar com ' + houseNear().name;
   if (typeof courtNear === 'function' && courtNear()) return courtPrompt();
   if (typeof mealNear === 'function' && mealNear()) { const T = mealNear(); return 'F: comer ' + ((LOOT[T.items[0]] || {}).name || 'da bandeja').toLowerCase() + ' (' + T.items.length + ' na bandeja)'; }
