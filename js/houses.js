@@ -34,7 +34,7 @@ function hFavor(p, id, n, why) { const H = hRec(), k = estOwner(p); H.favor[k] =
 function hPost(def, n) {   /* posição do morador agora */
   const b = hSeatB(n.house); if (!b) return null; const h = empHour(), P = h >= 7 && h < 21 ? def[1] : def[2];
   if (P[0] === 'door') { const d = doorOf(b), [dx, dy] = doorTile(b), v = DOOR_V[b.door || 'S'], ox = v[0] ? 0 : P[1] * 1.2, oy = v[1] ? 0 : P[1] * 1.2; return { x: dx + v[0] * 1.6 + ox + 0.5, y: dy + v[1] * 1.6 + oy + 0.5, fl: 0, out: 1 }; }
-  if (P[0] === 'plaza') { const k = HOUSES.findIndex(x => x.id === n.house); return { x: CITY_X1 - 8 + (k % 3) * 2.2, y: CENTER - 1.5 + Math.floor(k / 3) * 3.5, fl: 0, out: 1 }; }
+  if (P[0] === 'plaza') { const k = HOUSES.findIndex(x => x.id === n.house); return { x: CASTLE.x1 + 8 + (k % 3) * 2.2, y: CENTER - 1.5 + Math.floor(k / 3) * 3.5, fl: 0, out: 1 }; }
   const fl = Math.min(P[0], floorsOf(b) - 1), [x, y] = localToWorld(b, P[1], P[2]); return { x, y, fl }; }
 function hSpawnAll() {
   for (const h of HOUSES) { const b = hSeatB(h.id); if (!b) continue; HROLES.forEach((R0, i) => { const id = 'h_' + h.id + '_' + i; if (S.npcs[id]) return; const role = R0[0];
@@ -66,13 +66,21 @@ function houseMsg(p, m) {
   else if (m.a === 'donate') { const v = [50, 200][m.i | 0] || 0; if (!v || (p.gold || 0) < v) { tell(p, 'Ouro insuficiente.'); return; } p.gold -= v; sendStat(p); H.st[h.id].gold = clampH(H.st[h.id].gold + Math.round(v / 50), 0, 100); hFavor(p, h.id, Math.round(v / 25), 'doação'); empSay(n, 'A casa não esquece um amigo generoso.'); }
   send(); }
 // ---------------- CLIENTE ----------------
+/* armaduras dos guardas de cada casa (referências de Game of Thrones) */
+const HGUARD_LOOK = typeof tone === 'function' ? {
+  valcarne: () => ({ armor: 'leather', body: tone('#6a6e72'), body2: tone('#3a3e44'), accent: tone('#2a2e34'), trim: tone('#c8ccd2'), head: 'wolfhelm', headTone: tone('#9aa0a8'), furTone: tone('#8a8478'), capeTone: tone('#7a746a'), weapon: 'sword', beard: tone('#4a3a2a') }),   /* Stark: malha, couro cinza e pele de lobo */
+  draemor: () => ({ armor: 'plate', pattern: 'scales', body: tone('#1e1a1c'), body2: tone('#3a1010'), accent: tone('#7a1410'), trim: tone('#a8281a'), head: 'wyvernhelm', headTone: tone('#2a2224'), capeTone: tone('#7a1410'), weapon: 'halberd', beard: null }),   /* Targaryen: escamas negras, elmo de serpe, capa vermelha */
+  moranthe: () => ({ armor: 'plate', body: tone('#4a3a7a'), body2: tone('#2a2050'), accent: tone('#c9c2e8'), trim: tone('#c9c2e8'), head: 'owlhelm', headTone: tone('#5a4a8a'), plume: tone('#e8e2f0'), capeTone: tone('#c9c2e8'), weapon: 'spear', beard: null }),   /* Arryn: placas violeta lisas, máscara de coruja */
+  thornvale: () => ({ armor: 'leather', body: tone('#5a4028'), body2: tone('#2e4a2e'), accent: tone('#3a2a1a'), trim: tone('#e4dcc0'), head: 'boarhelm', headTone: tone('#6a5a4a'), capeTone: tone('#2a4a2a'), weapon: 'axe', beard: tone('#3a2a1a') }),   /* Baratheon/Mormont: couro fervido, peles, presas de javali */
+  solmire: () => ({ armor: 'plate', body: tone('#c89a3a'), body2: tone('#8a5a1a'), accent: tone('#4a3a22'), trim: tone('#f0c050'), head: 'sunhelm', headTone: tone('#e8b84a'), capeTone: tone('#8a5a1a'), weapon: 'spear', beard: null }),   /* Lannister/Martell: placas douradas, disco de sol */
+} : {};
 if (typeof NPC_LOOKS !== 'undefined' && typeof heroLook === 'function') {
   for (const h of HOUSES) { const robe = (c1, c2, extra) => Object.assign(heroLook('mage', 'adept', c1), { armor: 'robe', body: tone(c1), body2: tone(c2), accent: tone(h.c2), trim: tone(h.c2), head: 'none', weapon: null, shield: null, cape: false }, extra || {});
     NPC_LOOKS['hh_lord_' + h.id] = () => robe(h.c1, h.c1, { cape: true, capeTone: tone(h.c1), hair: tone(h.id === 'moranthe' ? '#1a1a2a' : '#5a4a3a'), hairStyle: h.id === 'moranthe' ? 'long' : 'short', beard: h.id === 'moranthe' ? null : tone('#4a3a2a') });
     NPC_LOOKS['hh_spouse_' + h.id] = () => robe(h.c2, h.c1, { hair: tone(h.id === 'moranthe' ? '#4a3a2a' : '#c8a060'), hairStyle: h.id === 'moranthe' ? 'short' : 'long', beard: h.id === 'moranthe' ? tone('#4a3a2a') : null });
     NPC_LOOKS['hh_heir_' + h.id] = () => Object.assign(heroLook('knight', 'iron', h.c1), { head: 'none', hair: tone('#8a6a3a'), hairStyle: 'short', beard: null, cape: true, capeTone: tone(h.c1), weapon: 'sword', shield: null });
     NPC_LOOKS['hh_serv_' + h.id] = () => Object.assign(heroLook('archer', 'scout', '#6a5a4a'), { armor: 'vest', body: tone('#6a5a4a'), body2: tone(h.c1), head: 'none', hair: tone('#4a3424'), hairStyle: 'short', beard: null, weapon: null, quiver: false });
-    NPC_LOOKS['hh_guard_' + h.id] = () => Object.assign(heroLook('knight', 'iron', h.c2), { head: 'helm', cape: true, capeTone: tone(h.c1), weapon: 'spear', shield: null, beard: tone('#5a4a3a') });
+    NPC_LOOKS['hh_guard_' + h.id] = () => Object.assign(heroLook('knight', 'iron', h.c2), { head: 'helm', cape: true, capeTone: tone(h.c1), weapon: 'spear', shield: null, beard: tone('#5a4a3a') }, HGUARD_LOOK[h.id] ? HGUARD_LOOK[h.id]() : {});
     if (typeof NPC_CLS !== 'undefined') Object.assign(NPC_CLS, { ['hh_lord_' + h.id]: 'mage', ['hh_spouse_' + h.id]: 'mage', ['hh_heir_' + h.id]: 'knight', ['hh_serv_' + h.id]: 'archer', ['hh_guard_' + h.id]: 'knight' }); } }
 if (typeof progEvent === 'function' && typeof G !== 'undefined') { const _peH = progEvent; progEvent = function (m, now) {
   if (m.t === 'houses') { G.houses = m; if (typeof GM !== 'undefined' && GM.tab === 'houses') gmHousesDraw(); return true; }

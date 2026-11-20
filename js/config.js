@@ -12,8 +12,8 @@ const HERALDS = {
   moranthe: { house: 'Moranthe', field: '#33295a', field2: '#1d1630', metal: '#c9c2e8', charge: 'owl' }, thornvale: { house: 'Thornvale', field: '#21492f', field2: '#14301f', metal: '#e4dcc0', charge: 'boar' },
   solmire: { house: 'Solmire', field: '#4a3a22', field2: '#2b2216', metal: '#e8a33c', charge: 'eclipse' } };
 const HERALD = { house: 'Aurenfell', name: 'Casa Aurenfell', field: '#9a2a1c', field2: '#6e1d14', metal: '#f1cf6a', charge: 'tower', motto: 'A Luz Não se Curva' };
-const VERSION = 'v1.98.0';
-const VERSION_NAME = 'Nae · A Voz do Povo';
+const VERSION = 'v1.99.0';
+const VERSION_NAME = 'Nae · A Rua dos Prazeres';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -405,9 +405,9 @@ const TREE = {
     { name: 'Água', icon: '💧', el: 'water', base: 'spring', nodes: [
       { id: 'w_medit', name: 'Meditação', max: 3, eff: { mregen: 0.15 }, desc: '+15% de recuperação de mana por ponto.' },
       { id: 'w_serene', name: 'Bênção Serena', max: 3, eff: { regen: 0.12 }, desc: '+12% de recuperação de vida por ponto.' },
-      { id: 'w_mist', name: 'Névoa', soon: 1, max: 0, desc: 'Uma nuvem fresca que esconde você e os aliados dos inimigos.' },
-      { id: 'w_tide', name: 'Correnteza', soon: 1, max: 0, desc: 'Uma onda que empurra os inimigos e apaga incêndios grandes.' },
-      { id: 'w_frost', name: 'Gelo Eterno', soon: 1, max: 0, desc: 'A água congela: prende os inimigos no gelo.' }] },
+      { id: 'w_mist', name: 'Névoa', evo: 1, need: 25, max: 0, mp: 14, cd: 22000, desc: 'Uma nuvem fresca de 3 casas em volta de você por 10 s: os bichos perdem de vista quem está dentro (só enxergam quem encosta neles) e o fogo de quem entra se apaga.' },
+      { id: 'w_tide', name: 'Correnteza', evo: 1, need: 45, max: 0, mp: 18, cd: 12000, desc: 'Uma onda de 6 casas na direção do mouse: arrasta os inimigos para longe, molha e derruba os menores, apaga o fogo do mato e de quem estiver no caminho.' },
+      { id: 'w_frost', name: 'Gelo Eterno', evo: 1, need: 70, max: 0, mp: 24, cd: 28000, desc: 'A água congela onde está o mouse (até 7 casas): os inimigos em 2,5 casas ficam presos num bloco de gelo por 4 s (os grandes, 2 s) e levam dano do frio.' }] },
     { name: 'Fogo', icon: '🔥', el: 'fire', base: 'ember', nodes: [
       { id: 'w_flame', name: 'Chama Viva', max: 3, eff: { fire: 0.08 }, desc: '+8% de dano de fogo por ponto.' },
       { id: 'w_focus', name: 'Foco Arcano', max: 3, eff: { dmg: 0.04 }, desc: '+4% de dano por ponto.' },

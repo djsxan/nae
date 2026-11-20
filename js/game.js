@@ -1695,6 +1695,7 @@ function drawWorldMap() {
   // sem nomes: pontos de interesse já descobertos ganham um "X" (bastiões, covil do dragão, lojas e serviços, portões)
   const mark = (wx, wy, big) => { const [px, py] = P(wx, wy), r = big ? 7 : 5; x.lineCap = 'round'; for (const [w, c] of [[big ? 6 : 5, 'rgba(240,226,190,0.9)'], [big ? 3 : 2.4, big ? '#8a1a10' : '#4a2e14']]) { x.lineWidth = w; x.strokeStyle = c; x.beginPath(); x.moveTo(px - r, py - r); x.lineTo(px + r, py + r); x.moveTo(px + r, py - r); x.lineTo(px - r, py + r); x.stroke(); } };
   for (const B of BASTIONS) if (seen(B.x, B.y)) mark(B.x, B.y, true);
+  if (typeof cmNames === 'function') cmNames(x, V, size, seen);   /* nomes de bairros, ruas e prédios (botão Nomes) */
   // lugares da cidade: ícones pequenos e simples na porta (passe o mouse para ver o nome)
   G.mapIcons = []; const R = V.z >= 2.5 ? 7 : V.z >= 1.5 ? 5.5 : 4;
   BUILDINGS.forEach((b, bi) => { const ic = mapIconOf(b, bi); if (!ic) return; const [dx, dy] = doorTile(b); if (!seen(dx, dy) && !G.dev) return; const [px, py] = P(dx, dy); if (px < -10 || py < -10 || px > size + 10 || py > size + 10) return; mapIcon(x, ic, px, py, R); G.mapIcons.push({ px, py, name: (b.name || (ic === 'home' ? 'Sua casa' : '')) }); });
@@ -1704,7 +1705,7 @@ function drawWorldMap() {
   const pl = {}; for (const [id, x, y, name, dv] of G.pmap || []) if (!dv || G.dev) pl[id] = { rx: x, ry: y, name };
   for (const id in G.players) { const e = G.players[id]; if (e.visible || id === G.myId) pl[id] = e; }
   for (const id in pl) {
-    const e = pl[id];
+    const e = pl[id]; if (id !== G.myId && typeof CM !== 'undefined' && CM.hide.players) continue;
     const [px, py] = P(e.rx, e.ry), me = id === G.myId;
     x.beginPath(); x.arc(px, py, me ? 6 : 4.5, 0, 7); x.fillStyle = me ? '#c8281e' : '#2a5ab8'; x.fill(); x.lineWidth = 1.5; x.strokeStyle = '#f4e8c8'; x.stroke();
     x.font = '600 11px "Alegreya Sans SC", sans-serif'; x.fillStyle = '#2a1a0a'; x.fillText(e.name, px, py - 12);
@@ -1818,7 +1819,7 @@ function buildDevPanel() {
   $('dv-pobj').onclick = () => { G.devPlace = { kind: 'obj', v: $('dv-obj').value }; showToast('Clique no chão para colocar.'); };
   // viajar clicando no mapa
   $('wm-canvas').addEventListener('click', e => {
-    if (!G.dev && !G.devTools) return;
+    if (!G.dev && !G.devTools) return; if (performance.now() - (G.mapDragAt || 0) < 300) return;
     const cv = $('wm-canvas'), r = cv.getBoundingClientRect(), V = wmView(r.width), w = V.inv(e.clientX - r.left, e.clientY - r.top);
     devTp(w[0], w[1]); toggleWorldMap();
   });
@@ -2057,7 +2058,7 @@ function closeEmoteWheel(fire) {
 G.mapZ = 1;
 function wmView(size) {
   const z = G.mapZ || 1, s = size / (MAP_W * Math.SQRT2) * 1.02 * z, k = Math.min(1, (z - 1) / 1.5);
-  const fx = G.mapCity ? CENTER : (G.me ? G.me.x : MAP_W / 2), fy = G.mapCity ? CENTER : (G.me ? G.me.y : MAP_H / 2), cx = MAP_W / 2 + (fx - MAP_W / 2) * k, cy = MAP_H / 2 + (fy - MAP_H / 2) * k;
+  const fx = G.mapCity ? CENTER : (G.me ? G.me.x : MAP_W / 2), fy = G.mapCity ? CENTER : (G.me ? G.me.y : MAP_H / 2), cx = MAP_W / 2 + (fx - MAP_W / 2) * k + (G.mapPan ? G.mapPan[0] : 0), cy = MAP_H / 2 + (fy - MAP_H / 2) * k + (G.mapPan ? G.mapPan[1] : 0);
   const P = (wx, wy) => { const dx = (wx - cx) * s, dy = (wy - cy) * s; return [size / 2 + (dx - dy) * Math.SQRT1_2, size / 2 + (dx + dy) * Math.SQRT1_2]; };
   const inv = (px, py) => { const a = (px - size / 2) / Math.SQRT1_2, b = (py - size / 2) / Math.SQRT1_2; return [(a + b) / 2 / s + cx, (b - a) / 2 / s + cy]; };
   return { z, s, cx, cy, P, inv };

@@ -104,7 +104,7 @@ function zoneOf(x, y) {
 
 // ---------- cidade de Nae (coordenadas relativas ao centro) ----------
 const CASTLE = { x0: C - 32, y0: C - 32, x1: C + 33, y1: C + 33 };   // muralha externa (o sorteio da cidade usa este contorno)
-const EAST_EXT = 16, CITY_X1 = CASTLE.x1 + EAST_EXT;   // a muralha leste avançou 16 casas: bairro das Casas Nobres
+const EAST_EXT = 31, CITY_X1 = CASTLE.x1 + EAST_EXT;   // a muralha leste avançou 16 casas (Casas Nobres) e mais 15 (rua nova: Clube, Termas e Casa de Veludo)
 const BANNER_HOUSE = {};   /* estandarte de casa: índice do tile -> casa */
 const HOUSE_SEATS = [   /* sedes das casas rivais: casarões com jardim murado, de frente para a rua do bairro */
   { id: 'valcarne', name: 'Casa Valcarne', y: -28 }, { id: 'draemor', name: 'Casa Draemor', y: -18 }, { id: 'moranthe', name: 'Casa Moranthe', y: -10 },
@@ -494,6 +494,17 @@ function interiorLayout0(b, fl = 0) {
     if (h >= 7) { for (let j = 2; j < h - 2; j += 2) { put('bankdesk', 1, j, { v: 1 }); put('bankdesk', w - 2, j, { v: 2 }); } put('rug', dc, 2, { h: h - 4, block: false }); }
     else { for (let i = 1; i < w - 1; i++) if (Math.abs(i - dc) > 1) put('bankdesk', i, 2, { v: 1 }); put('rug', dc, 2, { h: h - 2, block: false }); }   /* salão largo: fila de mesas altas dos dois lados do corredor até o cofre */
     put('candles', 0, 1); put('candles', w - 1, 1);
+  } else if (k === 'club') {   /* Clube do Cervo de Prata: lareira e poltronas, mesas de cartas, xadrez, estante e bar */
+    put('fireplace', dc, 0); put('armchair', dc - 1, 2, { v: 2 }); put('armchair', dc + 1, 2, { v: 2 }); put('bookwall', 0, 0, { h: 3 }); put('clubbar', w - 1, 1, { h: 3 });
+    put('cardtable', 1, 4, { w: 2, h: 2 }); put('cardtable', w - 3, 4, { w: 2, h: 2 }); put('chesstable', 1, h - 2); put('chesstable', w - 2, h - 2); put('nrug', dc - 1, 1, { w: 4, h: 3, block: false, force: true }); put('chandelier', dc, 4, { block: false, force: true });
+  } else if (k === 'baths') {   /* Termas de Aurora: piscina quente com vapor, duas frias, colunas, bancos de mármore e perfumes */
+    put('tpool', 2, 1, { w: 6, h: 4, v: 1 }); for (const [i, j] of [[1, 0], [w - 2, 0], [1, 5], [w - 2, 5]]) put('column', i, j); put('tpool', 1, 7, { w: 3, h: 3 }); put('tpool', w - 4, 7, { w: 3, h: 3 });
+    put('perfume', w - 1, 1, { h: 3 }); put('tbench', 0, 1, { h: 3 }); put('tbench', 0, h - 3, { h: 2 }); put('tbench', w - 1, h - 3, { h: 2 });
+  } else if (k === 'velvet') {   /* Casa de Veludo: escadaria dupla, fonte do salão, divãs de veludo, cortinas, palco e lanternas vermelhas */
+    put('dstair', 3, 0, { w: 6, h: 2 }); put('fountain2', 4, 4, { w: 4, h: 4 }); for (const [i, j] of [[3, 3], [8, 3], [3, 8], [8, 8]]) put('plantpot', i, j);
+    put('drape', 0, 0, { h: 2 }); put('drape', w - 1, 0, { h: 2 }); put('divan', 0, 3, { h: 2 }); put('divan', 0, 6, { h: 2 }); put('divan', w - 1, 3, { h: 2, v: 2 }); put('divan', w - 1, 6, { h: 2, v: 2 });
+    put('clubbar', 0, h - 4, { h: 3 }); put('stage', w - 4, h - 3, { w: 3, h: 2 }); put('nrug', 3, 9, { w: 6, h: 2, v: 1, block: false, force: true });
+    for (const [i, j] of [[2, 2], [9, 2], [2, 10], [9, 9], [5, 2], [6, 9]]) put('redlantern', i, j, { block: false, force: true });
   } else if (k === 'temple') {
     put('altar', dc - 1, 0, { w: 3 }); npcAt(dc, 1); put('candles', 1, 0); put('candles', w - 2, 0);
     for (const j of [3, 5]) { put('pew', 1, j, { w: dc - 1, seat: 3 }); put('pew', dc + 1, j, { w: w - dc - 2, seat: 3 }); }
@@ -1139,20 +1150,24 @@ function generateWorld() {
     for (let y = y0 - RGe - 1; y <= y1 + RGe + 1; y++) for (let x = X0 - 1; x <= X1 + RGe + 2; x++) { if (!inb(x, y)) continue; const i = idx(x, y); if (bld[i] >= 0) continue;
       const inside = x >= X0 && x <= X1 && y >= y0 && y <= y1, ring = (x >= X1 + RGe - 1 && x <= X1 + RGe) || ((y === y0 - RGe || y === y0 - RGe + 1 || y === y1 + RGe || y === y1 + RGe - 1) && x > X0), moat = !inside && ((x >= X1 + 3 && x <= X1 + 4 && y >= y0 - 4 && y <= y1 + 4) || ((y >= y0 - 4 && y <= y0 - 3) || (y >= y1 + 3 && y <= y1 + 4)) && x >= X0 && x <= X1 + 4);
       if (x < X0 && !(obj[i] === O.WALL || obj[i] === O.PART || obj[i] === O.TOWER)) continue;
-      obj[i] = O.NONE; rdir[i] = 0; wdir[i] = 0; fl1[i] = 0; tvar[i] = 0;
+      obj[i] = O.NONE; rdir[i] = 0; wdir[i] = 0; fl1[i] = 0; tvar[i] = 0; river[i] = 0; flow[i * 2] = 0; flow[i * 2 + 1] = 0; height[i] = 0;   /* sem rio nem lago antigo por baixo do bairro */
       if (inside) { ground[i] = vnoise(x / 5, y / 5, 611) > 0.72 ? T.GRASS : T.COBBLE; zone[i] = Z.VILLAGE; }
       else if (moat) ground[i] = T.WATER; else if (ring) { ground[i] = T.COBBLE; rdir[i] = x >= X1 + RGe - 1 ? 2 : 1; } else ground[i] = T.GRASS; }
     for (let y = y0 + 2; y <= y1 - 2; y++) for (let x = X0 - 1; x <= X0; x++) { const i = idx(x, y); if (bld[i] < 0) { obj[i] = O.NONE; fl1[i] = 0; wdir[i] = 0; ground[i] = T.COBBLE; rdir[i] = 2; } }   /* a muralha velha vira rua */
     for (let x = X0 - 1; x <= X1; x++) for (const y of [y0, y1]) { const i = idx(x, y); obj[i] = O.WALL; fl1[i] = 1; wdir[i] = y === y0 ? 4 : 3; ground[i] = T.FLOORSTONE; }
     for (let y = y0; y <= y1; y++) { const i = idx(X1, y); if (y >= gy0 && y <= gy1) { obj[i] = O.GATE; fl1[i] = 0; ground[i] = T.FLOORSTONE; continue; } obj[i] = O.WALL; fl1[i] = 1; wdir[i] = 1; ground[i] = T.FLOORSTONE; }
     { const gi = gates.length; gates.push({ x0: X1, x1: X1, y0: gy0, y: gy1, out: -1, kind: 'east', vert: 1 }); for (let y = gy0; y <= gy1; y++) gateId[idx(X1, y)] = gi; }   /* portão leste */
-    const tw = [[X1 - 1, y0, 1, -1], [X1 - 1, y1 - 1, 1, 1], [X1 - 1, gy0 - 2, 1, 0], [X1 - 1, gy1 + 1, 1, 0], [X1 - 1, C - 21, 1, 0], [X1 - 1, C + 12, 1, 0], [X1 - 1, C + 22, 1, 0], [X1 - 1, C - 11, 1, 0], [X0 + 7, y0, 0, -1], [X0 + 7, y1 - 1, 0, 1]];
+    const tw = [[X1 - 1, y0, 1, -1], [X1 - 1, y1 - 1, 1, 1], [X1 - 1, gy0 - 2, 1, 0], [X1 - 1, gy1 + 1, 1, 0], [X1 - 1, C - 21, 1, 0], [X1 - 1, C + 12, 1, 0], [X1 - 1, C + 22, 1, 0], [X1 - 1, C - 11, 1, 0], [X0 + 7, y0, 0, -1], [X0 + 7, y1 - 1, 0, 1], [X0 + 21, y0, 0, -1], [X0 + 21, y1 - 1, 0, 1]];
     for (const [tx, ty, sx, sy] of tw) { for (let y = ty; y <= ty + 1; y++) for (let x = tx; x <= tx + 1; x++) { const i = idx(x, y); obj[i] = O.PART; fl1[i] = 1; ground[i] = T.FLOORSTONE; } obj[idx(tx + 1, ty + 1)] = O.TOWER; tvar[idx(tx + 1, ty + 1)] = (ty === gy0 - 2 || ty === gy1 + 1) ? 3 : Math.floor(R(tx, ty, 2) * 3); toff[idx(tx + 1, ty + 1)] = (sx + 1) * 3 + (sy + 1); }
     for (let x = X1 + 1; x <= X1 + RGe; x++) for (let y = C; y <= C + 1; y++) { const i = idx(x, y); ground[i] = ground[i] === T.WATER ? T.BRIDGE : T.COBBLE; rdir[i] = 1; obj[i] = O.NONE; }   /* estrada do portão até o anel */
     for (let x = X0 + 1; x < X1; x++) for (let y = C; y <= C + 1; y++) { const i = idx(x, y); ground[i] = T.FLOORSTONE; rdir[i] = 1; }   /* avenida das Casas: do portão até a rua da muralha velha */
     for (let y = y0 + 2; y <= y1 - 2; y++) for (let x = X0 + 1; x <= X0 + 2; x++) { const i = idx(x, y); ground[i] = T.COBBLE; rdir[i] = 2; }   /* rua do bairro, ao longo das casas */
-    for (let y = C - 3; y <= C + 4; y++) for (let x = X0 + 3; x <= X1 - 2; x++) { const i = idx(x, y); if (rdir[i]) continue; ground[i] = (x + y) % 3 ? T.FLOORSTONE : T.STONE; }   /* praça das Casas */
+    for (let y = y0 + 2; y <= y1 - 2; y++) for (let x = X0 + 15; x <= X0 + 16; x++) { const i = idx(x, y); ground[i] = T.COBBLE; rdir[i] = 2; }   /* rua nova, atrás dos casarões */
+    for (let y = C - 3; y <= C + 4; y++) for (let x = X0 + 3; x <= X0 + 14; x++) { const i = idx(x, y); if (rdir[i]) continue; ground[i] = (x + y) % 3 ? T.FLOORSTONE : T.STONE; }   /* praça das Casas */
     for (const S1 of HOUSE_SEATS) BUILDINGS.push({ x: X0 + 6, y: C + S1.y, ...BH('manor', 8, 7, 5.2, 3.2, S1.name, { door: 'W', seat: S1.id, v: 1 }) });   /* casarões das casas (no fim da lista) */
+    BUILDINGS.push({ x: X0 + 18, y: C - 28, ...BH('club', 9, 8, 4.2, 1.2, 'Clube do Cervo de Prata', { door: 'W', floors: 1, deco: 'club', noble: 1 }) },   /* rua nova: clube de cavalheiros, termas romanas e o palácio da Dama Ysolde (no fim da lista) */
+      { x: X0 + 17, y: C - 16, ...BH('baths', 12, 10, 4.0, 1.0, 'Termas de Aurora', { door: 'W', floors: 1, deco: 'thermae' }) },
+      { x: X0 + 17, y: C + 7, ...BH('velvet', 13, 12, 5.0, 1.2, 'Casa de Veludo', { door: 'W', floors: 1, deco: 'velvet' }) });
     for (let y = y0; y <= y1; y++) for (let x = X0; x <= X1; x++) used[idx(x, y)] = 1;
     HOUSE_SEATS.forEach((S1, k) => { const bx = X0 + 4 + k * 2.4 | 0, by = k % 2 ? C + 4 : C - 3; const i = idx(bx, by); if (bld[i] < 0) { obj[i] = O.BANNER; BANNER_HOUSE[i] = S1.id; } });   /* estandartes das casas na praça */
   }

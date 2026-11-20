@@ -911,6 +911,10 @@ function flameTick(now) {
   }
 }
 // ---------- evoluções do Ar e da Luz (liberadas pela força do elemento; trocam a magia base na tecla) ----------
+function douseTile(x, y, list) { const i = y * MAP_W + x; if (!S.burn || !S.burn[i]) return; delete S.burn[i]; S.burnN = Math.max(0, (S.burnN || 1) - 1); S.burnt = S.burnt || {}; S.burnt[i] = now_() + 90000; S.fires = (S.fires || []).filter(f => !(Math.round(f.x) === x && Math.round(f.y) === y)); list.push([x, y]); }
+/* Névoa: quem está dentro some da vista dos bichos (menos de quem encosta) e o fogo da roupa apaga */
+function inMist(q, m) { if (!S.mists || !S.mists.length || !q) return false; const now = now_(); for (const w of S.mists) { if (w.until < now || (q.fl || 0) !== w.fl || dist(q.x, q.y, w.x, w.y) > w.r) continue; return !m || dist(m.x, m.y, q.x, q.y) > 1.4; } return false; }
+function mistTick(now) { if (!S.mists || !S.mists.length) return; S.mists = S.mists.filter(w => w.until > now); for (const q of Object.values(S.players)) if (q.burnUntil > now && inMist(q)) extinguish(q, 'A Névoa fresca apagou o fogo da sua roupa.'); }
 function evoFx(p, m) { near(p.x, p.y, Object.assign({ t: 'evofx', id: p.id, x: p.x, y: p.y }, m), VIEW_RADIUS + 4); }
 function mageEvo(p, nd, msg, now) {
   const a = isFinite(+msg.a) ? +msg.a : (p.fa || 0), shout = { s: nd.name + '!' }, fl = p.fl || 0;
@@ -919,6 +923,20 @@ function mageEvo(p, nd, msg, now) {
       const big = MON[m.type] && MON[m.type].big, push = (big ? 0.8 : 2.6) * (1 - d / R * 0.5), pa = Math.atan2(dy, dx); for (let s = 0; s < 12; s++) { const nx = m.x + Math.cos(pa) * push / 12, ny = m.y + Math.sin(pa) * push / 12; if (!monStand(nx, ny, m)) break; m.x = nx; m.y = ny; }
       if (!big) knockMon(m, p, now); hitMonster(p, m, 0.4, 150); n++; }
     anim('p', p, 'castup', p.x + Math.cos(a), p.y + Math.sin(a), shout); evoFx(p, { k: 'gust', a, r: R }); useGain(p, 'el_wind', 2 + Math.min(3, n)); return true; }
+  /* evoluções da Água */
+  if (nd.id === 'w_mist') { S.mists = (S.mists || []).filter(w => w.until > now); const r = 3 + useBonus(p, 'el_water') * 1.5; S.mists.push({ x: p.x, y: p.y, fl, r, until: now + 10000, by: p.id }); for (const m of Object.values(S.monsters)) { if (m.aggro && S.players[m.aggro] && inMist(S.players[m.aggro], m)) { m.aggro = null; m.atk = null; m.lostAt = 0; } }
+    anim('p', p, 'castup', p.x, p.y, shout); evoFx(p, { k: 'mist', r, ms: 10000 }); useGain(p, 'el_water', 2); return true; }
+  if (nd.id === 'w_tide') { const L = 6 + useBonus(p, 'el_water') * 2, W = 1.3, ca = Math.cos(a), sa = Math.sin(a); let n = 0;
+    for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || (m.alt || 0) > 1) continue; const dx = m.x - p.x, dy = m.y - p.y, al = dx * ca + dy * sa, side = Math.abs(-dx * sa + dy * ca); if (al < 0.2 || al > L || side > W + (MON[m.type].rad || 0)) continue;
+      const big = MON[m.type] && MON[m.type].big, push = big ? 0.9 : 3.2; for (let s = 0; s < 16; s++) { const nx = m.x + ca * push / 16, ny = m.y + sa * push / 16; if (!monStand(nx, ny, m)) break; m.x = nx; m.y = ny; }
+      if (!big) knockMon(m, p, now); m.wetUntil = now + 8000; if (m._burnT > now) m._burnT = 0; p._el = 'water'; hitMonster(p, m, 0.5 * (1 + useBonus(p, 'el_water')), 200); p._el = null; n++; }
+    for (const q of Object.values(S.players)) { if ((q.fl || 0) !== fl) continue; const dx = q.x - p.x, dy = q.y - p.y, al = dx * ca + dy * sa; if (al < -0.5 || al > L || Math.abs(-dx * sa + dy * ca) > W) continue; if (q.burnUntil > now) extinguish(q, 'A Correnteza apagou o fogo da sua roupa.'); }
+    { const put = []; for (let d = 0.5; d <= L; d += 0.5) for (const o of [-1, 0, 1]) { const tx = Math.round(p.x + ca * d - sa * o), ty = Math.round(p.y + sa * d + ca * o); if (typeof douseTile === 'function') douseTile(tx, ty, put); } if (put.length) near(p.x, p.y, { t: 'fireout', l: put }); }
+    anim('p', p, 'cast', p.x + ca, p.y + sa, shout); evoFx(p, { k: 'tide', a, r: L }); useGain(p, 'el_water', 2 + Math.min(3, n)); return true; }
+  if (nd.id === 'w_frost') { let tx = +msg.tx, ty = +msg.ty; if (!isFinite(tx) || !isFinite(ty) || dist(p.x, p.y, tx, ty) > 7.5) { tx = p.x + Math.cos(a) * 4; ty = p.y + Math.sin(a) * 4; } const R = 2.5 + useBonus(p, 'el_water'); let n = 0;
+    for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || dist(m.x, m.y, tx, ty) > R + (MON[m.type].rad || 0)) continue; const big = MON[m.type] && MON[m.type].big, ms = big ? 2000 : 4000; m.stunUntil = Math.max(m.stunUntil || 0, now + ms); m.frozenUntil = now + ms; m.atk = null; m.nextAtk = Math.max(m.nextAtk || 0, now + ms + 200); if (m._burnT > now) m._burnT = 0;
+      p._el = 'water'; hitMonster(p, m, 0.6 * (1 + useBonus(p, 'el_water')) * (m.wetUntil > now ? 1.5 : 1), 0); p._el = null; if (S.monsters[m.id]) near(m.x, m.y, { t: 'mfrost', id: m.id, ms }); n++; }
+    anim('p', p, 'cast', tx, ty, shout); evoFx(p, { k: 'frost', tx, ty, r: R, ms: 4200 }); useGain(p, 'el_water', 2 + Math.min(3, n)); return true; }
   if (nd.id === 'w_shield') { p.windSh = now + 8000; anim('p', p, 'castup', p.x, p.y, shout); evoFx(p, { k: 'wshield', ms: 8000 }); useGain(p, 'el_wind', 2); return true; }
   if (nd.id === 'w_glide') { p.dodgeUntil = now + 1150; p.dodgeAllow = now + 1500; p.parry = null; if (p.atk && !p.atk.done) p.atk = null; near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'glide', ms: 1100 }); evoFx(p, { k: 'glide', a, ms: 1100 }); useGain(p, 'el_wind', 2); if (p.burnUntil > now) extinguish(p, 'O vento do voo apagou o fogo da sua roupa.'); return true; }
   if (nd.id === 'w_handlight') { let tx = +msg.tx, ty = +msg.ty; if (!isFinite(tx) || !isFinite(ty) || dist(p.x, p.y, tx, ty) > 7.5) { tx = p.x + Math.cos(a) * 4; ty = p.y + Math.sin(a) * 4; }   /* Mão de Luz: raio do céu */
@@ -1220,7 +1238,7 @@ function sapTick(now) {   /* a cada 2 s: bônus para quem está perto da muda */
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(m.x, m.y, s.x, s.y) > R + 1.5) continue; m.calmUntil = now + 2600; m.aggro = null; m.atk = null; m.flee = null; } }
 }
 function mageTick(now) {   /* brasa (animais recuam), flores (curam e acalmam) */
-  bathTick(now); flameTick(now); autoTick(now); meditTick(now); sapTick(now); lightWellTick(now); if (typeof courtTick === 'function') courtTick(now); if (typeof housesTick === 'function') housesTick(now); if (typeof infTick === 'function') infTick(now); if (typeof entTick === 'function') entTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
+  bathTick(now); flameTick(now); autoTick(now); meditTick(now); sapTick(now); lightWellTick(now); mistTick(now); if (typeof courtTick === 'function') courtTick(now); if (typeof housesTick === 'function') housesTick(now); if (typeof infTick === 'function') infTick(now); if (typeof entTick === 'function') entTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
   for (const p of Object.values(S.players)) {
     if (p.cls !== 'mage' || !buffOn(p, 'ember') || p.downed) continue;
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(p.x, p.y, m.x, m.y) > 3.5) continue; m.flee = { from: p.id, until: now + 1800 }; if (m.aggro === p.id) m.aggro = null; m.atk = null; }
@@ -1500,11 +1518,11 @@ function monsterThink(m, players, now, dt) {
     return false;
   };
   if (m.taunt && m.taunt.until > now && valid(S.players[m.taunt.pid])) tgt = S.players[m.taunt.pid];
-  if (!tgt && m.aggro) { const q = S.players[m.aggro], ok = q && !q.dev && !buffOn(q, 'smoke') && (!q.downed || (pred && !q.carriedBy)) && q.z < 0.5;
+  if (!tgt && m.aggro) { const q = S.players[m.aggro], ok = q && !q.dev && !buffOn(q, 'smoke') && !inMist(q, m) && (!q.downed || (pred && !q.carriedBy)) && q.z < 0.5;
     if (ok) { const dq = dist(m.x, m.y, q.x, q.y), sees = dq <= 16 && (dq < 4 || sightClear(m.x, m.y, q.x, q.y)); if (sees) m.lostAt = 0; else m.lostAt = m.lostAt || now; if (sees || now - m.lostAt < 5000) tgt = q; else { m.aggro = null; m.lostAt = 0; m.returning = true; } } else m.aggro = null; }
   if (!tgt) {
     let best = 99;
-    if (d.aggro > 0 && !(m.calmUntil > now)) for (const p of players) { if (!valid(p) || !prey(p)) continue; const dd = dist(m.x, m.y, p.x, p.y); if (dd <= d.aggro * (p.crouch ? 0.5 * (1 - treeEff(p, 'stealth')) : 1) && dd < best) { best = dd; tgt = p; } }
+    if (d.aggro > 0 && !(m.calmUntil > now)) for (const p of players) { if (!valid(p) || !prey(p) || inMist(p, m)) continue; const dd = dist(m.x, m.y, p.x, p.y); if (dd <= d.aggro * (p.crouch ? 0.5 * (1 - treeEff(p, 'stealth')) : 1) && dd < best) { best = dd; tgt = p; } }
   }
   if (tgt) {
     if (homeDist > 13 && !m.aggro) { m.returning = true; m.taunt = null; return; }   // só volta à toca quem não está perseguindo ninguém
@@ -2651,7 +2669,7 @@ function treeSkill(p, b, msg) {
   const sameLvl = q => Math.abs((q.z || 0) - (p.z || 0)) < 0.5 && (q.alt || 0) < 1.2;
   const pickTgt = rng => { let q = S.monsters[msg.id]; if (q && sameLvl(q) && dist(p.x, p.y, q.x, q.y) <= rng) return q; let best = null, bs = 1e9; for (const o of Object.values(S.monsters)) { if (!sameLvl(o)) continue; const d = dist(p.x, p.y, o.x, o.y); if (d > rng) continue; const da = Math.abs(angDiff(Math.atan2(o.y - p.y, o.x - p.x), a)); if (da > 0.7) continue; const sc = d + da * 4; if (sc < bs) { bs = sc; best = o; } } return best; };
   switch (nd.id) {
-    case 'w_gust': case 'w_shield': case 'w_glide': case 'w_handlight': case 'w_prayer': case 'w_restore': if (!mageEvo(p, nd, msg, now)) return; break;   /* evoluções do Ar e da Luz */
+    case 'w_gust': case 'w_shield': case 'w_glide': case 'w_handlight': case 'w_prayer': case 'w_restore': case 'w_mist': case 'w_tide': case 'w_frost': if (!mageEvo(p, nd, msg, now)) return; break;   /* evoluções do Ar e da Luz */
     case 'charge': {
       let d = 0; for (let s = 0.25; s <= 4; s += 0.25) { if (!canStand(p.x + Math.cos(a) * s, p.y + Math.sin(a) * s, p.z || 0, 0.25)) break; d = s; }
       anim('p', p, 'dash', p.x + Math.cos(a), p.y + Math.sin(a), shout); Net.toOne(p.id, { t: 'push', a, d });

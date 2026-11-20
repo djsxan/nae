@@ -91,7 +91,7 @@ function buildHumanoid(L, opts = {}) {
   const R = {};
   const hx = h => (h && h.hex) || h || '#888888';
   const bare = L.armor === 'bare';   /* sem camisa (banho): corpo de pele, só a sunga */
-  const armorK = bare ? 'skin' : L.armor === 'plate' ? (L.pattern === 'scales' ? 'darkmetal' : (L.head === 'winged' ? 'gold' : 'metal')) : L.armor === 'leather' ? 'leather' : 'cloth';
+  const armorK = bare ? 'skin' : L.armor === 'plate' ? (L.pattern === 'scales' ? 'darkmetal' : (L.head === 'winged' || L.head === 'sunhelm' ? 'gold' : 'metal')) : L.armor === 'leather' ? 'leather' : 'cloth';
   const bodyM = mat(hx(L.body), armorK), body2M = mat(hx(L.body2), L.armor === 'plate' ? 'leather' : 'leather');
   const skinM = mat(hx(L.skin), 'skin'), legM = bare ? skinM : mat(hx(L.legs), L.armor === 'plate' ? armorK : 'cloth'), bootM = bare ? skinM : mat(hx(L.boots), 'leather');
   const accM = mat(hx(L.accent), 'cloth'), trimM = mat(hx(L.trim), 'gold');
@@ -201,7 +201,7 @@ function buildHead(head, L, S, skinM, accM, trimM) {
   for (const s of [-1, 1]) { const ew = mesh(sphG(0.014 * S), mat('#f2ece0', 'skin'), s * 0.035 * S, 0.015 * S, 0.088 * S), ep = mesh(sphG(0.008 * S), mat(hx(L.eyes ? '#1a140e' : '#1a140e'), 'gem'), s * 0.035 * S, 0.015 * S, 0.1 * S); head.add(ew); head.add(ep); head.userData.eyes.push(ew, ep);
     { const lid = mesh(sphG(0.017 * S), skinM, s * 0.035 * S, 0.016 * S, 0.091 * S); lid.scale.set(1.15, 0.75, 0.9); lid.visible = false; head.add(lid); const lash = mesh(boxG(0.03 * S, 0.004 * S, 0.006 * S), mat('#2a1a10', 'hair'), s * 0.035 * S, 0.008 * S, 0.104 * S); lash.rotation.z = s * -0.12; lash.visible = false; head.add(lash); head.userData.lids.push(lid, lash); }   /* pálpebras (olhos fechados) */ head.add(mesh(boxG(0.04 * S, 0.008 * S, 0.01 * S), mat(hx(L.hair || '#3a2a1e'), 'hair'), s * 0.036 * S, 0.04 * S, 0.095 * S)); head.add(mesh(sphG(0.025 * S), skinM, s * 0.1 * S, 0, 0)); }
   const hairM = mat(hx(L.hair || '#3a2a1e'), 'hair');
-  const helm = L.head === 'greathelm' || L.head === 'horned' || L.head === 'winged';
+  const helm = L.head === 'greathelm' || L.head === 'horned' || L.head === 'winged' || ['wolfhelm', 'wyvernhelm', 'owlhelm', 'boarhelm', 'sunhelm'].includes(L.head);
   const hood = ['hood', 'furhood', 'astralhood', 'antlerhood'].includes(L.head);
   if (L.topknot) { const hm2 = mat(hx(L.hair), 'hair'); const ring = mesh(sphG(0.108 * S), hm2, 0, -0.005 * S, -0.012 * S); ring.geometry = geo('fringe' + S, () => new THREE.SphereGeometry(0.108 * S, 18, 10, 0, Math.PI * 2, Math.PI * 0.42, Math.PI * 0.2)); head.add(ring); const kn = mesh(sphG(0.034 * S), hm2, 0, 0.1 * S, -0.06 * S); head.add(kn); const tie = mesh(cylG(0.016 * S, 0.016 * S, 0.02 * S, 8), mat('#8a1a1a', 'cloth'), 0, 0.085 * S, -0.05 * S); head.add(tie); }   /* careca com coque */
   if (L.brows) for (const s of [-1, 1]) { const bw = mesh(boxG(0.045 * S, 0.012 * S, 0.012 * S), mat(hx(L.brows), 'hair'), s * 0.037 * S, 0.04 * S, 0.097 * S); bw.rotation.z = s * 0.3; head.add(bw); }
@@ -231,13 +231,19 @@ function buildHead(head, L, S, skinM, accM, trimM) {
   if (L.scar) head.add(mesh(boxG(0.006 * S, 0.05 * S, 0.006 * S), mat('#9a5444', 'skin'), 0.05 * S, 0.0, 0.098 * S));
   const H = hx(L.headTone);
   if (helm) {
-    const hm = L.head === 'winged' ? mat(H, 'gold') : L.head === 'horned' ? mat(H, 'darkmetal') : mat(H, 'metal');
+    const hm = L.head === 'winged' || L.head === 'sunhelm' ? mat(H, 'gold') : L.head === 'horned' || L.head === 'wyvernhelm' ? mat(H, 'darkmetal') : mat(H, 'metal');
     const g = mesh(cylG(0.118 * S, 0.122 * S, 0.24 * S, 20), hm, 0, 0.0, 0); head.add(g);
     head.add(mesh(sphG(0.118 * S), hm, 0, 0.12 * S, 0));
     head.add(mesh(boxG(0.17 * S, 0.018 * S, 0.02 * S), mat('#0c0a08', 'cloth'), 0, 0.015 * S, 0.115 * S));
     head.add(mesh(boxG(0.012 * S, 0.12 * S, 0.012 * S), hm, 0, -0.04 * S, 0.124 * S));
     if (L.head === 'greathelm') { const pl = mesh(capG(0.03 * S, 0.22 * S), mat(hx(L.plume), 'cloth'), 0, 0.26 * S, -0.08 * S); pl.rotation.x = -0.9; head.add(pl); }
     if (L.head === 'horned') for (const s of [-1, 1]) { const hn = mesh(coneG(0.035 * S, 0.22 * S, 10), mat('#d6c9aa', 'bone'), s * 0.15 * S, 0.12 * S, 0); hn.rotation.z = -s * 0.9; head.add(hn); }
+    /* elmos das casas nobres */
+    if (L.head === 'wolfhelm') { const fur = mat(hx(L.furTone || '#8a8478'), 'fur'); for (const s of [-1, 1]) { const ear = mesh(coneG(0.05 * S, 0.14 * S, 6), fur, s * 0.075 * S, 0.24 * S, -0.02 * S); ear.rotation.z = -s * 0.25; head.add(ear); } const rim = mesh(torG(0.13 * S, 0.035 * S), fur, 0, -0.12 * S, -0.01 * S); rim.rotation.x = Math.PI / 2; head.add(rim); }
+    if (L.head === 'wyvernhelm') { const dk = mat('#141012', 'darkmetal'); for (let k = 0; k < 5; k++) { const sp = mesh(coneG(0.022 * S, (0.07 + (k === 1 || k === 2 ? 0.04 : 0)) * S, 6), dk, 0, 0.2 * S + Math.sin(k * 0.6) * 0.03 * S, (0.08 - k * 0.045) * S); sp.rotation.x = -0.4 - k * 0.15; head.add(sp); } for (const s of [-1, 1]) { const wg = mesh(boxG(0.01 * S, 0.12 * S, 0.2 * S), dk, s * 0.13 * S, 0.1 * S, -0.1 * S); wg.rotation.x = 0.5; wg.rotation.z = -s * 0.35; head.add(wg); } head.add(mesh(boxG(0.17 * S, 0.02 * S, 0.02 * S), mat('#a8281a', 'gem', { emissive: '#5a1008' }), 0, 0.015 * S, 0.117 * S)); }
+    if (L.head === 'owlhelm') { const fm = mat(hx(L.trim || '#c9c2e8'), 'metal'); const mask = mesh(boxG(0.2 * S, 0.11 * S, 0.02 * S), fm, 0, 0.02 * S, 0.118 * S); head.add(mask); for (const s of [-1, 1]) { head.add(mesh(torG(0.026 * S, 0.008 * S), fm, s * 0.045 * S, 0.025 * S, 0.13 * S)); head.add(mesh(sphG(0.016 * S), mat('#e8a83a', 'gem', { emissive: '#6a4010' }), s * 0.045 * S, 0.025 * S, 0.128 * S)); const tuft = mesh(coneG(0.045 * S, 0.17 * S, 5), mat(hx(L.plume || '#e8e2f0'), 'cloth'), s * 0.08 * S, 0.24 * S, -0.01 * S); tuft.rotation.z = -s * 0.45; head.add(tuft); } const bk = mesh(coneG(0.02 * S, 0.06 * S, 4), fm, 0, -0.035 * S, 0.135 * S); bk.rotation.x = Math.PI; head.add(bk); }
+    if (L.head === 'boarhelm') { const bone = mat('#ece2c8', 'bone'); for (const s of [-1, 1]) { const tk = mesh(coneG(0.028 * S, 0.17 * S, 6), bone, s * 0.08 * S, -0.02 * S, 0.12 * S); tk.rotation.z = s * 0.5; tk.rotation.x = -0.4; head.add(tk); } for (let k = 0; k < 7; k++) head.add(mesh(boxG(0.02 * S, 0.06 * S, 0.025 * S), mat('#2a1e14', 'fur'), 0, 0.24 * S, (0.07 - k * 0.028) * S)); head.add(mesh(sphG(0.03 * S), mat(H, 'metal'), 0, 0.03 * S, 0.125 * S)); }
+    if (L.head === 'sunhelm') { const gd = mat('#f0c050', 'gold', { emissive: '#4a3008' }); const disc = mesh(cylG(0.12 * S, 0.12 * S, 0.012 * S, 20), gd, 0, 0.14 * S, -0.13 * S); disc.rotation.x = Math.PI / 2; head.add(disc); for (let k = 0; k < 12; k++) { const a = k / 12 * Math.PI * 2, ry = mesh(coneG(0.018 * S, 0.08 * S, 4), gd, Math.cos(a) * 0.15 * S, 0.14 * S + Math.sin(a) * 0.15 * S, -0.135 * S); ry.rotation.z = a - Math.PI / 2; head.add(ry); } head.add(mesh(sphG(0.045 * S), mat('#2a1e10', 'darkmetal'), 0.012 * S, 0.15 * S, -0.12 * S)); }
     if (L.head === 'winged') for (const s of [-1, 1]) { const wg = mesh(boxG(0.012 * S, 0.16 * S, 0.12 * S), mat('#f4efe2', 'cloth'), s * 0.13 * S, 0.12 * S, -0.02 * S); wg.rotation.z = -s * 0.5; head.add(wg); }
   } else if (hood) {
     const hm = mat(H, L.head === 'furhood' ? 'fur' : 'cloth');

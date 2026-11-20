@@ -811,3 +811,7 @@ body.touch #combat-pad { right: calc(118px + env(safe-area-inset-right, 0px)); b
 #t-rotate div { font-size: 64px; animation: trot 2s infinite; } @keyframes trot { 50% { transform: rotate(90deg); } }
 body.touch #pplbtn { bottom: auto; top: 54px; right: calc(10px + env(safe-area-inset-right, 0px)); }
 #t-rotate[hidden], .tbtn[hidden] { display: none !important; }
+
+.wm-zoom button.wm-names.on { background: #6a4a1e; border-color: #e8c070; }
+.wm-filt { display: inline-flex; gap: 8px; flex-wrap: wrap; font: 600 12px 'Alegreya Sans SC', sans-serif; color: #e8dcc0; background: rgba(36,26,18,.75); border: 1px solid #6a5434; border-radius: 6px; padding: 3px 8px; }
+.wm-filt label { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; } .wm-filt input { accent-color: #c8902a; margin: 0; }
