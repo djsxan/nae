@@ -1031,7 +1031,11 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     if (b.door === 'S' || b.door === 'E' || !b.door) { const f = doorOpenF(bi, b, now); if (f > 0.03) { const D = doorGeo(b), pc = iso(D.cx, D.cy), c = Math.floor((pc.sx + ox - bx) / 32); items.push({ d: (c < -b.h ? dl : c > b.w - 1 ? dr : depthOf(c)) + 0.01, k: 7, b, f, D, al }); } }
   });
   // perto de uma porta: já prepara o interior (sem engasgo ao entrar)
-  if (me && (me.z || 0) < 0.5 && inB < 0) for (const b of BUILDINGS) { const d0 = doorOf(b); if (Math.abs(d0.x - me.rx) + Math.abs(d0.y - me.ry) < 3) { const t = S3.budget; S3.budget = Math.max(1, S3.budget); interiorSprite(b); S3.budget = t; break; } }
+  if (me && (me.z || 0) < 0.5 && inB < 0) { /* interiores: montar um custa de dezenas a centenas de ms; andando, só a porta logo à frente; parado, os de perto, um por vez */
+    const PB = G.preB || (G.preB = { x: me.rx, y: me.ry, still: performance.now(), done: new Set() }), tn = performance.now(), mvx = me.rx - PB.x, mvy = me.ry - PB.y, moving = Math.hypot(mvx, mvy) > 0.01; PB.x = me.rx; PB.y = me.ry; if (moving) PB.still = tn;
+    let pick = null, pd = 1e9; for (let bi = 0; bi < BUILDINGS.length; bi++) { const b = BUILDINGS[bi]; if (PB.done.has(bi)) continue; const d0 = doorOf(b), dx = d0.x + 0.5 - me.rx, dy = d0.y + 0.5 - me.ry, dd = Math.abs(dx) + Math.abs(dy);
+      if (moving ? dd < 1.6 && dx * mvx + dy * mvy > 0 : tn - PB.still > 350 && dd < 12) { if (dd < pd) { pd = dd; pick = bi; } } }
+    if (pick != null && (moving || S3.frameMs === 0)) { const t = S3.budget; S3.budget = Math.max(1, S3.budget); if (interiorSprite(BUILDINGS[pick])) PB.done.add(pick); S3.budget = t; if (!moving) PB.still = tn - 350 + 250; } }
   if (inB >= 0 && BUILDINGS[inB].kind !== 'stairtower') { const b = BUILDINGS[inB]; for (const f of [myFl + 1, myFl - 1]) if (f >= 0 && f < floorsOf(b)) { const t = S3.budget; S3.budget = Math.max(1, S3.budget); interiorSprite(b, f); S3.budget = t; } }
   items.sort((a, b) => a.d - b.d || a.k - b.k);
   upper.sort((a, b) => a.d - b.d || a.k - b.k);
