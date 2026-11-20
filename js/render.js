@@ -725,8 +725,9 @@ function liveParts(ctx, o, sx, sy, x, y, now) {
       ctx.beginPath(); ctx.moveTo(left, top);
       for (let k = 0; k <= 8; k++) { const t = k / 8; ctx.lineTo(left + t * 28, top + Math.sin(wv + t * 3) * 2.5 * t); }
       for (let k = 8; k >= 0; k--) { const t = k / 8; ctx.lineTo(left + t * 28 - 2 * t, top + 46 + Math.sin(wv + t * 3 + 1) * 3 * t - (t > 0.5 ? (t - 0.5) * 10 : 0)); }
-      const HB = typeof HERALD !== 'undefined' ? HERALD : { field: '#2c447a', field2: '#1e3058', metal: '#c9a24a' }; ctx.closePath(); ctx.fillStyle = lgrad(ctx, left, 0, left + 28, 0, [[0, HB.field2], [0.5, HB.field], [1, HB.field2]]); ctx.fill();   /* as cores da casa no poder */
-      { const by = top + 20 + Math.sin(wv + 1.5) * 1.5; ctx.fillStyle = HB.metal; ctx.fillRect(left + 10, by - 4, 6, 12); ctx.fillRect(left + 9, by - 6, 8, 3); ctx.fillStyle = '#ffb347'; ctx.beginPath(); ctx.ellipse(left + 13, by - 9, 1.6, 3, 0, 0, 7); ctx.fill(); }
+      const HB = (typeof BANNER_HOUSE !== 'undefined' && BANNER_HOUSE[y * MAP_W + x] && typeof HERALDS !== 'undefined' && HERALDS[BANNER_HOUSE[y * MAP_W + x]]) || (typeof HERALD !== 'undefined' ? HERALD : { field: '#2c447a', field2: '#1e3058', metal: '#c9a24a' }); ctx.closePath(); ctx.fillStyle = lgrad(ctx, left, 0, left + 28, 0, [[0, HB.field2], [0.5, HB.field], [1, HB.field2]]); ctx.fill();   /* as cores da casa no poder */
+      if (HB.charge && HB.charge !== 'tower' && typeof heraldTex === 'function') { const by = top + 20 + Math.sin(wv + 1.5) * 1.5, im = heraldTex('banner', HB).image; ctx.drawImage(im, 8, 64, 112, 176, left + 4, by - 14, 19, 30); }   /* símbolo da casa */
+      else { const by = top + 20 + Math.sin(wv + 1.5) * 1.5; ctx.fillStyle = HB.metal; ctx.fillRect(left + 10, by - 4, 6, 12); ctx.fillRect(left + 9, by - 6, 8, 3); ctx.fillStyle = '#ffb347'; ctx.beginPath(); ctx.ellipse(left + 13, by - 9, 1.6, 3, 0, 0, 7); ctx.fill(); }
       break;
     }
     case O.FOUNTAIN: {

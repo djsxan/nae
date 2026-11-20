@@ -105,6 +105,7 @@ function zoneOf(x, y) {
 // ---------- cidade de Nae (coordenadas relativas ao centro) ----------
 const CASTLE = { x0: C - 32, y0: C - 32, x1: C + 33, y1: C + 33 };   // muralha externa (o sorteio da cidade usa este contorno)
 const EAST_EXT = 16, CITY_X1 = CASTLE.x1 + EAST_EXT;   // a muralha leste avançou 16 casas: bairro das Casas Nobres
+const BANNER_HOUSE = {};   /* estandarte de casa: índice do tile -> casa */
 const HOUSE_SEATS = [   /* sedes das casas rivais: casarões com jardim murado, de frente para a rua do bairro */
   { id: 'valcarne', name: 'Casa Valcarne', y: -28 }, { id: 'draemor', name: 'Casa Draemor', y: -18 }, { id: 'moranthe', name: 'Casa Moranthe', y: -10 },
   { id: 'thornvale', name: 'Casa Thornvale', y: 8 }, { id: 'solmire', name: 'Casa Solmire', y: 18 }];
@@ -1153,6 +1154,7 @@ function generateWorld() {
     for (let y = C - 3; y <= C + 4; y++) for (let x = X0 + 3; x <= X1 - 2; x++) { const i = idx(x, y); if (rdir[i]) continue; ground[i] = (x + y) % 3 ? T.FLOORSTONE : T.STONE; }   /* praça das Casas */
     for (const S1 of HOUSE_SEATS) BUILDINGS.push({ x: X0 + 6, y: C + S1.y, ...BH('manor', 8, 7, 5.2, 3.2, S1.name, { door: 'W', seat: S1.id, v: 1 }) });   /* casarões das casas (no fim da lista) */
     for (let y = y0; y <= y1; y++) for (let x = X0; x <= X1; x++) used[idx(x, y)] = 1;
+    HOUSE_SEATS.forEach((S1, k) => { const bx = X0 + 4 + k * 2.4 | 0, by = k % 2 ? C + 4 : C - 3; const i = idx(bx, by); if (bld[i] < 0) { obj[i] = O.BANNER; BANNER_HOUSE[i] = S1.id; } });   /* estandartes das casas na praça */
   }
   { const S0 = { 'Empório do Borin': { 0: 'ladder' }, 'Pergaminhos & Mapas': { 0: 'spiral' }, 'Imobiliária Chave de Bronze': { 0: 'ext' }, 'Casa Morvane': { 0: 'spiral', 1: 'ladder' }, 'Elixires da Lua Prateada': { 0: 'spiral' } };   // escadas: o resto usa a de parede
     for (const b of BUILDINGS) { if (S0[b.name]) b.stairs = S0[b.name]; else if (b.kind === 'manor') b.stairs = { 1: 'ladder' }; }
