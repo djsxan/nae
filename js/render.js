@@ -495,7 +495,7 @@ function drawHeroEntity(ctx, e, sx, sy, now) {
     if (e !== G.me && e.anim && e.anim.W && e.anim.reach && now - e.anim.t0 < e.anim.W + 120) drawTelegraph(ctx, e, sx, sy, now);
     if (e.skin === 'weaver') drawWeaverAura(ctx, sx, sy, now);
     if (e.skin === 'weaver') sy -= 14 + Math.sin(now / 600) * 3;
-    if (typeof entRideLift === 'function') { const rl = entRideLift(e); if (rl) { const P2 = { ...P, sit: 'g', walk: -1, act: null }; s = e.isNpc ? s : woundOf(heroSprite3D(e.cls, e.skin, e.color, P2), woundLevel(e)); sy -= rl * 0.62; } }   /* montado nas costas da guardiã */
+    if (typeof entRideLift === 'function') { const rl = entRideLift(e); if (rl) { const P2 = { ...P, sit: 'c', ride: 1, walk: -1, act: null, nowp: 1 }; if (typeof R3 !== 'undefined') R3.budget = Math.max(R3.budget, 1); s = e.isNpc ? s : woundOf(heroSprite3D(e.cls, e.skin, e.color, P2), woundLevel(e)); sy -= rl * 0.62; } }   /* montado nas costas da guardiã */
     if (typeof glideLift === 'function') { const gl = glideLift(e, now); if (gl) { softDab(ctx, sx, sy, 10, '#000000', 0.25); sy -= gl; } }   /* Voo da Pluma: no alto, a sombra fica no chão */
     const msy = sy; if (e.medit && typeof drawMeditAura === 'function') { drawMeditAura(ctx, e, sx, msy, now, 0); const lt = Math.min(1, Math.max(0, (now - e.medit.t0 - 2500) / 1800)), lev = { fire: 0, water: 0, earth: 8, wind: 26, holy: 4 }[e.medit.el] ?? 8; sy -= lt * (lev + Math.sin(now / 900) * (lev ? 1.6 : 0)); }   /* levita depois de uns segundos */
     pblit(ctx, s, sx, sy);

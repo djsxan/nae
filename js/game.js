@@ -1115,6 +1115,7 @@ window.addEventListener('keydown', e => {
 
   if (k === 'f' && !e.repeat && typeof entNear === 'function' && entNear()) { entMenu(entNear()); return; }   /* ordens para a guardiã */
   if (k === 'f' && !e.repeat && typeof entLogNear === 'function' && entLogNear()) { Net.send({ t: 'ent', a: 'log', id: entLogNear().id }); return; }   /* galho caído da guardiã: lenha */
+  if (k === 'f' && !e.repeat && typeof mealNear === 'function' && mealNear()) { Net.send({ t: 'emp', a: 'mealeat' }); return; }   /* comer da bandeja na mesa baixa */
   if (k === 'f' && !e.repeat && typeof purseNear === 'function' && purseNear()) { Net.send({ t: 'emp', a: 'purse', id: purseNear().id }); return; }   /* bolsa caída no chão */
   if (k === 'f' && !e.repeat && typeof dummyNear === 'function' && dummyNear() && !G.training) { const fd = typeof dummyFacing === 'function' ? dummyFacing() : null; Net.send({ t: 'train', a: 'start', i: fd ? DUMMIES.indexOf(fd) : undefined }); return; }   /* arqueiro: o boneco para onde está virado */
   if (k === 'f' && !e.repeat && openNearChest(1.8)) return;

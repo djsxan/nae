@@ -414,6 +414,7 @@ function buildPose(cls, P) {
     else { Q.lA = [0.02, -0.04]; Q.lB = [0.02, -0.04]; Q.aA = [2.75 + br * 0.06, 0.45, 0.25]; Q.aB = [2.75 - br * 0.06, 0.45, 0.25]; Q.tl = -0.12; Q.ht = -0.45 + br * 0.04; Q.nowp = 1; }   /* Luz: em pé, braços erguidos para o céu, rosto voltado para cima */
     Q.wp = 0; }
   else if (P.sit) { Q.lA = [1.5, -1.55]; Q.lB = [1.45, -1.5]; Q.drop = 12; Q.aA = [0.45, 0.25, 0.7]; Q.aB = [0.45, 0.25, 0.7]; Q.tl = -0.02; }
+  if (P.ride) { Q.lA = [1.3, -1.55, 0, -0.95]; Q.lB = [1.3, -1.55, 0, 0.95]; Q.aA = [0.75, 0.55, 0.45]; Q.aB = [0.75, 0.55, 0.45]; Q.tl = 0.12; Q.ht = 0.08; Q.nowp = 1; Q.wp = 0; }   /* montado nas costas da guardiã: pernas abertas, mãos apoiadas */
   if (P.tied) { Q.aA = [-0.45, -0.28, 0.35]; Q.aB = [-0.45, -0.28, 0.35]; Q.tl = 0.12; Q.ht = 0.3; Q.tie = P.tied; Q.nowp = 1; }   // mãos amarradas atrás das costas
   if (P.nowp) Q.nowp = 1;
   if (P.bed) { Q.aA = [0.08, 0.16, 0.12]; Q.aB = [0.08, 0.16, 0.12]; Q.lA = [0.02, -0.04]; Q.lB = [-0.02, -0.04]; Q.tl = 0; Q.tw = 0; Q.ht = 0.05; Q.sway = 0; Q.nowp = 1; }   // deitado na cama: esticado, braços ao lado do corpo, sem arma

@@ -58,9 +58,11 @@ function empQuit(key, r, why) {
   if (r.messy) { const H = empHome(r), bi = H ? empBedIdx(H) : -1; if (bi >= 0) Net.toAll({ t: 'bedmess', bed: bi, on: 0 }); }
   if (n) visGone(n); estateSave(); if (q) { tell(q, why); Net.toOne(q.id, { t: 'empme', id: null }); }
 }
-function empWelcome(to) { const M = S.estate && S.estate.emp; if (!M) return; const p = S.players[to]; for (const key in M) { const r = M[key]; if (r.messy) { const H = empHome(r), bi = H ? empBedIdx(H) : -1; if (bi >= 0) Net.toOne(to, { t: 'bedmess', bed: bi, on: 1 }); } if (p && estOwner(p) === key) setTimeout(() => empSend(r, key), 800); } }
+function empWelcome(to) { if (S.fdTray) for (const bi in S.fdTray) Net.toOne(to, { t: 'fdtray', bi: +bi, T: S.fdTray[bi] }); const M = S.estate && S.estate.emp; if (!M) return; const p = S.players[to]; for (const key in M) { const r = M[key]; if (r.messy) { const H = empHome(r), bi = H ? empBedIdx(H) : -1; if (bi >= 0) Net.toOne(to, { t: 'bedmess', bed: bi, on: 1 }); } if (p && estOwner(p) === key) setTimeout(() => empSend(r, key), 800); } }
 function empMsg(p, m) {
   if (m.a === 'shopcat') { Net.toOne(p.id, { t: 'empshop', l: shopCatalog(p) }); return; }
+  if (m.a === 'mealcat') { const key = estOwner(p), r = S.estate.emp && S.estate.emp[key]; if (!r) return; Net.toOne(p.id, { t: 'empmeal', l: mealOptions(S.estate.r[r.home]) }); return; }
+  if (m.a === 'mealeat') { mealEat(p); return; }
   if (m.a === 'purse') { const L = S.purses || [], u = L.find(x => x.id === m.id); if (!u || (u.fl || 0) !== (p.fl || 0) || dist(u.x, u.y, p.x, p.y) > 1.6) return; L.splice(L.indexOf(u), 1); p.gold = (p.gold || 0) + u.g; sendStat(p); tell(p, 'Você pegou uma bolsa com ' + u.g + ' de ouro.'); Net.toAll({ t: 'purses', l: L }); return; }
   const key = estOwner(p), M = empLoad(), r = M[key];
   if (m.a === 'cands') { const home = rentalOf(p); Net.toOne(p.id, { t: 'empc', list: empCands(), tr: EMP_TR, str: SEG_TR, home: home ? PROPS_BY[home].name : '', have: r ? r.n : '', segs: segList(key).length }); return; }
@@ -82,7 +84,8 @@ function empMsg(p, m) {
   if (!r) return; const n = S.npcs[empNid(r)]; if (!n) return;
   const close = (n.fl || 0) === (p.fl || 0) && dist(n.x, n.y, p.x, p.y) < 3;
   if (m.a === 'order') {
-    if (!close && m.o !== 'fire' && m.o !== 'massage') { tell(p, 'Chegue perto de ' + r.n + '.'); return; } const H = empHome(r), nm = r.n;
+    if (!close && m.o !== 'fire' && m.o !== 'massage' && m.o !== 'meal') { tell(p, 'Chegue perto de ' + r.n + '.'); return; } const H = empHome(r), nm = r.n;
+    if (m.o === 'meal') { if (r.mode !== 'home' || !empAtHome(n, H)) { tell(p, nm + ' precisa estar em casa para servir.'); return; } mealOrder(p, r, n, H, Array.isArray(m.list) ? m.list.slice(0, 9) : []); return; }
     if (m.o === 'follow') { r.mode = 'follow'; r.forageOn = 0; n.forage = null; n.goal = null; n.task = null; empSay(n, ['Vou com você.', 'Pode ir na frente.', 'Estou logo atrás.'][Math.floor(Math.random() * 3)]); }
     else if (m.o === 'home') { const was = r.forageOn; r.mode = 'home'; r.forageOn = 0; if (n.forage) { n.forage = null; n.goal = empTgt(H); } else n.goal = null; empSay(n, was ? 'Paro de buscar comida e fico cuidando da casa.' : 'Vou cuidar da casa.'); estateSave(); }
     else if (m.o === 'forage') { r.mode = 'home'; r.forageOn = 1; r.forageT = 0; n.goal = null; n.task = null; const hr = empHour(); estateSave();   /* modo contínuo: sai de dia até mandarem ficar em casa */
@@ -185,6 +188,8 @@ function empDeposit(key, r, q) {
 }
 function empChoose(n, r, H, q, now) {   /* escolhe a próxima tarefa da casa */
   if (sakeReturnTick(n, r, H)) return;   /* bandeja esquecida na borda volta para a cozinha */
+  if (r.meal) return;   /* servindo a refeição */
+  if (mealReturnTick(n, r, H)) return;   /* bandeja vazia na mesa baixa volta para a bancada */
   const rec = S.estate.r[r.home], ch = rec ? (rec.chest = rec.chest || {}) : {}, qHome = q && empAtHome(q, H) && !q.downed;
   if (!qHome) r.tubDone = false;
   const hasFood = EMP_FOOD.some(f => ch[f] > 0); if (qHome && (q.food ?? 100) < 55 && !hasFood && now_() > (r.noFoodT || 0)) { r.noFoodT = now_() + 120000; empSay(n, 'Não tem comida no baú. Traga carne crua que eu cozinho.'); }
@@ -363,6 +368,8 @@ if (typeof progEvent === 'function') { const _peS = progEvent; progEvent = funct
   if (m.t === 'empme') { G.emp = m.id ? m : null; if (document.getElementById('empmenu')) empMenu(); if (document.getElementById('empbag')) empBag(); return true; }
   if (m.t === 'massage') { const pl = G.players[m.pid]; if (pl) pl.massageUntil = m.on ? performance.now() + (m.ms || 20000) : 0; const md = G.npcs[m.mid]; if (md) md.z = m.on ? (m.h || 0) * HV / FLOOR_PX : 0; return true; }   /* de bruços, e ela em cima da cama */
   if (m.t === 'empshop') { empShopMenu(m.l || []); return true; }
+  if (m.t === 'empmeal') { empMealMenu(m.l || []); return true; }
+  if (m.t === 'fdtray') { if (m.T) G.fdTray[m.bi] = m.T; else delete G.fdTray[m.bi]; return true; }
   if (m.t === 'purses') { G.purses = m.l || []; return true; }
   if (m.t === 'skt') { const e = G.npcs[m.id]; if (e) { if (m.plate != null) e.plateH = m.plate; else e.trayH = m.on ? 1 : 0; } return true; }
   if (m.t === 'cookfx') { (G.cookFx = G.cookFx || []).push({ ...m, t0: performance.now() }); return true; }
@@ -395,9 +402,9 @@ function empMenu() {
   const n = Object.keys(E.inv || {}).length, opt = (o, ic, t, sub) => '<button class="lift-btn" data-o="' + o + '"><span class="lift-n">' + ic + '</span><span><b>' + t + '</b><br><small>' + sub + '</small></span></button>';
   const html = '<div style="padding:8px 14px 0;font-size:14px;opacity:.85">' + E.n + ' · ' + EMP_TR[E.tr].n + ' · ' + E.w + ' ouro/dia · ' + E.home + (E.warn ? ' · <b style="color:#e88">salário atrasado</b>' : '') + '</div><div class="lift-list" style="padding-top:8px">' +
     (E.mode === 'follow' ? opt('home', '🏠', 'Fique em casa', 'Volta para casa e cuida das tarefas.') : opt('follow', '👣', 'Me siga', 'Anda atrás de você e coleta junto.')) +
-    opt('bag', '🧺', 'Carregar (' + n + '/' + E.cap + ')', 'Passe itens para a mochila dele ou pegue de volta.') + opt('deliver', '📦', 'Leve isto para casa', 'Volta sozinho e guarda tudo no baú.') + opt('massage', '💆', 'Massagem', 'Em casa, deitado na cama: fôlego, vida e membros.') + opt('shop', '🛒', 'Fazer compras', 'Monte uma lista nas lojas da cidade, entregue o dinheiro e ela compra, guarda no baú e devolve o troco.') + (E.forageOn ? opt('home', '🏠', 'Voltar para casa', 'Para de buscar comida e volta a cuidar da casa.') : opt('forage', '🍓', 'Buscar comida', 'Todo dia: sai para colher frutas e ervas e caçar cervo ou javali, volta antes de escurecer, guarda no baú e sai de novo. Continua até você mandar ficar em casa.')) + opt('fire', '✋', 'Dispensar', 'Encerra o contrato.') + '</div>';
+    opt('bag', '🧺', 'Carregar (' + n + '/' + E.cap + ')', 'Passe itens para a mochila dele ou pegue de volta.') + opt('deliver', '📦', 'Leve isto para casa', 'Volta sozinho e guarda tudo no baú.') + opt('massage', '💆', 'Massagem', 'Em casa, deitado na cama: fôlego, vida e membros.') + opt('meal', '🍱', 'Servir refeição', 'Na suíte: escolha o que comer com o que tem no baú; ela cozinha, serve na mesa baixa e recolhe a bandeja vazia.') + opt('shop', '🛒', 'Fazer compras', 'Monte uma lista nas lojas da cidade, entregue o dinheiro e ela compra, guarda no baú e devolve o troco.') + (E.forageOn ? opt('home', '🏠', 'Voltar para casa', 'Para de buscar comida e volta a cuidar da casa.') : opt('forage', '🍓', 'Buscar comida', 'Todo dia: sai para colher frutas e ervas e caçar cervo ou javali, volta antes de escurecer, guarda no baú e sai de novo. Continua até você mandar ficar em casa.')) + opt('fire', '✋', 'Dispensar', 'Encerra o contrato.') + '</div>';
   const d = staffPanel('empmenu', E.n, html);
-  d.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const o = b.dataset.o; if (o === 'bag') { d.remove(); empBag(); return; } if (o === 'shop') { d.remove(); Net.send({ t: 'emp', a: 'shopcat' }); return; } if (o === 'fire' && !confirm('Dispensar ' + E.n + '?')) return; d.remove(); Net.send({ t: 'emp', a: 'order', o }); });
+  d.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const o = b.dataset.o; if (o === 'bag') { d.remove(); empBag(); return; } if (o === 'shop') { d.remove(); Net.send({ t: 'emp', a: 'shopcat' }); return; } if (o === 'meal') { d.remove(); Net.send({ t: 'emp', a: 'mealcat' }); return; } if (o === 'fire' && !confirm('Dispensar ' + E.n + '?')) return; d.remove(); Net.send({ t: 'emp', a: 'order', o }); });
 }
 function empShopMenu(L) {
   const cart = {}; const key = (s0, k) => s0 + '|' + k;
@@ -438,7 +445,7 @@ function drawPurses(ctx, P, now) { const me = G.me; for (const u of G.purses || 
   ctx.save(); ctx.fillStyle = 'rgba(0,0,0,.3)'; ctx.beginPath(); ctx.ellipse(x, y, 5, 2, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#6a4424'; ctx.beginPath(); ctx.ellipse(x, y - 3, 4.2, 3.4, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#4a2e18'; ctx.fillRect(x - 1.6, y - 7.2, 3.2, 1.6); ctx.fillStyle = '#e8c060'; for (let k = 0; k < 3; k++) { ctx.beginPath(); ctx.ellipse(x + 3 + k * 1.6, y + 0.5 - k * 0.3, 1.3, 0.6, 0, 0, 7); ctx.fill(); }
   if (Math.sin(now / 300) > 0.6) { ctx.fillStyle = 'rgba(255,240,180,.9)'; ctx.fillRect(x - 0.5, y - 9, 1, 1); } ctx.restore(); } }
 function drawStaffFx(ctx, P, now) {
-  const me = G.me; if (!me) return; drawPurses(ctx, P, now); if (typeof drawEntLogs === 'function') drawEntLogs(ctx, P, now); drawCookFx(ctx, P, now); if (typeof drawFurnFire === 'function') drawFurnFire(ctx, P, now);
+  const me = G.me; if (!me) return; drawPurses(ctx, P, now); drawMealTray(ctx, P, now); if (typeof drawEntLogs === 'function') drawEntLogs(ctx, P, now); drawCookFx(ctx, P, now); if (typeof drawFurnFire === 'function') drawFurnFire(ctx, P, now);
   if (G.skTray && me.fl) for (const bi in G.skTray) { if (+bi !== me.fb || G.skTray[bi] !== 'rim') continue; if (Object.values(G.players).some(e => e.bdrink && e.bathing && e.fb === +bi)) continue; const b = BUILDINGS[+bi], raise = me.fl * (bldDims(b).H / floorsOf(b)) * HV, [x0, y0] = localToWorld(b, SAKE_RIM[0], SAKE_RIM[1]), q = P(x0, y0, 0), s2 = sakeTraySprite(sakeTrayYaw({ fb: +bi }), { bottle: true, cup: true, lvl: 0 }); ctx.save(); ctx.imageSmoothingEnabled = true; pblit(ctx, s2, q[0], q[1] - raise - 0.32 * HV); ctx.restore(); }   /* bandeja esperando a doméstica buscar */
   const keys = Object.keys(G.bedMess || {}); if (!keys.length) return; const myFl = me.fl || 0, myB = myFl ? me.fb : bldAt(me.x, me.y);
   for (const k of keys) { const bd = BEDS[+k]; if (!bd || bd.bi !== myB || (bd.fl || 0) !== myFl) continue; const b = BUILDINGS[bd.bi], raise = myFl * (bldDims(b).H / floorsOf(b)) * HV;
@@ -779,3 +786,62 @@ function staffFrame(now) {
     if (ph > 0.3 && ph < 0.36 && G.view && Math.random() < 0.35) { const p = iso(e.rx, e.ry); spawnPart('smoke', p.sx + 3, p.sy - 34 - (e.fl ? e.fl * (bldDims(BUILDINGS[e.fb]).H / floorsOf(BUILDINGS[e.fb])) * HV : 0), { color: '#d8d4cc' }); }
     if (now > (e._lookT || 0)) { e._lookT = now + 4500 + Math.random() * 3000; e.dir = ((e.dir | 0) + (Math.random() < 0.5 ? 1 : 7)) % 8; } }   /* contempla os arredores */
 }
+
+// ---------- refeição na mesa baixa da suíte: por pedido, com o que tem no baú ----------
+const MEAL_TABLE = [3.0, 2.5], MEAL_KNEEL = [3.0, 3.55], MEAL_MAX = 6, MEAL_FOODS = ['bread', 'cookedmeat', 'stew', 'pie', 'tea', 'apple', 'berries', 'venison', 'pork'];
+function mealSuite(H) { return H && H.fl && H.b && H.b.deco === 'machiya' && H.fl === floorsOf(H.b) - 1; }
+function mealOptions(rec) {   /* o que dá para servir: pronto no baú ou cozinhado com os ingredientes */
+  const ch = (rec && rec.chest) || {}, out = [];
+  for (const k of MEAL_FOODS) { const ready = ch[k] | 0; let cook = 0; const rc = Object.values(RECIPES).find(x => x.out === k); if (rc) { cook = 99; for (const i in rc.need) cook = Math.min(cook, Math.floor((ch[i] | 0) / rc.need[i])); }
+    if (ready + cook > 0) out.push([k, LOOT[k] ? LOOT[k].name : k, ready, cook]); }
+  return out; }
+function mealOrder(p, r, n, H, list) {
+  const rec = S.estate.r[r.home]; if (!rec) return; const ch = rec.chest = rec.chest || {};
+  if (!mealSuite(H)) { tell(p, 'A refeição é servida na mesa baixa da suíte.'); return; }
+  if (S.fdTray && S.fdTray[H.bi]) { tell(p, 'Já tem uma bandeja na mesa.'); return; }
+  const items = []; let cooked = 0;
+  for (const [k0, q0] of list) { const k = String(k0); let q = Math.max(0, Math.min(MEAL_MAX - items.length, q0 | 0)); if (!MEAL_FOODS.includes(k)) continue;
+    while (q > 0) { if ((ch[k] | 0) > 0) { ch[k]--; if (!ch[k]) delete ch[k]; items.push(k); q--; continue; }
+      const rc = Object.values(RECIPES).find(x => x.out === k); if (!rc || Object.keys(rc.need).some(i => (ch[i] | 0) < rc.need[i])) break;
+      for (const i in rc.need) { ch[i] -= rc.need[i]; if (!ch[i]) delete ch[i]; } items.push(k); cooked++; q--; } }
+  if (!items.length) { tell(p, 'Não tem ingredientes para isso no baú.'); return; }
+  estateSave(); r.meal = { items, cooked, by: p.id }; n.goal = null; n.task = null; empSay(n, cooked ? 'Vou preparar e já sirvo.' : 'Já trago a bandeja.');
+  const b = H.b, K = sakeKitchen(H), [kx, ky] = localToWorld(b, MEAL_KNEEL[0], MEAL_KNEEL[1]), [tx, ty] = localToWorld(b, MEAL_TABLE[0], MEAL_TABLE[1]);
+  n.goal = Object.assign(empTgt(H, K.x, K.y), { act: () => { empAnim(n, cooked ? 'cookfull' : 'gather', cooked ? 2600 + cooked * 600 : 900, K.fx, K.fy); n.task = { until: now_() + (cooked ? 2700 + cooked * 600 : 1000), done: () => { skCarry(n, 1);   /* cozinha (se precisar) e pega a bandeja */
+    n.goal = Object.assign(empTgt(H, kx, ky), { act: () => { n.dir = dirFromVecS(tx - n.x, ty - n.y); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'kneelput', ms: 1600, tx, ty }); n.task = { until: now_() + 1500, done: () => { skCarry(n, 0); fdTraySet(H.bi, { items: r.meal.items.slice(), n0: r.meal.items.length, fl: H.fl }); r.meal = null; empSay(n, 'A mesa está servida.'); } }; } }); } }; } });
+}
+function fdTraySet(bi, T) { S.fdTray = S.fdTray || {}; if (T) S.fdTray[bi] = T; else delete S.fdTray[bi]; Net.toAll({ t: 'fdtray', bi, T: T || null }); }
+function mealEat(p) {   /* F perto da mesa: come uma porção da bandeja */
+  const T = S.fdTray && S.fdTray[p.fb]; if (!T || (p.fl || 0) !== T.fl || !T.items.length) return; const b = BUILDINGS[p.fb], [tx, ty] = localToWorld(b, MEAL_TABLE[0], MEAL_TABLE[1]); if (dist(p.x, p.y, tx, ty) > 1.9) return;
+  const k = T.items.shift(); p.inv[k] = (p.inv[k] || 0) + 1; p.useT = 0; useItem(p, k); if (p.inv[k] && p.inv[k] > 0 && k) { } tell(p, 'Você come ' + (LOOT[k] ? LOOT[k].name.toLowerCase() : k) + ' da bandeja.' + (T.items.length ? ' Restam ' + T.items.length + '.' : ' A bandeja está vazia.'));
+  near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'eat', ms: 1400 }); fdTraySet(p.fb, T); }
+function mealReturnTick(n, r, H) {   /* bandeja vazia: a doméstica recolhe e leva para a bancada */
+  const T = S.fdTray && S.fdTray[H.bi]; if (!T || T.items.length || !mealSuite(H)) return false;
+  const b = H.b, K = sakeKitchen(H), [kx, ky] = localToWorld(b, MEAL_KNEEL[0], MEAL_KNEEL[1]), [tx, ty] = localToWorld(b, MEAL_TABLE[0], MEAL_TABLE[1]);
+  n.goal = Object.assign(empTgt(H, kx, ky), { act: () => { const T2 = S.fdTray && S.fdTray[H.bi]; if (!T2 || T2.items.length) return; n.dir = dirFromVecS(tx - n.x, ty - n.y); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'kneelput', ms: 1600, tx, ty }); n.task = { until: now_() + 1500, done: () => { fdTraySet(H.bi, null); skCarry(n, 1);
+    n.goal = Object.assign(empTgt(H, K.x, K.y), { act: () => { empAnim(n, 'gather', 900, K.fx, K.fy); n.task = { until: now_() + 1000, done: () => skCarry(n, 0) }; } }); } }; } });
+  empSay(n, 'Vou tirar a mesa.'); return true; }
+// cliente
+if (typeof G !== 'undefined') G.fdTray = G.fdTray || {};
+function mealNear() { const me = G.me; if (!me || !me.fl) return null; const T = G.fdTray[me.fb]; if (!T || !T.items.length || (me.fl || 0) !== T.fl) return null; const b = BUILDINGS[me.fb], [tx, ty] = localToWorld(b, MEAL_TABLE[0], MEAL_TABLE[1]); return Math.hypot(me.x - tx, me.y - ty) < 1.9 ? T : null; }
+const MEAL_COL = { bread: ['#d8a860', '#a8743a'], cookedmeat: ['#8a3a22', '#c86a3a'], stew: ['#9a5a2a', '#d89a4a'], pie: ['#c8803a', '#8a2a3a'], tea: ['#b89a3a', '#e8d070'], apple: ['#c82a1e', '#6aa83a'], berries: ['#6a1a4a', '#c83a6a'], venison: ['#7a2a1a', '#b85a3a'], pork: ['#c87a6a', '#e8b0a0'] };
+function drawMealTray(ctx, P, now) {
+  const me = G.me; if (!me || !me.fl) return; const T = G.fdTray[me.fb]; if (!T || T.fl !== me.fl) return;
+  const b = BUILDINGS[me.fb], raise = me.fl * (bldDims(b).H / floorsOf(b)) * HV, [x0, y0] = localToWorld(b, MEAL_TABLE[0], MEAL_TABLE[1]), q = P(x0, y0, 0), x = q[0], y = q[1] - raise - 0.34 * HV;
+  ctx.save(); ctx.translate(x, y); ctx.scale(1.4, 1.4); ctx.translate(-x, -y); ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.beginPath(); ctx.ellipse(x, y + 1.5, 13, 5.5, 0, 0, 7); ctx.fill();
+  ctx.fillStyle = '#3a2214'; ctx.beginPath(); ctx.moveTo(x - 13, y); ctx.lineTo(x, y - 6); ctx.lineTo(x + 13, y); ctx.lineTo(x, y + 6); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#5a3620'; ctx.beginPath(); ctx.moveTo(x - 11.5, y); ctx.lineTo(x, y - 5); ctx.lineTo(x + 11.5, y); ctx.lineTo(x, y + 5); ctx.closePath(); ctx.fill();   /* bandeja de madeira escura */
+  const n0 = T.n0 || T.items.length, eaten = n0 - T.items.length;
+  for (let i = 0; i < n0; i++) { const cols = 3, cx = (i % cols) - 1, cy = Math.floor(i / cols) - (n0 > 3 ? 0.5 : 0), bx = x + cx * 6 - cy * 3, by = y + cx * 1.6 + cy * 3.2 - 1, full = i >= eaten, k = full ? T.items[i - eaten] : null, C = k && MEAL_COL[k] || ['#ddd', '#bbb'];
+    ctx.fillStyle = '#e8e2d4'; ctx.beginPath(); ctx.ellipse(bx, by, 2.6, 1.3, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#b8b0a0'; ctx.beginPath(); ctx.ellipse(bx, by + 0.6, 2.6, 1.1, 0, 0, Math.PI); ctx.fill();   /* tigela */
+    if (full) { ctx.fillStyle = C[0]; ctx.beginPath(); ctx.ellipse(bx, by - 0.3, 2.0, 0.9, 0, 0, 7); ctx.fill(); ctx.fillStyle = C[1]; ctx.beginPath(); ctx.arc(bx - 0.5, by - 0.6, 0.6, 0, 7); ctx.fill(); if ((k === 'stew' || k === 'tea') && Math.random() < 0.05 && G.view) spawnPart('smoke', bx - G.view.ox, by - 3 - G.view.oy, { color: 'rgba(240,240,240,0.5)' }); }
+    else { ctx.fillStyle = 'rgba(120,90,60,.35)'; ctx.beginPath(); ctx.ellipse(bx, by - 0.2, 1.6, 0.6, 0, 0, 7); ctx.fill(); } }   /* vazia: só restos */
+  ctx.fillStyle = '#2a1a10'; ctx.fillRect(x + 7, y - 3, 4, 0.6); ctx.fillRect(x + 7.4, y - 2, 4, 0.6);   /* hashi */
+  ctx.restore(); }
+function empMealMenu(L) {
+  const cart = {}; const total = () => Object.values(cart).reduce((a, b) => a + b, 0);
+  const render = () => { const h = '<div style="padding:8px 14px 0;font-size:14px;opacity:.85">Escolha até ' + MEAL_MAX + ' porções. Ela usa o que está pronto no baú e cozinha o resto com os ingredientes, depois serve na mesa baixa. Quem estiver perto come com <b>F</b>.</div>' + (L.length ? L.map(([k, nm, ready, cook]) => '<div style="display:flex;align-items:center;gap:8px;padding:2px 14px"><span style="flex:1">' + nm + ' <small style="opacity:.7">' + (ready ? ready + ' pronto' + (ready > 1 ? 's' : '') : '') + (ready && cook ? ' · ' : '') + (cook ? 'dá para cozinhar ' + cook : '') + '</small></span><button class="est-btn ghost" data-m="' + k + '">−</button><b style="min-width:20px;text-align:center">' + (cart[k] || 0) + '</b><button class="est-btn ghost" data-p="' + k + '" data-max="' + (ready + cook) + '">+</button></div>').join('') : '<div style="padding:10px 14px;opacity:.8">O baú não tem comida nem ingredientes. Mande ela fazer compras ou buscar comida.</div>') + '<div style="padding:10px 14px"><button class="est-btn" data-go' + (total() ? '' : ' disabled') + '>Servir ' + total() + ' porç' + (total() === 1 ? 'ão' : 'ões') + '</button></div>';
+    const d = staffPanel('empmeal', 'Refeição na mesa baixa', h);
+    d.querySelectorAll('[data-p]').forEach(b => b.onclick = () => { const k = b.dataset.p; if ((cart[k] || 0) < +b.dataset.max && total() < MEAL_MAX) { cart[k] = (cart[k] || 0) + 1; render(); } });
+    d.querySelectorAll('[data-m]').forEach(b => b.onclick = () => { const k = b.dataset.m; if (cart[k]) { cart[k]--; render(); } });
+    const go = d.querySelector('[data-go]'); if (go) go.onclick = () => { d.remove(); Net.send({ t: 'emp', a: 'order', o: 'meal', list: Object.entries(cart).filter(([, q]) => q > 0) }); }; };
+  render(); }
