@@ -5,7 +5,7 @@
 //  Os painéis antigos (inventário, árvore, jornada, mapa, negócios) são reaproveitados: entram na aba.
 // ============================================================
 const GM = { tab: 'char', on: false, built: false, biz: 'hub', notes: 'all', wv: null, wvTab: 'people', wvSel: null, wvT: 0, follow: null };
-const GM_TABS = [['char', 'Personagem', '🛡'], ['skills', 'Habilidades', '✦'], ['prog', 'Progresso', '📈'], ['journal', 'Jornada', '📜'], ['map', 'Mapa', '🗺'], ['biz', 'Negócios', '🏛'], ['craft', 'Receitas e ofícios', '⚒'], ['notes', 'Avisos', '✉'], ['opts', 'Configurações', '⚙'], ['weaver', 'Tecelão', '👁']];   /* a aba Configurações fica escondida: o conteúdo vai para o menu do Esc */
+const GM_TABS = [['char', 'Personagem', '🛡'], ['skills', 'Habilidades', '✦'], ['prog', 'Progresso', '📈'], ['journal', 'Jornada', '📜'], ['map', 'Mapa', '🗺'], ['biz', 'Negócios', '🏛'], ['craft', 'Receitas e ofícios', '⚒'], ['houses', 'Casas', '⚜'], ['notes', 'Avisos', '✉'], ['opts', 'Configurações', '⚙'], ['weaver', 'Tecelão', '👁']];   /* a aba Configurações fica escondida: o conteúdo vai para o menu do Esc */
 const GM_KEYS = { i: 'char', k: 'skills', j: 'journal', m: 'map', n: 'biz', l: 'biz' };
 const gmEsc = s => String(s == null ? '' : s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const gmIsDev = () => !!G.dev;   // aba do Tecelão só no modo Tecelão (vocação normal joga como todo mundo)
@@ -90,6 +90,7 @@ function gmShow(tab) {
   else if (tab === 'biz') gmBiz();
   else if (tab === 'craft') { gmPane('craft').innerHTML = gmCraftHtml(); gmPane('craft').querySelectorAll('[data-carve]').forEach(b => b.onclick = () => { Net.send({ t: 'carve', k: b.dataset.carve }); setTimeout(() => GM.tab === 'craft' && gmShow('craft'), 2800); }); }
   else if (tab === 'notes') gmNotes();
+  else if (tab === 'houses') { if (typeof gmHouses === 'function') gmHouses(); }
   else if (tab === 'weaver') { gmWeaver(); Net.send({ t: 'wv', a: 'snap' }); }
   const b = $('gm-body'); if (b) b.scrollTop = 0;
 }

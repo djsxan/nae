@@ -1113,6 +1113,7 @@ window.addEventListener('keydown', e => {
   if (k === 'f' && !e.repeat && typeof leverNear === 'function' && leverNear()) { Net.send({ t: 'tub' }); return; }
   if (k === 'f' && !e.repeat && typeof ofuroNear === 'function' && ofuroNear()) { bathEnter(); return; }
 
+  if (k === 'f' && !e.repeat && typeof houseNear === 'function' && houseNear()) { Net.send({ t: 'house', a: 'open', id: houseNear().id }); return; }   /* casas nobres */
   if (k === 'f' && !e.repeat && typeof courtNear === 'function' && courtNear()) { Net.send({ t: 'court', a: 'open', id: courtNear().id }); return; }   /* corte do castelo */
   if (k === 'f' && !e.repeat && typeof entNear === 'function' && entNear()) { entMenu(entNear()); return; }   /* ordens para a guardiã */
   if (k === 'f' && !e.repeat && typeof entLogNear === 'function' && entLogNear()) { Net.send({ t: 'ent', a: 'log', id: entLogNear().id }); return; }   /* galho caído da guardiã: lenha */

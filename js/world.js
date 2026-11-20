@@ -88,6 +88,7 @@ function fbm(x, y, s) {
 function zoneOf(x, y) {
   const dx = x - CENTER, dy = y - CENTER;
   if (Math.max(Math.abs(dx - 0.5), Math.abs(dy - 0.5)) <= SAFE_R + 1.5) return Z.VILLAGE;
+  if (!TEST3D && dx > 0 && dx - 0.5 <= SAFE_R + 1.5 + EAST_EXT && Math.abs(dy - 0.5) <= SAFE_R + 1.5) return Z.VILLAGE;   /* bairro das Casas Nobres */
   const d = Math.hypot(dx, dy) + (vnoise(x / 12, y / 12, 55) - 0.5) * 10;
   if (d < 62) return Z.OUTSKIRTS;
   if (d < 82) return Z.FIELDS;
@@ -102,7 +103,11 @@ function zoneOf(x, y) {
 }
 
 // ---------- cidade de Nae (coordenadas relativas ao centro) ----------
-const CASTLE = { x0: C - 32, y0: C - 32, x1: C + 33, y1: C + 33 };   // muralha externa
+const CASTLE = { x0: C - 32, y0: C - 32, x1: C + 33, y1: C + 33 };   // muralha externa (o sorteio da cidade usa este contorno)
+const EAST_EXT = 16, CITY_X1 = CASTLE.x1 + EAST_EXT;   // a muralha leste avançou 16 casas: bairro das Casas Nobres
+const HOUSE_SEATS = [   /* sedes das casas rivais: casarões com jardim murado, de frente para a rua do bairro */
+  { id: 'valcarne', name: 'Casa Valcarne', y: -28 }, { id: 'draemor', name: 'Casa Draemor', y: -18 }, { id: 'moranthe', name: 'Casa Moranthe', y: -10 },
+  { id: 'thornvale', name: 'Casa Thornvale', y: 8 }, { id: 'solmire', name: 'Casa Solmire', y: 18 }];
 const KEEP = { x0: C - 13, y0: C - 30, x1: C + 11, y1: C - 3, by: C - 12, yx0: C - 11, yx1: C + 9 };   // castelo: corpo ao norte (até by) e pátio mais estreito ao sul (yx0..yx1)
 const KEEP_OLD = { x0: C - 9, y0: C - 22, x1: C + 10, y1: C - 3 };   // contorno antigo: só para o sorteio das casas continuar igual
 const inKeep = (x, y) => y >= KEEP.y0 && y <= KEEP.y1 && (y <= KEEP.by ? x >= KEEP.x0 && x <= KEEP.x1 : x >= KEEP.yx0 && x <= KEEP.yx1);       // castelo central
@@ -1128,6 +1133,27 @@ function generateWorld() {
   if (!TEST3D) BUILDINGS.push(   // pátio interno do castelo (no fim da lista: não muda o número dos prédios salvos)
     { x: C - 8, y: C - 9, ...BH('kstable', 4, 5, 2.4, 2.0, 'Estábulo Real', { floors: 1, door: 'E' }) },
     { x: C + 4, y: C - 9, ...BH('kguard', 4, 5, 3.0, 1.8, 'Casa da Guarda', { floors: 1, door: 'W', gen: { x: C + 6, y: C - 9, w: 4, h: 5, door: 'W' } }) });
+  if (!TEST3D) { /* ---- bairro das Casas Nobres: a muralha leste avança EAST_EXT casas ---- */
+    const X0 = x1, X1 = CITY_X1, RGe = 7, gy0 = C - 1, gy1 = C + 2;
+    for (let y = y0 - RGe - 1; y <= y1 + RGe + 1; y++) for (let x = X0 - 1; x <= X1 + RGe + 2; x++) { if (!inb(x, y)) continue; const i = idx(x, y); if (bld[i] >= 0) continue;
+      const inside = x >= X0 && x <= X1 && y >= y0 && y <= y1, ring = (x >= X1 + RGe - 1 && x <= X1 + RGe) || ((y === y0 - RGe || y === y0 - RGe + 1 || y === y1 + RGe || y === y1 + RGe - 1) && x > X0), moat = !inside && ((x >= X1 + 3 && x <= X1 + 4 && y >= y0 - 4 && y <= y1 + 4) || ((y >= y0 - 4 && y <= y0 - 3) || (y >= y1 + 3 && y <= y1 + 4)) && x >= X0 && x <= X1 + 4);
+      if (x < X0 && !(obj[i] === O.WALL || obj[i] === O.PART || obj[i] === O.TOWER)) continue;
+      obj[i] = O.NONE; rdir[i] = 0; wdir[i] = 0; fl1[i] = 0; tvar[i] = 0;
+      if (inside) { ground[i] = vnoise(x / 5, y / 5, 611) > 0.72 ? T.GRASS : T.COBBLE; zone[i] = Z.VILLAGE; }
+      else if (moat) ground[i] = T.WATER; else if (ring) { ground[i] = T.COBBLE; rdir[i] = x >= X1 + RGe - 1 ? 2 : 1; } else ground[i] = T.GRASS; }
+    for (let y = y0 + 2; y <= y1 - 2; y++) for (let x = X0 - 1; x <= X0; x++) { const i = idx(x, y); if (bld[i] < 0) { obj[i] = O.NONE; fl1[i] = 0; wdir[i] = 0; ground[i] = T.COBBLE; rdir[i] = 2; } }   /* a muralha velha vira rua */
+    for (let x = X0 - 1; x <= X1; x++) for (const y of [y0, y1]) { const i = idx(x, y); obj[i] = O.WALL; fl1[i] = 1; wdir[i] = y === y0 ? 4 : 3; ground[i] = T.FLOORSTONE; }
+    for (let y = y0; y <= y1; y++) { const i = idx(X1, y); if (y >= gy0 && y <= gy1) { obj[i] = O.GATE; fl1[i] = 0; ground[i] = T.FLOORSTONE; continue; } obj[i] = O.WALL; fl1[i] = 1; wdir[i] = 1; ground[i] = T.FLOORSTONE; }
+    { const gi = gates.length; gates.push({ x0: X1, x1: X1, y0: gy0, y: gy1, out: -1, kind: 'east', vert: 1 }); for (let y = gy0; y <= gy1; y++) gateId[idx(X1, y)] = gi; }   /* portão leste */
+    const tw = [[X1 - 1, y0, 1, -1], [X1 - 1, y1 - 1, 1, 1], [X1 - 1, gy0 - 2, 1, 0], [X1 - 1, gy1 + 1, 1, 0], [X1 - 1, C - 21, 1, 0], [X1 - 1, C + 12, 1, 0], [X1 - 1, C + 22, 1, 0], [X1 - 1, C - 11, 1, 0], [X0 + 7, y0, 0, -1], [X0 + 7, y1 - 1, 0, 1]];
+    for (const [tx, ty, sx, sy] of tw) { for (let y = ty; y <= ty + 1; y++) for (let x = tx; x <= tx + 1; x++) { const i = idx(x, y); obj[i] = O.PART; fl1[i] = 1; ground[i] = T.FLOORSTONE; } obj[idx(tx + 1, ty + 1)] = O.TOWER; tvar[idx(tx + 1, ty + 1)] = (ty === gy0 - 2 || ty === gy1 + 1) ? 3 : Math.floor(R(tx, ty, 2) * 3); toff[idx(tx + 1, ty + 1)] = (sx + 1) * 3 + (sy + 1); }
+    for (let x = X1 + 1; x <= X1 + RGe; x++) for (let y = C; y <= C + 1; y++) { const i = idx(x, y); ground[i] = ground[i] === T.WATER ? T.BRIDGE : T.COBBLE; rdir[i] = 1; obj[i] = O.NONE; }   /* estrada do portão até o anel */
+    for (let x = X0 + 1; x < X1; x++) for (let y = C; y <= C + 1; y++) { const i = idx(x, y); ground[i] = T.FLOORSTONE; rdir[i] = 1; }   /* avenida das Casas: do portão até a rua da muralha velha */
+    for (let y = y0 + 2; y <= y1 - 2; y++) for (let x = X0 + 1; x <= X0 + 2; x++) { const i = idx(x, y); ground[i] = T.COBBLE; rdir[i] = 2; }   /* rua do bairro, ao longo das casas */
+    for (let y = C - 3; y <= C + 4; y++) for (let x = X0 + 3; x <= X1 - 2; x++) { const i = idx(x, y); if (rdir[i]) continue; ground[i] = (x + y) % 3 ? T.FLOORSTONE : T.STONE; }   /* praça das Casas */
+    for (const S1 of HOUSE_SEATS) BUILDINGS.push({ x: X0 + 6, y: C + S1.y, ...BH('manor', 8, 7, 5.2, 3.2, S1.name, { door: 'W', seat: S1.id, v: 1 }) });   /* casarões das casas (no fim da lista) */
+    for (let y = y0; y <= y1; y++) for (let x = X0; x <= X1; x++) used[idx(x, y)] = 1;
+  }
   { const S0 = { 'Empório do Borin': { 0: 'ladder' }, 'Pergaminhos & Mapas': { 0: 'spiral' }, 'Imobiliária Chave de Bronze': { 0: 'ext' }, 'Casa Morvane': { 0: 'spiral', 1: 'ladder' }, 'Elixires da Lua Prateada': { 0: 'spiral' } };   // escadas: o resto usa a de parede
     for (const b of BUILDINGS) { if (S0[b.name]) b.stairs = S0[b.name]; else if (b.kind === 'manor') b.stairs = { 1: 'ladder' }; }
     const CEL = { 'Ronco do Dragão': [2, 0], 'Banco de Nae': [3, 1] }; for (const b of BUILDINGS) if (CEL[b.name]) b.cellar = CEL[b.name]; }   // porões: adega atrás do balcão da taverna, cofre embaixo do banco   // casarões: o sótão é pelo alçapão
@@ -1483,7 +1509,7 @@ const PROPS = [], PROPS_BY = {};
     let P = null;
     if (b.kind === 'house' || b.kind === 'dojo') n++;   // conta o escritório (e o prédio do dojô, que era a Casa 12) também: os números das outras casas não mudam
     if (b.kind === 'house' && !b.office) { P = { ...base, id: 'h' + bi, kind: 'house', name: 'Casa ' + n, rent: (4 + Math.round(area * 0.3) + (fl - 1) * 4) * 2 }; }   // casas 2x mais caras: a pousada é o começo
-    else if (b.kind === 'manor') P = { ...base, id: 'm' + bi, kind: 'house', manor: true, name: b.name || 'Casarão', rent: Math.round((4 + Math.round(area * 0.3) + (fl - 1) * 4) * 2 * 1.4) };   // casarões do bairro nobre: aluguel e venda
+    else if (b.kind === 'manor' && !b.seat) P = { ...base, id: 'm' + bi, kind: 'house', manor: true, name: b.name || 'Casarão', rent: Math.round((4 + Math.round(area * 0.3) + (fl - 1) * 4) * 2 * 1.4) };   // casarões do bairro nobre: aluguel e venda
     else if (b.kind === 'tavern') P = { ...base, id: 's' + bi, kind: 'workshop', wk: 'tavern', name: b.name, npcOwner: 'Brom', rent: 20 + Math.round(area * 0.8) };
     else if (b.kind === 'dojo') P = { ...base, id: 'w' + bi, kind: 'workshop', wk: 'dojo', name: b.name, npcOwner: 'Mestre Tetsuo', rent: 16 + Math.round(area * 0.7) };   // o dojô (os aluguéis dos apartamentos entram na etapa 4)
     else if (b.kind === 'smith') P = { ...base, id: 'w' + bi, kind: 'workshop', wk: 'forge', name: b.name, npcOwner: 'Hrodgar', rent: 16 + Math.round(area * 0.7) };

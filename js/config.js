@@ -7,8 +7,8 @@ const GAME_NAME = 'Nae';
 const CASTLE_OPEN = true;   /* temporário: as sentinelas deixam qualquer um entrar no castelo para conferir os andares */
 const CASTLE_INT = true;   /* interior novo do castelo */
 const HERALD = { house: 'Aurenfell', name: 'Casa Aurenfell', field: '#9a2a1c', field2: '#6e1d14', metal: '#f1cf6a', charge: 'tower', motto: 'A Luz Não se Curva' };
-const VERSION = 'v1.96.0';
-const VERSION_NAME = 'Nae · A Corte';
+const VERSION = 'v1.97.0';
+const VERSION_NAME = 'Nae · Casas Nobres';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
