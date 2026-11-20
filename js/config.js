@@ -3,8 +3,8 @@
 //  Mexa aqui para balancear o jogo.
 // ============================================================
 const GAME_NAME = 'Nae';
-const VERSION = 'v1.89.0';
-const VERSION_NAME = 'Nae · Bosque Vivo';
+const VERSION = 'v1.90.0';
+const VERSION_NAME = 'Nae · Vento e Luz';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -390,9 +390,9 @@ const TREE = {
     { name: 'Luz', icon: '☀', el: 'holy', base: 'faith', nodes: [
       { id: 'w_grace', name: 'Graça', max: 3, eff: { holy: 0.1 }, desc: '+10% de cura por ponto.' },
       { id: 'w_well', name: 'Poço de Mana', max: 3, eff: { mp: 0.06 }, desc: '+6% de mana máxima por ponto.' },
-      { id: 'w_handlight', name: 'Mãos de Luz', soon: 1, max: 0, desc: 'A Fé cura um aliado à distância, mais forte, e levanta quem está de joelhos.' },
-      { id: 'w_prayer', name: 'Prece Coletiva', soon: 1, max: 0, desc: 'A cura alcança todos os aliados em volta.' },
-      { id: 'w_restore', name: 'Restauração', soon: 1, max: 0, desc: 'Devolve um membro perdido a um aliado ao seu lado.' }] },
+      { id: 'w_handlight', name: 'Mão de Luz', evo: 1, need: 25, max: 0, mp: 12, cd: 8000, desc: 'Um raio de luz desce do céu onde está o mouse (até 7 casas): cega e atordoa os bichos ali por 2,5 s, cura 20% da vida de um aliado e põe de pé quem está de joelhos.' },
+      { id: 'w_prayer', name: 'Poço de Luz', evo: 1, need: 45, max: 0, mp: 20, cd: 25000, desc: 'Um círculo de luz dourada no chão por 10 s: quem está dentro (3 casas) recupera 3,5% da vida por segundo.' },
+      { id: 'w_restore', name: 'Escudo de Prece', evo: 1, need: 70, max: 0, mp: 18, cd: 30000, desc: 'Uma oração: você e os aliados em 4 casas ganham por 12 s um escudo de luz que absorve dano igual a 25% da vida.' }] },
     { name: 'Água', icon: '💧', el: 'water', base: 'spring', nodes: [
       { id: 'w_medit', name: 'Meditação', max: 3, eff: { mregen: 0.15 }, desc: '+15% de recuperação de mana por ponto.' },
       { id: 'w_serene', name: 'Bênção Serena', max: 3, eff: { regen: 0.12 }, desc: '+12% de recuperação de vida por ponto.' },
@@ -414,9 +414,9 @@ const TREE = {
     { name: 'Ar', icon: '🌬', el: 'wind', base: 'windstep', nodes: [
       { id: 'w_feather', name: 'Pés de Pluma', max: 3, eff: { speed: 0.04 }, desc: 'Anda 4% mais rápido por ponto.' },
       { id: 'w_eye', name: 'Olho do Vento', max: 3, eff: { crit: 0.02 }, desc: '+2% de chance de crítico por ponto.' },
-      { id: 'w_gust', name: 'Rajada', soon: 1, max: 0, desc: 'Um sopro forte que empurra os inimigos e os faz tropeçar.' },
-      { id: 'w_shield', name: 'Escudo de Vento', soon: 1, max: 0, desc: 'Um redemoinho em volta de você que desvia flechas.' },
-      { id: 'w_glide', name: 'Voo da Pluma', soon: 1, max: 0, desc: 'Salta alto e plana por cima de muros e rios.' }] },
+      { id: 'w_gust', name: 'Rajada', evo: 1, need: 25, max: 0, mp: 10, cd: 6000, desc: 'Um sopro forte em leque na direção do mouse (4 casas): empurra os inimigos para longe e derruba os menores por 1,5 s.' },
+      { id: 'w_shield', name: 'Escudo de Vento', evo: 1, need: 45, max: 0, mp: 14, cd: 20000, desc: 'Um redemoinho em volta de você por 8 s: desvia as flechas, você recebe 30% menos dano e quem ataca de perto é jogado para trás.' },
+      { id: 'w_glide', name: 'Voo da Pluma', evo: 1, need: 70, max: 0, mp: 16, cd: 12000, desc: 'Salta alto e plana até 6 casas na direção do mouse, por cima de muros, cercas e rios. Nada te acerta no ar.' }] },
   ],
 };
 const treePts = p => { let n = 0; for (const k in p.tree || {}) n += p.tree[k] | 0; return n; };

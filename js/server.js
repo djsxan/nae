@@ -738,10 +738,12 @@ function damagePlayer(p, raw, m, delay = 0, zone = null, exactPart = null) {
   if (buffOn(p, 'bless')) mult *= 0.9;
   if ((p._sapT || 0) > now_()) mult *= 0.85;   /* casca protetora da muda */
   mult *= Math.max(0.4, 1 - treeEff(p, 'armor')); if (buffOn(p, 'iron')) mult *= 0.6; if (buffOn(p, 'sanct')) mult *= 0.75;
+  if ((p.windSh || 0) > now_()) { if (m && m.cls === 'archer' && S.players[m.id]) { near(p.x, p.y, { t: 'evofx', id: p.id, x: p.x, y: p.y, k: 'deflect' }); return; } mult *= 0.7; if (m && S.monsters[m.id] && dist(m.x, m.y, p.x, p.y) < 2.2 && !(MON[m.type] && MON[m.type].big)) knockMon(m, p, now_()); }   /* Escudo de Vento: flechas desviam, menos dano, quem bate é jogado longe */
   useGain(p, 'vigor', 0.5);
   if (p.body && PART_STATE(p.body.armB) >= 2) mult = Math.min(1, mult * 1.25);
   const part = exactPart || (zone ? pick(STRIKE_PART[zone]) : pickPart(m)), headK = part === 'head' ? 1.25 : 1;
-  const dmg = Math.max(1, Math.round(raw * mult * headK));
+  let dmg = Math.max(1, Math.round(raw * mult * headK));
+  if ((p.prayShield || 0) > 0 && (p.prayUntil || 0) > now_()) { const ab = Math.min(p.prayShield, dmg); p.prayShield -= ab; dmg -= ab; if (dmg <= 0) { sfx(p.x, p.y, 'escudo', '#f0d878', delay); near(p.x, p.y, { t: 'evofx', id: p.id, x: p.x, y: p.y, k: 'pshit' }); return; } }   /* Escudo de Prece absorve o golpe */
   woundPart(p, part, dmg);
   p.hp -= dmg;
   p.lastCombat = now_();
@@ -900,6 +902,31 @@ function flameTick(now) {
       sendStat(p); }
   }
 }
+// ---------- evoluções do Ar e da Luz (liberadas pela força do elemento; trocam a magia base na tecla) ----------
+function evoFx(p, m) { near(p.x, p.y, Object.assign({ t: 'evofx', id: p.id, x: p.x, y: p.y }, m), VIEW_RADIUS + 4); }
+function mageEvo(p, nd, msg, now) {
+  const a = isFinite(+msg.a) ? +msg.a : (p.fa || 0), shout = { s: nd.name + '!' }, fl = p.fl || 0;
+  if (nd.id === 'w_gust') { const R = 4 + useBonus(p, 'el_wind') * 3; let n = 0;   /* Rajada: leque que empurra e derruba */
+    for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || (m.alt || 0) > 1) continue; const dx = m.x - p.x, dy = m.y - p.y, d = Math.hypot(dx, dy); if (d > R || d < 0.01 || Math.abs(angDiff(Math.atan2(dy, dx), a)) > 0.62) continue;
+      const big = MON[m.type] && MON[m.type].big, push = (big ? 0.8 : 2.6) * (1 - d / R * 0.5), pa = Math.atan2(dy, dx); for (let s = 0; s < 12; s++) { const nx = m.x + Math.cos(pa) * push / 12, ny = m.y + Math.sin(pa) * push / 12; if (!monStand(nx, ny, m)) break; m.x = nx; m.y = ny; }
+      if (!big) knockMon(m, p, now); hitMonster(p, m, 0.4, 150); n++; }
+    anim('p', p, 'castup', p.x + Math.cos(a), p.y + Math.sin(a), shout); evoFx(p, { k: 'gust', a, r: R }); useGain(p, 'el_wind', 2 + Math.min(3, n)); return true; }
+  if (nd.id === 'w_shield') { p.windSh = now + 8000; anim('p', p, 'castup', p.x, p.y, shout); evoFx(p, { k: 'wshield', ms: 8000 }); useGain(p, 'el_wind', 2); return true; }
+  if (nd.id === 'w_glide') { p.dodgeUntil = now + 1150; p.dodgeAllow = now + 1500; p.parry = null; if (p.atk && !p.atk.done) p.atk = null; near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'glide', ms: 1100 }); evoFx(p, { k: 'glide', a, ms: 1100 }); useGain(p, 'el_wind', 2); if (p.burnUntil > now) extinguish(p, 'O vento do voo apagou o fogo da sua roupa.'); return true; }
+  if (nd.id === 'w_handlight') { let tx = +msg.tx, ty = +msg.ty; if (!isFinite(tx) || !isFinite(ty) || dist(p.x, p.y, tx, ty) > 7.5) { tx = p.x + Math.cos(a) * 4; ty = p.y + Math.sin(a) * 4; }   /* Mão de Luz: raio do céu */
+    let ally = null, bd = 1.8; for (const q of Object.values(S.players)) { if (q === p || (q.fl || 0) !== fl) continue; const d = dist(q.x, q.y, tx, ty); if (d < bd) { bd = d; ally = q; } }
+    if (ally) { tx = ally.x; ty = ally.y; if (ally.downed) revivePlayer(ally, 0.3, p.name); else { const h = Math.round(ally.maxHp * 0.2 * (1 + treeEff(p, 'holy') + useBonus(p, 'el_holy'))); ally.hp = Math.min(ally.maxHp, ally.hp + h); sfx(ally.x, ally.y, '+' + h, '#f0d878', 150); sendStat(ally); } tell(ally, p.name + ' tocou você com a Mão de Luz.'); }
+    for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || dist(m.x, m.y, tx, ty) > 2.2) continue; m.stunUntil = Math.max(m.stunUntil || 0, now + 2500); m.atk = null; m.nextAtk = Math.max(m.nextAtk || 0, now + 2600); m.blindUntil = now + 2500; near(m.x, m.y, { t: 'knock', k: 'm', id: m.id, ax: tx, ay: ty - 0.01, ms: 600 }); }
+    anim('p', p, 'cast', tx, ty, shout); evoFx(p, { k: 'hand', tx, ty }); useGain(p, 'el_holy', 2); return true; }
+  if (nd.id === 'w_prayer') { S.lightWells = (S.lightWells || []).filter(w => w.until > now); S.lightWells.push({ x: p.x, y: p.y, fl, until: now + 10000, by: p.id, k: 1 + treeEff(p, 'holy') + useBonus(p, 'el_holy') }); anim('p', p, 'castup', p.x, p.y, shout); evoFx(p, { k: 'well', ms: 10000 }); useGain(p, 'el_holy', 2); return true; }
+  if (nd.id === 'w_restore') { for (const q of Object.values(S.players)) { if (q.downed || (q.fl || 0) !== fl || dist(q.x, q.y, p.x, p.y) > 4) continue; q.prayShield = Math.round(q.maxHp * 0.25 * (1 + useBonus(p, 'el_holy'))); q.prayUntil = now + 12000; evoFx(q, { k: 'pshield', ms: 12000 }); if (q !== p) tell(q, p.name + ' rezou por você: um escudo de luz absorve dano por 12 s.'); }
+    anim('p', p, 'heal', p.x, p.y, shout); useGain(p, 'el_holy', 2); return true; }
+  return false;
+}
+function lightWellTick(now) {   /* Poço de Luz: cura quem está dentro, a cada segundo */
+  const L = S.lightWells; if (!L || !L.length || now - (S.lwT || 0) < 1000) return; S.lwT = now;
+  for (const w of L) { if (w.until < now) continue; for (const q of Object.values(S.players)) { if (q.downed || (q.fl || 0) !== w.fl || dist(q.x, q.y, w.x, w.y) > 3 || q.hp >= q.maxHp) continue; const h = Math.max(1, Math.round(q.maxHp * 0.035 * w.k)); q.hp = Math.min(q.maxHp, q.hp + h); sfx(q.x, q.y, '+' + h, '#f0d878', 0); sendStat(q); } }
+  S.lightWells = L.filter(w => w.until > now); }
 function mageSpell(p, sk, msg, now) {
   const shout = { s: sk.name + '!' };
   if (sk.id === 'ember') {
@@ -1173,7 +1200,7 @@ function sapTick(now) {   /* a cada 2 s: bônus para quem está perto da muda */
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(m.x, m.y, s.x, s.y) > R + 1.5) continue; m.calmUntil = now + 2600; m.aggro = null; m.atk = null; m.flee = null; } }
 }
 function mageTick(now) {   /* brasa (animais recuam), flores (curam e acalmam) */
-  bathTick(now); flameTick(now); autoTick(now); meditTick(now); sapTick(now); if (typeof entTick === 'function') entTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
+  bathTick(now); flameTick(now); autoTick(now); meditTick(now); sapTick(now); lightWellTick(now); if (typeof entTick === 'function') entTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
   for (const p of Object.values(S.players)) {
     if (p.cls !== 'mage' || !buffOn(p, 'ember') || p.downed) continue;
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(p.x, p.y, m.x, m.y) > 3.5) continue; m.flee = { from: p.id, until: now + 1800 }; if (m.aggro === p.id) m.aggro = null; m.atk = null; }
@@ -2594,8 +2621,8 @@ function useGain(p, k, amt) {
   if (l1 > l0) { if (k === 'vigor') { const r = p.hp / Math.max(1, p.maxHp); p.maxHp = maxHpOf(p); if (!p.downed) p.hp = Math.max(1, Math.round(p.maxHp * r)); } if (l1 % 5 === 0) Net.toOne(p.id, { t: 'usel', k, l: l1 }); Net.toOne(p.id, { t: 'chat', name: '', text: '📈 ' + USE[k].name + ' subiu para ' + l1 + ' (+' + (useBonus(p, k) * 100).toFixed(1).replace('.', ',') + '%)' }); }   /* progresso da perícia no chat, a cada ponto inteiro */
 }
 function treeSkill(p, b, msg) {
-  const br = TREE[p.cls] && TREE[p.cls][b], nd = br && br.nodes[msg.n === 5 ? 5 : 4]; if (!nd || !nd.skill) return; if (msg.n === 5) b = b + 10;   // segunda habilidade do ramo (recarga própria)
-  if (!treeHas(p, nd.id)) { tell(p, 'Aprenda ' + nd.name + ' na árvore de talentos (K).'); return; }
+  const nI = msg.n >= 2 && msg.n <= 5 ? msg.n | 0 : 4, br = TREE[p.cls] && TREE[p.cls][b], nd = br && br.nodes[nI]; if (!nd || !(nd.skill || nd.evo)) return; if (nI === 5) b = b + 10; else if (nd.evo) b = b + 20 + nI * 10;   // segunda habilidade do ramo e as evoluções do mago (recarga própria)
+  if (nd.evo ? !(p.cls === 'mage' && elemStrength(p, br.el) >= nd.need) : !treeHas(p, nd.id)) { tell(p, nd.evo ? nd.name + ': precisa de força ' + nd.need + ' em ' + br.name + '.' : 'Aprenda ' + nd.name + ' na árvore de talentos (K).'); return; }
   const now = now_(); p.tcd = p.tcd || {};
   if (p.downed || p.carrying || p.lifted || p.grabbed || now < (p.stunUntil || 0) || now < (p.knockUntil || 0)) return;
   if (now < (p.tcd[b] || 0)) { tell(p, nd.name + ': recarregando (' + Math.ceil((p.tcd[b] - now) / 1000) + 's).'); return; }
@@ -2604,6 +2631,7 @@ function treeSkill(p, b, msg) {
   const sameLvl = q => Math.abs((q.z || 0) - (p.z || 0)) < 0.5 && (q.alt || 0) < 1.2;
   const pickTgt = rng => { let q = S.monsters[msg.id]; if (q && sameLvl(q) && dist(p.x, p.y, q.x, q.y) <= rng) return q; let best = null, bs = 1e9; for (const o of Object.values(S.monsters)) { if (!sameLvl(o)) continue; const d = dist(p.x, p.y, o.x, o.y); if (d > rng) continue; const da = Math.abs(angDiff(Math.atan2(o.y - p.y, o.x - p.x), a)); if (da > 0.7) continue; const sc = d + da * 4; if (sc < bs) { bs = sc; best = o; } } return best; };
   switch (nd.id) {
+    case 'w_gust': case 'w_shield': case 'w_glide': case 'w_handlight': case 'w_prayer': case 'w_restore': if (!mageEvo(p, nd, msg, now)) return; break;   /* evoluções do Ar e da Luz */
     case 'charge': {
       let d = 0; for (let s = 0.25; s <= 4; s += 0.25) { if (!canStand(p.x + Math.cos(a) * s, p.y + Math.sin(a) * s, p.z || 0, 0.25)) break; d = s; }
       anim('p', p, 'dash', p.x + Math.cos(a), p.y + Math.sin(a), shout); Net.toOne(p.id, { t: 'push', a, d });

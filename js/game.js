@@ -391,6 +391,7 @@ function updateLocal(now, dt) {
   if (G.slide) v = G.slide.v;
   me.slide = !!G.slide; me.crouch = crouchKey && !G.slide;
   if (now < (G.stunUntil || 0) || now < (G.knockUntil || 0)) v = null;   // atordoado / guarda quebrada / derrubado
+  if (G.glide) { const kg = Math.min(1, (now - G.glide.t0) / G.glide.ms), e2 = kg * kg * (3 - 2 * kg); me.x = G.glide.x0 + (G.glide.x1 - G.glide.x0) * e2; me.y = G.glide.y0 + (G.glide.y1 - G.glide.y0) * e2; v = null; if (kg >= 1) G.glide = null; }   /* planando: por cima de muros e rios */
   if (G.dodge) { const kd = (now - G.dodge.t0) / (G.dodge.ms || DODGE.ms); if (kd >= 1 && !(G.dodge.dist && (G.dodge.k || 0) < 1)) G.dodge = null; else v = G.dodge.v; }   /* o Passo do Vento termina o trajeto mesmo com poucos quadros */
   if (G.push) { const kp = (now - G.push.t0) / 260; if (kp >= 1) G.push = null; else v = G.push.v; }
   const running = !!v && !kneel && !((me.lost || 0) & 24) && !(me.body && Math.max(PART_STATE(me.body.legL), PART_STATE(me.body.legR)) >= 3) && G.keys.has('shift') && !crouchKey && !G.tired && !me.downed && !me.carrying && G.stam > 0;
@@ -529,7 +530,7 @@ function slotTreeLoad() { try { G.slotTree = JSON.parse(localStorage.getItem(slo
   if (!G.slotTree && G.me) { const sv = loadChars()[charKey(G.me.name, G.me.cls)]; if (sv && Array.isArray(sv.slots)) G.slotTree = sv.slots; }   // reserva: espaços guardados junto com o herói
   G.slotTree = G.slotTree || [null, null, null, null]; G.tcdEnd = G.tcdEnd || [0, 0, 0, 0]; }
 function slotTreeSave() { try { localStorage.setItem(slotKey(), JSON.stringify(G.slotTree)); } catch (e) { } }
-function slotTreeNode(i) { const s = G.slotTree && G.slotTree[i]; if (!s || !G.me) return null; const br = TREE[G.me.cls] && TREE[G.me.cls][s.b], nd = br && br.nodes[s.n === 5 ? 5 : 4]; return nd && nd.id === s.id && G.me.tree && G.me.tree[nd.id] ? { ...s, nd, br } : null; }
+function slotTreeNode(i) { const s = G.slotTree && G.slotTree[i]; if (!s || !G.me) return null; const br = TREE[G.me.cls] && TREE[G.me.cls][s.b], nd = br && br.nodes[s.n >= 2 && s.n <= 5 ? s.n : 4]; return nd && nd.id === s.id && (nd.evo ? typeof mStr === 'function' && mStr(G.me, br.el) >= nd.need : G.me.tree && G.me.tree[nd.id]) ? { ...s, nd, br } : null; }   /* evolução do mago: vale enquanto tiver a força */
 function slotEquip(i, b, n, id) { if (!G.slotTree) slotTreeLoad(); for (let k = 0; k < 4; k++) if (G.slotTree[k] && G.slotTree[k].id === id) G.slotTree[k] = null; G.slotTree[i] = id ? { b, n, id } : null; slotTreeSave(); buildHotbar(); }
 function treeEquipMenu(nd, bi, i) {
   let d = $('tequip'); if (d) d.remove(); d = document.createElement('div'); d.id = 'tequip'; d.className = 'gpanel';
@@ -545,7 +546,9 @@ function treeEquipMenu(nd, bi, i) {
 function castSkill(i) {
   if (i === 0 && G.me && G.me.cls === 'mage' && typeof flameStart === 'function' && !slotTreeNode(0) && SKILLS.mage[0] && SKILLS.mage[0].id === 'ember') { flameStart(); setTimeout(() => flameStop(), 1200); return; }   /* clique no ícone: um jato curto */
   { const T = slotTreeNode(i); if (T) { const now = performance.now(); if (now < (G.tcdEnd[i] || 0) || G.me.downed) return; if (G.me.mp < T.nd.mp) { showToast('Mana insuficiente.'); return; }
-    Net.send({ t: 'tskill', b: T.b, n: T.n === 5 ? 5 : undefined, a: G.me.fa ?? 0, id: G.target || 0 }); G.tcdEnd[i] = now + T.nd.cd; const slot = $('slot' + i); slot.classList.remove('pressed'); void slot.offsetWidth; slot.classList.add('pressed'); return; } }
+    const me2 = G.me, mw = G.mouseW, aim = mw ? Math.atan2(mw.y - me2.y, mw.x - me2.x) : (me2.fa ?? 0);
+    if (T.nd.id === 'w_glide') { let D = 6, x1 = me2.x, y1 = me2.y; for (let d = 6; d >= 0.6; d -= 0.2) { const nx = me2.x + Math.cos(aim) * d, ny = me2.y + Math.sin(aim) * d; if (freeAt(nx, ny, me2.z)) { x1 = nx; y1 = ny; D = d; break; } } G.glide = { t0: now, x0: me2.x, y0: me2.y, x1, y1, ms: 1100 }; }   /* Voo da Pluma: pousa no ponto livre mais longe */
+    Net.send({ t: 'tskill', b: T.b, n: T.nd.evo ? T.n : (T.n === 5 ? 5 : undefined), a: T.nd.evo ? aim : (G.me.fa ?? 0), id: G.target || 0, tx: mw ? mw.x : undefined, ty: mw ? mw.y : undefined }); G.tcdEnd[i] = now + T.nd.cd; const slot = $('slot' + i); slot.classList.remove('pressed'); void slot.offsetWidth; slot.classList.add('pressed'); return; } }
   const me = G.me, sk = SKILLS[me.cls][i], now = performance.now();
   if (!sk || me.downed) return;
   if (now < G.cdEnd[i]) return;
@@ -2288,7 +2291,7 @@ function drawShopScene(ctx, now) {
   }
 }
 function drawBlockHud(ctx, now) {
-  drawTradeFx(ctx, now); drawShopScene(ctx, now); if (typeof drawFlameFx === 'function') drawFlameFx(ctx, now); if (typeof drawEntFx === 'function') drawEntFx(ctx, now); if (G.me) { const un = !!(G.me.shea || G.training || G.me.bathing || G.me.downed || G.me.medit); if (un !== G._unarmed) { G._unarmed = un; document.body.classList.toggle('unarmed', un); } } if (typeof staffFrame === 'function') staffFrame(now);
+  drawTradeFx(ctx, now); drawShopScene(ctx, now); if (typeof drawFlameFx === 'function') drawFlameFx(ctx, now); if (typeof drawEntFx === 'function') drawEntFx(ctx, now); if (typeof drawEvoFx === 'function') drawEvoFx(ctx, now); if (G.me) { const un = !!(G.me.shea || G.training || G.me.bathing || G.me.downed || G.me.medit); if (un !== G._unarmed) { G._unarmed = un; document.body.classList.toggle('unarmed', un); } } if (typeof staffFrame === 'function') staffFrame(now);
   if (G.tradeAt) { const tp = $('tradep'); if (!tp || tp.classList.contains('hidden')) { G.tradeAt = null; G.trade = null; } else if (dist(G.me.x, G.me.y, G.tradeAt.x, G.tradeAt.y) > 4) { tp.classList.add('hidden'); G.tradeAt = null; G.trade = null; } }   // longe do vendedor: fecha a troca
   const me = G.me; if (!me || !G.parrying) return; const ox = G.view.ox, oy = G.view.oy, P = iso(me.rx, me.ry), cx = P.sx + ox, cy = P.sy + oy - 26, f = me.fa ?? 0;
   const sh = me.cls === 'knight' && (me.shp ?? 100) > 0 && me.wpn !== 'halberd' && !me.shea;

@@ -495,6 +495,7 @@ function drawHeroEntity(ctx, e, sx, sy, now) {
     if (e !== G.me && e.anim && e.anim.W && e.anim.reach && now - e.anim.t0 < e.anim.W + 120) drawTelegraph(ctx, e, sx, sy, now);
     if (e.skin === 'weaver') drawWeaverAura(ctx, sx, sy, now);
     if (e.skin === 'weaver') sy -= 14 + Math.sin(now / 600) * 3;
+    if (typeof glideLift === 'function') { const gl = glideLift(e, now); if (gl) { softDab(ctx, sx, sy, 10, '#000000', 0.25); sy -= gl; } }   /* Voo da Pluma: no alto, a sombra fica no chão */
     const msy = sy; if (e.medit && typeof drawMeditAura === 'function') { drawMeditAura(ctx, e, sx, msy, now, 0); const lt = Math.min(1, Math.max(0, (now - e.medit.t0 - 2500) / 1800)), lev = { fire: 0, water: 0, earth: 8, wind: 26, holy: 4 }[e.medit.el] ?? 8; sy -= lt * (lev + Math.sin(now / 900) * (lev ? 1.6 : 0)); }   /* levita depois de uns segundos */
     pblit(ctx, s, sx, sy);
     if (e.medit && typeof drawMeditAura === 'function') drawMeditAura(ctx, e, sx, msy, now, 1); e._spr = s; e._sx = sx; e._sy = sy; e._drawT = now; if (s.spout) { e._spout = [sx - s.ax + s.spout[0], sy - s.ay + s.spout[1]]; e._spoutT = now; } if (s.tip) { e._tip = [sx - s.ax + s.tip[0] - G.view.ox, sy - s.ay + s.tip[1] - G.view.oy]; e._tipT = now; }
