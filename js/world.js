@@ -191,6 +191,7 @@ function stairSpec(b, f) {
 }
 // paredes internas finas: [u0, v0, u1, v1] no quadro local; vãos de porta já ficam de fora
 function iwallsLocal(b, fl) {
+  if (b.kind === 'castle' && fl === 0 && CASTLE_INT) return [[5, 0, 5, 6], [5, 7, 5, 9], [0, 4, 2, 4], [3, 4, 5, 4], [12, 2, 12, 6], [12, 7, 12, 9], [13, 4, 16, 4]];   /* térreo do castelo: cozinha e jantar a oeste, salão do trono no meio (u 5..12), guarda/escadaria e antecâmara a leste */
   if (b.deco !== 'machiya') return null; const [A, D] = bDims(b);
   // quadro local: u ao longo da fachada (0 = sul, A = norte), v em profundidade (0 = fundo/oeste, D = rua/leste). Corredor + elevador em u 6..8
   if (fl === 0) return [[6, 0, 6, D]];   // corredor do elevador (ponta norte) separado do dojô
@@ -449,11 +450,22 @@ function interiorLayout0(b, fl = 0) {
     put('hay', 0, 0); put('hay', w - 1, 0); put('trough', 1, 0, { w: w - 2 }); put('hay', 0, h - 2); put('crate', w - 1, h - 2);
   } else if (k === 'stairtower') {
     // escada interna: nenhuma mobília
-  } else if (k === 'castle') {
+  } else if (k === 'castle' && !CASTLE_INT) {   /* interior antigo, até os andares novos ficarem prontos */
     put('throne', dc, 0, { seat: 7 }); put('banner', dc - 2, 0); put('banner', dc + 2, 0); put('candles', dc - 4, 0); put('candles', dc + 4, 0);
     put('fireplace', 0, 1); put('fireplace', 0, h - 3);
     for (const ti of [2, w - 3]) if (put('table', ti, 3, { h: h - 5 })) for (let j = 3; j < h - 2; j++) { put('chair', ti - 1, j, { seat: 1 }); put('chair', ti + 1, j, { seat: 5 }); }
     put('rug', dc, 2, { block: false });
+  } else if (k === 'castle') {   /* salão do trono (u 5..11), cozinha (0..4 × 0..3), jantar (0..4 × 5..8), guarda (13..15 × 0..3), antecâmara (13..15 × 5..8) */
+    put('swordthrone', 7, 0, { w: 3, h: 2, seat: 7 }); put('rug', 8, 2, { h: 5, v: 9, block: false });
+    for (const j of [1, 4]) { put('hpillar', 5, j); put('hpillar', 11, j); }
+    put('dskull', 5, 2, { block: false }); put('dskull', 11, 2, { block: false, flip: 1 });
+    put('tapestry', 6, 0, { block: false }); put('tapestry', 10, 0, { block: false });
+    for (const [i, j] of [[7, 3], [9, 3], [7, 6], [9, 6]]) put('brazier', i, j);
+    put('glow', 6, 5, { block: false, v: 0 }); put('glow', 10, 2, { block: false, v: 1 }); put('glow', 7, 7, { block: false, v: 2 });
+    put('hearth', 0, 0, { w: 2 }); put('stove', 2, 0); put('shelf', 3, 0); put('shelf', 4, 0); put('cauldron', 1, 2); put('barrel', 4, 3); put('barrel', 0, 3); if (put('table', 2, 2, { w: 2 })) { }
+    put('fireplace', 0, 6); if (put('table', 2, 5, { h: 3 })) for (let j = 5; j < 8; j++) { put('chair', 1, j, { seat: 1 }); put('chair', 3, j, { seat: 5 }); } put('candles', 4, 5);
+    put('rack', 15, 1); put('rack', 15, 2); if (put('table', 14, 2)) put('chair', 13, 2, { seat: 1 });
+    put('pew', 13, 8, { w: 3, seat: 1 }); put('pew', 13, 6, { w: 3, seat: 1 }); put('candles', 15, 5);
   }
   return { F, npc };
 }
@@ -461,7 +473,7 @@ function interiorLayout0(b, fl = 0) {
 const LAYOUT_MEMO = new Map();
 // móveis que continuam sólidos: paredes e divisórias, balcões, lareiras e fogões, prateleiras e armários de parede, camas, grades e cofres.
 // O resto (mesas, cadeiras, bancos, barris, caixotes, tapetes, decoração) não bloqueia a passagem.
-const FURN_SOLID = new Set(['drawers', 'apothcounter', 'distill', 'blk', 'hpart', 'counter', 'bar', 'bankdesk', 'wandcounter', 'vault', 'bars', 'celldoor', 'fireplace', 'hearth', 'stove', 'forge', 'shelf', 'wandwall', 'fabricwall', 'taps', 'bottles', 'filing', 'jamshelf', 'pillar', 'throne', 'altar', 'still', 'bed', 'bunk', 'cot']);
+const FURN_SOLID = new Set(['hpillar', 'brazier', 'drawers', 'apothcounter', 'distill', 'blk', 'hpart', 'counter', 'bar', 'bankdesk', 'wandcounter', 'vault', 'bars', 'celldoor', 'fireplace', 'hearth', 'stove', 'forge', 'shelf', 'wandwall', 'fabricwall', 'taps', 'bottles', 'filing', 'jamshelf', 'pillar', 'throne', 'altar', 'still', 'bed', 'bunk', 'cot']);
 function interiorLayout(b, fl = 0) {
   const [w, h] = bDims(b), mk = [b.kind, w, h, b.v || 0, floorsOf(b), fl, b.office || '', JSON.stringify(b.stairs || 0), b.extSide || '', b.cellar ? b.cellar.join(',') : '', b.deco || ''].join('|');
   let L = LAYOUT_MEMO.get(mk); if (L) return L;
@@ -546,7 +558,7 @@ const BASTIONS = TEST3D ? [] : [
   { id: 'fort', name: 'Fortim dos Desertores', kind: 'fort', ...bpos(-Math.PI / 2 + 0.6, 90), r: 9, mons: { bandit: 6, deserter: 4 }, boss: 'deserterchief', patrol: ['bandit', 'bandit', 'deserter'] },
   { id: 'pools', name: 'Poças do Pântano', kind: 'pools', ...bpos(0, 92), r: 9, mons: { slime: 7 }, boss: 'elderslime', night: { wisp: 4 } },
   // TEMPORÁRIO (testes do combate): acampamento de bandidos logo depois do portão sul, repovoa rápido
-  { id: 'test', name: 'Acampamento de Bandidos (teste)', kind: 'testcamp', x: CENTER + 12, y: CENTER + 45, r: 5, mons: { bandit: 3, goblin: 2 }, fast: 15000, temp: true },
+  { id: 'test', name: 'Acampamento de Bandidos (teste)', kind: 'testcamp', x: CENTER + 12, y: CENTER + 45, r: 6, mons: { bandit: 6, goblin: 4 }, fast: 15000, temp: true },   // dobrado (pedido do jogador)
   { id: 'dragon', name: 'Covil do Dragão', kind: 'dragon', ...bpos(Math.PI / 4, 110), r: 9, mons: {}, boss: 'dragon', respawn: 1800000 },
   { id: 'cave', name: 'Caverna do Troll', kind: 'cave', x: CAVE_POS.x + Math.round(CAVE_POS.ux * 6), y: CAVE_POS.y + Math.round(CAVE_POS.uy * 6), r: 6, mons: {}, boss: 'troll' },
 ];
@@ -1270,7 +1282,7 @@ function placeFurniture(b, bi, f, obj, seats, idx) {
   if (!f.seat) return;
   const dir = bDir(b, f.seat);
   if (f.t === 'pew') for (let a = 0; a < f.w; a++) { const [x, y] = bLocal(b, f.i + a, f.j); seats.push({ x, y, dir, h: 0.45, bi }); }
-  else { const [x0, y0] = bLocal(b, f.i, f.j), [x1, y1] = bLocal(b, f.i + f.w - 1, f.j + f.h - 1); seats.push({ x: (x0 + x1) / 2, y: (y0 + y1) / 2, dir, h: f.t === 'throne' ? 0.6 : 0.45, bi }); }
+  else { const [x0, y0] = bLocal(b, f.i, f.j), [x1, y1] = bLocal(b, f.i + f.w - 1, f.j + f.h - 1); seats.push({ x: (x0 + x1) / 2, y: (y0 + y1) / 2 - (f.t === 'swordthrone' ? 0.35 : 0), dir, h: f.t === 'throne' ? 0.6 : f.t === 'swordthrone' ? 0.95 : 0.45, bi }); }   /* o trono de espadas fica no alto de três degraus */
 }
 // ---------- gerador do bairro de teste ----------
 function generateDistrict() {
@@ -1533,7 +1545,7 @@ function canStandFloor(x, y, bi, fl, r = 0.24) {
     const [u, v] = worldToLocal(b, x, y), D = bDims(b)[1]; if (!(v > D - 0.45 && v < D + 0.86 - r && u > bc[0] + 0.12 + r && u < bc[1] - 0.12 - r)) return false; return !iwallHit(bi, fl, x, y, r); }
   const bl = floorBlocked(bi, fl);
   for (const [ox, oy] of [[-r, -r], [r, -r], [-r, r], [r, r]]) if (bl.has(Math.round(y + oy) * MAP_W + Math.round(x + ox))) return false;
-  if (b.deco === 'machiya' && iwallHit(bi, fl, x, y, r)) return false;
+  if ((b.deco === 'machiya' || b.kind === 'castle') && iwallHit(bi, fl, x, y, r)) return false;
   return true;
 }
 // tile da escada (mundo) e chegada (na frente dela)
@@ -1591,7 +1603,7 @@ function canStandZ(x, y, z, r = 0.24, fl = 0, fb = -1) {
     if (solidTile(tx, ty, L)) return false;
   }
   if (L === 0 && (wallHit(x, y, r) || roundHit(x, y, r))) return false;
-  if (L === 0) { const bi = WORLD.bld[Math.round(y) * MAP_W + Math.round(x)]; if (bi >= 0 && BUILDINGS[bi].deco === 'machiya' && iwallHit(bi, 0, x, y, r)) return false; }
+  if (L === 0) { const bi = WORLD.bld[Math.round(y) * MAP_W + Math.round(x)]; if (bi >= 0 && (BUILDINGS[bi].deco === 'machiya' || BUILDINGS[bi].kind === 'castle') && iwallHit(bi, 0, x, y, r)) return false; }
   if (L === 1 && roundHit(x, y, r, true)) return false;
   const h = stairH(x, y);
   if (h >= 0 && Math.abs(h - z) > 0.4) return false; // não entra na rampa pela lateral

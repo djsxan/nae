@@ -20,8 +20,8 @@ function jobsPrompt() {
   if (typeof estChestHere === 'function' && estChestHere()) return 'F: abrir o baú';
   if (typeof empNear === 'function' && empNear()) return empPrompt();
   if (typeof segNear === 'function' && segNear()) return segPrompt();   /* seus empregados: o F abre as ordens */
-  if (typeof sapNearMine === 'function' && sapNearMine() && me.cls === 'mage') return 'F: despertar a muda (ritual)';
   if (typeof entLogNear === 'function' && entLogNear()) return 'F: recolher o galho (lenha)';
+  if (G.riding) return 'F: descer da guardiã';
   if (typeof entNear === 'function' && entNear()) return 'F: dar ordens à sua guardiã';
   { const t = typeof talkTarget === 'function' ? talkTarget() : null; if (t) return t.k === 'n' ? 'F: falar com ' + t.name : 'F: dar ouro ou itens para ' + t.name; }
   if (typeof estInBiz === 'function' && estInBiz()) return 'N: gerenciar o negócio';

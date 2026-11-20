@@ -39,8 +39,8 @@ const SHSPR = new Map();
 function silhouette(s) {
   let k = SHSPR.get(s);
   if (k) return k;
-  const c = document.createElement('canvas'); c.width = s.c.width; c.height = s.c.height;
-  const x = c.getContext('2d'); x.drawImage(s.c, 0, 0); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#000'; x.fillRect(0, 0, c.width, c.height);
+  const q = Math.min(1, 160 / Math.max(s.c.width, s.c.height, 1)), c = document.createElement('canvas'); c.width = Math.max(1, Math.round(s.c.width * q)); c.height = Math.max(1, Math.round(s.c.height * q));   /* silhueta pequena: a sombra é borrada mesmo */
+  const x = c.getContext('2d'); x.drawImage(s.c, 0, 0, c.width, c.height); x.globalCompositeOperation = 'source-in'; x.fillStyle = '#000'; x.fillRect(0, 0, c.width, c.height);
   k = { c, w: s.w, h: s.h, ax: s.ax, ay: s.ay };
   SHSPR.set(s, k);
   return k;

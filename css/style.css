@@ -791,3 +791,7 @@ body.em-on #hud, body.em-on #chat, body.em-on .hotbar { opacity: .25; transition
 #duelhud .du-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; } #duelhud .du-row b { min-width: 80px; }
 #duelhud .du-bar { flex: 1; height: 8px; background: rgba(255,255,255,.12); border-radius: 4px; overflow: hidden; } #duelhud .du-bar i { display: block; height: 100%; }
 #duelhud .du-vs { color: #c8402c; font-weight: 700; } #duelhud .du-s { font-size: 12px; color: #c9b99a; }
+.buff.medgroup { background: radial-gradient(#c8b0ff, #4a2e8a); } .buff.medgroup::after { content: "🧘"; font-size: 13px; }
+#pplbtn { position: fixed; right: calc(14px + env(safe-area-inset-right, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 25; padding: 5px 11px; border-radius: 12px; background: rgba(20,14,10,.8); color: #d8c8a8; border: 1px solid #6a5030; font: 600 12px 'Alegreya Sans', system-ui, sans-serif; cursor: pointer; }
+#pplbtn.on { color: #ffd0c0; border-color: #c8402a; background: rgba(70,14,10,.88); box-shadow: 0 0 8px rgba(200,60,40,.5); }
+body.unarmed #pplbtn { opacity: .45; }

@@ -495,6 +495,7 @@ function drawHeroEntity(ctx, e, sx, sy, now) {
     if (e !== G.me && e.anim && e.anim.W && e.anim.reach && now - e.anim.t0 < e.anim.W + 120) drawTelegraph(ctx, e, sx, sy, now);
     if (e.skin === 'weaver') drawWeaverAura(ctx, sx, sy, now);
     if (e.skin === 'weaver') sy -= 14 + Math.sin(now / 600) * 3;
+    if (typeof entRideLift === 'function') { const rl = entRideLift(e); if (rl) { const P2 = { ...P, sit: 'g', walk: -1, act: null }; s = e.isNpc ? s : woundOf(heroSprite3D(e.cls, e.skin, e.color, P2), woundLevel(e)); sy -= rl * 0.62; } }   /* montado nas costas da guardiã */
     if (typeof glideLift === 'function') { const gl = glideLift(e, now); if (gl) { softDab(ctx, sx, sy, 10, '#000000', 0.25); sy -= gl; } }   /* Voo da Pluma: no alto, a sombra fica no chão */
     const msy = sy; if (e.medit && typeof drawMeditAura === 'function') { drawMeditAura(ctx, e, sx, msy, now, 0); const lt = Math.min(1, Math.max(0, (now - e.medit.t0 - 2500) / 1800)), lev = { fire: 0, water: 0, earth: 8, wind: 26, holy: 4 }[e.medit.el] ?? 8; sy -= lt * (lev + Math.sin(now / 900) * (lev ? 1.6 : 0)); }   /* levita depois de uns segundos */
     pblit(ctx, s, sx, sy);
@@ -1038,18 +1039,19 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   upper.sort((a, b) => a.d - b.d || a.k - b.k);
 
   // 5) sombras projetadas (todas numa camada, depois aplicadas de uma vez)
-  if (shadowC.width !== Math.round(W * dpr) || shadowC.height !== Math.round(H * dpr)) { shadowC.width = Math.round(W * dpr); shadowC.height = Math.round(H * dpr); }
+  const SHQ = 0.4;   /* sombras numa camada de 40% da resolução (são suaves; centenas de árvores em tela cheia travavam as florestas) */
+  if (shadowC.width !== Math.round(W * dpr * SHQ) || shadowC.height !== Math.round(H * dpr * SHQ)) { shadowC.width = Math.round(W * dpr * SHQ); shadowC.height = Math.round(H * dpr * SHQ); }
   shadowX.setTransform(1, 0, 0, 1, 0, 0); shadowX.clearRect(0, 0, shadowC.width, shadowC.height);
   const shAlpha = sh.a * (1 - ATM.rain * 0.6) * (1 - ATM.fog * 0.6);
-  if (shAlpha > 0.02) {
+  if (shAlpha > 0.02) { const kSh = k * SHQ;
     for (const it of items) {
-      if (it.k === 0 && !it.cliff && CASTS.has(it.o)) { const s = objSprite(it.o, it.x, it.y); if (s) castShadow(s, it.sx, it.sy, sh, k); }
-      else if (it.k === 0 && it.o === O.TOWER) { const p = iso(it.x - 0.5, it.y - 0.5); castShadow(towerSprite(WORLD.tvar[it.y * MAP_W + it.x], WORLD.toff[it.y * MAP_W + it.x]), p.sx + ox, p.sy + oy, sh, k); }
-      else if (it.k === 4 && it.first) castShadow(it.sp, it.sx, it.sy, sh, k);
-      else if (it.k === 1 && !it.e.dieAt) castShadow(R3.ok ? monSprite3D(it.e.type, -1, -1, 0) : monSprite(PAINT_AS[it.e.type] || it.e.type, 0, -1), it.sx, it.sy, sh, k);
-      else if ((it.k === 2 || it.k === 3) && !it.e.downed) castShadow(R3.ok ? (it.e.isNpc ? npcSprite3D(it.e.kind, { dir: 0, walk: -1 }) : heroSprite3D(it.e.cls, it.e.skin, it.e.color, { dir: 0, walk: -1 })) : (it.e.isNpc ? npcSprite(it.e.kind, { view: 'S', walk: -1 }) : heroSprite(it.e.cls, it.e.skin, it.e.color, { view: 'S', walk: -1 })), it.sx, it.sy, sh, k);
+      if (it.k === 0 && !it.cliff && CASTS.has(it.o)) { const s = objSprite(it.o, it.x, it.y); if (s) castShadow(s, it.sx, it.sy, sh, kSh); }
+      else if (it.k === 0 && it.o === O.TOWER) { const p = iso(it.x - 0.5, it.y - 0.5); castShadow(towerSprite(WORLD.tvar[it.y * MAP_W + it.x], WORLD.toff[it.y * MAP_W + it.x]), p.sx + ox, p.sy + oy, sh, kSh); }
+      else if (it.k === 4 && it.first) castShadow(it.sp, it.sx, it.sy, sh, kSh);
+      else if (it.k === 1 && !it.e.dieAt) castShadow(R3.ok ? monSprite3D(it.e.type, -1, -1, 0) : monSprite(PAINT_AS[it.e.type] || it.e.type, 0, -1), it.sx, it.sy, sh, kSh);
+      else if ((it.k === 2 || it.k === 3) && !it.e.downed) castShadow(R3.ok ? (it.e.isNpc ? npcSprite3D(it.e.kind, { dir: 0, walk: -1 }) : heroSprite3D(it.e.cls, it.e.skin, it.e.color, { dir: 0, walk: -1 })) : (it.e.isNpc ? npcSprite(it.e.kind, { view: 'S', walk: -1 }) : heroSprite(it.e.cls, it.e.skin, it.e.color, { view: 'S', walk: -1 })), it.sx, it.sy, sh, kSh);
     }
-    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = shAlpha; ctx.drawImage(shadowC, 0, 0); ctx.restore();
+    ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = shAlpha; ctx.imageSmoothingEnabled = true; ctx.drawImage(shadowC, 0, 0, Math.round(W * dpr), Math.round(H * dpr)); ctx.restore();
   }
 
   // 6) desenho em ordem de profundidade

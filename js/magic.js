@@ -18,7 +18,7 @@ if (typeof buildHotbar === 'function') { const _bh = buildHotbar; buildHotbar = 
 // ---------- eventos das magias ----------
 if (typeof progEvent === 'function') { const _pe = progEvent; progEvent = function (m, now) {
   if (m.t === 'medit') { const e = G.players[m.id]; if (e) e.medit = m.on ? { el: m.el, t0: now } : null; if (e === G.me && !m.on) { const d = document.getElementById('meditmenu'); if (d) d.remove(); } return true; }
-  if (m.t === 'flamefx') { const e = G.players[m.id]; if (e) e.flame = m.on ? { a: m.a, r: m.r, until: now + 450 } : null; if (e && e === G.me && m.on) { G.faceLock = { a: m.a, until: now + 500 }; G.me.dir = dirFromVec(Math.cos(m.a), Math.sin(m.a), G.me.dir); } return true; }   /* o mago encara para onde o jato vai (também no automático) */
+  if (m.t === 'flamefx') { const e = G.players[m.id]; if (e) e.flame = m.on ? { a: m.a, r: m.r, fs: m.fs || 0, until: now + 450 } : null; if (e && e === G.me && m.on) { G.faceLock = { a: m.a, until: now + 500 }; G.me.dir = dirFromVec(Math.cos(m.a), Math.sin(m.a), G.me.dir); } return true; }   /* o mago encara para onde o jato vai (também no automático) */
   if (m.t === 'ember') { const e = G.players[m.id]; if (e) e.emberUntil = m.ms ? now + m.ms : 0; return true; }
   if (m.t === 'mburn') { const e = G.monsters[m.id]; { const c0 = G.charMap[m.id] ? charOf(m.id, now) : 0; G.charMap[m.id] = { c0, c1: Math.min(1, c0 + 0.45), t: now, dur: m.ms || 3000 }; } if (e) { e.burnUntil = now + m.ms; e.charUntil = now + m.ms + 20000; if (G.view) { const p = iso(e.rx, e.ry); sparkBurst(p.sx, p.sy - 18, FIRE_PAL[1], 12); } } return true; }   /* faíscas no impacto; chamuscado por 20 s */
   return _pe(m, now);
@@ -40,8 +40,11 @@ const FIRE_PAL = [   /* a cor esquenta com a maestria: laranja/vermelho -> núcl
   { core: [255, 214, 140], hot: [255, 150, 50], mid: [236, 84, 24], edge: [150, 30, 14] },
   { core: [255, 246, 200], hot: [255, 196, 80], mid: [252, 120, 30], edge: [190, 44, 16] },
   { core: [224, 242, 255], hot: [150, 200, 255], mid: [255, 214, 110], edge: [236, 96, 26] }];
-function firePal(k) { const i = k < 0.38 ? 0 : k < 0.78 ? 1 : 2; return FIRE_PAL[i]; }
-const lerpC = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+const FIRE_GREEN = { core: [228, 255, 226], hot: [130, 255, 150], mid: [44, 206, 96], edge: [18, 112, 54] }, FIRE_PURPLE = { core: [246, 228, 255], hot: [206, 140, 255], mid: [146, 64, 232], edge: [80, 22, 152] };
+const palMix = (A, B, t) => ({ core: lerpC(A.core, B.core, t), hot: lerpC(A.hot, B.hot, t), mid: lerpC(A.mid, B.mid, t), edge: lerpC(A.edge, B.edge, t) });
+function firePal(k, fs) { const i = k < 0.38 ? 0 : k < 0.78 ? 1 : 2; if (i < 2 || !(fs > 70)) return FIRE_PAL[i];   /* depois do azul: força 70→110 vira verde, 115→155 vira roxo */
+  const g = Math.min(1, (fs - 70) / 40), pu = Math.max(0, Math.min(1, (fs - 115) / 40)); return pu > 0 ? palMix(FIRE_GREEN, FIRE_PURPLE, pu) : palMix(FIRE_PAL[2], FIRE_GREEN, g); }
+var lerpC = (a, b, t) => [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 function fireCol(pal, s) {   /* s: 0 (recém-saído, mais quente) a 1 (fim da chama) */
   if (s < 0.18) return lerpC(pal.core, pal.hot, s / 0.18); if (s < 0.5) return lerpC(pal.hot, pal.mid, (s - 0.18) / 0.32); return lerpC(pal.mid, pal.edge, Math.min(1, (s - 0.5) / 0.5)); }
 const rgba = (c, a) => 'rgba(' + (c[0] | 0) + ',' + (c[1] | 0) + ',' + (c[2] | 0) + ',' + Math.max(0, Math.min(1, a)).toFixed(3) + ')';
@@ -53,8 +56,8 @@ function flameGeom(e, F, now) {   /* de onde o jato sai (ponta do cajado) e até
 function fireSpawn(e, F, g, now, dt) {
   const real = G.fireStyle === 'real', n = real ? Math.round(36 * dt / 16) + 1 : Math.round(12 * dt / 16) + 1;
   for (let i = 0; i < n; i++) { const life = real ? 380 + Math.random() * 260 : 420 + Math.random() * 220, sp = (g.L / life) * (0.9 + Math.random() * 0.25);
-    G.fireP.push({ k: 'f', x: g.x0 + g.px * (Math.random() - 0.5) * 2, y: g.y0 + g.py * (Math.random() - 0.5) * 2, vx: g.ux * sp, vy: g.uy * sp, sp: (Math.random() - 0.5) * (real ? 0.06 : 0.13), t0: now, life, seed: Math.random() * 100, pal: firePal(g.k), px: g.px, py: g.py, w: real ? 2.5 + Math.random() * 3 : 2.2 + Math.random() * 2.2, real }); }
-  if (Math.random() < (real ? 0.9 : 0.45)) G.fireP.push({ k: 'e', x: g.x0 + g.ux * g.L * Math.random() * 0.8, y: g.y0 + g.uy * g.L * Math.random() * 0.8, vx: g.ux * 0.12 + (Math.random() - 0.5) * 0.06, vy: g.uy * 0.12 - 0.05 - Math.random() * 0.04, t0: now, life: 500 + Math.random() * 600, pal: firePal(g.k) });   /* brasa */
+    G.fireP.push({ k: 'f', x: g.x0 + g.px * (Math.random() - 0.5) * 2, y: g.y0 + g.py * (Math.random() - 0.5) * 2, vx: g.ux * sp, vy: g.uy * sp, sp: (Math.random() - 0.5) * (real ? 0.06 : 0.13), t0: now, life, seed: Math.random() * 100, pal: firePal(g.k, F.fs), px: g.px, py: g.py, w: real ? 2.5 + Math.random() * 3 : 2.2 + Math.random() * 2.2, real }); }
+  if (Math.random() < (real ? 0.9 : 0.45)) G.fireP.push({ k: 'e', x: g.x0 + g.ux * g.L * Math.random() * 0.8, y: g.y0 + g.uy * g.L * Math.random() * 0.8, vx: g.ux * 0.12 + (Math.random() - 0.5) * 0.06, vy: g.uy * 0.12 - 0.05 - Math.random() * 0.04, t0: now, life: 500 + Math.random() * 600, pal: firePal(g.k, F.fs) });   /* brasa */
 }
 function fireStep(now, dt) {
   const out = [];
@@ -197,7 +200,7 @@ G.fireLast = G.fireLast || 0;
 function drawFlameFx(ctx, now) {
   const dt = Math.min(50, now - (G.fireLast || now)); G.fireLast = now;
   for (const id in G.players) { const e = G.players[id], F = e.flame; if (!F || now > F.until || !e.visible) continue;
-    const g = flameGeom(e, F, now), ox = G.view.ox, oy = G.view.oy, pal = firePal(g.k);
+    const g = flameGeom(e, F, now), ox = G.view.ox, oy = G.view.oy, pal = firePal(g.k, F.fs);
     fireSpawn(e, F, g, now, dt);
     if (now - (e._scT || 0) > 110) { e._scT = now; const t = 0.35 + Math.random() * 0.65, j = (Math.random() - 0.5) * 0.5; addScorch(e.rx + Math.cos(F.a) * F.r * t - Math.sin(F.a) * j * t, e.ry + Math.sin(F.a) * F.r * t + Math.cos(F.a) * j * t, 9 + Math.random() * 8 * t, 30000); }   /* o jato chamusca o chão */
     ctx.save(); ctx.globalCompositeOperation = 'lighter';
@@ -423,7 +426,7 @@ if (typeof progEvent === 'function' && typeof G !== 'undefined') { const _peV = 
   return _peV(m, now); }; }
 function evoRing(ctx, cx, cy, R, ox, oy) { ctx.beginPath(); for (let i = 0; i <= 36; i++) { const a = i / 36 * 6.2832, p = iso(cx + Math.cos(a) * R, cy + Math.sin(a) * R); i ? ctx.lineTo(p.sx + ox, p.sy + oy) : ctx.moveTo(p.sx + ox, p.sy + oy); } }
 function evoWho(F) { const e = G.players && G.players[F.id]; return e && e.visible !== false ? e : null; }
-function drawEvoFx(ctx, now) { now = performance.now();   /* mesmo relógio do início do efeito */
+function drawEvoFx(ctx, now) { if (typeof drawPplTarget === 'function') drawPplTarget(ctx, now); now = performance.now();   /* mesmo relógio do início do efeito */
   const ox = G.view.ox, oy = G.view.oy, T = now / 1000; G.evoFx = G.evoFx.filter(F => now - F.t0 < (F.ms || ({ gust: 1400, hand: 1700 }[F.k] || 1400)) + 300);
   for (const F of G.evoFx) { const t = now - F.t0; if (t < 0) continue; ctx.save();
     if (F.k === 'gust') {   /* Rajada: leque de vento (faixas brancas largas), folhas e poeira */
@@ -463,3 +466,20 @@ function drawEvoFx(ctx, now) { now = performance.now();   /* mesmo relógio do i
     ctx.restore(); }
 }
 function glideLift(e, now) { const A = e.anim; if (!A || A.a !== 'glide') return 0; const k = (now - A.t0) / (A.ms || 1100); return k > 0 && k < 1 ? Math.sin(Math.PI * k) * 42 : 0; }
+
+// ---------- ataque automático em pessoas: botão na tela, escolha do alvo e marca ----------
+function pplBtnSync() {
+  if (typeof document === 'undefined' || !G.me) return; let b = document.getElementById('pplbtn');
+  const show = G.me.cls === 'archer' || G.me.cls === 'mage'; if (!b && show) { b = document.createElement('button'); b.id = 'pplbtn'; b.type = 'button'; b.title = 'Ataque automático em pessoas: bate no jogador ou morador que você clicar e revida em quem te atacar';
+    b.onclick = ev => { ev.stopPropagation(); Net.send({ t: 'auto', ppl: G.pplAuto ? 0 : 1 }); }; document.body.appendChild(b); }
+  if (!b) return; b.hidden = !show; b.classList.toggle('on', !!G.pplAuto); b.textContent = G.pplAuto ? '⚔ Pessoas: ligado' : '⚔ Pessoas: desligado'; }
+function personUnderMouse(cx, cy) {
+  const w = screenToWorld(cx, cy); if (!w) return null; let best = null, bd = 0.9;
+  for (const id in G.players) { const e = G.players[id]; if (e === G.me || !e.visible) continue; const d = Math.hypot(e.rx - w.x, e.ry - 0.4 - w.y); if (d < bd) { bd = d; best = { k: 'p', id, name: e.name }; } }
+  for (const id in G.npcs) { const e = G.npcs[id]; if (!e.visible || e.dead || (e.kind && e.kind.startsWith('ent_'))) continue; const d = Math.hypot(e.rx - w.x, e.ry - 0.4 - w.y); if (d < bd) { bd = d; best = { k: 'n', id, name: e.name || 'morador' }; } }
+  return best; }
+function drawPplTarget(ctx, now) {
+  if (!G.pplAuto || !G.pTarget) return; const T = G.pTarget, e = T.k === 'p' ? G.players[T.id] : G.npcs[T.id]; if (!e || e.dead) { G.pTarget = null; return; }
+  const p = iso(e.rx, e.ry), x = p.sx + G.view.ox, y = p.sy + G.view.oy - 48 - Math.sin(now / 200) * 2;
+  ctx.save(); ctx.fillStyle = '#d83a2a'; ctx.strokeStyle = '#1a0a06'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x - 4, y - 5); ctx.lineTo(x + 4, y - 5); ctx.lineTo(x, y + 1); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.restore(); }
+if (typeof setInterval === 'function' && typeof document !== 'undefined') setInterval(() => { if (G.started) pplBtnSync(); }, 1500);

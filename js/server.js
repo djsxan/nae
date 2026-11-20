@@ -431,7 +431,8 @@ function hostOnClient(from, m) {
     case 'duel': duelMsg(p, m); break;
     case 'hipthrow': hipThrow(p); break;
     case 'train': trainMsg(p, m); break;
-    case 'auto': autoMsg(p, m); break;
+    case 'auto': if (m.ppl != null) pplMsg(p, m); else autoMsg(p, m); break;
+    case 'ptarget': if (m.k === 'p' && S.players[m.id] && m.id !== p.id) p.pTgt = { k: 'p', id: m.id }; else if (m.k === 'n' && S.npcs[m.id]) p.pTgt = { k: 'n', id: m.id }; else p.pTgt = null; break;
     case 'medit': meditMsg(p, m); break;
     case 'sit': {
       if (!m.on || p.downed || p.carrying || p.carriedBy) { p.sit = null; break; }
@@ -723,7 +724,8 @@ function bandage(p) {
 }
 function damagePlayer(p, raw, m, delay = 0, zone = null, exactPart = null) {
   if (p.dev) return;   // o Tecelão não se fere
-  p._hitT = now_(); if (m && m.npc && typeof segDefendNpc === 'function') segDefendNpc(m.id, p);   /* os seguranças defendem de sentinelas e moradores */
+  if (p.riding && typeof entRide === 'function' && S.estate.ents && S.estate.ents[p.riding]) { const n = S.npcs[entNid(p.riding)]; if (n && !n.dead) { entHurt(n, S.estate.ents[p.riding], Math.round(raw * 0.8), 'mon'); return; } }   /* montado: quem leva o golpe é a guardiã */
+  p._hitT = now_(); if (m && m.npc && typeof segDefendNpc === 'function') segDefendNpc(m.id, p); if (m && m.npc && S.npcs[m.id]) p._hitBy = { k: 'n', id: m.id, t: now_() };   /* os seguranças defendem de sentinelas e moradores */
   if (p.sleep != null) p.sleep = null;
   if (p.downed) {
     // lobos atacam quem está caído: a pessoa sangra mais rápido
@@ -891,12 +893,15 @@ function flameTick(now) {
     const dt = (now - F.tick) / 1000; if (dt < 0.1) continue; F.tick = now;
     p.mp -= 6 * Math.min(dt, 0.4); if (p.mp <= 0) { p.mp = 0; flameStop(p, 'Sem mana: as chamas se apagam.'); sendStat(p); continue; }
     const st = flameStats(p), ca = Math.cos(F.a), sa = Math.sin(F.a);
-    if (now - F.fx > 260) { F.fx = now; near(p.x, p.y, { t: 'flamefx', id: p.id, on: 1, a: +F.a.toFixed(3), r: +st.R.toFixed(2) }); }
+    if (now - F.fx > 260) { F.fx = now; near(p.x, p.y, { t: 'flamefx', id: p.id, on: 1, a: +F.a.toFixed(3), r: +st.R.toFixed(2), fs: Math.round(elemStrength(p, 'fire')) }); }   /* força do Fogo: a cor passa do azul ao verde e ao roxo */
     if (now - F.hit >= 450) { F.hit = now; if (typeof entFlameHit === 'function') entFlameHit(p, F, st, now);
       for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || (m.alt || 0) > 1) continue; const d0 = MON[m.type] || {}, dx = m.x - p.x, dy = m.y - p.y, along = dx * ca + dy * sa; if (along < 0.2 || along > st.R + (d0.rad || 0)) continue; if (Math.abs(-dx * sa + dy * ca) > 0.35 + along * 0.18 + (d0.rad || 0) * 0.5) continue;
         p._el = 'fire'; hitMonster(p, m, 0.12 * st.F * (1 + treeEff(p, 'fire')), 0); p._el = null; useGain(p, 'el_fire', 0.25);
         if (!(m._burnT > now) && S.monsters[m.id]) { m._burnT = now + 3000; emberBurn(p, m); }   /* fica ardendo */
         if (d0.beh === 'flee' || d0.beh === 'pred' || d0.beh === 'retal') { m.flee = { from: p.id, until: now + 2500 }; if (m.aggro === p.id) m.aggro = null; m.atk = null; } }   /* animais fogem do fogo */
+      if (p.pplAuto) { const inJet = q => { const dx = q.x - p.x, dy = q.y - p.y, al = dx * ca + dy * sa; return al > 0.2 && al < st.R + 0.3 && Math.abs(-dx * sa + dy * ca) < 0.55 + al * 0.18; };
+        for (const q of Object.values(S.players)) { if (!pvpOk(p, q) || (q.duel && q.duel !== p.duel) || !inJet(q)) continue; if (inSafe(q.x, q.y)) witnessCrime(p, p.x, p.y); q._hitBy = { k: 'p', id: p.id, t: now }; damagePlayer(q, Math.max(1, Math.round(roll(p, 0.35).dmg * 0.6)), { x: p.x, y: p.y, name: p.name }, 0, null, null); if (!(q.burnUntil > now)) q.burnUntil = now + 2500; sendStat(q); }
+        for (const q of Object.values(S.npcs)) { if (q.dead || q.downed || q.entOf || (q.fl || 0) !== (p.fl || 0) || !inJet(q)) continue; npcDamage(q, Math.max(1, Math.round(roll(p, 0.35).dmg * 0.6)), p); near(q.x, q.y, { t: 'mburn', id: q.id, npc: 1, ms: 1500 }); } }
       for (const d of (S.doused || []).slice()) { const ddx = d.x - p.x, ddy = d.y - p.y, al = ddx * ca + ddy * sa; if (al > 0 && al < st.R && Math.abs(-ddx * sa + ddy * ca) < 0.7 && WORLD.obj[d.i] === O.NONE) { setObj(d.i, O.CAMPFIRE); (S.objBack = S.objBack || []).push({ i: d.i, o: O.NONE, at: now + 180000 }); S.doused.splice(S.doused.indexOf(d), 1); tell(p, 'As chamas acenderam a fogueira.'); } }
       if (Math.random() < 0.35) { const tx = p.x + ca * st.R * 0.9, ty = p.y + sa * st.R * 0.9, list = []; igniteTile(tx, ty, now, list, false); if (list.length) near(tx, ty, { t: 'fires', l: list }); }   /* o mato pode pegar fogo */
       sendStat(p); }
@@ -949,6 +954,7 @@ function mageSpell(p, sk, msg, now) {
     const until = now + 180000; for (const i of grow) { setObj(i, O.FLOWER); (S.objBack = S.objBack || []).push({ i, o: O.NONE, at: until, bloom: 1 }); }
     (S.blooms = S.blooms || []).push({ x: p.x, y: p.y, r: R + 0.6, until, wet: 0, tiles: grow, by: p.id }); if (S.blooms.length > 40) S.blooms.shift();
     bloomsSend(true); useGain(p, 'el_earth', 2); anim('p', p, 'nova', p.x, p.y, shout); aoe('bloom', p.x, p.y, { id: p.id, k: Math.round(R * 10) });
+    if (typeof entMsg === 'function') { const sp = sapList().find(s => s.owner === estOwner(p) && dist(s.x, s.y, p.x, p.y) < 3.5); if (sp && !(S.estate.ents && S.estate.ents[estOwner(p)] && !S.estate.ents[estOwner(p)].dry) && entStageOf(p) >= 1) entMsg(p, { a: 'wake' }); }   /* a magia da Terra perto da muda desperta a guardiã */
     return true;
   }
   if (sk.id === 'faith') {
@@ -1045,6 +1051,13 @@ function dojoPaid(p) {   // diária: uma vez por dia do jogo (o dono e quem ele 
 }
 // ---------- ataque automático: arqueiro e mago atiram sozinhos em todos os monstros à vista (tecla R) ----------
 const AUTO_R = 8.5;   /* o que cabe na tela */
+// ---------- ataque automático em pessoas (ligado na tela): bate no alvo clicado e revida em quem atacar ----------
+function pplMsg(p, m) { p.pplAuto = m.ppl ? 1 : 0; if (!p.pplAuto) p.pTgt = null; Net.toOne(p.id, { t: 'pplauto', on: p.pplAuto }); tell(p, p.pplAuto ? 'Ataque em pessoas ligado: clique num jogador ou morador para ser o alvo; também revida em quem te atacar. Cuidado: na cidade é crime.' : 'Ataque em pessoas desligado.'); }
+function pplTarget(p, now) {   /* o alvo clicado, ou quem atacou nos últimos 10 s */
+  const ok = (k, id) => { const q = k === 'p' ? S.players[id] : S.npcs[id]; if (!q || q === p || q.dead || q.downed || (q.fl || 0) !== (p.fl || 0) || dist(q.x, q.y, p.x, p.y) > 12 || q.dev) return null; return q; };
+  if (p.pTgt) { const q = ok(p.pTgt.k, p.pTgt.id); if (q) return { k: p.pTgt.k, q }; p.pTgt = null; }
+  if (p._hitBy && now - p._hitBy.t < 10000) { const q = ok(p._hitBy.k, p._hitBy.id); if (q) return { k: p._hitBy.k, q }; }
+  return null; }
 function autoMsg(p, m) {
   if (p.cls !== 'archer' && p.cls !== 'mage') return;
   if (!m.on) { if (p.autoAtk) { p.autoAtk = 0; if (p.flame && p.flame.auto) flameStop(p); Net.toOne(p.id, { t: 'autoatk', on: 0 }); tell(p, 'Ataque automático desligado.'); } return; }
@@ -1058,6 +1071,7 @@ function autoTick(now) {
     if (p.duel || p.bath || p.sleep != null || p.carrying || p.lifted || p.grabbed || p.bound || p.atk || p.casting || p.flame || p.train || now < (p.nextAtk || 0) || inSafe(p.x, p.y)) continue;
     if (p.cls === 'mage' && (p.mp || 0) < 2) { if (now > (p._autoMpT || 0)) { p._autoMpT = now + 8000; tell(p, 'Sem mana para o ataque automático: ele volta quando a mana encher.'); } continue; }
     const rng = Math.max(AUTO_R, CLASSES[p.cls].range + treeEff(p, 'range')); let q = null, best = 1e9;
+    if (p.pplAuto && p.cls === 'archer') { const T = pplTarget(p, now); if (T && dist(p.x, p.y, T.q.x, T.q.y) <= rng + 1) { if (now < (p.nockReady || 0)) continue; const Q = T.q; p.dir = dirFromVecS(Q.x - p.x, Q.y - p.y); p.drawT = now - BOW.draw * 0.8; bowLoose(p, { a: Math.atan2(Q.y - p.y, Q.x - p.x), tx: Q.x, ty: Q.y, pow: 0.8 }); p.nextAtk = now + BOW.loose + BOW.nock + 200; continue; } }
     for (const o of Object.values(S.monsters)) { if (o.hp <= 0 || (o.alt || 0) >= 1.2 || Math.abs((o.z || 0) - (p.z || 0)) >= 0.5) continue; const d0 = MON[o.type] || {}; if (d0.beh === 'flee' && o.aggro !== p.id) continue;   /* bichos mansos ficam em paz, a não ser que ataquem */
       const d = dist(p.x, p.y, o.x, o.y); if (d > rng + (d0.rad || 0)) continue; const sc = d + (o.id === p.target ? -2 : 0) + (o.aggro === p.id ? -1.5 : 0); if (sc < best) { best = sc; q = o; } }
     if (!q) continue; p.target = q.id; p.dir = dirFromVecS(q.x - p.x, q.y - p.y);
@@ -1096,7 +1110,9 @@ function meditTick(now) {
     if (now - M.tick < 1000) continue; M.tick = now;
     const dg = meditDanger(p); if (dg && dist(p.x, p.y, dg.x, dg.y) < 5) { meditStop(p, 'Um perigo interrompe a meditação!'); continue; }
     if (now - (M.boT || 0) > 10000) { M.boT = now; M.bo = meditBoost(p, M.el); }
-    const deep = Math.min(1, (now - M.t0) / 20000), tr = now - M.t0 >= 60000, g = (0.22 + 0.18 * deep) * (M.bo ? 1.6 : 1) * (tr ? 1.5 : 1);   /* quanto mais tempo, mais fundo; depois de 1 minuto, o transe profundo */
+    let grp = 0; for (const q of Object.values(S.players)) if (q !== p && q.medit && (q.fl || 0) === (p.fl || 0) && dist(q.x, q.y, p.x, p.y) <= 4) grp++;   /* magos meditando juntos se ajudam */
+    if (grp && !M.grpT) { M.grpT = 1; tell(p, 'Meditação em grupo: ' + (grp + 1) + ' magos juntos, o progresso sobe mais rápido.'); } if (!grp) M.grpT = 0; p.buffs.medgroup = grp ? now + 1500 : 0;
+    const deep = Math.min(1, (now - M.t0) / 20000), tr = now - M.t0 >= 60000, g = (0.22 + 0.18 * deep) * (M.bo ? 1.6 : 1) * (tr ? 1.5 : 1) * (1 + Math.min(3, grp) * 0.25);   /* quanto mais tempo, mais fundo; depois de 1 minuto, o transe profundo */
     if (tr && !M.trance) { M.trance = 1; tell(p, 'Transe profundo: a aura dobra, a perícia sobe 50% mais rápido e o corpo se recupera mais.'); }
     useGain(p, 'el_' + M.el, g); M.gain += g;
     { const rk = tr ? 1.5 : 1; p.hp = Math.min(p.maxHp, p.hp + Math.max(1, Math.round(p.maxHp * 0.025 * rk))); p.mp = Math.min(p.maxMp, (p.mp || 0) + Math.max(1, p.maxMp * 0.05 * rk)); p.cst = Math.min(cstMaxOf(p), (p.cst ?? 0) + 12 * rk); }
@@ -1124,6 +1140,7 @@ function autoMage(p, now) {
   if (p.hp < p.maxHp * 0.55 && ready(idx('faith'))) { cast('faith'); return; }   /* vida baixa: cura */
   if (p.hp < p.maxHp * 0.8 && ready(idx('bloom')) && now > (p._autoBl || 0)) { p._autoBl = now + 20000; cast('bloom'); return; }   /* ferido: flores que curam */
   if ((p.burnUntil || 0) > now && ready(idx('spring'))) { cast('spring'); return; }   /* pegando fogo: a fonte apaga */
+  if (p.pplAuto) { const T = pplTarget(p, now), st0 = flameStats(p); if (T && dist(p.x, p.y, T.q.x, T.q.y) <= st0.R + 0.3 && (p.mp || 0) >= 2) { const a = Math.atan2(T.q.y - p.y, T.q.x - p.x); if (!p.flame) { flameMsg(p, { on: 1, a }); if (p.flame) p.flame.auto = 1; } else { p.flame.a = a; p.flame.last = now; p.dir = dirFromVecS(Math.cos(a), Math.sin(a)); } return; } }
   const st = flameStats(p), mons = Object.values(S.monsters).filter(o => hostile(o) && dist(p.x, p.y, o.x, o.y) <= st.R + ((MON[o.type] || {}).rad || 0) + 0.3);
   if (p._autoLow && (p.mp || 0) >= (p.maxMp || 50) * 0.35) p._autoLow = 0;
   if (!mons.length || p._autoLow || (p.mp || 0) < 2) { if (p.flame && p.flame.auto) flameStop(p); if ((p.mp || 0) < 2 && !p._autoLow) { p._autoLow = 1; if (mons.length) tell(p, 'Sem mana: o ataque automático espera a mana voltar.'); } return; }
@@ -1606,7 +1623,7 @@ function witnessCrime(p, x, y, kind) {
   if (!was) { sys(p.name + ' foi visto cometendo um crime na cidade! As sentinelas estão atrás dele.'); tell(p, 'Uma sentinela viu: você está PROCURADO por 5 minutos (sair da cidade limpa a ficha).'); }
   Net.toAll({ t: 'wanted', id: p.id, ms: 300000 }); return true;
 }
-function pvpHit(p, q, A, now) {
+function pvpHit(p, q, A, now) { q._hitBy = { k: 'p', id: p.id, t: now };
   const duel = p.duel && p.duel === q.duel; if (!duel) witnessCrime(p, p.x, p.y); if (!duel && typeof segDefend === 'function') segDefend(p, q);
   if (q.duel && !duel) return;   /* ninguém de fora atrapalha o duelo */
   if (now < (q.dodgeUntil || 0)) { near(q.x, q.y, { t: 'whiff', id: q.id }); return; }
@@ -2025,7 +2042,7 @@ function arrowHit(A, p, q, k, part, h, dx, dy, fa) {
   const src = p || { id: A.by, x: A.x, y: A.y, cls: 'archer', lvl: 1, buffs: {}, body: null };
   const stick = { k, id: q.id, part, h, lx: dx, ly: dy, a: fa };
   if (k === 'n') { const r = p ? roll(p, mult) : { dmg: Math.round(12 * mult) }; npcDamage(q, r.dmg, p); }
-  else if (k === 'p') {
+  else if (k === 'p') { if (p) q._hitBy = { k: 'p', id: p.id, t: now };
     if (now < (q.dodgeUntil || 0)) { near(q.x, q.y, { t: 'whiff', id: q.id }); return; }
     if (hasShield(q) && q.parry && q.parry.z !== 'low' && Math.abs(angDiff(q.parry.a, fa + Math.PI)) <= PARRY_ARC) { shieldWear(q, 3); near(q.x, q.y, { t: 'clang', x: q.x + Math.cos(fa + Math.PI) * 0.4, y: q.y + Math.sin(fa + Math.PI) * 0.4 }); sendStat(q); return; }   // flecha cravada no escudo
     if (p && inSafe(q.x, q.y)) witnessCrime(p, p.x, p.y);
@@ -4321,7 +4338,7 @@ function npcPath(sx, sy, tx, ty, maxN = 16000) {
       if (!edgeOk(x, y, nx, ny)) continue;
       if (dx && dy && (!walkableTile(x + dx, y, 0) || !walkableTile(x, y + dy, 0))) continue;
       if (WORLD.stair[nk]) continue;
-      const c = gk + (dx && dy ? 1.414 : 1) * (ROAD_T.has(WORLD.ground[nk]) || WORLD.bld[nk] >= 0 ? 0.82 : 1);
+      const c = gk + (dx && dy ? 1.414 : 1) * (ROAD_T.has(WORLD.ground[nk]) || WORLD.bld[nk] >= 0 || WORLD.rdir[nk] ? 1 : (WORLD.zone[nk] === Z.VILLAGE || inSafe(nx, ny)) ? 2.6 : 1.3);   /* como gente de verdade: na cidade anda pelas ruas, só corta pela grama se for muito mais perto */
       if (c < (g.get(nk) ?? 1e9)) { g.set(nk, c); prev.set(nk, k); const h = hf(nx, ny); push(nk, c + h * 0.9); if (h < bestH) { bestH = h; best = nk; } }
     }
   }

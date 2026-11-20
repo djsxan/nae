@@ -413,6 +413,7 @@ function updateLocal(now, dt) {
       sp *= Math.min(a1, a2) * (a1 < 0.7 && a2 < 0.7 ? 0.55 : 1);
     }
     if (now < (G.slowUntil || 0)) sp *= 0.5;   // rugido do dragão
+    if (G.riding) { const I = G.ents && G.ents[G.riding]; sp = 2.6 * (1 + ((I && I.st) || 2) * 0.12); }   /* montado: o passo da guardiã */
     if (me.anim && /^atk_/.test(me.anim.a) && now - me.anim.t0 < (me.anim.ms || 900)) sp *= 0.45;
     if (G.parrying) sp *= 0.55;
     if (G.dodge) sp = (G.dodge.dist || DODGE.dist) / ((G.dodge.ms || DODGE.ms) / 1000);
@@ -545,6 +546,7 @@ function treeEquipMenu(nd, bi, i) {
   const off = d.querySelector('[data-off]'); if (off) off.onclick = () => { G.slotTree[cur] = null; slotTreeSave(); buildHotbar(); d.remove(); };
 }
 function castSkill(i) {
+  if (G.riding) { const mw = G.mouseW, a = mw ? Math.atan2(mw.y - G.me.y, mw.x - G.me.x) : (G.me.fa ?? 0); if (i <= 3) Net.send({ t: 'ent', a: 'ratk', n: i + 1, ang: a }); return; }   /* montado: os botões são os golpes da guardiã */
   if (i === 0 && G.me && G.me.cls === 'mage' && typeof flameStart === 'function' && !slotTreeNode(0) && SKILLS.mage[0] && SKILLS.mage[0].id === 'ember') { flameStart(); setTimeout(() => flameStop(), 1200); return; }   /* clique no ícone: um jato curto */
   { const T = slotTreeNode(i); if (T) { const now = performance.now(); if (now < (G.tcdEnd[i] || 0) || G.me.downed) return; if (G.me.mp < T.nd.mp) { showToast('Mana insuficiente.'); return; }
     const me2 = G.me, mw = G.mouseW, aim = mw ? Math.atan2(mw.y - me2.y, mw.x - me2.x) : (me2.fa ?? 0);
@@ -1006,6 +1008,7 @@ function standUp() {
 canvas.addEventListener('mousedown', e => {
   if (!G.started) return;
   if (G.pickTarget && typeof staffPick === 'function' && e.button === 0) { staffPick(e); return; }
+  if (G.pplAuto && e.button === 0 && typeof personUnderMouse === 'function') { const t = personUnderMouse(e.clientX, e.clientY); if (t) { G.pTarget = t; Net.send({ t: 'ptarget', k: t.k, id: t.id }); showToast('Alvo: ' + t.name); } }
   if (G.entPick && e.button === 0) { G.entPick = false; const mon = typeof monsterUnderMouse === 'function' ? monsterUnderMouse(e.clientX, e.clientY) : null; if (mon) Net.send({ t: 'ent', a: 'order', o: 'attack', id: mon.id }); else showToast('Nenhum inimigo ali.'); return; }   /* alvo da guardiã */   /* escolhendo o alvo de um trabalho sujo */
   if (inCombatZone() && !((G.dev || G.devTools) && G.devPlace) && !interactHere(e)) {
     const me = G.me;
@@ -1095,7 +1098,8 @@ window.addEventListener('keydown', e => {
   if (typeof obsKey === 'function' && obsKey(k, e)) { e.preventDefault(); return; }
   if (G.paused) { if (typeof gmKey === 'function' && gmKey(k, e)) e.preventDefault(); return; }
   if (k === 'escape') { if (G.dialog) { closeDialog(); return; } for (const id of ['chestp', 'bankp', 'biz', 'jobboard', 'counterp', 'estate', 'bizhub', 'roompw-ask', 'tradep']) { const el = $(id); if (el && !el.classList.contains('hidden') && el.parentNode === document.body && getComputedStyle(el).display !== 'none') { if (id === 'biz' && typeof bizClose === 'function') bizClose(); else if (id === 'estate') estToggle(false); else if (id === 'bizhub') hubToggle(false); else el.classList.add('hidden'); return; } } if (typeof emToggle === 'function') emToggle(); else togglePause(); return; }
-  if (k === '1' && typeof flameKey === 'function' && flameKey(e)) return;   /* mago: segurar a tecla 1 = Chamas */
+  if (k === 'f' && !e.repeat && G.riding) { Net.send({ t: 'ent', a: 'unride' }); return; }   /* descer da guardiã */
+  if (k === '1' && !G.riding && typeof flameKey === 'function' && flameKey(e)) return;   /* mago: segurar a tecla 1 = Chamas */
   if (k >= '1' && k <= '4') { castSkill(+k - 1); return; }
   if (k === '5' && G.me && SKILLS[G.me.cls].length > 4) { if (!e.repeat) castSkill(4); return; }
   if (k === 'q') { drinkPot('hp'); return; }
@@ -1108,7 +1112,7 @@ window.addEventListener('keydown', e => {
   if (k === 'f' && !e.repeat && typeof liftNear === 'function' && liftNear()) { liftMenu(); return; }
   if (k === 'f' && !e.repeat && typeof leverNear === 'function' && leverNear()) { Net.send({ t: 'tub' }); return; }
   if (k === 'f' && !e.repeat && typeof ofuroNear === 'function' && ofuroNear()) { bathEnter(); return; }
-  if (k === 'f' && !e.repeat && typeof sapNearMine === 'function' && sapNearMine() && G.me.cls === 'mage') { Net.send({ t: 'ent', a: 'wake' }); return; }   /* despertar a muda */
+
   if (k === 'f' && !e.repeat && typeof entNear === 'function' && entNear()) { entMenu(entNear()); return; }   /* ordens para a guardiã */
   if (k === 'f' && !e.repeat && typeof entLogNear === 'function' && entLogNear()) { Net.send({ t: 'ent', a: 'log', id: entLogNear().id }); return; }   /* galho caído da guardiã: lenha */
   if (k === 'f' && !e.repeat && typeof purseNear === 'function' && purseNear()) { Net.send({ t: 'emp', a: 'purse', id: purseNear().id }); return; }   /* bolsa caída no chão */

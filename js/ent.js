@@ -12,7 +12,7 @@ const ENT_LOST = { armA: 2, armB: 4, legL: 8, legR: 16 };
 function entList() { S.estate.ents = S.estate.ents || {}; return S.estate.ents; }
 function entStageOf(p) { if (typeof elemStrength !== 'function') return 0; const v = elemStrength(p, 'earth'); return v >= ENT_NEED[3] ? 3 : v >= ENT_NEED[2] ? 2 : v >= ENT_NEED[1] ? 1 : 0; }
 function entNid(key) { return 'ent_' + String(key).replace(/[^a-z0-9]/gi, '').slice(0, 24); }
-function entPublic(key, r) { const n = S.npcs[entNid(key)]; return { id: entNid(key), k: r.k, st: r.st, lost: r.lost || 0, tw: r.tw || 0, sl: n && n.sleepEnt ? 1 : 0, own: r.ownName, hp: Math.round(n ? n.hp : r.hp), max: r.maxHp, dry: r.dry ? 1 : 0, mode: r.mode, fi: n && n.entFight ? 1 : 0 }; }
+function entPublic(key, r) { const n = S.npcs[entNid(key)]; return { id: entNid(key), k: r.k, st: r.st, lost: r.lost || 0, tw: r.tw || 0, sl: n && n.sleepEnt ? 1 : 0, own: r.ownName, hp: Math.round(n ? n.hp : r.hp), max: r.maxHp, dry: r.dry ? 1 : 0, mode: r.mode, fi: n && n.entFight ? 1 : 0, rg: r.ranged ? 1 : 0, rd: n && n.riddenBy ? n.riddenBy : 0 }; }
 function entsSend(to) { const L = entList(), m = { t: 'ents', l: Object.keys(L).map(k => entPublic(k, L[k])) }; if (to) Net.toOne(to, m); else Net.toAll(m); }
 function entSpawn(key, r) {
   const id = entNid(key); if (S.npcs[id]) return S.npcs[id];
@@ -22,21 +22,23 @@ function entSpawn(key, r) {
 function entMsg(p, m) {
   const key = estOwner(p), L = entList();
   if (m.a === 'log') { entLogTake(p, m.id); return; }   /* recolher um galho caído */
+  if (m.a === 'ride' || m.a === 'unride' || m.a === 'ratk') { entRide(p, m); return; }
   if (m.a === 'wake') {   /* despertar a muda (ritual de 8 s) */
     const sp = (S.estate.saps || []).find(s => s.owner === key); if (!sp) { tell(p, 'Você não tem uma muda plantada.'); return; }
-    if (dist(p.x, p.y, sp.x, sp.y) > 2.2) { tell(p, 'Chegue perto da sua muda.'); return; }
+    if (dist(p.x, p.y, sp.x, sp.y) > 3.6) { tell(p, 'Chegue perto da sua muda.'); return; }
     if (L[key] && !L[key].dry) { tell(p, 'Sua guardiã já está desperta. Só uma por vez.'); return; }
     const st = entStageOf(p); if (!st) { tell(p, 'A muda ainda não ouve você: a força da Terra precisa chegar a ' + ENT_NEED[1] + ' (agora ' + Math.floor(elemStrength(p, 'earth')) + ').'); return; }
     if (S.entWaking && S.entWaking[key]) return; (S.entWaking = S.entWaking || {})[key] = 1;
     p.sit = null; anim('p', p, 'kneelput', sp.x, sp.y); near(sp.x, sp.y, { t: 'entcut', x: sp.x, y: sp.y, k: sp.k, st, by: p.id }, VIEW_RADIUS + 6);
     setTimeout(() => { delete S.entWaking[key]; S.estate.saps = (S.estate.saps || []).filter(s => s !== sp); if (typeof sapsSend === 'function') sapsSend();
       const hp = ENT_HP[st]; L[key] = { k: sp.k, st, x: sp.x, y: sp.y, hp, maxHp: hp, lost: 0, tw: 0, regrow: {}, mode: 'follow', ownName: p.name, born: Date.now() }; estateSave();
-      const n = entSpawn(key, L[key]); empSay(n, 'Brotei pessoal, fala comigo meu mago'); useGain(p, 'el_earth', 6); entsSend(); }, 8000);
+      entSpawn(key, L[key]); useGain(p, 'el_earth', 6); entsSend(); }, 8000);
     return; }
   const r = L[key]; if (!r || r.dry) return; const n = S.npcs[entNid(key)]; if (!n) return;
   if (m.a === 'order') {
     if (dist(p.x, p.y, n.x, n.y) > 4 && m.o !== 'attack') { tell(p, 'Chegue perto da sua guardiã.'); return; }
-    if (m.o === 'follow') { r.mode = 'follow'; r.post = null; empSay(n, 'Vou com você, meu mago.'); }
+    if (m.o === 'follow') { r.mode = 'follow'; r.post = null; r.ranged = 0; empSay(n, 'Vou com você, meu mago.'); }
+    else if (m.o === 'ranged') { r.ranged = r.ranged ? 0 : 1; if (r.mode !== 'guard') r.mode = 'follow'; empSay(n, r.ranged ? 'Fico de longe e arremesso.' : 'Volto a lutar de perto.'); }   /* de longe: longe do fogo do mago */
     else if (m.o === 'guard') { r.mode = 'guard'; r.post = [n.x, n.y]; empSay(n, 'Ninguém passa por aqui.'); }
     else if (m.o === 'rest') { r.mode = 'rest'; empSay(n, 'Vou cochilar entre as árvores. Me chame quando precisar.'); }
     else if (m.o === 'attack') { const t = S.monsters[m.id]; if (!t) { tell(p, 'Escolha um inimigo.'); return; } r.mode = r.mode === 'attack' ? r.prevMode || 'follow' : r.mode; r.prevMode = r.mode; r.mode = 'attack'; n.entT = t.id; empSay(n, 'Deixa comigo!'); }
@@ -65,10 +67,37 @@ function entHurt(n, r, dmg, src) {   /* dano na guardiã: pode perder um galho; 
   }
   entsSend();
 }
+// ---------- montar na guardiã: o mago vai nas costas e controla a árvore (WASD anda, 1-4 golpes, F desce) ----------
+const ENT_RCD = [0, 900, 2600, 6000, 9000];
+function entRider(n) { return n && n.riddenBy ? S.players[n.riddenBy] : null; }
+function entRide(p, m) {
+  const key = estOwner(p), r = entList()[key], n = r && S.npcs[entNid(key)];
+  if (m.a === 'unride') { if (p.riding && n) { n.riddenBy = null; p.riding = null; p.sit = null; near(p.x, p.y, { t: 'entride', id: n.id, pid: p.id, on: 0 }); entsSend(); } return; }
+  if (m.a === 'ride') { if (!r || !n || r.dry || n.dead) return; if (p.cls !== 'mage') return; if ((r.st || 1) < 2) { tell(p, 'Ela ainda é um broto: espere ficar adulta para montar.'); return; } if (dist(p.x, p.y, n.x, n.y) > 3.5) { tell(p, 'Chegue perto da sua guardiã.'); return; } if (entNearCity(n.x, n.y)) { tell(p, 'Perto da cidade ela não deixa montar.'); return; }
+    if (p.flame) flameStop(p); p.autoAtk = 0; p.medit = null; n.riddenBy = p.id; p.riding = key; p.x = n.x; p.y = n.y; r.mode = 'follow'; n.entT = null; near(p.x, p.y, { t: 'entride', id: n.id, pid: p.id, on: 1, st: r.st }); entsSend(); tell(p, 'Montado na guardiã: WASD anda, 1 soco, 2 arremesso, 3 golpe especial, 4 golpe forte (anciã), F desce.'); return; }
+  if (m.a === 'ratk') { if (!p.riding || !n || n.riddenBy !== p.id) return; const i = m.n | 0, now = now_(); if (i < 1 || i > 4) return; n.rcd = n.rcd || {}; if (now < (n.rcd[i] || 0)) return; if (i === 4 && r.st < 3) { tell(p, 'O golpe forte é da guardiã anciã.'); return; }
+    n.rcd[i] = now + ENT_RCD[i]; const a = isFinite(+m.ang) ? +m.ang : 0, [d0, d1] = ENT_DMG[r.st], kill = o => { if (o.hp <= 0) killMonster(o, p, 0); };
+    const hit = (o, k, stun) => { const dmg = Math.round(rint(d0, d1) * k); o.hp -= dmg; o.aggro = o.aggro || p.id; near(o.x, o.y, { t: 'hit', k: 'm', id: o.id, x: o.x, y: o.y, dmg, ax: n.x, ay: n.y }); if (stun && !(MON[o.type] || {}).big) o.stunUntil = Math.max(o.stunUntil || 0, now_() + stun); kill(o); };
+    n.dir = dirFromVecS(Math.cos(a), Math.sin(a)); const reach = 1.5 + r.st * 0.4;
+    if (i === 1) { near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: r.k === 'water' ? 'atk_slashL' : 'atk_slashR', ms: 800, tx: n.x + Math.cos(a), ty: n.y + Math.sin(a) }); setTimeout(() => { for (const o of Object.values(S.monsters)) if (o.hp > 0 && inArc(n.x, n.y, a, o.x, o.y, reach, 1.0, (MON[o.type] || {}).rad || 0.3)) hit(o, 1, 0); }, 380); }   /* soco em arco */
+    else if (i === 2) { let tg = null, bd = 9; for (const o of Object.values(S.monsters)) { if (o.hp <= 0) continue; const dd = dist(n.x, n.y, o.x, o.y); if (dd < bd && Math.abs(angDiff(Math.atan2(o.y - n.y, o.x - n.x), a)) < 0.6) { bd = dd; tg = o; } }   /* arremesso na direção do mouse */
+      const tx = tg ? tg.x : n.x + Math.cos(a) * 6, ty = tg ? tg.y : n.y + Math.sin(a) * 6, d = dist(n.x, n.y, tx, ty), fl = Math.round(260 + d * 70), big = r.st === 3;
+      near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'atk_over', ms: 900, tx, ty }); near(n.x, n.y, { t: 'entthrow', id: n.id, x0: n.x, y0: n.y, x1: tx, y1: ty, ms: fl, big: big ? 1 : 0, log: r.k === 'wind' ? 2 : big ? 1 : 0, st: r.st });
+      setTimeout(() => { for (const o of Object.values(S.monsters)) if (o.hp > 0 && dist(o.x, o.y, tx, ty) < (big ? 1.6 : 1.0)) hit(o, big ? 1.4 : 1, big ? 1200 : 0); }, fl + 500); }
+    else if (i === 3) { if (r.k === 'earth') { near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'kick', ms: 900 }); setTimeout(() => { near(n.x, n.y, { t: 'entstomp', x: n.x, y: n.y }); for (const o of Object.values(S.monsters)) if (o.hp > 0 && dist(o.x, o.y, n.x, n.y) < 2.5 + r.st * 0.4) hit(o, 0.8, 1600); }, 420); }   /* carvalho: pisão que derruba */
+      else if (r.k === 'water') { near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'atk_slashL', ms: 900 }); setTimeout(() => { for (const o of Object.values(S.monsters)) if (o.hp > 0 && dist(o.x, o.y, n.x, n.y) < 3.5) { hit(o, 0.6, 0); o.slowUntil = Math.max(o.slowUntil || 0, now_() + 4000); } }, 420); }   /* salgueiro: laço de ramos que prende */
+      else { for (let k = 0; k < 4; k++) setTimeout(() => { if (!S.npcs[n.id]) return; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: k % 2 ? 'atk_slashL' : 'atk_slashR', ms: 300 }); for (const o of Object.values(S.monsters)) if (o.hp > 0 && inArc(n.x, n.y, a, o.x, o.y, reach, 1.2, 0.3)) hit(o, 0.45, 0); }, k * 260); } }   /* cerejeira: rajada de golpes rápidos */
+    else { near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'atk_over', ms: 1100 }); const tx = n.x + Math.cos(a) * 5, ty = n.y + Math.sin(a) * 5; near(n.x, n.y, { t: 'entthrow', id: n.id, x0: n.x, y0: n.y, x1: tx, y1: ty, ms: 700, big: 1, log: r.k === 'earth' ? 0 : 1, st: 3 });
+      setTimeout(() => { near(tx, ty, { t: 'entstomp', x: tx, y: ty }); for (const o of Object.values(S.monsters)) if (o.hp > 0 && dist(o.x, o.y, tx, ty) < 2.4) hit(o, 2.2, 1800); }, 1200); }   /* anciã: rocha ou tronco enorme que esmaga em área */
+    return; }
+}
 function entTick(now) {
   const L = (S.estate && S.estate.ents) || {}; if (now - (S.entT || 0) < 100) return; const dt = Math.min(0.25, (now - (S.entT || now)) / 1000) || 0.1; S.entT = now;
   for (const key in L) { const r = L[key]; let n = S.npcs[entNid(key)]; if (!n) { n = entSpawn(key, r); }
-    if (r.dry || n.dead) continue; const q = Object.values(S.players).find(pp => estOwner(pp) === key && !pp.dev);
+    if (r.dry || n.dead) { if (n.riddenBy) { const rp = S.players[n.riddenBy]; if (rp) { rp.riding = null; } n.riddenBy = null; } continue; } const q = Object.values(S.players).find(pp => estOwner(pp) === key && !pp.dev);
+    if (n.riddenBy) { const rp = S.players[n.riddenBy]; if (!rp || rp.riding !== key || rp.downed || (rp.fl || 0) !== 0) { n.riddenBy = null; if (rp) rp.riding = null; entsSend(); }
+      else if (entNearCity(rp.x, rp.y)) { entRide(rp, { a: 'unride' }); tell(rp, 'A guardiã para: ela não chega perto da cidade.'); }
+      else { const bx = rp.x - 0.3, by = rp.y - 0.3, mv = dist(n.x, n.y, bx, by); if (mv > 0.02) { n.dir = dirFromVecS(bx - n.x, by - n.y); n.walk = true; } else n.walk = false; n.x = bx; n.y = by;   /* um pouco atrás: o mago aparece nas costas, na frente da copa */ n.sleepEnt = false; n.entFight = false; continue; } }
     // crescer com o dono e rebrotar galhos
     if (q && now - (r.chkT || 0) > 5000) { r.chkT = now; const st = Math.max(r.st, entStageOf(q)); if (st > r.st) { r.st = st; n.maxHp = r.maxHp = ENT_HP[st]; n.hp = Math.min(n.maxHp, n.hp + ENT_HP[st] * 0.5); empSay(n, ['', '', 'Sinto a seiva subir... estou mais forte!', 'Minhas raízes alcançam o fundo da terra!'][st]); entsSend(); estateSave(); }
       for (const k in r.regrow) if (Date.now() > r.regrow[k]) { delete r.regrow[k]; r.lost &= ~ENT_LOST[k]; r.tw = (r.tw || 0) | ENT_LOST[k]; empSay(n, 'Brotou um galho novo!'); entsSend(); estateSave(); }   /* volta com galhinhos e folhas novas */
@@ -79,6 +108,12 @@ function entTick(now) {
     if (!m && r.mode !== 'rest') for (const o of Object.values(S.monsters)) { if (o.hp <= 0 || (o.alt || 0) > 1 || entNearCity(o.x, o.y)) continue; const d0 = MON[o.type] || {}; if (d0.beh === 'flee' && !(q && o.aggro === q.id)) continue; const d = dist(n.x, n.y, o.x, o.y); if ((q && o.aggro === q.id && d < 12) || (d < 5 && (d0.aggro || 0) > 0)) { m = o; n.entT = o.id; break; } }
     if (n.entFight !== !!m) { n.entFight = !!m; entsSend(); }   /* o rosto franze quando luta */
     if (m) { n.sleepEnt = false; const d = dist(n.x, n.y, m.x, m.y), reach = 1.3 + r.st * 0.35;
+      if (r.ranged) {   /* ordem "de longe": mantém distância (perto do mago, fora do jato) e só arremessa */
+        const keep = 4.5; if (d < keep - 0.8) { const a = Math.atan2(n.y - m.y, n.x - m.x); npcWalk(n, n.x + Math.cos(a) * 1.5, n.y + Math.sin(a) * 1.5, spd, dt); } else if (d > 8) npcWalk(n, m.x, m.y, spd, dt); else n.walk = false;
+        if (d < 8.5 && now >= (n.throwT || 0)) { n.throwT = now + [0, 2600, 2300, 2000][r.st]; const big = r.st === 3 && Math.random() < 0.45, log = r.st >= 2 && (big ? r.k !== 'earth' : Math.random() < 0.4), fl = Math.round(260 + d * 70);   /* broto: pedrinhas; adulta: pedras e galhos; anciã: troncos e pedras grandes */
+          n.dir = dirFromVecS(m.x - n.x, m.y - n.y); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'atk_over', ms: 900, tx: m.x, ty: m.y }); near(n.x, n.y, { t: 'entthrow', id: n.id, x0: n.x, y0: n.y, x1: m.x, y1: m.y, ms: fl, big: big ? 1 : 0, log: log ? (r.k === 'wind' ? 2 : 1) : 0, st: r.st });
+          setTimeout(() => { if (!S.monsters[m.id]) return; const [a, b] = ENT_DMG[r.st], dmg = Math.round(rint(a, b) * (big ? 1.4 : r.st === 1 ? 0.6 : 0.85)); m.hp -= dmg; near(m.x, m.y, { t: 'hit', k: 'm', id: m.id, x: m.x, y: m.y, dmg, ax: n.x, ay: n.y }); if (big && MON[m.type] && !MON[m.type].big) m.stunUntil = Math.max(m.stunUntil || 0, now_() + 1200); if (m.hp <= 0) { if (q) killMonster(m, q, 0); else { delete S.monsters[m.id]; near(m.x, m.y, { t: 'mdie', id: m.id, d: 0 }); } } }, fl + 500); }
+        continue; }
       if (r.st >= 2 && d > reach + 0.5 && d < 8 && now >= (n.throwT || 0)) { n.throwT = now + (r.st === 3 ? 3600 : 4800); const big = r.st === 3 && Math.random() < 0.5, log = big && r.k !== 'earth', fl = Math.round(260 + d * 70);   /* arremessa pedras, galhos e, no topo, pedras grandes e troncos */
         n.dir = dirFromVecS(m.x - n.x, m.y - n.y); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'atk_over', ms: 900, tx: m.x, ty: m.y }); near(n.x, n.y, { t: 'entthrow', id: n.id, x0: n.x, y0: n.y, x1: m.x, y1: m.y, ms: fl, big: big ? 1 : 0, log: log ? 1 : (r.k === 'wind' && !big ? 2 : 0), st: r.st });
         setTimeout(() => { if (!S.monsters[m.id]) return; const [a, b] = ENT_DMG[r.st], dmg = Math.round(rint(a, b) * (big ? 1.6 : 1)); m.hp -= dmg; near(m.x, m.y, { t: 'hit', k: 'm', id: m.id, x: m.x, y: m.y, dmg, ax: n.x, ay: n.y }); if (big && MON[m.type] && !MON[m.type].big) m.stunUntil = Math.max(m.stunUntil || 0, now_() + 1200); if (m.hp <= 0) { if (q) killMonster(m, q, 0); else { delete S.monsters[m.id]; near(m.x, m.y, { t: 'mdie', id: m.id, d: 0 }); } } }, 500 + fl); }
@@ -236,9 +271,9 @@ function sapNearMine() { const me = G.me; if (!me) return null; for (const s of 
 function entMenu(e) {
   const I = G.ents[e.id]; if (!I) return; const opt = (o, ic, t, sub) => '<button class="lift-btn" data-o="' + o + '"><span class="lift-n">' + ic + '</span><span><b>' + t + '</b><br><small>' + sub + '</small></span></button>';
   const html = '<div style="padding:8px 14px 0;font-size:14px;opacity:.85">' + ['', 'Broto', 'Adulta', 'Anciã'][I.st] + ' · vida ' + I.hp + '/' + I.max + (I.lost ? ' · sem ' + Object.keys(ENT_LOST).filter(k => I.lost & ENT_LOST[k]).length + ' galho(s), rebrotando' : '') + '</div><div class="lift-list" style="padding-top:8px">' +
-    opt('follow', '🌳', 'Me acompanhe', 'Anda com você fora da cidade e luta ao seu lado. Na cidade, ela espera dormindo num bosque.') + opt('guard', '📍', 'Guarde aqui', 'Fica neste ponto e enfrenta quem chegar.') + opt('rest', '💤', 'Descanse', 'Vai dormir no bosque mais perto até você chamar.') + opt('attack', '⚔', 'Ataque aquele alvo', 'Clique num inimigo para ela ir para cima.') + '</div>';
+    (I.st >= 2 ? opt('ride', '🧙', 'Montar nas costas', 'Você sobe na guardiã e a controla: WASD anda, 1 a 4 são os golpes dela, F desce. Não entra perto da cidade.') : '') + opt('follow', '🌳', 'Me acompanhe', 'Anda com você fora da cidade e luta ao seu lado. Na cidade, ela espera dormindo num bosque.') + opt('guard', '📍', 'Guarde aqui', 'Fica neste ponto e enfrenta quem chegar.') + opt('rest', '💤', 'Descanse', 'Vai dormir no bosque mais perto até você chamar.') + opt('attack', '⚔', 'Ataque aquele alvo', 'Clique num inimigo para ela ir para cima.') + opt('ranged', '🪨', I.rg ? 'Voltar a lutar de perto' : 'Ataque de longe', I.rg ? 'Ela volta a ir para cima dos inimigos.' : 'Fica longe dos inimigos e só arremessa pedras, galhos e troncos (conforme a sua Terra): assim o fogo do seu cajado não a acerta.') + '</div>';
   const d = staffPanel('entmenu', ENT_NAME[{ ent_oak: 'earth', ent_willow: 'water', ent_cherry: 'wind' }[e.kind]] + ' · guardiã', html);
-  d.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const o = b.dataset.o; d.remove(); if (o === 'attack') { G.entPick = true; showToast('Clique no inimigo (Esc cancela).'); return; } Net.send({ t: 'ent', a: 'order', o }); });
+  d.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const o = b.dataset.o; d.remove(); if (o === 'ride') { Net.send({ t: 'ent', a: 'ride' }); return; } if (o === 'attack') { G.entPick = true; showToast('Clique no inimigo (Esc cancela).'); return; } Net.send({ t: 'ent', a: 'order', o }); });
 }
 function drawEntFx(ctx, now) {   /* ritual do despertar, arremessos e lascas */
   const ox = G.view.ox, oy = G.view.oy;
@@ -265,6 +300,7 @@ function entLogDrop(n, r, part) {   /* servidor: o galho arrancado cai perto e q
 function entLogTake(p, id) { const L = S.entLogs || [], u = L.find(x => x.id === id); if (!u || (p.fl || 0) !== 0 || dist(u.x, u.y, p.x, p.y) > 1.8) return; L.splice(L.indexOf(u), 1); const q = 2 + (u.st || 1); p.inv.log = (p.inv.log || 0) + q; sendStat(p); Net.toOne(p.id, { t: 'loot', k: 'log' }); tell(p, 'Você recolheu o galho: ' + q + ' toras de madeira.'); Net.toAll({ t: 'entlogs', l: L }); }
 if (typeof G !== 'undefined') { G.entLogs = G.entLogs || []; G.entLeaves = G.entLeaves || []; G.entLogFall = G.entLogFall || {}; }
 if (typeof progEvent === 'function' && typeof G !== 'undefined') { const _peE2 = progEvent; progEvent = function (m, now) {
+  if (m.t === 'entride') { const pe = G.players[m.pid]; if (pe) pe.rideEnt = m.on ? m.id : null; if (m.pid === G.myId) { G.riding = m.on ? m.id : null; showToast(m.on ? 'Montado: WASD anda · 1 soco · 2 arremesso · 3 especial · 4 golpe forte · F desce' : 'Você desceu da guardiã.'); } return true; }
   if (m.t === 'entlogs') { const had = new Set((G.entLogs || []).map(u => u.id)); for (const u of m.l || []) if (!had.has(u.id) && Date.now() - u.t < 3000) G.entLogFall[u.id] = now; G.entLogs = m.l || []; return true; }
   if (m.t === 'entdie') { const e = G.npcs[m.id]; (G.entDeaths = G.entDeaths || {})[m.id] = { t0: now, ash: m.ash }; if (e) { const I = G.ents[m.id]; if (G.view && I) { const p = iso(e.rx, e.ry), K = ENT_K[I.st || 1], L0 = ENT_LOOK[e.kind]; for (let i = 0; i < 40; i++) G.entLeaves.push({ x: p.sx + (Math.random() - 0.5) * 30 * K, y: p.sy - FOOT_Y * K * (0.5 + Math.random() * 0.4), gy: p.sy + (Math.random() - 0.4) * 14 * K, t0: now + Math.random() * 900, ph: Math.random() * 6, c: e.kind === 'ent_cherry' ? '#f0a0b8' : ['#8a7a2a', '#6a5a24', L0.leaf[i % 3]][i % 3], pet: e.kind === 'ent_cherry' }); } } return true; }   /* as folhas secam e caem todas */
   return _peE2(m, now); }; }
@@ -334,3 +370,4 @@ function sapSprite3D(s, now) {
     renderer.setSize(Math.round(FRAME_W * PXU), Math.round(FRAME_H * PXU), false); scene.add(R); renderer.render(scene, cam); scene.remove(R);
     const W = Math.round(FRAME_W * PXU), Hh = Math.round(FRAME_H * PXU), c = document.createElement('canvas'); c.width = W; c.height = Hh; c.getContext('2d').drawImage(renderer.domElement, 0, 0); renderer.setSize(R3.W, R3.H, false);
     return { c, w: FRAME_W, h: FRAME_H, ax: FRAME_W / 2, ay: FOOT_Y, painted: true, hd: true }; }, 'sap|' + s.id); }
+function entRideLift(e) { const id = e.rideEnt || (e === G.me && G.riding); if (!id) return 0; const I = G.ents[id], n = G.npcs[id]; if (!I || !n) return 0; const L0 = ENT_LOOK[n.kind]; if (!L0) return 0; return (L0.P.hipY + L0.P.torso[0] * 0.92) * ENT_SC[I.st || 2] * 0.75 * 25; }   /* altura das costas da guardiã, em px */

@@ -4,9 +4,10 @@
 // ============================================================
 const GAME_NAME = 'Nae';
 // brasão da família no poder: o castelo, os estandartes e as tapeçarias leem daqui (troca quando outra casa assume)
+const CASTLE_INT = typeof location !== 'undefined' && /[?&]castelo=1/.test(location.search);   /* térreo novo do castelo: só com ?castelo=1 até os outros andares ficarem prontos */
 const HERALD = { house: 'Aurenfell', name: 'Casa Aurenfell', field: '#9a2a1c', field2: '#6e1d14', metal: '#f1cf6a', charge: 'tower', motto: 'A Luz Não se Curva' };
-const VERSION = 'v1.91.0';
-const VERSION_NAME = 'Nae · Casa Aurenfell';
+const VERSION = 'v1.92.0';
+const VERSION_NAME = 'Nae · Montaria';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -330,7 +331,7 @@ const RECIPES = {
 };
 const KNOCK_MS = 1700, PROSTH_PRICE = 30, RITUAL_PRICE = 120;
 const STRIKE_PART = { head: ['head', 'head', 'torso', 'armA'], legs: ['legL', 'legR', 'legL', 'torso'], torso: ['torso', 'torso', 'armA', 'armB'] };
-const BUFF_NAMES = { luck: 'Sorte do Dragão', tipsy: 'Tonto (cerveja)', breath: 'Elixir do Fôlego', warm: 'Elixir da Brasa', weaver: 'Bênção do Tecelão', warcry: 'Grito de Guerra', wall: 'Muralha de Ferro', agile: 'Passo Ágil', bless: 'Bênção da Aurora', mead: 'Hidromel', whet: 'Lâmina Afiada', rested: 'Bem descansado', sapling: 'Sob a muda: cura, mana, fôlego, casca protetora (-15% de dano) e bichos calmos' };
+const BUFF_NAMES = { luck: 'Sorte do Dragão', tipsy: 'Tonto (cerveja)', breath: 'Elixir do Fôlego', warm: 'Elixir da Brasa', weaver: 'Bênção do Tecelão', warcry: 'Grito de Guerra', wall: 'Muralha de Ferro', agile: 'Passo Ágil', bless: 'Bênção da Aurora', mead: 'Hidromel', whet: 'Lâmina Afiada', rested: 'Bem descansado', medgroup: 'Meditação em grupo', sapling: 'Sob a muda: cura, mana, fôlego, casca protetora (-15% de dano) e bichos calmos' };
 const BUFF_BITS = { wall: 16, agile: 32, bless: 64, warcry: 128 };
 
 const need = l => Math.floor(20 * Math.pow(l, 1.75));
