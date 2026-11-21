@@ -532,7 +532,8 @@ function slotTreeLoad() { try { G.slotTree = JSON.parse(localStorage.getItem(slo
   if (!G.slotTree && G.me) { const sv = loadChars()[charKey(G.me.name, G.me.cls)]; if (sv && Array.isArray(sv.slots)) G.slotTree = sv.slots; }   // reserva: espaços guardados junto com o herói
   G.slotTree = G.slotTree || [null, null, null, null]; G.tcdEnd = G.tcdEnd || [0, 0, 0, 0]; }
 function slotTreeSave() { try { localStorage.setItem(slotKey(), JSON.stringify(G.slotTree)); } catch (e) { } }
-function slotTreeNode(i) { const s = G.slotTree && G.slotTree[i]; if (!s || !G.me) return null; const br = TREE[G.me.cls] && TREE[G.me.cls][s.b], nd = br && br.nodes[s.n >= 2 && s.n <= 5 ? s.n : 4]; return nd && nd.id === s.id && (nd.evo ? typeof mStr === 'function' && mStr(G.me, br.el) >= nd.need : G.me.tree && G.me.tree[nd.id]) ? { ...s, nd, br } : null; }   /* evolução do mago: vale enquanto tiver a força */
+function slotTreeNode(i) { const s = G.slotTree && G.slotTree[i]; if (!s || !G.me) return null;
+  if (s.c != null) { const C = MAGE_COMBOS[s.c]; return C && C.id === s.id && G.me.cls === 'mage' && G.me.tree && G.me.tree[C.id] && typeof mStr === 'function' && mStr(G.me, C.a) >= COMBO_NEED && mStr(G.me, C.b) >= COMBO_NEED ? { ...s, b: -1, n: -1, nd: { id: C.id, name: C.n, desc: C.d, mp: C.mp, cd: C.cd, combo: 1 }, br: { icon: '✦' } } : null; }   /* combinada do centro do Pentagrama */ const br = TREE[G.me.cls] && TREE[G.me.cls][s.b], nd = br && br.nodes[s.n >= 2 && s.n <= 5 ? s.n : 4]; return nd && nd.id === s.id && (nd.evo ? typeof mStr === 'function' && mStr(G.me, br.el) >= nd.need : G.me.tree && G.me.tree[nd.id]) ? { ...s, nd, br } : null; }   /* evolução do mago: vale enquanto tiver a força */
 function slotEquip(i, b, n, id) { if (!G.slotTree) slotTreeLoad(); for (let k = 0; k < 4; k++) if (G.slotTree[k] && G.slotTree[k].id === id) G.slotTree[k] = null; G.slotTree[i] = id ? { b, n, id } : null; slotTreeSave(); buildHotbar(); }
 function treeEquipMenu(nd, bi, i) {
   let d = $('tequip'); if (d) d.remove(); d = document.createElement('div'); d.id = 'tequip'; d.className = 'gpanel';
@@ -551,7 +552,7 @@ function castSkill(i) {
   { const T = slotTreeNode(i); if (T) { const now = performance.now(); if (now < (G.tcdEnd[i] || 0) || G.me.downed) return; if (G.me.mp < T.nd.mp) { showToast('Mana insuficiente.'); return; }
     const me2 = G.me, mw = G.mouseW, aim = mw ? Math.atan2(mw.y - me2.y, mw.x - me2.x) : (me2.fa ?? 0);
     if (T.nd.id === 'w_glide') { let D = 6, x1 = me2.x, y1 = me2.y; for (let d = 6; d >= 0.6; d -= 0.2) { const nx = me2.x + Math.cos(aim) * d, ny = me2.y + Math.sin(aim) * d; if (freeAt(nx, ny, me2.z)) { x1 = nx; y1 = ny; D = d; break; } } G.glide = { t0: now, x0: me2.x, y0: me2.y, x1, y1, ms: 1100 }; }   /* Voo da Pluma: pousa no ponto livre mais longe */
-    Net.send({ t: 'tskill', b: T.b, n: T.nd.evo ? T.n : (T.n === 5 ? 5 : undefined), a: T.nd.evo ? aim : (G.me.fa ?? 0), id: G.target || 0, tx: mw ? mw.x : undefined, ty: mw ? mw.y : undefined }); G.tcdEnd[i] = now + T.nd.cd; const slot = $('slot' + i); slot.classList.remove('pressed'); void slot.offsetWidth; slot.classList.add('pressed'); return; } }
+    Net.send(T.nd.combo ? { t: 'tskill', c: T.c, a: aim, tx: mw ? mw.x : undefined, ty: mw ? mw.y : undefined } : { t: 'tskill', b: T.b, n: T.nd.evo ? T.n : (T.n === 5 ? 5 : undefined), a: T.nd.evo ? aim : (G.me.fa ?? 0), id: G.target || 0, tx: mw ? mw.x : undefined, ty: mw ? mw.y : undefined }); G.tcdEnd[i] = now + T.nd.cd; const slot = $('slot' + i); slot.classList.remove('pressed'); void slot.offsetWidth; slot.classList.add('pressed'); return; } }
   const me = G.me, sk = SKILLS[me.cls][i], now = performance.now();
   if (!sk || me.downed) return;
   if (now < G.cdEnd[i]) return;

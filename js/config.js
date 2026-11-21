@@ -12,8 +12,8 @@ const HERALDS = {
   moranthe: { house: 'Moranthe', field: '#33295a', field2: '#1d1630', metal: '#c9c2e8', charge: 'owl' }, thornvale: { house: 'Thornvale', field: '#21492f', field2: '#14301f', metal: '#e4dcc0', charge: 'boar' },
   solmire: { house: 'Solmire', field: '#4a3a22', field2: '#2b2216', metal: '#e8a33c', charge: 'eclipse' } };
 const HERALD = { house: 'Aurenfell', name: 'Casa Aurenfell', field: '#9a2a1c', field2: '#6e1d14', metal: '#f1cf6a', charge: 'tower', motto: 'A Luz Não se Curva' };
-const VERSION = 'v1.99.2';
-const VERSION_NAME = 'Nae · Força da Terra';
+const VERSION = 'v1.100.0';
+const VERSION_NAME = 'Nae · O Centro do Pentagrama';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -66,17 +66,18 @@ const MAGE_EL = [
   { k: 'wind', n: 'Ar', ic: '🌬', c: '#7aa6ae', ink: '#3e6870' },
 ];
 // combinações de dois elementos (no meio do Pentagrama, ainda trancadas: em breve)
+const COMBO_NEED = 50;   /* força pedida em cada um dos dois elementos (mais 1 ponto de talento) */
 const MAGE_COMBOS = [
-  { a: 'fire', b: 'wind', n: 'Tornado de Fogo', d: 'Um redemoinho de chamas que anda pelo campo e arrasta os inimigos.' },
-  { a: 'holy', b: 'wind', n: 'Campo de Defesa', d: 'Uma cúpula de vento e luz que segura flechas e golpes dos aliados lá dentro.' },
-  { a: 'fire', b: 'water', n: 'Vapor Escaldante', d: 'Névoa fervente que esconde os aliados e queima quem entra nela.' },
-  { a: 'fire', b: 'earth', n: 'Chão de Brasas', d: 'A terra racha e vira brasa: quem pisa queima e anda devagar.' },
-  { a: 'fire', b: 'holy', n: 'Chama Sagrada', d: 'Fogo que aquece e cura os aliados e queima os mortos-vivos.' },
-  { a: 'water', b: 'earth', n: 'Lodaçal', d: 'A terra vira lama funda e prende os inimigos no lugar.' },
-  { a: 'water', b: 'wind', n: 'Tempestade', d: 'Nuvem de chuva e raios sobre a área: molha, apaga fogo e atordoa.' },
-  { a: 'water', b: 'holy', n: 'Água Benta', d: 'Água abençoada que limpa infecção e veneno de quem estiver perto.' },
-  { a: 'earth', b: 'wind', n: 'Tempestade de Areia', d: 'Areia e folhas no ar: os inimigos erram os golpes e perdem você de vista.' },
-  { a: 'earth', b: 'holy', n: 'Bosque Sagrado', d: 'Flores e brotos de luz que curam bastante quem descansa sobre eles.' },
+  { id: 'c_tornado', a: 'fire', b: 'wind', dk: 'fire', mp: 34, cd: 36000, n: 'Tornado de Fogo', d: 'Um redemoinho de chamas nasce à sua frente e anda devagar na direção do mouse por 6 s: puxa para dentro os inimigos em 2,5 casas, queima quem está nele e põe fogo no mato por onde passa.' },
+  { id: 'c_dome', a: 'holy', b: 'wind', dk: 'wind', mp: 32, cd: 40000, n: 'Campo de Defesa', d: 'Uma cúpula de vento e luz de 3,5 casas onde você está, por 8 s: as flechas desviam, os aliados lá dentro levam 40% menos dano e os bichos menores que entram são jogados para fora.' },
+  { id: 'c_steam', a: 'fire', b: 'water', dk: 'water', mp: 30, cd: 34000, n: 'Vapor Escaldante', d: 'Uma nuvem fervente de 3 casas onde está o mouse, por 8 s: os aliados lá dentro ficam escondidos dos bichos, e os inimigos dentro dela queimam a cada segundo e ficam molhados.' },
+  { id: 'c_embers', a: 'fire', b: 'earth', dk: 'fire', mp: 30, cd: 32000, n: 'Chão de Brasas', d: 'A terra racha e vira brasa em 3 casas onde está o mouse, por 10 s: quem pisa queima e anda 40% mais devagar.' },
+  { id: 'c_sflame', a: 'fire', b: 'holy', dk: 'holy', mp: 34, cd: 40000, n: 'Chama Sagrada', d: 'Uma chama dourada de 3 casas em volta de você, por 8 s: cura os aliados (4% da vida por segundo), aquece no frio e queima os inimigos, em dobro os mortos-vivos.' },
+  { id: 'c_mud', a: 'water', b: 'earth', dk: 'earth', mp: 30, cd: 34000, n: 'Lodaçal', d: 'A terra vira lama funda em 3,5 casas onde está o mouse, por 10 s: os bichos menores ficam presos 3 s ao entrar e depois andam 60% mais devagar (os grandes só ficam lentos). Apaga o fogo e deixa todos molhados.' },
+  { id: 'c_storm', a: 'water', b: 'wind', dk: 'wind', mp: 38, cd: 42000, n: 'Tempestade', d: 'Uma nuvem escura sobre 4 casas onde está o mouse, por 8 s: a chuva molha e apaga o fogo, e a cada segundo cai um raio num inimigo, com dano e 1 s de atordoamento (mais dano em quem já está molhado).' },
+  { id: 'c_hwater', a: 'water', b: 'holy', dk: 'water', mp: 30, cd: 36000, n: 'Água Benta', d: 'Uma onda de água abençoada em 4 casas em volta de você: limpa infecção, sangramento e fogo dos aliados, cura 15% da vida e queima os mortos-vivos.' },
+  { id: 'c_sand', a: 'earth', b: 'wind', dk: 'earth', mp: 32, cd: 38000, n: 'Tempestade de Areia', d: 'Um redemoinho de areia de 4 casas que acompanha você por 8 s: os inimigos dentro dele erram metade dos golpes e perdem de vista quem está a mais de 2 casas.' },
+  { id: 'c_grove', a: 'earth', b: 'holy', dk: 'holy', mp: 34, cd: 45000, n: 'Bosque Sagrado', d: 'Uma clareira de flores e brotos de luz de 3,5 casas onde você está, por 20 s: quem fica parado ou sentado nela recupera 5% da vida por segundo e o fôlego, e os animais ficam calmos.' },
 ];
 
 // Skins (visuais) de cada vocação
@@ -436,6 +437,7 @@ function treeEff(p, key) { const T = TREE[p.cls]; if (!T || !p.tree) return 0; l
 function cleanTree(cls, lvl, t) {
   const out = {}, T = TREE[cls]; if (!T || !t || typeof t !== 'object') return out;
   for (const b of T) b.nodes.forEach((nd, i) => { const r = clamp(t[nd.id] | 0, 0, nd.max); if (!r) return; if (branchPts({ tree: out }, b) < TREE_REQ[i]) return; out[nd.id] = r; });
+  if (cls === 'mage') for (const C of MAGE_COMBOS) if (t[C.id]) out[C.id] = 1;   /* combinadas aprendidas (1 ponto cada) */
   return treePts({ tree: out }) <= Math.max(0, lvl - 1) ? out : {};
 }
 

@@ -758,6 +758,8 @@ body.em-on #hud, body.em-on #chat, body.em-on .hotbar { opacity: .25; transition
 .grim-svg .g-combo { cursor: help; opacity: .55; transition: opacity .15s; }
 .grim-svg .g-combo.on, .grim-svg .g-combo:hover { opacity: 1; filter: drop-shadow(0 0 5px rgba(255,220,140,.9)); }
 .grim-svg .g-lockdot { fill: #efe3c2; stroke: #3b2a17; stroke-width: .8; }
+.grim-svg .g-combo { cursor: pointer; } .grim-svg .g-combo.can { opacity: .85; animation: grimPulse 1.6s ease-in-out infinite; } .grim-svg .g-combo.got { opacity: .92; } .grim-svg .g-combo.eq { opacity: 1; filter: drop-shadow(0 0 4px rgba(255,214,120,1)); }
+.grim-svg .g-cstar { font: 700 9px serif; text-anchor: middle; fill: #fff6dc; stroke: #3b2a17; stroke-width: .5; paint-order: stroke; pointer-events: none; }
 @keyframes grimPulse { 50% { opacity: .5; } }
 .grim-r { display: flex; flex-direction: column; gap: 8px; border-left: 1px solid rgba(90,60,25,.15); }
 .grim-h { font: 34px 'IM Fell English SC', serif; color: #5a1e10; line-height: 1; text-align: center; margin-top: 4px; }

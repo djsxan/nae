@@ -221,7 +221,12 @@ function hostOnClient(from, m) {
       { const rh = p.hp / Math.max(1, p.maxHp), rm = p.mp / Math.max(1, p.maxMp); p.maxHp = maxHpOf(p); p.maxMp = maxMpOf(p); if (!p.downed) { p.hp = Math.max(1, Math.round(p.maxHp * rh)); p.mp = Math.round(p.maxMp * rm); } }
       sendStat(p); break;
     }
-    case 'tskill': if (!p.duel) treeSkill(p, m.b | 0, m); break;
+    case 'tskill': if (!p.duel) { if (m.c != null) comboSkill(p, m); else treeSkill(p, m.b | 0, m); } break;
+    case 'clearn': {   /* aprender uma combinada: força nos dois elementos + 1 ponto livre */
+      const C = MAGE_COMBOS[m.i | 0]; if (!C || p.cls !== 'mage') break; p.tree = p.tree || {}; if (p.tree[C.id]) break;
+      if (elemStrength(p, C.a) < COMBO_NEED || elemStrength(p, C.b) < COMBO_NEED) { tell(p, C.n + ': precisa de força ' + COMBO_NEED + ' nos dois elementos.'); break; }
+      if (treePts(p) >= p.lvl - 1) { tell(p, 'Sem pontos livres: suba de nível.'); break; }
+      p.tree[C.id] = 1; tell(p, 'Você aprendeu ' + C.n + '. Escolha a tecla no grimório.'); sendStat(p); break; }
     case 'flame': flameMsg(p, m); break;
     case 'draw': if (p.sheathed) { if (m.on) tell(p, 'Saque o arco primeiro (G).'); break; } bowDraw(p, !!m.on); break;
     case 'loose': if (p.sheathed) break; bowLoose(p, m); break;
@@ -743,6 +748,8 @@ function damagePlayer(p, raw, m, delay = 0, zone = null, exactPart = null) {
   if (buffOn(p, 'bless')) mult *= 0.9;
   if ((p._sapT || 0) > now_()) mult *= 0.85;   /* casca protetora da muda */
   if ((p.stoneSk || 0) > now_()) mult *= 0.55;   /* Pele de Pedra */
+  if (m && S.monsters[m.id] && m.sandUntil > now_() && Math.random() < 0.5) { sfx(p.x, p.y, 'errou', '#d8c890'); return; }   /* Tempestade de Areia: metade dos golpes erra */
+  if (S.cfields && S.cfields.length && fieldAt(p, 'c_dome')) { if (m && m.cls === 'archer' && S.players[m.id]) { near(p.x, p.y, { t: 'evofx', id: p.id, x: p.x, y: p.y, k: 'deflect' }); return; } mult *= 0.6; }   /* Campo de Defesa */
   mult *= Math.max(0.4, 1 - treeEff(p, 'armor')); if (buffOn(p, 'iron')) mult *= 0.6; if (buffOn(p, 'sanct')) mult *= 0.75;
   if ((p.windSh || 0) > now_()) { if (m && m.cls === 'archer' && S.players[m.id]) { near(p.x, p.y, { t: 'evofx', id: p.id, x: p.x, y: p.y, k: 'deflect' }); return; } mult *= 0.7; if (m && S.monsters[m.id] && dist(m.x, m.y, p.x, p.y) < 2.2 && !(MON[m.type] && MON[m.type].big)) knockMon(m, p, now_()); }   /* Escudo de Vento: flechas desviam, menos dano, quem bate é jogado longe */
   useGain(p, 'vigor', 0.5);
@@ -914,7 +921,76 @@ function flameTick(now) {
 // ---------- evoluções do Ar e da Luz (liberadas pela força do elemento; trocam a magia base na tecla) ----------
 function douseTile(x, y, list) { const i = y * MAP_W + x; if (!S.burn || !S.burn[i]) return; delete S.burn[i]; S.burnN = Math.max(0, (S.burnN || 1) - 1); S.burnt = S.burnt || {}; S.burnt[i] = now_() + 90000; S.fires = (S.fires || []).filter(f => !(Math.round(f.x) === x && Math.round(f.y) === y)); list.push([x, y]); }
 /* Névoa: quem está dentro some da vista dos bichos (menos de quem encosta) e o fogo da roupa apaga */
-function inMist(q, m) { if (!S.mists || !S.mists.length || !q) return false; const now = now_(); for (const w of S.mists) { if (w.until < now || (q.fl || 0) !== w.fl || dist(q.x, q.y, w.x, w.y) > w.r) continue; return !m || dist(m.x, m.y, q.x, q.y) > 1.4; } return false; }
+function inMist(q, m) { if (!q) return false; const now = now_(); if (m && m.sandUntil > now && dist(m.x, m.y, q.x, q.y) > 2) return true;   /* Tempestade de Areia: o bicho não enxerga longe */
+  if (!S.mists || !S.mists.length) return false; for (const w of S.mists) { if (w.until < now || (q.fl || 0) !== w.fl || dist(q.x, q.y, w.x, w.y) > w.r) continue; return !m || dist(m.x, m.y, q.x, q.y) > 1.4; } return false; }
+// ---------- magias combinadas (centro do Pentagrama): campos no chão que agem a cada instante ----------
+const isUndead = m => { const d = MON[m.type] || {}; return m.type === 'skeleton' || d.base === 'skeleton'; };
+function fieldAt(q, k) { const L = S.cfields; if (!L || !L.length || !q) return null; const now = now_(); for (const f of L) if (f.k === k && f.until > now && (q.fl || 0) === f.fl && dist(q.x, q.y, f.x, f.y) <= f.r) return f; return null; }
+function comboSkill(p, msg) {
+  const ci = msg.c | 0, C = MAGE_COMBOS[ci]; if (!C || p.cls !== 'mage') return;
+  if (!treeHas(p, C.id)) { tell(p, 'Aprenda ' + C.n + ' no centro do Pentagrama (K).'); return; }
+  if (elemStrength(p, C.a) < COMBO_NEED || elemStrength(p, C.b) < COMBO_NEED) { tell(p, C.n + ': precisa de força ' + COMBO_NEED + ' nos dois elementos.'); return; }
+  const now = now_(), key = 'c' + ci; p.tcd = p.tcd || {};
+  if (p.downed || p.carrying || p.lifted || p.grabbed || now < (p.stunUntil || 0) || now < (p.knockUntil || 0)) return;
+  if (now < (p.tcd[key] || 0)) { tell(p, C.n + ': recarregando (' + Math.ceil((p.tcd[key] - now) / 1000) + 's).'); return; }
+  if (p.mp < C.mp) { tell(p, 'Mana insuficiente.'); return; }
+  const a = isFinite(+msg.a) ? +msg.a : (p.fa || 0), fl = p.fl || 0, B = (useBonus(p, 'el_' + C.a) + useBonus(p, 'el_' + C.b)) / 2, shout = { s: C.n + '!' };
+  let tx = +msg.tx, ty = +msg.ty; if (!isFinite(tx) || !isFinite(ty) || dist(p.x, p.y, tx, ty) > 8.5) { tx = p.x + Math.cos(a) * 4; ty = p.y + Math.sin(a) * 4; }
+  const F = o => { const f = Object.assign({ k: C.id, x: tx, y: ty, fl, by: p.id, B, t: now, until: now + o.ms }, o); (S.cfields = S.cfields || []).push(f); return f; };
+  const douse = (x, y, r) => { const put = []; for (let yy = Math.floor(y - r); yy <= Math.ceil(y + r); yy++) for (let xx = Math.floor(x - r); xx <= Math.ceil(x + r); xx++) if (dist(xx, yy, x, y) <= r) douseTile(xx, yy, put); if (put.length) near(x, y, { t: 'fireout', l: put }); };
+  switch (C.id) {
+    case 'c_tornado': { const sx = p.x + Math.cos(a) * 1.2, sy = p.y + Math.sin(a) * 1.2; F({ x: sx, y: sy, a, v: 1.3, r: 2.5, ms: 6000 }); anim('p', p, 'cast', sx, sy, shout); evoFx(p, { k: C.id, sx, sy, a, v: 1.3, ms: 6000 }); break; }
+    case 'c_dome': F({ x: p.x, y: p.y, r: 3.5 + B, ms: 8000 }); anim('p', p, 'castup', p.x, p.y, shout); evoFx(p, { k: C.id, r: 3.5 + B, ms: 8000 }); break;
+    case 'c_steam': F({ r: 3 + B, ms: 8000 }); S.mists = (S.mists || []).filter(w => w.until > now); S.mists.push({ x: tx, y: ty, fl, r: 3 + B, until: now + 8000, by: p.id }); anim('p', p, 'cast', tx, ty, shout); evoFx(p, { k: C.id, tx, ty, r: 3 + B, ms: 8000 }); break;
+    case 'c_embers': F({ r: 3 + B, ms: 10000 }); anim('p', p, 'cast', tx, ty, shout); evoFx(p, { k: C.id, tx, ty, r: 3 + B, ms: 10000 }); break;
+    case 'c_sflame': F({ fol: 1, x: p.x, y: p.y, r: 3 + B, ms: 8000 }); anim('p', p, 'castup', p.x, p.y, shout); evoFx(p, { k: C.id, r: 3 + B, ms: 8000 }); break;
+    case 'c_mud': F({ r: 3.5 + B, ms: 10000, seen: {} }); douse(tx, ty, 3.5 + B); anim('p', p, 'cast', tx, ty, shout); evoFx(p, { k: C.id, tx, ty, r: 3.5 + B, ms: 10000 }); break;
+    case 'c_storm': F({ r: 4 + B, ms: 8000 }); douse(tx, ty, 4 + B); anim('p', p, 'castup', tx, ty, shout); evoFx(p, { k: C.id, tx, ty, r: 4 + B, ms: 8000 }); break;
+    case 'c_hwater': { const R = 4 + B, hb = 1 + treeEff(p, 'holy') + useBonus(p, 'el_holy');
+      for (const q of Object.values(S.players)) { if ((q.fl || 0) !== fl || dist(q.x, q.y, p.x, p.y) > R || q.downed) continue; const had = q.infect || BODY_PARTS.some(k => q.bleed && q.bleed[k] > 0); q.infect = 0; q.infT = 0; if (q.bleed) for (const k in q.bleed) q.bleed[k] = 0; if (q.burnUntil > now) extinguish(q, 'A Água Benta apagou o fogo da sua roupa.');
+        const h = Math.round(q.maxHp * 0.15 * hb); q.hp = Math.min(q.maxHp, q.hp + h); sfx(q.x, q.y, '+' + h, '#bfe6ff', 150); if (had) tell(q, 'A Água Benta limpou as suas feridas.'); sendStat(q); }
+      for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || !isUndead(m) || dist(m.x, m.y, p.x, p.y) > R + (MON[m.type].rad || 0)) continue; p._el = 'holy'; hitMonster(p, m, 1.5 * (1 + B), 150); p._el = null; }
+      douse(p.x, p.y, R); anim('p', p, 'castup', p.x, p.y, shout); evoFx(p, { k: C.id, r: R, ms: 1600 }); break; }
+    case 'c_sand': F({ fol: 1, x: p.x, y: p.y, r: 4 + B, ms: 8000 }); anim('p', p, 'castup', p.x, p.y, shout); evoFx(p, { k: C.id, r: 4 + B, ms: 8000 }); break;
+    case 'c_grove': F({ x: p.x, y: p.y, r: 3.5 + B, ms: 20000 }); anim('p', p, 'kneelput', p.x, p.y, shout); evoFx(p, { k: C.id, r: 3.5 + B, ms: 20000 }); break;
+    default: return;
+  }
+  p.mp -= C.mp; p.tcd[key] = now + C.cd; p.lastCombat = now; useGain(p, 'magic', 2); useGain(p, 'el_' + C.a, 2); useGain(p, 'el_' + C.b, 2); sendStat(p);
+}
+function comboTick(now) {
+  const L = S.cfields; if (!L || !L.length) return; S.cfields = L.filter(f => f.until > now && S.players[f.by]);
+  for (const f of S.cfields) { const p = S.players[f.by]; if (f.fol) { f.x = p.x; f.y = p.y; f.fl = p.fl || 0; }
+    const dt = Math.min(0.3, (now - (f.lt || now)) / 1000); f.lt = now;
+    const mons = (r) => Object.values(S.monsters).filter(m => m.hp > 0 && (m.alt || 0) <= 1 && dist(m.x, m.y, f.x, f.y) <= (r || f.r) + (MON[m.type].rad || 0));
+    const hit = (m, mult, el) => { p._el = el; hitMonster(p, m, mult * (1 + f.B), 0); p._el = null; return !!S.monsters[m.id]; };
+    const burn = m => { if (!(m._burnT > now)) { m._burnT = now + 3000; emberBurn(p, m); } };
+    const allies = () => Object.values(S.players).filter(q => (q.fl || 0) === f.fl && !q.downed && dist(q.x, q.y, f.x, f.y) <= f.r);
+    if (f.k === 'c_tornado') { f.x += Math.cos(f.a) * f.v * dt; f.y += Math.sin(f.a) * f.v * dt;   /* anda e puxa para o olho */
+      for (const m of mons()) { if (MON[m.type].big) continue; const d = dist(m.x, m.y, f.x, f.y); if (d < 0.5) continue; const st = Math.min(d - 0.4, 2.4 * dt), ux = (f.x - m.x) / d, uy = (f.y - m.y) / d; for (let s = 0; s < 4; s++) { const nx = m.x + ux * st / 4, ny = m.y + uy * st / 4; if (!monStand(nx, ny, m)) break; m.x = nx; m.y = ny; } } }
+    if (f.k === 'c_dome') for (const m of mons(f.r - 0.3)) { if (MON[m.type].big || now < (m._domeT || 0)) continue; m._domeT = now + 900; const d = dist(m.x, m.y, f.x, f.y) || 0.01, ux = (m.x - f.x) / d, uy = (m.y - f.y) / d, push = f.r + 0.8 - d; for (let s = 0; s < 12; s++) { const nx = m.x + ux * push / 12, ny = m.y + uy * push / 12; if (!monStand(nx, ny, m)) break; m.x = nx; m.y = ny; } knockMon(m, { x: f.x, y: f.y }, now); m.atk = null; }
+    if (now < f.t) continue;
+    switch (f.k) {
+      case 'c_tornado': f.t = now + 500; for (const m of mons(1.3)) { if (hit(m, 0.5, 'fire')) burn(m); } if (Math.random() < 0.5) { const list = []; igniteTile(f.x, f.y, now, list, false); if (list.length) near(f.x, f.y, { t: 'fires', l: list }); } break;
+      case 'c_steam': f.t = now + 1000; for (const m of mons()) { if (hit(m, 0.35, 'fire')) m.wetUntil = now + 8000; } break;
+      case 'c_embers': f.t = now + 1000; for (const m of mons()) { m.fslowUntil = now + 1300; m.fslowK = 0.6; if (hit(m, 0.3, 'fire')) burn(m); } break;
+      case 'c_sflame': { f.t = now + 1000; const hb = 1 + treeEff(p, 'holy') + useBonus(p, 'el_holy');
+        for (const q of allies()) { const h = Math.round(q.maxHp * 0.04 * hb); if (q.hp < q.maxHp) { q.hp = Math.min(q.maxHp, q.hp + h); sfx(q.x, q.y, '+' + h, '#f0d878', 0); } q.cold = Math.max(0, (q.cold || 0) - 15); sendStat(q); }
+        for (const m of mons()) hit(m, isUndead(m) ? 0.8 : 0.4, 'holy'); break; }
+      case 'c_mud': f.t = now + 400; for (const m of mons()) { const big = MON[m.type].big; if (!f.seen[m.id]) { f.seen[m.id] = 1; if (!big) { m.stunUntil = Math.max(m.stunUntil || 0, now + 3000); m.atk = null; m.nextAtk = Math.max(m.nextAtk || 0, now + 3200); near(m.x, m.y, { t: 'mmud', id: m.id, ms: 3000 }); } }
+          m.fslowUntil = now + 900; m.fslowK = 0.4; m.wetUntil = now + 8000; if (m._burnT > now) m._burnT = 0; }
+        for (const q of allies()) if (q.burnUntil > now) extinguish(q, 'A lama apagou o fogo da sua roupa.'); break;
+      case 'c_storm': { f.t = now + 1000; const ms = mons();
+        if (ms.length) { const m = ms[Math.floor(Math.random() * ms.length)], wet = m.wetUntil > now; near(m.x, m.y, { t: 'evofx', id: p.id, x: m.x, y: m.y, k: 'bolt', ms: 450 }, VIEW_RADIUS + 4); if (hit(m, 1.2 * (wet ? 1.5 : 1), 'water')) { m.stunUntil = Math.max(m.stunUntil || 0, now + 1000); m.atk = null; m.nextAtk = Math.max(m.nextAtk || 0, now + 1200); } }
+        else if (Math.random() < 0.5) { const an = Math.random() * 6.283, rr = Math.random() * f.r; near(f.x, f.y, { t: 'evofx', id: p.id, x: f.x + Math.cos(an) * rr, y: f.y + Math.sin(an) * rr, k: 'bolt', ms: 450 }, VIEW_RADIUS + 4); }
+        for (const m of ms) { if (S.monsters[m.id]) { m.wetUntil = now + 8000; if (m._burnT > now) m._burnT = 0; } } for (const q of allies()) if (q.burnUntil > now) extinguish(q, 'A chuva apagou o fogo da sua roupa.'); break; }
+      case 'c_sand': f.t = now + 400; for (const m of mons()) { m.sandUntil = now + 900; const q = m.aggro && S.players[m.aggro]; if (q && dist(m.x, m.y, q.x, q.y) > 2) { m.aggro = null; m.atk = null; m.lostAt = 0; } } break;
+      case 'c_grove': { f.t = now + 1000; const hb = 1 + treeEff(p, 'holy') + useBonus(p, 'el_holy');
+        for (const q of allies()) { if (q.walking && !q.sit) continue; const h = Math.round(q.maxHp * 0.05 * hb); if (q.hp < q.maxHp) { q.hp = Math.min(q.maxHp, q.hp + h); sfx(q.x, q.y, '+' + h, '#bfe59a', 0); } q.cst = Math.min(cstMaxOf(q), (q.cst ?? 0) + cstMaxOf(q) * 0.05); sendStat(q); }
+        for (const m of mons(f.r + 1)) { const d = MON[m.type]; if (!d || !d.beh) continue; m.calmUntil = now + 2600; m.aggro = null; m.atk = null; m.flee = null; } break; }
+      default: f.t = now + 1000;
+    }
+  }
+}
 function mistTick(now) { if (!S.mists || !S.mists.length) return; S.mists = S.mists.filter(w => w.until > now); for (const q of Object.values(S.players)) if (q.burnUntil > now && inMist(q)) extinguish(q, 'A Névoa fresca apagou o fogo da sua roupa.'); }
 function evoFx(p, m) { near(p.x, p.y, Object.assign({ t: 'evofx', id: p.id, x: p.x, y: p.y }, m), VIEW_RADIUS + 4); }
 function mageEvo(p, nd, msg, now) {
@@ -1265,7 +1341,7 @@ function sapTick(now) {   /* a cada 2 s: bônus para quem está perto da muda */
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(m.x, m.y, s.x, s.y) > R + 1.5) continue; m.calmUntil = now + 2600; m.aggro = null; m.atk = null; m.flee = null; } }
 }
 function mageTick(now) {   /* brasa (animais recuam), flores (curam e acalmam) */
-  bathTick(now); flameTick(now); autoTick(now); meditTick(now); sapTick(now); lightWellTick(now); mistTick(now); if (typeof courtTick === 'function') courtTick(now); if (typeof housesTick === 'function') housesTick(now); if (typeof infTick === 'function') infTick(now); if (typeof entTick === 'function') entTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
+  bathTick(now); flameTick(now); autoTick(now); meditTick(now); sapTick(now); lightWellTick(now); mistTick(now); comboTick(now); if (typeof courtTick === 'function') courtTick(now); if (typeof housesTick === 'function') housesTick(now); if (typeof infTick === 'function') infTick(now); if (typeof entTick === 'function') entTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
   for (const p of Object.values(S.players)) {
     if (p.cls !== 'mage' || !buffOn(p, 'ember') || p.downed) continue;
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(p.x, p.y, m.x, m.y) > 3.5) continue; m.flee = { from: p.id, until: now + 1800 }; if (m.aggro === p.id) m.aggro = null; m.atk = null; }
@@ -1519,7 +1595,7 @@ function monsterThink(m, players, now, dt) {
   if (now < m.stunUntil) return;
   if (m.dragging && wolfDragTick(m, now, dt)) return;
   if ((m.carrying || m.carryWant || m.leadP) && captorTick(m, now, dt)) return;
-  const speed = d.speed * (now < m.slowUntil ? 0.5 : 1) * ((m.lost || 0) & 24 ? 0.4 : 1), step = speed * dt;
+  const speed = d.speed * (now < m.slowUntil ? 0.5 : 1) * (now < (m.fslowUntil || 0) ? m.fslowK || 0.5 : 1) * ((m.lost || 0) & 24 ? 0.4 : 1), step = speed * dt;
   const homeDist = dist(m.x, m.y, m.homeX, m.homeY);
   const reach = d.big ? 1.7 : 1.3;
   if (m.returning) {
