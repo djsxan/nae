@@ -154,7 +154,9 @@ function hostOnClient(from, m) {
   const p = S.players[from];
   if (m.t === 'hello') {
     if (p) return;
-    if (m.ver && m.ver !== VERSION && from !== Net.myId) { Net.toOne(from, { t: 'denied', why: 'ver', ver: VERSION }); return; }
+    if (m.ver && m.ver !== VERSION && from !== Net.myId) { Net.toOne(from, { t: 'denied', why: 'ver', ver: VERSION });
+      if (typeof verNum === 'function' && verNum(m.ver) > verNum(VERSION) && Date.now() - (S.verWarnT || 0) > 60000 && typeof showToast === 'function') { S.verWarnT = Date.now(); showToast((m.name ? String(m.name).slice(0, 20) : 'Alguém') + ' não conseguiu entrar: já existe a versão ' + m.ver + ' do jogo. Quando puder, saia e reabra o reino para todos entrarem.'); }   /* o anfitrião não é mais recarregado sozinho no meio da partida */
+      return; }
     if (S.roomPw && from !== Net.myId && String(m.pw || '').trim().toUpperCase() !== S.roomPw) { Net.toOne(from, { t: 'denied', why: m.pw ? 'pwbad' : 'pw' }); return; }
     if (WTs().ph != null || WTs().rain != null) setTimeout(() => Net.toOne(from, { t: 'wt', ph: WTs().ph, rain: WTs().rain }), 1500);
     const cls = CLASSES[m.cls] ? m.cls : 'knight';

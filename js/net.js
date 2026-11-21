@@ -44,7 +44,7 @@ const Net = {
         delete this.rel[who]; delete this.fast[who];
         if (this.onPeerLeave) this.onPeerLeave(who);
       };
-      conn.on('close', gone); conn.on('error', gone);
+      conn.on('close', gone); conn.on('error', e => { if (!conn.open) gone(); else console.warn('PeerJS (jogador ' + who + '):', e); });   /* erro passageiro com o canal ainda aberto não derruba o jogador */
     });
     peer.on('disconnected', () => { if (!peer.destroyed) try { peer.reconnect(); } catch (e) { } });
     peer.on('error', err => { if (!opened) { peer.destroy(); cb(err); } else console.warn('PeerJS:', err); });
@@ -91,7 +91,7 @@ const Net = {
       });
       rel.on('data', d => this.onServer(d));
       rel.on('close', () => { if (done && this.peer === peer && this.onDisconnected) this.onDisconnected(); });
-      rel.on('error', () => { if (done && this.peer === peer && this.onDisconnected) this.onDisconnected(); });
+      rel.on('error', e => { if (rel.open) { console.warn('PeerJS:', e); return; } if (done && this.peer === peer && this.onDisconnected) this.onDisconnected(); });
     });
     peer.on('error', err => { if (!done) { peer.destroy(); finish(err); } else console.warn('PeerJS:', err); });
     peer.on('disconnected', () => { if (!peer.destroyed && done) try { peer.reconnect(); } catch (e) { } });
