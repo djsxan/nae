@@ -1140,18 +1140,19 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       if (typeof drawNpcState === 'function' && drawNpcState(ctx, e, it.sx, it.sy, now)) { if (e.npDead && !e.onBackBy) labels.push({ sx: it.sx, sy: it.sy - 22, name: e.name + ' (morto)', color: '#8a8a8a', npc: e, e }); return; }
       if (typeof drawPackage === 'function' && (e.isNpc || (e.stb & 16))) drawPackage(ctx, e.isNpc ? e : { pkg: true, walking: e.walking, walkDist: e.walkDist }, it.sx, it.sy, now);
       if (typeof drawNpcBubble === 'function') drawNpcBubble(ctx, e, it.sx, it.sy, now);
-      drawHeroEntity(ctx, e, it.sx, it.sy, now); if (e.arrows) drawStuck(ctx, e, it.sx, it.sy, now);
+      if (typeof thWadeNpc === 'function' && !(e.fl || 0) && thermaePoolAt(e.rx, e.ry)) thWadeNpc(ctx, e, it.sx, it.sy, now); else drawHeroEntity(ctx, e, it.sx, it.sy, now); if (e.arrows) drawStuck(ctx, e, it.sx, it.sy, now);
       if (e.carrying && G.players[e.carrying]) drawCarried(ctx, G.players[e.carrying], it.sx, it.sy);
       labels.push({ sx: it.sx, sy: it.sy - (R3.ok ? 56 : 78), name: e.name, color: '#b8e0a8', npc: e, e });
     } else {
       ctx.imageSmoothingEnabled = true; drawAuras(ctx, e, it.sx, it.sy, now); ctx.imageSmoothingEnabled = false;
+      if (e.thMass && e.thMass.until > now && typeof thMassDraw === 'function') thMassDraw(ctx, e, it.sx, it.sy, now); else
       if (typeof wadingNow === 'function' && wadingNow(e)) drawWader(ctx, e, it.sx, it.sy, now); else if (!(e.bathing && R3.ok && typeof drawBath === 'function')) drawHeroEntity(ctx, e, it.sx, it.sy, now); if (e.arrows) drawStuck(ctx, e, it.sx, it.sy, now);
       if (typeof drawPlayerBubble === 'function') drawPlayerBubble(ctx, e, it.sx, it.sy, now);
       if (e.dragMode === 'back' && typeof drawBackCorpse === 'function') { drawBackCorpse(ctx, e, it.sx, it.sy, now); drawNpcOnBack(ctx, e, it.sx, it.sy); }
       heroExtras(e, it.sx, it.sy);
       if (e.burnUntil > now && typeof drawOnFire === 'function') drawOnFire(ctx, it.sx, it.sy, now, (e.x || 0) * 7.1);
       if (e.emberUntil > now && !e.downed && typeof drawEmberHand === 'function') drawEmberHand(ctx, e, it.sx, it.sy, now);
-      if (e.bathing && typeof drawBath === 'function') drawBath(ctx, e, it.sx, it.sy, now);
+      if (e.bathing && typeof drawBath === 'function') { const thb = !(e.fl || 0) && typeof thermaePoolAt === 'function' && thermaePoolAt(e.rx, e.ry); if (thb) { G._thb = 1; try { drawBath(ctx, e, it.sx, it.sy + 0.31 * HV, now); } finally { G._thb = 0; } } else drawBath(ctx, e, it.sx, it.sy, now); }   /* nas Termas a água fica no nível do chão */
       if (e.carrying && G.players[e.carrying]) drawCarried(ctx, G.players[e.carrying], it.sx, it.sy);
       if (e.lifted) { const os = objSprite(e.lifted); if (os) pblit(ctx, os, it.sx, it.sy - 58); }
       G.lights.push({ x: it.sx, y: it.sy - 30, r: 34, c: '255,240,220', a: 0.4 });
@@ -1173,8 +1174,8 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     if (it.x != null && it.y != null && it.k !== 6 && it.k !== 7) return nr(it.x, it.y, it.x + 1, it.y + 1) && (it.y >= ib.y + ib.h || it.x >= ib.x + ib.w);
     return false; };
   for (const it of items) { if (it.inside) continue;
-    if (ib && inFront(it)) { if (IMODE === 'cut' && it.k === 4) cutL.push(it); else if (IMODE !== 'hide' || it.k === 5) front.push(it); continue; }
-    if (IR && it.d > IR.d && it.sx > IR.l && it.sx < IR.r && it.sy > IR.t && it.sy < IR.b) { front.push(it); continue; } drawItem(it); }
+    if (ib && inFront(it)) { if (ib.deco === 'thermae' && it.k !== 4) continue;   /* dentro das Termas: as torres e o muro do portão leste, que ficam na frente, somem */ if (IMODE === 'cut' && it.k === 4) cutL.push(it); else if (IMODE !== 'hide' || it.k === 5) front.push(it); continue; }
+    if (IR && it.d > IR.d && it.sx > IR.l && it.sx < IR.r && it.sy > IR.t && it.sy < IR.b) { if (ib && ib.deco === 'thermae' && it.k !== 4 && !it.e) continue; front.push(it); continue; } drawItem(it); }
   for (const it of upper) drawItem(it);
   for (const it of sky) drawItem(it);   // o dragão voando passa por cima de tudo
   if (typeof drawBowTop === 'function') drawBowTop(ctx, now);
@@ -1198,6 +1199,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     if (typeof drawAptDoors === 'function') try { drawAptDoors(ctx, (x, y) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy]; }, now); } catch (e) { }
     if (typeof drawStaffFx === 'function') try { drawStaffFx(ctx, (x, y, z) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy - (z || 0) * FLOOR_PX]; }, now); } catch (e) { }
     if (typeof drawBowLate === 'function') try { drawBowLate(ctx, now); } catch (e) { }   /* flechas cravadas nos bonecos e as que voam nos andares */   /* cama desarrumada */
+    if (inside.b.deco === 'thermae' && typeof drawThermaeFx === 'function') try { drawThermaeFx(ctx, inside.b, now); } catch (e) { }   /* água correndo, espuma e vapor das Termas */
     if (typeof drawOfuroFx === 'function') try { drawOfuroFx(ctx, (x, y, z) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy - (z || 0) * FLOOR_PX]; }, now); } catch (e) { }   /* bolhas e vapor do ofurô, por cima da água */
     for (const it of items) if (it.inside) drawItem(it);
     if (typeof drawRailOver === 'function') try { drawRailOver(ctx, (x, y, z) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy - (z || 0) * FLOOR_PX]; }, now); } catch (e) { }   /* guarda-corpo das varandas por cima de quem está atrás dele */

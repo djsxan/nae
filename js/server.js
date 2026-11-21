@@ -159,7 +159,7 @@ function hostOnClient(from, m) {
     if (WTs().ph != null || WTs().rain != null) setTimeout(() => Net.toOne(from, { t: 'wt', ph: WTs().ph, rain: WTs().rain }), 1500);
     const cls = CLASSES[m.cls] ? m.cls : 'knight';
     const lvl = clamp(m.lvl | 0 || 1, 1, 300);
-    const si = SKINS[cls].findIndex(s => s.id === m.skin), skin = si >= 0 && lvl >= SKIN_LVL[si] ? m.skin : SKINS[cls][0].id;
+    const femS = /~f$/.test(m.skin || ''), sk0 = String(m.skin || '').replace(/~f$/, ''), si = SKINS[cls].findIndex(s => s.id === sk0), skin = (si >= 0 && lvl >= SKIN_LVL[si] ? sk0 : SKINS[cls][0].id) + (femS ? '~f' : '');   /* ~f = corpo feminino */
     let s = townSpot(), sz = 0, sfl = 0, sfb = -1;   /* reconexão: volta para onde estava (não para o Templo) */
     const ghost = /^[a-z0-9]{4,12}$/.test(m.uid || '') ? Object.values(S.players).find(q => q.uid === m.uid && q.id !== from && q.id !== Net.myId) : null;
     if (ghost && !ghost.downed && !ghost.jailUntil) { m.px = ghost.x; m.py = ghost.y; m.pz = ghost.z || 0; m.pfl = ghost.fl || 0; m.pfb = ghost.fb ?? -1; }
@@ -436,6 +436,7 @@ function hostOnClient(from, m) {
     case 'court': if (typeof courtMsg === 'function') courtMsg(p, m); break;
     case 'house': if (typeof houseMsg === 'function') houseMsg(p, m); break;
     case 'inf': if (typeof infMsg === 'function') infMsg(p, m); break;
+    case 'praz': if (typeof prazMsg === 'function') prazMsg(p, m); break;
     case 'duel': duelMsg(p, m); break;
     case 'hipthrow': hipThrow(p); break;
     case 'train': trainMsg(p, m); break;
@@ -748,6 +749,7 @@ function damagePlayer(p, raw, m, delay = 0, zone = null, exactPart = null) {
   if (buffOn(p, 'bless')) mult *= 0.9;
   if ((p._sapT || 0) > now_()) mult *= 0.85;   /* casca protetora da muda */
   if ((p.stoneSk || 0) > now_()) mult *= 0.55;   /* Pele de Pedra */
+  if (buffOn(p, 'loose')) mult *= 0.9;   /* Corpo solto (cascata das Termas): 10% menos dano */
   if (m && S.monsters[m.id] && m.sandUntil > now_() && Math.random() < 0.5) { sfx(p.x, p.y, 'errou', '#d8c890'); return; }   /* Tempestade de Areia: metade dos golpes erra */
   if (S.cfields && S.cfields.length && fieldAt(p, 'c_dome')) { if (m && m.cls === 'archer' && S.players[m.id]) { near(p.x, p.y, { t: 'evofx', id: p.id, x: p.x, y: p.y, k: 'deflect' }); return; } mult *= 0.6; }   /* Campo de Defesa */
   mult *= Math.max(0.4, 1 - treeEff(p, 'armor')); if (buffOn(p, 'iron')) mult *= 0.6; if (buffOn(p, 'sanct')) mult *= 0.75;
@@ -1341,7 +1343,7 @@ function sapTick(now) {   /* a cada 2 s: bônus para quem está perto da muda */
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(m.x, m.y, s.x, s.y) > R + 1.5) continue; m.calmUntil = now + 2600; m.aggro = null; m.atk = null; m.flee = null; } }
 }
 function mageTick(now) {   /* brasa (animais recuam), flores (curam e acalmam) */
-  bathTick(now); flameTick(now); autoTick(now); meditTick(now); sapTick(now); lightWellTick(now); mistTick(now); comboTick(now); if (typeof courtTick === 'function') courtTick(now); if (typeof housesTick === 'function') housesTick(now); if (typeof infTick === 'function') infTick(now); if (typeof entTick === 'function') entTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
+  bathTick(now); flameTick(now); autoTick(now); meditTick(now); sapTick(now); lightWellTick(now); mistTick(now); comboTick(now); if (typeof prazTick === 'function') prazTick(now); if (typeof courtTick === 'function') courtTick(now); if (typeof housesTick === 'function') housesTick(now); if (typeof infTick === 'function') infTick(now); if (typeof entTick === 'function') entTick(now); kneelTick(now); tubTick(now); if (typeof empTick === 'function') empTick(now); trainTick(now); dojoVisTick(now); dojoSenseiTick(now); duelTick(now);
   for (const p of Object.values(S.players)) {
     if (p.cls !== 'mage' || !buffOn(p, 'ember') || p.downed) continue;
     for (const m of Object.values(S.monsters)) { const d = MON[m.type]; if (!d || !d.beh || dist(p.x, p.y, m.x, m.y) > 3.5) continue; m.flee = { from: p.id, until: now + 1800 }; if (m.aggro === p.id) m.aggro = null; m.atk = null; }

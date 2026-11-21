@@ -1114,6 +1114,9 @@ window.addEventListener('keydown', e => {
   if (k === 'f' && !e.repeat && typeof leverNear === 'function' && leverNear()) { Net.send({ t: 'tub' }); return; }
   if (k === 'f' && !e.repeat && typeof ofuroNear === 'function' && ofuroNear()) { bathEnter(); return; }
 
+  if (k === 'f' && !e.repeat && typeof prazNear === 'function' && prazNear()) { Net.send({ t: 'praz', a: 'open' }); return; }   /* Lívia, das Termas */
+  if (k === 'f' && !e.repeat && typeof prazWho === 'function' && prazWho()) { Net.send({ t: 'praz', a: 'talk', who: prazWho() }); return; }   /* massagista e copeiro */
+  if (k === 'f' && !e.repeat && typeof prazInPool === 'function' && prazInPool()) { prazPoolMenu(); return; }   /* dentro de uma piscina das Termas */
   if (k === 'f' && !e.repeat && typeof infNear === 'function' && infNear()) { Net.send({ t: 'inf', a: 'open', place: 'plaza' }); return; }   /* pregoeiro da praça */
   if (k === 'f' && !e.repeat && typeof houseNear === 'function' && houseNear()) { Net.send({ t: 'house', a: 'open', id: houseNear().id }); return; }   /* casas nobres */
   if (k === 'f' && !e.repeat && typeof courtNear === 'function' && courtNear()) { Net.send({ t: 'court', a: 'open', id: courtNear().id }); return; }   /* corte do castelo */
@@ -1330,6 +1333,10 @@ document.addEventListener('mouseover', e => {
 // ============================================================
 const HERALDRY = ['#8b2e2e', '#2c4a7a', '#3a6b3a', '#5e3a7a', '#8a5a24', '#2a6a64', '#7a2a5a', '#3a3a40'];
 let chosenClass = 'knight', chosenSkin = { knight: 'iron', archer: 'scout', mage: 'adept' }, chosenColor = HERALDRY[0];
+let chosenFem = false; try { chosenFem = localStorage.getItem('nae_fem') === '1'; } catch (e) { }   /* corpo: masculino ou feminino */
+const skinSel = cls => chosenSkin[cls] + (chosenFem ? '~f' : '');
+function bodyPick(f) { chosenFem = !!f; try { localStorage.setItem('nae_fem', chosenFem ? '1' : '0'); } catch (e) { } document.querySelectorAll('#bodysel button').forEach(b => b.classList.toggle('sel', (b.dataset.f === '1') === chosenFem)); }
+setTimeout(() => bodyPick(chosenFem), 0);
 function randomCode() { const ch = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 5; i++) s += ch[Math.floor(Math.random() * ch.length)]; return s; }
 function setStatus(text, err) { const s = $('status'); s.textContent = text; s.className = err ? 'err' : ''; }
 function lockLobby(b) { for (const el of document.querySelectorAll('#lobby button, #lobby input')) el.disabled = b; }
@@ -1339,7 +1346,7 @@ function helloMsg() {
   G.myUid = saved.t ? (saved.uid || '') : (G.myUid && G.myUidFor === charKey(name, chosenClass) ? G.myUid : Math.random().toString(36).slice(2, 10)); G.myUidFor = charKey(name, chosenClass);   // herói novo: código único (não herda nada de um herói antigo com o mesmo nome)
   let me = G.started && G.me && !G.me.downed ? G.me : null;   /* reconectando: conta onde estava */
   if (!me) try { const u = JSON.parse(sessionStorage.getItem('nae-upd-pos') || 'null'); sessionStorage.removeItem('nae-upd-pos'); if (u && Date.now() - u.t < 180000 && u.n === name) me = u; } catch (e) { }   /* voltou de uma atualização automática: mesmo lugar */
-  return { t: 'hello', ver: VERSION, ...(me ? { px: me.x, py: me.y, pz: me.z || 0, pfl: me.fl || 0, pfb: me.fb ?? -1 } : {}), uid: G.myUid || undefined, wandInfo: saved.wandInfo, cloak: saved.cloak, pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: chosenSkin[chosenClass], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, freeLimb: saved.freeLimb, shieldHp: saved.shieldHp, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
+  return { t: 'hello', ver: VERSION, ...(me ? { px: me.x, py: me.y, pz: me.z || 0, pfl: me.fl || 0, pfb: me.fb ?? -1 } : {}), uid: G.myUid || undefined, wandInfo: saved.wandInfo, cloak: saved.cloak, pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: skinSel(chosenClass), lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, freeLimb: saved.freeLimb, shieldHp: saved.shieldHp, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
 }
 // reino trancado: pede a senha e manda o hello de novo pela mesma conexão
 function askRoomPw(bad) {
@@ -1502,7 +1509,7 @@ function drawClassPreviews(now) {
     const atkK = { knight: ['swing', 'bash', 'warcry'], archer: ['shoot', 'pierce', 'rain'], mage: ['bolt', 'fireball', 'meteor'] }[cls][Math.floor(now / 8000) % 3];
     const inAtk = sel && (cyc % 2) > 1.4;
     const P = { view: view === 'W' ? 'E' : view, dir: R3.ok ? (sel ? Math.floor(now / 1000) % 8 : 1) : undefined, walk: sel && !inAtk ? Math.floor(now / 70) % 12 : -1, act: inAtk ? { k: atkK, f: Math.min(11, Math.floor(((cyc % 2) - 1.4) / 0.6 * 12)) } : null };
-    const spr = anySprite(cls, chosenSkin[cls], chosenColor, P);
+    const spr = anySprite(cls, skinSel(cls), chosenColor, P);
     const k = R3.ok ? 1.0 : 1.3;
     pctx.imageSmoothingEnabled = !!R3.ok;
     pctx.save();
@@ -1590,7 +1597,7 @@ function selectClass(cls) {
 }
 // lista de heróis salvos: todos, com escolher, apagar (confirma na própria linha) e "Novo personagem"
 function pickChar(ch) {
-  $('name').value = ch.name; if (ch.skin) chosenSkin[ch.cls] = ch.skin; chosenColor = ch.color || chosenColor;
+  $('name').value = ch.name; if (ch.skin) { chosenSkin[ch.cls] = String(ch.skin).replace(/~f$/, ''); bodyPick(/~f$/.test(ch.skin)); } chosenColor = ch.color || chosenColor;
   for (const el of $('swatches').children) el.classList.toggle('sel', el.dataset.col === chosenColor);
   selectClass(ch.cls);
   document.querySelectorAll('.class-card').forEach(card => { if (card.dataset.cls === ch.cls) card.querySelectorAll('.skin').forEach((el, i) => el.classList.toggle('sel', SKINS[ch.cls][i].id === chosenSkin[ch.cls])); });
@@ -1851,7 +1858,7 @@ function updateNeeds() {
   if (typeof survMedalsUpdate === 'function') survMedalsUpdate(me);
   const pr = $('prompt'); if (!G.loot && !nearCorpse()) { const raw = me.inv && (me.inv.venison || me.inv.pork); const stN = typeof nearStove === 'function' && nearStove(), hv = nearHarvest(), exN = me.carrying && STAGE.x >= 0 && dist(me.x, me.y, STAGE.x, STAGE.y) < 3.4; const jp = typeof jailPrompt === 'function' ? jailPrompt() : '';
   const bq = typeof boundNear === 'function' ? boundNear() : null;
-  const txt = me.bound ? (me.bnd === 'rope' ? 'Mãos amarradas com corda: martele ESPAÇO para se soltar (' + (me.bndE || 0) + '%)' : 'Algemado: só uma gazua ou o carcereiro abrem') : bq ? (bq.bound ? 'F: soltar ' + bq.name : '') : jp ? jp : (typeof empNear === 'function' && empNear()) ? empPrompt() : (typeof segNear === 'function' && segNear()) ? segPrompt() : (typeof dojoPrompt === 'function' && dojoPrompt()) ? dojoPrompt() : (typeof liftNear === 'function' && liftNear()) ? 'F: elevador (escolher o andar)' : (typeof leverNear === 'function' && leverNear()) ? leverPrompt() : (typeof ofuroNear === 'function' && ofuroNear()) ? ofuroPrompt() : G.training ? 'Treinando no boneco · ande para parar (sem limite de tempo)' : (typeof dummyNear === 'function' && dummyNear()) ? 'F: treinar no ' + dummyNear().t + (dummyNear().priv ? ' (seu boneco particular, de graça)' : ' (diária, uma vez por dia)') : G.me && G.me.bathing ? 'Relaxando no ofurô · ande para sair' : (typeof jobsPrompt === 'function' && jobsPrompt()) ? jobsPrompt() : (typeof estatePrompt === 'function' && estatePrompt()) ? estatePrompt() : me.wantedUntil > performance.now() && !me.escorted ? 'Y: render-se às sentinelas' : me.dragMode === 'grip' ? 'Segure o clique esquerdo: apertar o pescoço · H solta' : exN ? 'F: entregar ao carrasco (execução)' : stN ? 'F: cozinhar' : hv >= 0 ? (WORLD.obj[hv] === O.BERRY ? 'F: colher frutas' : 'F: colher erva') : raw && nearFireC() ? 'F: assar a carne' : nearWaterC() && (me.water ?? 100) < 98 ? 'F: beber' : ''; G.survPrompt = txt; } else G.survPrompt = '';
+  const txt = me.bound ? (me.bnd === 'rope' ? 'Mãos amarradas com corda: martele ESPAÇO para se soltar (' + (me.bndE || 0) + '%)' : 'Algemado: só uma gazua ou o carcereiro abrem') : bq ? (bq.bound ? 'F: soltar ' + bq.name : '') : jp ? jp : (typeof empNear === 'function' && empNear()) ? empPrompt() : (typeof segNear === 'function' && segNear()) ? segPrompt() : (typeof dojoPrompt === 'function' && dojoPrompt()) ? dojoPrompt() : (typeof liftNear === 'function' && liftNear()) ? 'F: elevador (escolher o andar)' : (typeof leverNear === 'function' && leverNear()) ? leverPrompt() : (typeof ofuroNear === 'function' && ofuroNear()) ? ofuroPrompt() : G.training ? 'Treinando no boneco · ande para parar (sem limite de tempo)' : (typeof dummyNear === 'function' && dummyNear()) ? 'F: treinar no ' + dummyNear().t + (dummyNear().priv ? ' (seu boneco particular, de graça)' : ' (diária, uma vez por dia)') : G.me && G.me.bathing ? (typeof prazInPool === 'function' && prazInPool() ? (me.bathing.mode === 'float' ? 'Boiando nas Termas' : 'Sentado na água das Termas') + ' · F ou ande para levantar' : 'Relaxando no ofurô · ande para sair') : (typeof jobsPrompt === 'function' && jobsPrompt()) ? jobsPrompt() : (typeof estatePrompt === 'function' && estatePrompt()) ? estatePrompt() : me.wantedUntil > performance.now() && !me.escorted ? 'Y: render-se às sentinelas' : me.dragMode === 'grip' ? 'Segure o clique esquerdo: apertar o pescoço · H solta' : exN ? 'F: entregar ao carrasco (execução)' : stN ? 'F: cozinhar' : hv >= 0 ? (WORLD.obj[hv] === O.BERRY ? 'F: colher frutas' : 'F: colher erva') : raw && nearFireC() ? 'F: assar a carne' : nearWaterC() && (me.water ?? 100) < 98 ? 'F: beber' : ''; G.survPrompt = txt; } else G.survPrompt = '';
   if ($('pz-use') && typeof useHtml === 'function') $('pz-use').innerHTML = useHtml();
   if ($('pz-surv')) $('pz-surv').innerHTML = '<div><b>Fome</b> ' + Math.round(100 - (me.food ?? 100)) + '% · <b>Sede</b> ' + Math.round(100 - (me.water ?? 100)) + '% · <b>Frio</b> ' + Math.round(me.cold || 0) + '%</div><div><b>Infecção</b> ' + ['nenhuma', 'febre', 'grave'][me.infect || 0] + (me.sick > 0 ? ' · <b>enjoado</b>' : '') + '</div><div class="gp-note">Coma e beba, fique perto do fogo à noite, trate feridas graves com bandagem. A morte é permanente.</div>';
 }

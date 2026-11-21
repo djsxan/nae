@@ -817,3 +817,6 @@ body.touch #pplbtn { bottom: auto; top: 54px; right: calc(10px + env(safe-area-i
 .wm-zoom button.wm-names.on { background: #6a4a1e; border-color: #e8c070; }
 .wm-filt { display: inline-flex; gap: 8px; flex-wrap: wrap; font: 600 12px 'Alegreya Sans SC', sans-serif; color: #e8dcc0; background: rgba(36,26,18,.75); border: 1px solid #6a5434; border-radius: 6px; padding: 3px 8px; }
 .wm-filt label { display: inline-flex; align-items: center; gap: 3px; cursor: pointer; } .wm-filt input { accent-color: #c8902a; margin: 0; }
+
+/* escolha de corpo no lobby */
+#bodysel { display: flex; gap: 8px; margin: 4px 0 10px; } #bodysel button { flex: 1; padding: 7px 10px; border-radius: 8px; border: 1px solid rgba(201,162,74,.45); background: rgba(0,0,0,.25); color: inherit; font: inherit; cursor: pointer; } #bodysel button.sel { background: rgba(201,162,74,.28); border-color: #e8c060; color: #fff3d0; }

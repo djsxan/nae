@@ -22,6 +22,9 @@ function jobsPrompt() {
   if (typeof segNear === 'function' && segNear()) return segPrompt();   /* seus empregados: o F abre as ordens */
   if (typeof entLogNear === 'function' && entLogNear()) return 'F: recolher o galho (lenha)';
   if (G.riding) return 'F: descer da guardiã';
+  if (typeof prazNear === 'function' && prazNear()) return 'F: falar com Lívia, a Banhista (entrada das Termas)';
+  if (typeof prazWho === 'function' && prazWho()) return prazWho() === 'mass' ? 'F: falar com Dario, o Massagista' : 'F: falar com Nico, o Copeiro';
+  if (typeof prazInPool === 'function' && prazInPool()) return G.me.bathing ? 'F: ficar de pé · andar também levanta' : 'F: sentar, boiar ou pedir vinho';
   if (typeof infNear === 'function' && infNear()) return 'F: falar com Tomé, o Pregoeiro (influência na praça)';
   if (typeof houseNear === 'function' && houseNear()) return 'F: falar com ' + houseNear().name;
   if (typeof courtNear === 'function' && courtNear()) return courtPrompt();

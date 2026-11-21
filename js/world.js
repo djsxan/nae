@@ -200,8 +200,17 @@ function stairSpec(b, f) {
   return { kind: 'wall', L: [0, 3], U: [0, 2], dv: [0, -1], entry: [0, 4], arrive: [0, 1], trig: [0, 2] };
 }
 // paredes internas finas: [u0, v0, u1, v1] no quadro local; vãos de porta já ficam de fora
+// Termas de Aurora: planta no quadro local (u ao longo da fachada 0..18, v em profundidade: 0 = fundo, 13 = rua).
+// Sala quente u 0..6 · vestiário u 6..12 v 8..13 · pátio u 6..12 v 0..8 · sala morna u 12..18 v 8..13 · sala fria u 12..18 v 0..8
+const THERMAE = { depth: 0.85,
+  pools: [{ k: 'hot', u0: 1, v0: 2, u1: 5, v1: 10 }, { k: 'sky', u0: 7, v0: 2, u1: 11, v1: 6 }, { k: 'cold', u0: 13, v0: 3, u1: 17, v1: 7 }],
+  casc: { u0: 14, v0: 7, u1: 17, v1: 8 }, fall: { u0: 14, v0: 6.1, u1: 17, v1: 7 }, lions: [3.5, 6, 8.5], labrum: [3, 11.6], keeper: [10.5, 10.4] };
+function thermaeWalls(b) { const dc = doorCol(b);   /* vãos de 1,2 nas passagens */
+  return [[6, 0, 6, 3.4], [6, 4.6, 6, 9.9], [6, 11.1, 6, 13], [12, 0, 12, 3.4], [12, 4.6, 12, 9.9], [12, 11.1, 12, 13], [6, 8, dc - 0.1, 8], [dc + 1.1, 8, 12, 8], [12, 8, 12.4, 8], [13.6, 8, 18, 8]]; }
+const hasIwalls = b => !!b && (b.deco === 'machiya' || b.kind === 'castle' || b.deco === 'thermae');
 function iwallsLocal(b, fl) {
   if (b.kind === 'castle') return castleWalls(fl);
+  if (b.deco === 'thermae') return fl === 0 ? thermaeWalls(b) : null;
   if (b.deco !== 'machiya') return null; const [A, D] = bDims(b);
   // quadro local: u ao longo da fachada (0 = sul, A = norte), v em profundidade (0 = fundo/oeste, D = rua/leste). Corredor + elevador em u 6..8
   if (fl === 0) return [[6, 0, 6, D]];   // corredor do elevador (ponta norte) separado do dojô
@@ -498,8 +507,12 @@ function interiorLayout0(b, fl = 0) {
     put('fireplace', dc, 0); put('armchair', dc - 1, 2, { v: 2 }); put('armchair', dc + 1, 2, { v: 2 }); put('bookwall', 0, 0, { h: 3 }); put('clubbar', w - 1, 1, { h: 3 });
     put('cardtable', 1, 4, { w: 2, h: 2 }); put('cardtable', w - 3, 4, { w: 2, h: 2 }); put('chesstable', 1, h - 2); put('chesstable', w - 2, h - 2); put('nrug', dc - 1, 1, { w: 4, h: 3, block: false, force: true }); put('chandelier', dc, 4, { block: false, force: true });
   } else if (k === 'baths') {   /* Termas de Aurora: piscina quente com vapor, duas frias, colunas, bancos de mármore e perfumes */
-    put('tpool', 2, 1, { w: 6, h: 4, v: 1 }); for (const [i, j] of [[1, 0], [w - 2, 0], [1, 5], [w - 2, 5]]) put('column', i, j); put('tpool', 1, 7, { w: 3, h: 3 }); put('tpool', w - 4, 7, { w: 3, h: 3 });
-    put('perfume', w - 1, 1, { h: 3 }); put('tbench', 0, 1, { h: 3 }); put('tbench', 0, h - 3, { h: 2 }); put('tbench', w - 1, h - 3, { h: 2 });
+    /* as piscinas, a cascata e as paredes vêm da planta (THERMAE); aqui só os móveis */
+    put('tcascade', 14, 7, { w: 3 }); put('labrum', 2, 11, { w: 2 });
+    put('tbench', 6, 12, { w: 2 }); put('tbench', 10, 12, { w: 2 }); put('tdesk', 10, 9, { block: false });
+    put('tmassage', 13, 11, { w: 2 }); put('tmassage', 16, 11, { w: 2 }); put('winetable', 17, 9);
+    put('tbench', 0, 12, { w: 2, block: false }); put('tbench', 4, 12, { w: 2, block: false });
+    for (const [i, j] of [[0, 0], [5, 0], [12, 12], [17, 0]]) put('brazier', i, j);
   } else if (k === 'velvet') {   /* Casa de Veludo: escadaria dupla, fonte do salão, divãs de veludo, cortinas, palco e lanternas vermelhas */
     put('dstair', 3, 0, { w: 6, h: 2 }); put('fountain2', 4, 4, { w: 4, h: 4 }); for (const [i, j] of [[3, 3], [8, 3], [3, 8], [8, 8]]) put('plantpot', i, j);
     put('drape', 0, 0, { h: 2 }); put('drape', w - 1, 0, { h: 2 }); put('divan', 0, 3, { h: 2 }); put('divan', 0, 6, { h: 2 }); put('divan', w - 1, 3, { h: 2, v: 2 }); put('divan', w - 1, 6, { h: 2, v: 2 });
@@ -544,7 +557,7 @@ function interiorLayout0(b, fl = 0) {
 const LAYOUT_MEMO = new Map();
 // móveis que continuam sólidos: paredes e divisórias, balcões, lareiras e fogões, prateleiras e armários de parede, camas, grades e cofres.
 // O resto (mesas, cadeiras, bancos, barris, caixotes, tapetes, decoração) não bloqueia a passagem.
-const FURN_SOLID = new Set(['hpillar', 'brazier', 'drawers', 'apothcounter', 'distill', 'blk', 'hpart', 'counter', 'bar', 'bankdesk', 'wandcounter', 'vault', 'bars', 'celldoor', 'fireplace', 'hearth', 'stove', 'forge', 'shelf', 'wandwall', 'fabricwall', 'taps', 'bottles', 'filing', 'jamshelf', 'pillar', 'throne', 'altar', 'still', 'bed', 'bunk', 'cot']);
+const FURN_SOLID = new Set(['tcascade', 'labrum', 'tmassage', 'winetable', 'hpillar', 'brazier', 'drawers', 'apothcounter', 'distill', 'blk', 'hpart', 'counter', 'bar', 'bankdesk', 'wandcounter', 'vault', 'bars', 'celldoor', 'fireplace', 'hearth', 'stove', 'forge', 'shelf', 'wandwall', 'fabricwall', 'taps', 'bottles', 'filing', 'jamshelf', 'pillar', 'throne', 'altar', 'still', 'bed', 'bunk', 'cot']);
 function interiorLayout(b, fl = 0) {
   const [w, h] = bDims(b), mk = [b.kind, w, h, b.v || 0, floorsOf(b), fl, b.office || '', JSON.stringify(b.stairs || 0), b.extSide || '', b.cellar ? b.cellar.join(',') : '', b.deco || ''].join('|');
   let L = LAYOUT_MEMO.get(mk); if (L) return L;
@@ -1166,7 +1179,7 @@ function generateWorld() {
     for (let y = C - 3; y <= C + 4; y++) for (let x = X0 + 3; x <= X0 + 14; x++) { const i = idx(x, y); if (rdir[i]) continue; ground[i] = (x + y) % 3 ? T.FLOORSTONE : T.STONE; }   /* praça das Casas */
     for (const S1 of HOUSE_SEATS) BUILDINGS.push({ x: X0 + 6, y: C + S1.y, ...BH('manor', 8, 7, 5.2, 3.2, S1.name, { door: 'W', seat: S1.id, v: 1 }) });   /* casarões das casas (no fim da lista) */
     BUILDINGS.push({ x: X0 + 18, y: C - 28, ...BH('club', 9, 8, 4.2, 1.2, 'Clube do Cervo de Prata', { door: 'W', floors: 1, deco: 'club', noble: 1 }) },   /* rua nova: clube de cavalheiros, termas romanas e o palácio da Dama Ysolde (no fim da lista) */
-      { x: X0 + 17, y: C - 16, ...BH('baths', 12, 10, 4.0, 1.0, 'Termas de Aurora', { door: 'W', floors: 1, deco: 'thermae' }) },
+      { x: X0 + 17, y: C - 19, ...BH('baths', 13, 18, 4.2, 1.0, 'Termas de Aurora', { door: 'W', floors: 1, deco: 'thermae' }) },   /* 13 x 18: do Clube até perto da Casa de Veludo */
       { x: X0 + 17, y: C + 7, ...BH('velvet', 13, 12, 5.0, 1.2, 'Casa de Veludo', { door: 'W', floors: 1, deco: 'velvet' }) });
     for (let y = y0; y <= y1; y++) for (let x = X0; x <= X1; x++) used[idx(x, y)] = 1;
     HOUSE_SEATS.forEach((S1, k) => { const bx = X0 + 4 + k * 2.4 | 0, by = k % 2 ? C + 4 : C - 3; const i = idx(bx, by); if (bld[i] < 0) { obj[i] = O.BANNER; BANNER_HOUSE[i] = S1.id; } });   /* estandartes das casas na praça */
@@ -1633,7 +1646,7 @@ function edgeOk(ax, ay, bx, by) {
   const B = (x, y) => WORLD.bld[y * MAP_W + x];
   const a = B(ax, ay), c = B(bx, by);
   if (ax !== bx && ay !== by) return a === c && B(ax, by) === a && B(bx, ay) === a;
-  if (a === c) return !(a >= 0 && BUILDINGS[a].deco === 'machiya' && iwallCross(a, 0, ax, ay, bx, by));
+  if (a === c) return !(a >= 0 && (BUILDINGS[a].deco === 'machiya' || BUILDINGS[a].deco === 'thermae') && iwallCross(a, 0, ax, ay, bx, by));
   const inB = a >= 0 ? a : c, ix = a >= 0 ? ax : bx, iy = a >= 0 ? ay : by, ox = a >= 0 ? bx : ax, oy = a >= 0 ? by : ay;
   if (a >= 0 && c >= 0) return false;
   const b = BUILDINGS[inB], [dtx, dty] = doorTile(b), v = DOOR_V[b.door || 'S'], d2 = door2Of(b);
@@ -1655,7 +1668,7 @@ function canStandFloor(x, y, bi, fl, r = 0.24) {
     const [u, v] = worldToLocal(b, x, y), D = bDims(b)[1]; if (!(v > D - 0.45 && v < D + 0.86 - r && u > bc[0] + 0.12 + r && u < bc[1] - 0.12 - r)) return false; return !iwallHit(bi, fl, x, y, r); }
   const bl = floorBlocked(bi, fl);
   for (const [ox, oy] of [[-r, -r], [r, -r], [-r, r], [r, r]]) if (bl.has(Math.round(y + oy) * MAP_W + Math.round(x + ox))) return false;
-  if ((b.deco === 'machiya' || b.kind === 'castle') && iwallHit(bi, fl, x, y, r)) return false;
+  if (hasIwalls(b) && iwallHit(bi, fl, x, y, r)) return false;
   return true;
 }
 // tile da escada (mundo) e chegada (na frente dela)
@@ -1713,7 +1726,7 @@ function canStandZ(x, y, z, r = 0.24, fl = 0, fb = -1) {
     if (solidTile(tx, ty, L)) return false;
   }
   if (L === 0 && (wallHit(x, y, r) || roundHit(x, y, r))) return false;
-  if (L === 0) { const bi = WORLD.bld[Math.round(y) * MAP_W + Math.round(x)]; if (bi >= 0 && (BUILDINGS[bi].deco === 'machiya' || BUILDINGS[bi].kind === 'castle') && iwallHit(bi, 0, x, y, r)) return false; }
+  if (L === 0) { const bi = WORLD.bld[Math.round(y) * MAP_W + Math.round(x)]; if (bi >= 0 && hasIwalls(BUILDINGS[bi]) && iwallHit(bi, 0, x, y, r)) return false; }
   if (L === 1 && roundHit(x, y, r, true)) return false;
   const h = stairH(x, y);
   if (h >= 0 && Math.abs(h - z) > 0.4) return false; // não entra na rampa pela lateral

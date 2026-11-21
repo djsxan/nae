@@ -32,6 +32,7 @@ function hDaily() {   /* cada casa avança o seu plano */
   const top = HOUSES.slice().sort((a, b) => H.st[b.id].prestige - H.st[a.id].prestige)[0]; sys('Notícias das Casas: ' + H.news[0][1] + ' (a mais prestigiada agora é a ' + top.n + ')'); estateSave(); }
 function hFavor(p, id, n, why) { const H = hRec(), k = estOwner(p); H.favor[k] = H.favor[k] || {}; H.favor[k][id] = Math.max(0, (H.favor[k][id] || 0) + n); if (n && why) tell(p, (n > 0 ? '+' : '') + n + ' de favor com a ' + HOUSE_BY[id].n + ' (' + why + ').'); estateSave(); }
 function hPost(def, n) {   /* posição do morador agora */
+  if (typeof thNoblePost === 'function') { const T = thNoblePost(n); if (T) return T; }   /* hora do banho nas Termas */
   const b = hSeatB(n.house); if (!b) return null; const h = empHour(), P = h >= 7 && h < 21 ? def[1] : def[2];
   if (P[0] === 'door') { const d = doorOf(b), [dx, dy] = doorTile(b), v = DOOR_V[b.door || 'S'], ox = v[0] ? 0 : P[1] * 1.2, oy = v[1] ? 0 : P[1] * 1.2; return { x: dx + v[0] * 1.6 + ox + 0.5, y: dy + v[1] * 1.6 + oy + 0.5, fl: 0, out: 1 }; }
   if (P[0] === 'plaza') { const k = HOUSES.findIndex(x => x.id === n.house); return { x: CASTLE.x1 + 8 + (k % 3) * 2.2, y: CENTER - 1.5 + Math.floor(k / 3) * 3.5, fl: 0, out: 1 }; }

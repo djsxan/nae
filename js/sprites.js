@@ -3,7 +3,13 @@
 //  monstros e ícones, em pixel art realista (resolução 2x).
 // ============================================================
 // ---------- visual de cada skin ----------
+/* corpo feminino: a aparência vem com o sufixo ~f (ex.: 'adept~f'); o resto do jogo trata como uma aparência a mais */
+function femLook(L) { L.fem = true; L.beard = null; if (!L.hairStyle || L.hairStyle === 'short') L.hairStyle = 'long'; return L; }
+const FEM_KINDS = new Set(['priest', 'tavmaid', 'captain', 'fruit', 'noble', 'hotelkeeper', 'banker2', 'banker5', 'st_apoth', 'st_tailor', 'st_witch', 'st_alch', 'st_farm', 'st_mill', 'courier2', 'v_noblef', 'v_peasf', 'v_elderf', 'v_candf', 'v_maidf', 'v_maidf2', 'v_maiko', 'v_segf', 'v_gymf', 'k_princess', 'k_cook', 'k_maid', 'bathkeeper']);
+const femKind = k => FEM_KINDS.has(k) || /^h[hb]_(spouse_(valcarne|draemor|thornvale|solmire)|lord_moranthe|heir_moranthe|serv_thornvale)$/.test(k);
+function npcLookOf(kind) { const L = NPC_LOOKS[kind](); return femKind(kind) ? femLook(L) : L; }
 function heroLook(cls, skinId, accentHex) {
+  const fem = /~f$/.test(skinId || ''); if (fem) skinId = skinId.slice(0, -2);
   const A = tone(accentHex || '#8b2e2e');
   const L = {
     skin: tone('#d8a47f'), hair: tone('#4a3424'), hairStyle: 'short', beard: null, eyes: px('#20160e'),
@@ -36,6 +42,7 @@ function heroLook(cls, skinId, accentHex) {
       armor: 'robe', body: tone('#5c4a33'), body2: tone('#3f5a32'), head: 'antlerhood', headTone: tone('#4a6b38'), weapon: 'druidstaff', orb: '#9be37a',
       beard: tone('#d8d2c4'), hair: tone('#d8d2c4'), pattern: 'leaves', trim: tone('#8fbf5a'), extra: 'leaf' }); break;
   }
+  if (fem) { femLook(L); if (cls === 'mage' && skinId === 'adept') L.hair = tone('#6a3a22'); }   /* a maga não herda o cabelo branco do velho mago */
   return L;
 }
 function shadeHex(hex, amt) {
@@ -800,7 +807,7 @@ function heroSprite(cls, skin, color, P) {
 }
 const NPC_CLS = { v_maiko: 'archer', v_candf: 'archer', v_segm: 'knight', v_segm2: 'knight', v_segf: 'knight', agent: 'archer', v_maidf: 'archer', v_maidm: 'archer', v_maidf2: 'archer', v_maidm2: 'archer', st_witch: 'mage', hotelkeeper: 'archer', banker4: 'mage', banker5: 'mage', banker6: 'mage', bankporter: 'archer', v_house3: 'archer', v_house4: 'archer', v_trav3: 'archer', v_monk: 'mage', v_noblef: 'mage', v_noblem: 'knight', v_peasm: 'knight', v_peasf: 'archer', v_elderm: 'mage', v_elderf: 'archer', banker: 'mage', banker2: 'mage', banker3: 'mage', v_house1: 'archer', v_house2: 'archer', v_trav1: 'knight', v_trav2: 'archer', v_vis1: 'mage', v_vis2: 'archer', v_thug1: 'archer', v_thug2: 'knight', supplier: 'knight', st_saw: 'knight', st_mine: 'knight', st_farm: 'archer', st_carp: 'archer', st_alch: 'mage', st_apoth: 'mage', st_arcane: 'mage', st_tailor: 'archer', st_scroll: 'mage', courier1: 'archer', courier2: 'archer', courier3: 'knight', broker: 'archer', noble: 'archer', noble2: 'knight', gardener: 'archer', tailor: 'mage', jailer: 'knight', executioner: 'knight', fruit: 'archer', priest: 'mage', merchant: 'archer', innkeeper: 'archer', guard: 'knight', captain: 'knight', smith: 'knight' };
 function npcSprite(kind, P) {
-  const L = lookFor('npc:' + kind, NPC_LOOKS[kind]);
+  const L = lookFor('npc:' + kind, NPC_LOOKS[kind] ? () => npcLookOf(kind) : NPC_LOOKS[kind]);
   return sprite('n|' + kind + '|' + poseKey(P), HW, HH, HAX, HAY, pc => drawHeroPC(pc, L, P, NPC_CLS[kind] || 'knight'), { ok: 0.42 });
 }
 

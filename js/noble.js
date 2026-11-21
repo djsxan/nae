@@ -53,7 +53,8 @@ function mThermae(b, night) {
   const glass = NB.glow(night, '#7a8a90', '#ffb070');
   o.add(wbox(w + 0.6, 0.3, h + 0.6, w / 2, 0.15, h / 2, marble, 1)); o.add(wbox(w + 0.9, 0.15, h + 0.9, w / 2, 0.075, h / 2, trav, 1));   /* estilóbato em degraus */
   NB.shell(o, w, h, H, trav);
-  NB.wins(o, w, h, 2.6, 2.0, 0.7, 1.0, marble, glass, true, true, dX);
+  { const yL = H - 1.35, lun = (x, z, ry) => { const g2 = grp(mk(new THREE.CircleGeometry(0.5, 18, 0, Math.PI), glass, false), mk(new THREE.TorusGeometry(0.52, 0.06, 6, 18, Math.PI), marble), mk(new THREE.BoxGeometry(1.2, 0.08, 0.1).translate(0, -0.03, 0), marble)); g2.rotation.y = ry; g2.position.set(x, yL, z); o.add(g2); };   /* lunetas altas: a luz entra por cima */
+    for (let x = 1.6; x < w - 1; x += 3.2) { lun(x, -0.04, Math.PI); if (Math.abs(x - dX) > 1.6) lun(x, h + 0.04, 0); } for (let z = 1.6; z < h - 1; z += 3.2) { lun(-0.04, z, -Math.PI / 2); lun(w + 0.04, z, Math.PI / 2); } }
   /* friso de mosaico (azul, ouro e branco) */
   { const cols = ['#2a5a9a', '#e8c060', '#f4efe4', '#3a8a9a']; let k = 0; for (let x = 0.15; x < w; x += 0.3) for (const z of [-0.02, h + 0.02]) o.add(wbox(0.28, 0.22, 0.02, x, H - 0.55, z, smat(null, cols[k++ % 4], { rough: 0.4 }))); for (let z = 0.15; z < h; z += 0.3) for (const x of [-0.02, w + 0.02]) o.add(wbox(0.02, 0.22, 0.28, x, H - 0.55, z, smat(null, cols[k++ % 4], { rough: 0.4 }))); }
   o.add(wbox(w + 0.3, 0.25, h + 0.3, w / 2, H - 0.12, h / 2, marble, 1));   /* entablamento */
@@ -145,7 +146,80 @@ function furnX(g, f, C) {
     case 'dstair': { const L = f.w, top = 2.0, st = smat('stoneblock', '#e6dac2', { bump: 0.5 }); sub.add(wbox(L * 0.36, 0.14, 0.9, 0, top, -f.h / 2 + 0.45, marble, 1)); for (let z = -L * 0.17; z <= L * 0.17; z += 0.18) sub.add(mk(new THREE.CylinderGeometry(0.03, 0.045, 0.45, 8).translate(z, top + 0.28, -f.h / 2 + 0.9), marble)); sub.add(wbox(L * 0.36, 0.06, 0.08, 0, top + 0.53, -f.h / 2 + 0.9, goldM, 1));
       for (const s of [-1, 1]) { const n = 10, run = L * 0.32; for (let k = 0; k < n; k++) { const y = (k + 1) * top / n, x = s * (L * 0.18 + run - (k + 0.5) * run / n); sub.add(wbox(run / n + 0.02, 0.06 + y, 0.85, x, y / 2, -f.h / 2 + 0.45, st, 1)); } const rl = mk(new THREE.BoxGeometry(Math.hypot(run, top), 0.07, 0.07), goldM); rl.position.set(s * (L * 0.18 + run / 2), top / 2 + 0.5, -f.h / 2 + 0.88); rl.rotation.z = -s * Math.atan2(top, run); sub.add(rl); }
       sub.add(wbox(L * 0.3, 2.4, 0.1, 0, top + 1.2, -f.h / 2 + 0.05, smat('cloth', '#7a1030', { bump: 0.4 }), 1)); break; }
+    case 'tcascade': case 'labrum': return;   /* desenhados com a planta das Termas */
+    case 'tdesk': sub.add(wbox(0.9, 0.85, 0.5, 0, 0.425, 0, marble, 1)); sub.add(wbox(1.0, 0.05, 0.6, 0, 0.875, 0, goldM, 1)); for (let k = 0; k < 4; k++) sub.add(mk(new THREE.CylinderGeometry(0.04, 0.05, 0.14, 8).translate(-0.3 + k * 0.2, 0.97, 0), smat(null, ['#e8dcc0', '#5a8ac0', '#c08a5a', '#e8dcc0'][k], { rough: 0.5 }))); break;
+    case 'tmassage': { const L = Math.max(f.w, f.h); sub.add(wbox(L - 0.25, 0.1, 0.62, 0, 0.62, 0, marble, 1)); for (const s of [-1, 1]) sub.add(wbox(0.16, 0.57, 0.5, s * (L / 2 - 0.4), 0.285, 0, marble, 1)); sub.add(wbox(L - 0.5, 0.03, 0.5, 0, 0.69, 0, smat('cloth', '#f0e8d8', { bump: 0.3 }), 1)); sub.add(mk(new THREE.CylinderGeometry(0.08, 0.08, 0.3, 10).rotateX(Math.PI / 2).translate(-(L / 2 - 0.45), 0.75, 0), smat('cloth', '#c9a24a', { bump: 0.3 }))); for (let k = 0; k < 3; k++) sub.add(mk(new THREE.CylinderGeometry(0.035, 0.045, 0.13, 8).translate(L / 2 - 0.2, 0.12, -0.2 + k * 0.2), smat(null, ['#c9a24a', '#5a8a4a', '#a84a3a'][k], { rough: 0.3, metal: 0.3 }))); break; }
+    case 'winetable': sub.add(mk(new THREE.CylinderGeometry(0.34, 0.34, 0.05, 14).translate(0, 0.62, 0), marble)); sub.add(mk(new THREE.CylinderGeometry(0.06, 0.16, 0.6, 10).translate(0, 0.3, 0), marble)); sub.add(mk(new THREE.CylinderGeometry(0.07, 0.1, 0.3, 10).translate(-0.1, 0.8, 0), smat(null, '#7a3a2a', { rough: 0.6 }))); sub.add(mk(new THREE.CylinderGeometry(0.03, 0.05, 0.1, 8).translate(-0.1, 1.0, 0), smat(null, '#7a3a2a', { rough: 0.6 }))); for (let k = 0; k < 2; k++) sub.add(mk(new THREE.CylinderGeometry(0.04, 0.025, 0.09, 8).translate(0.12, 0.69, -0.1 + k * 0.2), goldM)); for (let k = 0; k < 5; k++) sub.add(mk(new THREE.SphereGeometry(0.035, 6, 5).translate(0.02 + (k % 3) * 0.05, 0.68 + (k > 2 ? 0.04 : 0), 0.14 + (k % 2) * 0.05), smat(null, k % 2 ? '#5a2a6a' : '#3a6a2a', { rough: 0.5 }))); break;
     default: return;
   }
   if (rot && !['bookwall', 'clubbar', 'tbench', 'perfume', 'divan', 'drape'].includes(f.t)) sub.rotation.y = rot;
   g.add(sub); }
+
+// ============================================================
+//  TERMAS DE AURORA POR DENTRO: cinco ambientes, piscinas fundas com degraus, bocas de leão,
+//  bacia transbordando, cascata de pedra, colunata do pátio, nichos com estátuas e luz vinda de cima
+// ============================================================
+function thermaeInterior(o, b, { w, h, hw, t, knee }) {
+  const P = THERMAE, D = P.depth, B = (ww, hh, dd, x, y, z, m, sc = 1) => { const q = wbox(ww, hh, dd, x, y, z, m, sc); o.add(q); return q; };
+  const mos = smat('thmosaic', '#ffffff', { bump: 0.3, rough: 0.45 }), marb = smat('thmarble', '#ffffff', { bump: 0.3, rough: 0.35 }), marbD = smat('thmarble', '#d9c9a8', { bump: 0.4, rough: 0.4 }), poolF = smat('thpoolf', '#ffffff', { bump: 0.3, rough: 0.3 });
+  const bronze = smat(null, '#9a7436', { metal: 0.9, rough: 0.35 }), gold = smat(null, '#d4a94a', { metal: 0.9, rough: 0.3 }), white = smat(null, '#f4f0e8', { rough: 0.5 }), rock = smat('rock', '#8f9698', { bump: 1.4, rough: 0.6 });
+  const water = (hex, em, op) => smat(null, hex, { rough: 0.05, metal: 0.25, transparent: true, opacity: op, emissive: em, ei: 0.35 });
+  const WAT = { hot: water('#62c4c8', '#2a7a80', 0.6), sky: water('#4f9fdc', '#1f5a90', 0.6), cold: water('#3f86c8', '#184a80', 0.62) }, sheet = smat(null, '#dff2fa', { rough: 0.05, transparent: true, opacity: 0.55, emissive: '#9ad0e8', ei: 0.4 });
+  // ---- piso de mosaico com os vãos das piscinas ----
+  const inPool = (i, j) => P.pools.some(q => i >= q.u0 && i < q.u1 && j >= q.v0 && j < q.v1);
+  for (let j = 0; j < h; j++) { let i0 = -1; for (let i = 0; i <= w; i++) { const solid = i < w && !inPool(i, j); if (solid && i0 < 0) i0 = i; if (!solid && i0 >= 0) { B(i - i0, 0.06, 1, (i0 + i) / 2, 0.03, j + 0.5, mos); i0 = -1; } } }
+  // ---- piscinas: fundo de pastilhas, paredes de mármore, borda, degraus, água ----
+  for (const q of P.pools) { const W = q.u1 - q.u0, L = q.v1 - q.v0, cx = (q.u0 + q.u1) / 2, cz = (q.v0 + q.v1) / 2;
+    B(W, 0.06, L, cx, -D - 0.03, cz, poolF, 0.5);
+    for (const [x, z, ww, dd] of [[cx, q.v0 - 0.04, W + 0.16, 0.08], [cx, q.v1 + 0.04, W + 0.16, 0.08], [q.u0 - 0.04, cz, 0.08, L], [q.u1 + 0.04, cz, 0.08, L]]) B(ww, D + 0.06, dd, x, -D / 2 - 0.03, z, marbD);
+    for (const [x, z, ww, dd] of [[cx, q.v0 + 0.07, W, 0.14], [cx, q.v1 - 0.07, W, 0.14], [q.u0 + 0.07, cz, 0.14, L], [q.u1 - 0.07, cz, 0.14, L]]) B(ww, 0.05, dd, x, 0.085, z, marb);   /* borda */
+    { const cols = ['#2a5a9a', '#e8c060', '#f4efe4', '#3a8a9a']; let k = 0; for (let x = q.u0 + 0.2; x < q.u1 - 0.1; x += 0.28) for (const z of [q.v0 + 0.2, q.v1 - 0.2]) B(0.24, 0.012, 0.07, x, 0.068, z, smat(null, cols[k++ % 4], { rough: 0.4 })); }   /* faixa de pastilhas coloridas */
+    for (let k = 0; k < 3; k++) { const hh = D * (3 - k) / 4; B(W - 1.2, hh, 0.36, cx, -D + hh / 2, q.v1 - 0.18 - k * 0.36, marb); }   /* três degraus largos descendo por dentro d'água, do lado da sala */
+    o.add(mk(new THREE.BoxGeometry(W - 0.02, 0.02, L - 0.02).translate(cx, -0.1, cz), WAT[q.k], false));
+    const pl = new THREE.PointLight(q.k === 'hot' ? 0x8fe8e0 : 0x8cc4ff, 0.5, 5); pl.position.set(cx, 0.6, cz); o.add(pl);
+}
+  // ---- paredes internas baixas, com pilastras nos vãos ----
+  { const HH = 1.0; for (const [u0, v0, u1, v1] of thermaeWalls(b)) { const alongX = Math.abs(v0 - v1) < 0.01, L = alongX ? Math.abs(u1 - u0) : Math.abs(v1 - v0), cx = (u0 + u1) / 2, cz = (v0 + v1) / 2; if (L < 0.05) continue;
+      B(alongX ? L : 0.2, HH, alongX ? 0.2 : L, cx, HH / 2, cz, marb, 0.6); B(alongX ? L + 0.04 : 0.28, 0.07, alongX ? 0.28 : L + 0.04, cx, HH + 0.035, cz, marbD);
+      B(alongX ? L : 0.22, 0.12, alongX ? 0.22 : L, cx, HH - 0.2, cz, smat(null, '#2a5a9a', { rough: 0.45 }));   /* friso azul */
+      for (const e of [0, 1]) { const px = alongX ? (e ? u1 : u0) : u0, pz = alongX ? v0 : (e ? v1 : v0); if (px < 0.3 || px > w - 0.3 || pz < 0.3 || pz > h - 0.3) continue; o.add(mk(new THREE.CylinderGeometry(0.11, 0.13, 1.7, 12).translate(px, 0.85, pz), marb)); B(0.34, 0.1, 0.34, px, 1.75, pz, marbD); B(0.3, 0.08, 0.3, px, 0.04, pz, marbD); } } }
+  // ---- colunata do pátio, em volta da piscina a céu aberto ----
+  { const q = P.pools.find(z => z.k === 'sky'), e = 0.55, mu = (q.u0 + q.u1) / 2, mv = (q.v0 + q.v1) / 2; const pts = [[q.u0 - e, q.v0 - e], [q.u1 + e, q.v0 - e], [q.u0 - e, q.v1 + e], [q.u1 + e, q.v1 + e], [mu, q.v0 - e], [mu, q.v1 + e], [q.u0 - e, mv], [q.u1 + e, mv]];
+    for (const [x, z] of pts) { o.add(mk(new THREE.CylinderGeometry(0.1, 0.13, 1.9, 14).translate(x, 1.0, z), white)); B(0.32, 0.08, 0.32, x, 0.1, z, marbD); B(0.36, 0.1, 0.36, x, 2.0, z, marbD); for (let k = 0; k < 4; k++) B(0.1, 0.06, 0.1, x + (k % 2 ? 0.14 : -0.14), 1.9, z + (k < 2 ? 0.14 : -0.14), gold); } }
+  // ---- paredes altas (a da esquerda e a da rua): lambri de mármore, friso de pastilhas, lunetas de luz, nichos com estátuas ----
+  const tallL = !knee.includes('left'), tallF = !knee.includes('front'), lit = smat(null, '#fff0c8', { emissive: '#ffd890', ei: 1.5, rough: 0.4 });
+  const statue = (x, z, ry) => { const g = grp(); g.add(mk(new THREE.BoxGeometry(0.4, 0.3, 0.3).translate(0, 0.15, 0), marbD)); g.add(mk(new THREE.CylinderGeometry(0.09, 0.13, 0.62, 10).translate(0, 0.61, 0), white)); g.add(mk(new THREE.SphereGeometry(0.1, 10, 8).scale(1, 0.9, 0.8).translate(0, 0.98, 0), white)); g.add(mk(new THREE.SphereGeometry(0.075, 10, 8).translate(0, 1.16, 0), white)); g.add(mk(new THREE.CylinderGeometry(0.03, 0.03, 0.34, 6).rotateZ(0.9).translate(0.14, 0.86, 0), white));
+    g.add(mk(new THREE.BoxGeometry(0.62, 1.2, 0.03).translate(0, 0.75, -0.13), smat(null, '#6a2f24', { rough: 0.8 }))); g.add(mk(new THREE.CircleGeometry(0.31, 14, 0, Math.PI).translate(0, 1.35, -0.115), smat(null, '#6a2f24', { rough: 0.8 }))); g.add(mk(new THREE.TorusGeometry(0.32, 0.03, 6, 14, Math.PI).translate(0, 1.35, -0.1), gold)); for (const sx of [-0.33, 0.33]) g.add(mk(new THREE.BoxGeometry(0.05, 1.2, 0.05).translate(sx, 0.75, -0.1), marbD)); g.rotation.y = ry; g.position.set(x, 0.06, z); o.add(g); };
+  const wallDeco = (side) => { const L = side === 'left' ? h : w, at = (c, y, len, hh, m, dep = 0.03) => side === 'left' ? B(dep, hh, len, t + dep / 2, y, c, m) : B(len, hh, dep, c, y, h - t - dep / 2, m);
+    at(L / 2, 0.5, L - 0.3, 0.9, marbD, 0.04); at(L / 2, 0.97, L - 0.3, 0.06, gold, 0.06);
+    { const cols = ['#2a5a9a', '#e8c060', '#f4efe4', '#3a8a9a', '#a83a2a']; let k = 0; for (let c = 0.3; c < L - 0.2; c += 0.26) at(c, 1.55, 0.22, 0.2, smat(null, cols[k++ % 5], { rough: 0.4 }), 0.02); at(L / 2, 1.68, L - 0.3, 0.04, gold, 0.03); at(L / 2, 1.42, L - 0.3, 0.04, gold, 0.03); }
+    for (let c = 1.5; c < L - 1; c += 3) { const lu = mk(new THREE.CircleGeometry(0.42, 16, 0, Math.PI), lit, false), fr = mk(new THREE.TorusGeometry(0.44, 0.04, 6, 16, Math.PI), marbD), y = Math.min(hw - 0.5, 1.85); for (const m of [lu, fr]) { if (side === 'left') { m.rotation.y = Math.PI / 2; m.position.set(t + 0.03, y, c); } else { m.rotation.y = Math.PI; m.position.set(c, y, h - t - 0.03); } o.add(m); } const pl = new THREE.PointLight(0xffe2b0, 0.35, 3.4); pl.position.set(side === 'left' ? 0.8 : c, y, side === 'left' ? c : h - 0.8); o.add(pl); } };
+  if (tallL) { wallDeco('left'); statue(t + 0.3, 1.2, Math.PI / 2); statue(t + 0.3, 11.0, Math.PI / 2); }
+  if (tallF) { wallDeco('front'); const dx = doorCol(b) + 0.5; for (const u of [1.0, 5.0, 14.9]) if (Math.abs(u - dx) > 1) statue(u, h - t - 0.3, Math.PI); }
+  // ---- bocas de leão na parede da sala quente, jorrando na piscina ----
+  if (tallL) { const q = P.pools[0]; for (const z of P.lions) { const g = grp(); g.add(mk(new THREE.CylinderGeometry(0.2, 0.2, 0.05, 14).rotateZ(Math.PI / 2).translate(0.03, 0, 0), bronze)); g.add(mk(new THREE.SphereGeometry(0.15, 12, 10).scale(0.8, 1, 1).translate(0.1, 0, 0), bronze)); g.add(mk(new THREE.BoxGeometry(0.14, 0.1, 0.13).translate(0.2, -0.05, 0), bronze));
+      for (const s of [-1, 1]) g.add(mk(new THREE.SphereGeometry(0.05, 6, 5).translate(0.08, 0.14, s * 0.12), bronze)); for (let k = 0; k < 8; k++) { const a = k / 8 * 6.283; g.add(mk(new THREE.ConeGeometry(0.035, 0.11, 5).translate(0.04, Math.cos(a) * 0.19, Math.sin(a) * 0.19), bronze)); }
+      g.position.set(t, 1.05, z); o.add(g);
+      const x0 = t + 0.28, y0 = 0.98, x1 = q.u0 + 0.75, y1 = -0.1, N = 7; for (let k = 0; k < N; k++) { const a = k / N, c = (k + 1) / N, ax = x0 + (x1 - x0) * a, ay = y0 + (y1 - y0) * a * a, bx = x0 + (x1 - x0) * c, by = y0 + (y1 - y0) * c * c, len = Math.hypot(bx - ax, by - ay), sg = mk(new THREE.CylinderGeometry(0.035 + a * 0.02, 0.035 + c * 0.02, len, 6), sheet, false); sg.rotation.z = Math.atan2(bx - ax, -(by - ay)) + Math.PI; sg.position.set((ax + bx) / 2, (ay + by) / 2, z); o.add(sg); }   /* o jorro: arco de água da boca até a piscina */
+      o.add(mk(new THREE.TorusGeometry(0.16, 0.03, 5, 12).rotateX(Math.PI / 2).translate(x1, -0.08, z), white, false)); } }
+  // ---- bacia de mármore (labrum) num nicho da parede da rua, transbordando ----
+  { const [lu, lv] = P.labrum; o.add(mk(new THREE.CylinderGeometry(0.16, 0.26, 0.62, 14).translate(lu, 0.37, lv), marb)); o.add(mk(new THREE.CylinderGeometry(0.62, 0.3, 0.2, 20).translate(lu, 0.78, lv), marb)); o.add(mk(new THREE.TorusGeometry(0.61, 0.04, 6, 20).rotateX(Math.PI / 2).translate(lu, 0.88, lv), marbD)); o.add(mk(new THREE.CylinderGeometry(0.56, 0.56, 0.02, 20).translate(lu, 0.87, lv), WAT.hot, false));
+    o.add(mk(new THREE.CylinderGeometry(0.03, 0.03, 0.34, 6).translate(lu, 1.05, lv), sheet, false)); o.add(mk(new THREE.SphereGeometry(0.07, 8, 6).translate(lu, 1.22, lv), sheet, false)); for (let k = 0; k < 6; k++) { const a = k / 6 * 6.283; o.add(mk(new THREE.CylinderGeometry(0.02, 0.03, 0.74, 5).translate(lu + Math.cos(a) * 0.62, 0.48, lv + Math.sin(a) * 0.62), sheet, false)); }
+    o.add(mk(new THREE.CylinderGeometry(0.85, 0.85, 0.012, 20).translate(lu, 0.068, lv), WAT.hot, false)); }
+  // ---- cascata de pedra: paredão de rocha com três patamares e uma cortina d'água caindo no tanque frio ----
+  { const c = P.casc, W = c.u1 - c.u0, cx = (c.u0 + c.u1) / 2, zb = c.v1 - 0.1, fallM = smat(null, '#a9d8f2', { rough: 0.08, transparent: true, opacity: 0.85, emissive: '#5fb0e0', ei: 0.5 }), foam = smat(null, '#ffffff', { rough: 0.4, emissive: '#dff2fa', ei: 0.5 }), moss = smat(null, '#3f6a34', { rough: 0.95 });
+    const rk = (ww, hh, dd, x, y, z, ry, rz) => { const m = mk(wuv(new THREE.BoxGeometry(ww, hh, dd), 1.3), rock); m.position.set(x, y, z); m.rotation.set(0, ry || 0, rz || 0); o.add(m); };
+    rk(W + 0.5, 1.9, 0.3, cx, 0.95, zb, 0, 0); rk(0.7, 2.15, 0.5, c.u0 - 0.05, 1.07, zb - 0.1, 0.2, 0.05); rk(0.6, 2.3, 0.45, c.u1 + 0.05, 1.15, zb - 0.1, -0.25, -0.04);   /* paredão e ombros */
+    const L = [[1.45, 0.3, 0.7], [0.95, 0.56, 0.9], [0.45, 0.82, 1.0]];   /* [altura, avanço, largura relativa] dos patamares */
+    L.forEach(([y, adv, wr], k) => { const z = zb - adv; rk(W * wr, 0.24, 0.34, cx + (k - 1) * 0.12, y - 0.12, z, (k - 1) * 0.07, (k - 1) * 0.03); rk(0.5, 0.3, 0.3, cx - W * wr / 2, y - 0.05, z + 0.05, 0.5, 0.2); rk(0.45, 0.34, 0.3, cx + W * wr / 2, y - 0.02, z + 0.04, -0.4, -0.15);
+      o.add(mk(new THREE.BoxGeometry(W * wr - 0.45, 0.03, 0.3).translate(cx + (k - 1) * 0.12, y + 0.02, z), fallM, false));   /* água no patamar */
+      const y1 = k < 2 ? L[k + 1][0] : -0.1, fh = y - y1; o.add(mk(new THREE.BoxGeometry(W * wr - 0.6, fh, 0.05).translate(cx + (k - 1) * 0.12, y1 + fh / 2, z - 0.19), fallM, false));   /* a queda */
+      for (let q = 0; q < 5; q++) o.add(mk(new THREE.SphereGeometry(0.07 + (q % 2) * 0.03, 7, 5).translate(cx + (k - 1) * 0.12 + (q - 2) * (W * wr - 0.7) / 4, y1 + 0.04, z - 0.24 - (q % 2) * 0.05), foam, false)); });
+    o.add(mk(new THREE.BoxGeometry(W * 0.5, 0.42, 0.05).translate(cx, 1.68, zb - 0.17), fallM, false)); o.add(mk(new THREE.BoxGeometry(W * 0.5, 0.05, 0.2).translate(cx, 1.9, zb - 0.08), fallM, false));   /* a nascente, no alto */
+    for (const [x, y, z, s] of [[c.u0 + 0.1, 2.12, zb - 0.1, 0.22], [c.u1 - 0.1, 2.28, zb - 0.1, 0.2], [cx + 1.1, 1.5, zb - 0.28, 0.14], [cx - 1.2, 1.0, zb - 0.55, 0.15], [cx + 1.35, 0.5, zb - 0.8, 0.13]]) o.add(mk(new THREE.SphereGeometry(s, 8, 6).scale(1.3, 0.55, 1).translate(x, y, z), moss));
+    for (let q = 0; q < 6; q++) rk(0.3 + (q % 3) * 0.1, 0.22 + (q % 2) * 0.1, 0.28, c.u0 + 0.2 + q * (W - 0.4) / 5, 0.14, zb - 1.02 - (q % 2) * 0.06, q * 0.7, 0);   /* pedras na borda do tanque */
+    o.add(mk(new THREE.BoxGeometry(W - 0.6, 0.04, 0.5).translate(cx, -0.07, c.v0 - 0.32), foam, false)); const pl = new THREE.PointLight(0xbfe4ff, 0.6, 4.5); pl.position.set(cx, 1.3, c.v0 - 0.7); o.add(pl); }
+  // ---- luz do alto sobre a piscina quente (a abertura da cúpula) e o céu do pátio ----
+  { const q = P.pools[0], pl = new THREE.PointLight(0xfff0c0, 0.8, 7); pl.position.set((q.u0 + q.u1) / 2, 2.4, (q.v0 + q.v1) / 2); o.add(pl); }
+  { const q = P.pools[1], pl = new THREE.PointLight(0xfff6e0, 0.7, 8); pl.position.set((q.u0 + q.u1) / 2, 2.6, (q.v0 + q.v1) / 2); o.add(pl); }
+}
