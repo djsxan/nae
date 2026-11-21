@@ -71,7 +71,8 @@ function infMsg(p, m) {
   const vow = infVow(p); if (!vow) { tell(p, 'Jure lealdade a uma casa (ou à coroa) antes de trabalhar o povo em nome dela.'); send(); return; }
   I.done[k] = I.done[k] || {};
   if (m.a === 'act') { if (I.done[k][pl] === estDay()) { tell(p, 'Você já fez isso hoje aqui. O povo esquece rápido, mas não tão rápido: volte amanhã.'); send(); return; }
-    if ((p.gold || 0) < P.cost) { tell(p, 'Ouro insuficiente (' + P.cost + ').'); return; } p.gold -= P.cost; sendStat(p); I.done[k][pl] = estDay();
+    const c0 = Math.round(P.cost * (pl === 'temple' && typeof tatKnown === 'function' && tatKnown(p, 'faith') ? 0.75 : 1));   /* quem a Fé reconhece pela marca doa com desconto */
+    if ((p.gold || 0) < c0) { tell(p, 'Ouro insuficiente (' + c0 + ').'); return; } p.gold -= c0; sendStat(p); I.done[k][pl] = estDay();
     infAdd(vow, pl, P.g); if (P.faith) infFaithAdd(vow, P.faith); if (vow === 'aurenfell') { if (typeof crownFavor === 'function') crownFavor(p, 2, 'apoio do povo'); } else if (typeof hFavor === 'function') hFavor(p, vow, 2, 'apoio do povo');
     const say = { temple: 'A Aurora abençoa quem dá. A Fé lembrará da ' + infHN(vow) + '.', tavern: 'Uma rodada pra todo mundo, por conta da ' + infHN(vow) + '!', dojo: 'O torneio da ' + infHN(vow) + ' vai encher o tatame!', barracks: 'Os rapazes vão brindar à ' + infHN(vow) + ' hoje.', market: 'Pão para todos, em nome da ' + infHN(vow) + '!', bank: 'Dívidas perdoadas... a ' + infHN(vow) + ' tem bom coração. Ou boa memória.', plaza: 'Ouçam, ouçam! A ' + infHN(vow) + ' cuida do povo de Nae!', gallows: 'Mais bandidos na lâmina, por ordem e conta da ' + infHN(vow) + '!' }[pl];
     const who = Object.values(S.npcs).find(n => !n.dead && P.npc.some(kk => n.kind === kk || (kk === 'crier' && n.id === 'inf_crier')) && dist(n.x, n.y, p.x, p.y) < 8); if (who) empSay(who, say); else tell(p, say);

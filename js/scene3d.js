@@ -252,6 +252,16 @@ function canvasTex(kind) {
     x.fillStyle = '#3e3a52'; x.fillRect(0, 0, S, S); x.strokeStyle = 'rgba(232,200,110,0.85)'; x.fillStyle = '#f0d890'; x.lineWidth = 1.4;
     for (let c2 = 0; c2 < 4; c2++) { const ox = 20 + (c2 % 2) * 120, oy = 20 + Math.floor(c2 / 2) * 120, pts = []; for (let k = 0; k < 5; k++) pts.push([ox + R() * 100, oy + R() * 100]); x.beginPath(); pts.forEach(([a, b2], k) => k ? x.lineTo(a, b2) : x.moveTo(a, b2)); x.stroke(); for (const [a, b2] of pts) { x.beginPath(); x.arc(a, b2, 3, 0, 7); x.fill(); } }
     y.fillStyle = gray(0.5); y.fillRect(0, 0, S, S);
+  } else if (kind === 'inksign') {   /* placa do estúdio: âncora dourada em fundo azul-marinho */
+    x.fillStyle = '#22384c'; x.fillRect(0, 0, S, S); x.strokeStyle = '#c9a24a'; x.lineWidth = 12; x.strokeRect(8, 8, S - 16, S - 16);
+    x.strokeStyle = '#e2b74e'; x.fillStyle = '#e2b74e'; x.lineWidth = 12; x.lineCap = 'round'; x.beginPath(); x.arc(128, 52, 14, 0, 7); x.stroke(); x.beginPath(); x.moveTo(128, 66); x.lineTo(128, 150); x.moveTo(98, 86); x.lineTo(158, 86); x.stroke(); x.beginPath(); x.arc(128, 112, 44, 0.2, Math.PI - 0.2); x.stroke();
+    x.font = 'bold 24px serif'; x.textAlign = 'center'; x.fillText('ÂNCORA & TINTA', 128, 198); x.font = 'italic 17px serif'; x.fillText('tatuagens', 128, 222); y.fillStyle = gray(0.5); y.fillRect(0, 0, S, S);
+  } else if (kind === 'flashboard') {   /* quadro de desenhos: folhas de pergaminho com os motivos em tinta */
+    x.fillStyle = '#5a3e28'; x.fillRect(0, 0, S, S); y.fillStyle = gray(0.5); y.fillRect(0, 0, S, S);
+    for (let r2 = 0; r2 < 3; r2++) for (let k = 0; k < 4; k++) { const px_ = 12 + k * 61, py = 14 + r2 * 80; x.fillStyle = (r2 + k) % 2 ? '#e8dcc0' : '#f0e6cc'; x.fillRect(px_, py, 52, 68); x.strokeStyle = '#1c2a3a'; x.fillStyle = '#1c2a3a'; x.lineWidth = 4; const cx0 = px_ + 26, cy0 = py + 34, q = (r2 * 4 + k) % 6;
+      x.beginPath(); if (q === 0) { x.arc(cx0, cy0 - 14, 5, 0, 7); x.moveTo(cx0, cy0 - 9); x.lineTo(cx0, cy0 + 20); x.moveTo(cx0 - 12, cy0 - 2); x.lineTo(cx0 + 12, cy0 - 2); } else if (q === 1) { x.arc(cx0, cy0, 15, 0, 7); } else if (q === 2) { x.moveTo(cx0, cy0 - 20); x.lineTo(cx0 + 7, cy0 + 8); x.lineTo(cx0 - 7, cy0 + 8); x.closePath(); x.moveTo(cx0 - 12, cy0 + 10); x.lineTo(cx0 + 12, cy0 + 10); }
+      else if (q === 3) { x.moveTo(cx0 - 16, cy0 - 12); x.bezierCurveTo(cx0 + 20, cy0 - 14, cx0 - 20, cy0 + 12, cx0 + 16, cy0 + 14); } else if (q === 4) { for (let a = 0; a < 8; a++) { x.moveTo(cx0, cy0); x.lineTo(cx0 + Math.cos(a * 0.785) * 17, cy0 + Math.sin(a * 0.785) * 17); } } else { x.moveTo(cx0 - 14, cy0 + 12); x.lineTo(cx0 - 14, cy0 - 8); x.lineTo(cx0 - 5, cy0 + 2); x.lineTo(cx0, cy0 - 14); x.lineTo(cx0 + 5, cy0 + 2); x.lineTo(cx0 + 14, cy0 - 8); x.lineTo(cx0 + 14, cy0 + 12); x.closePath(); }
+      x.stroke(); }
   } else if (kind === 'keysign') {
     x.fillStyle = '#2a3a4a'; x.fillRect(0, 0, S, S); x.strokeStyle = '#c9a24a'; x.lineWidth = 12; x.strokeRect(8, 8, S - 16, S - 16);
     x.strokeStyle = '#e2b74e'; x.fillStyle = '#e2b74e'; x.lineWidth = 14; x.beginPath(); x.arc(84, 110, 32, 0, 7); x.stroke(); x.fillRect(112, 102, 92, 16); x.fillRect(176, 116, 12, 26); x.fillRect(154, 116, 12, 18);   // chave
@@ -1363,6 +1373,7 @@ function styleOf(b) {
   if (b.deco === 'arcane') return { wall: '#3a2a20', roof: '#2c2a32', tex: 'oldplank', roofTex: 'slate', trim: '#a8823a' };   // varinhas: madeira quase preta, ouro gasto
   if (b.deco === 'tailor') return { wall: '#dccbaa', roof: '#33263a', tex: 'oldplank', roofTex: 'slate', trim: '#d4a94a' };   // alfaiataria: paredes bege, telhado ameixa e dourado
   if (b.kind === 'shop' && b.v === 6) return { wall: '#3e3a52', roof: '#24403e', tex: 'stoneblock', roofTex: 'slate', trim: '#c9a24a' };   // alquimista: pedra escura arroxeada, latão
+  if (b.office === 'tattoo') return { wall: '#3d5468', roof: '#2a2420', tex: 'oldplank', roofTex: 'slate', trim: '#c9a24a' };   // estúdio de tatuagem: tábuas azul-marinho, como um barracão de porto
   if (b.office === 'agency') return { wall: '#e6dfcf', roof: '#3a2c24', tex: 'stoneblock', roofTex: 'slate', trim: '#3a2416' };   // agência: pedra clara e madeira escura
   if (b.office) return { wall: '#e8e2d2', roof: '#34404e', tex: 'stoneblock', roofTex: 'slate', trim: '#b08a3a' };   // imobiliária: pedra clara e bronze
   if (b.kind === 'workshop') return WSTYLE[b.wk] || WSTYLE.carp;
@@ -2201,7 +2212,7 @@ function mBuilding(b, night) {
   if (b.office) {
     const dX = doorCol(b) + 0.5, bronze = smat(null, '#b08a3a', { metal: 0.9, rough: 0.3 }), stone = smat('stoneblock', '#d8d0bc', { bump: 1 });
     for (let s = 0; s < 2; s++) o.add(wbox(1.3 - s * 0.2, 0.09, 0.32 - s * 0.12, dX, 0.045 + s * 0.09, h + 0.16 - s * 0.06, stone, 1));   // degraus
-    const SGK = b.office === 'agency' ? 'handsign' : 'keysign', ADK = b.office === 'agency' ? 'jobboard' : 'adsboard';
+    const SGK = b.office === 'agency' ? 'handsign' : b.office === 'tattoo' ? 'inksign' : 'keysign', ADK = b.office === 'agency' ? 'jobboard' : b.office === 'tattoo' ? 'flashboard' : 'adsboard';
     const sg = grp(); sg.add(mk(new THREE.BoxGeometry(0.05, 0.05, 0.6).translate(0, 0, 0.3), bronze)); sg.add(mk(new THREE.BoxGeometry(0.03, 0.42, 0.5).translate(0, -0.3, 0.38), [smat(SGK, '#ffffff', { bump: 0.5 }), smat(SGK, '#ffffff', { bump: 0.5 }), bronze, bronze, bronze, bronze]));
     sg.position.set(dX + 0.95, 2.1, h + 0.02); o.add(sg);   // placa pendurada com a chave de bronze
     if (b.realDoor === 'W' || b.realDoor === 'N') { const s2 = sg.clone(); s2.rotation.y = Math.PI / 2; s2.position.set(w + 0.02, 2.1, h * 0.5); o.add(s2); }   // porta num lado escondido: placa também no lado que a câmera vê
@@ -2562,9 +2573,9 @@ function mInterior(b, fl = 0) {
         bk.add(mk(new THREE.TorusGeometry(0.29, 0.016, 6, 22, Math.PI).translate(0, 0.43, 0), gold)); for (const sx of [-0.29, 0.29]) bk.add(wbox(0.032, 0.43, 0.06, sx, 0.215, 0, gold, 1));
         bk.add(mk(new THREE.ShapeGeometry(arch(0.21, 0.36), 18).translate(0, 0.05, 0.028), broc)); for (let k = 0; k < 4; k++) { const xx = -0.12 + k * 0.08, hh = 0.36 + Math.sqrt(Math.max(0, 0.21 * 0.21 - xx * xx)) - 0.04; bk.add(wbox(0.02, hh, 0.055, xx, 0.05 + hh / 2, 0.005, gold)); }   /* brocado em arco com treliça dourada */
         bk.position.set(0, 0.06, -0.27); bk.rotation.x = -0.28; zg.add(bk); zg.rotation.y = [0, Math.PI / 2, Math.PI, -Math.PI / 2][f.v || 0]; g.add(zg); break; }
-      case 'jobboard': {   // quadro de candidatos na parede (fundo, ou parede lateral quando é mais alto que largo); a mobília tem a altura achatada: 1 un. = 0,55
+      case 'jobboard': case 'flashwall': {   // quadro de candidatos (e o quadro de desenhos do estúdio de tatuagem) na parede (fundo, ou parede lateral quando é mais alto que largo); a mobília tem a altura achatada: 1 un. = 0,55
         const fr = smat('wood', '#3a2416', { bump: 0.8 }), side = f.h > f.w, L = side ? f.h : f.w, d0 = (side ? f.w : f.h), zb2 = -d0 / 2 + 0.2, jb = grp();
-        jb.add(wbox(L - 0.25, 1.5, 0.05, 0, 2.35, zb2, fr, 1)); jb.add(mk(new THREE.PlaneGeometry(L - 0.38, 1.36).translate(0, 2.35, zb2 + 0.03), smat('jobboard', '#ffffff', { bump: 0.4, rough: 0.8 })));
+        jb.add(wbox(L - 0.25, 1.5, 0.05, 0, 2.35, zb2, fr, 1)); jb.add(mk(new THREE.PlaneGeometry(L - 0.38, 1.36).translate(0, 2.35, zb2 + 0.03), smat(f.t === 'flashwall' ? 'flashboard' : 'jobboard', '#ffffff', { bump: 0.4, rough: 0.8 })));
         jb.add(wbox(L - 0.1, 0.1, 0.12, 0, 1.55, zb2 + 0.04, fr, 1)); jb.add(wbox(L - 0.1, 0.08, 0.1, 0, 3.12, zb2 + 0.03, fr, 1));
         if (f.v === 1) { const wl = smat('wood', '#6a4428', { bump: 0.6 }); for (const sx of [-1, 1]) for (let j = 0; j < 9; j++) { jb.add(wbox(0.12, 0.012, 0.02, sx * (L / 2 - 0.08), 1.65 + j * 0.17, zb2 + 0.05, wl)); jb.add(mk(new THREE.SphereGeometry(0.018, 5, 4).translate(sx * (L / 2 - 0.08), 1.73 + j * 0.17, zb2 + 0.05), wl)); }
           const ar = mk(new THREE.TorusGeometry(L / 2 - 0.1, 0.035, 5, 20, Math.PI).scale(1, 0.5, 1).translate(0, 3.16, zb2 + 0.04), fr); jb.add(ar); jb.add(mk(new THREE.SphereGeometry(0.05, 8, 6).translate(0, 3.16 + (L / 2 - 0.1) * 0.5 + 0.05, zb2 + 0.04), smat(null, '#c9a24a', { metal: 0.9, rough: 0.3 }))); }   /* moldura de treliça com arco */

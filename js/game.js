@@ -1117,6 +1117,8 @@ window.addEventListener('keydown', e => {
   if (k === 'f' && !e.repeat && typeof leverNear === 'function' && leverNear()) { Net.send({ t: 'tub' }); return; }
   if (k === 'f' && !e.repeat && typeof ofuroNear === 'function' && ofuroNear()) { bathEnter(); return; }
 
+  if (k === 'f' && !e.repeat && typeof velNear === 'function' && velNear()) { Net.send({ t: 'vel', a: 'talk', id: velNear().id }); return; }   /* Clube e Casa de Veludo */
+  if (k === 'f' && !e.repeat && typeof tatNear === 'function' && tatNear()) { Net.send({ t: 'tat', a: 'open' }); return; }   /* o tatuador */
   if (k === 'f' && !e.repeat && typeof prazNear === 'function' && prazNear()) { Net.send({ t: 'praz', a: 'open' }); return; }   /* Lívia, das Termas */
   if (k === 'f' && !e.repeat && typeof prazWho === 'function' && prazWho()) { Net.send({ t: 'praz', a: 'talk', who: prazWho() }); return; }   /* massagista e copeiro */
   if (k === 'f' && !e.repeat && typeof prazInPool === 'function' && prazInPool()) { prazPoolMenu(); return; }   /* dentro de uma piscina das Termas */
@@ -1349,7 +1351,7 @@ function helloMsg() {
   G.myUid = saved.t ? (saved.uid || '') : (G.myUid && G.myUidFor === charKey(name, chosenClass) ? G.myUid : Math.random().toString(36).slice(2, 10)); G.myUidFor = charKey(name, chosenClass);   // herói novo: código único (não herda nada de um herói antigo com o mesmo nome)
   let me = G.started && G.me && !G.me.downed ? G.me : null;   /* reconectando: conta onde estava */
   if (!me) try { const u = JSON.parse(sessionStorage.getItem('nae-upd-pos') || 'null'); sessionStorage.removeItem('nae-upd-pos'); if (u && Date.now() - u.t < 180000 && u.n === name) me = u; } catch (e) { }   /* voltou de uma atualização automática: mesmo lugar */
-  return { t: 'hello', ver: VERSION, ...(me ? { px: me.x, py: me.y, pz: me.z || 0, pfl: me.fl || 0, pfb: me.fb ?? -1 } : {}), uid: G.myUid || undefined, wandInfo: saved.wandInfo, cloak: saved.cloak, pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: skinSel(chosenClass), lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, freeLimb: saved.freeLimb, shieldHp: saved.shieldHp, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
+  return { t: 'hello', ver: VERSION, ...(me ? { px: me.x, py: me.y, pz: me.z || 0, pfl: me.fl || 0, pfb: me.fb ?? -1 } : {}), uid: G.myUid || undefined, wandInfo: saved.wandInfo, cloak: saved.cloak, pw: G.roomPw || undefined, dev: G.devPw || undefined, devMode: G.devMode || 'weaver', name, color: chosenColor, cls: chosenClass, skin: skinSel(chosenClass) + (String(saved.skin || '').match(/~t[0-9a-z]{5}/) || [''])[0], lvl: saved.lvl, xp: saved.xp, gold: saved.gold, pots: saved.pots, food: saved.food, water: saved.water, infect: saved.infect, tree: saved.tree, prof: saved.prof, feats: saved.feats, freeLimb: saved.freeLimb, shieldHp: saved.shieldHp, use: saved.use, jailLeft: saved.jailLeft || 0, hasSkin: saved.hasSkin, body: saved.body, bleed: saved.bleed, lost: saved.lost, pro: saved.pro, inv: saved.inv, quests: saved.quests, qdone: saved.qdone };
 }
 // reino trancado: pede a senha e manda o hello de novo pela mesma conexão
 function askRoomPw(bad) {
@@ -1600,7 +1602,7 @@ function selectClass(cls) {
 }
 // lista de heróis salvos: todos, com escolher, apagar (confirma na própria linha) e "Novo personagem"
 function pickChar(ch) {
-  $('name').value = ch.name; if (ch.skin) { chosenSkin[ch.cls] = String(ch.skin).replace(/~f$/, ''); bodyPick(/~f$/.test(ch.skin)); } chosenColor = ch.color || chosenColor;
+  $('name').value = ch.name; if (ch.skin) { const SPc = skinParts(ch.skin); chosenSkin[ch.cls] = SPc.base; bodyPick(SPc.fem); } chosenColor = ch.color || chosenColor;
   for (const el of $('swatches').children) el.classList.toggle('sel', el.dataset.col === chosenColor);
   selectClass(ch.cls);
   document.querySelectorAll('.class-card').forEach(card => { if (card.dataset.cls === ch.cls) card.querySelectorAll('.skin').forEach((el, i) => el.classList.toggle('sel', SKINS[ch.cls][i].id === chosenSkin[ch.cls])); });

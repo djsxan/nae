@@ -179,6 +179,13 @@ function buildHumanoid(L, opts = {}) {
     return { hp, kn, ft };
   };
   R.LA = leg(-1); R.LB = leg(1);
+  if (bare && L.tats && typeof tatMat === 'function') {   /* tatuagens: decalques de tinta sobre a pele, só no corpo sem roupa */
+    const put = (parent, i, x, y, z, ry, sz) => { if (!i || !TATS[i]) return; const m = new THREE.Mesh(geo('tat' + sz.toFixed(3), () => new THREE.PlaneGeometry(sz, sz)), tatMat(TATS[i].id)); m.position.set(x, y, z); m.rotation.y = ry; parent.add(m); };
+    const ax = (0.058 * FW + 0.006) * S, zc = (fem ? 0.126 : 0.134) * S;
+    put(R.A.sh, L.tats[0], -ax, -0.15 * S, 0, -Math.PI / 2, 0.14 * S); put(R.B.sh, L.tats[1], ax, -0.15 * S, 0, Math.PI / 2, 0.14 * S);
+    put(chest, L.tats[2], 0, (fem ? 0.185 : 0.09) * S, zc - (fem ? 0.012 * S : 0), 0, (fem ? 0.1 : 0.17) * S); put(chest, L.tats[3], 0, (fem ? -0.075 : 0.08) * S, -zc + (fem ? 0.012 * S : 0), Math.PI, (fem ? 0.15 : 0.21) * S);   /* nas mulheres vai na lombar, abaixo do cabelo comprido */
+    put(R.LA.hp, L.tats[4], -0.081 * S, -0.32 * S, 0, -Math.PI / 2, 0.14 * S);
+    put(R.A.sh, L.tats[0], 0, -0.15 * S, ax, 0, 0.11 * S); put(R.B.sh, L.tats[1], 0, -0.15 * S, ax, 0, 0.11 * S); put(R.LA.hp, L.tats[4], 0, -0.34 * S, 0.082 * S, 0, 0.13 * S); }   /* e também de frente, para aparecerem em qualquer ângulo */
   // capa (malha que dobra conforme o movimento)
   if (L.cape) {
     const cg = new THREE.PlaneGeometry(0.5 * S, 1.05 * S, 4, 10);
@@ -612,12 +619,44 @@ function applyLost(R, mask = 0, pro = 0) {
   if (R.shield) R.shield.visible = !lost('armB');
   for (const k in R.stumps) { R.stumps[k].visible = lost(k) && !pr(k); if (R.pegs[k]) R.pegs[k].visible = lost(k) && pr(k); }
 }
+/* desenho de cada tatuagem numa tela de 96x96, em tinta azul-escura */
+const _tatM = {};
+function tatMat(id) { if (_tatM[id]) return _tatM[id]; const cv = document.createElement('canvas'); cv.width = cv.height = 96; const x = cv.getContext('2d'); tatDraw(x, id); const tx = new THREE.CanvasTexture(cv); if ('colorSpace' in tx && THREE.SRGBColorSpace) tx.colorSpace = THREE.SRGBColorSpace; else if (THREE.sRGBEncoding) tx.encoding = THREE.sRGBEncoding;
+  return _tatM[id] = new THREE.MeshStandardMaterial({ map: tx, transparent: true, depthWrite: false, roughness: 0.95, metalness: 0, polygonOffset: true, polygonOffsetFactor: -3, polygonOffsetUnits: -3, side: THREE.DoubleSide }); }
+function tatDraw(x, id) {
+  const ink = id === 'm_faith' ? 'rgba(120,72,20,0.92)' : id.startsWith('h_') ? 'rgba(18,30,52,0.95)' : 'rgba(26,44,62,0.9)'; x.clearRect(0, 0, 96, 96); x.strokeStyle = ink; x.fillStyle = ink; x.lineWidth = 7; x.lineCap = 'round'; x.lineJoin = 'round';
+  const L = (...p) => { x.beginPath(); x.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) x.lineTo(p[i], p[i + 1]); x.stroke(); }, F = (...p) => { x.beginPath(); x.moveTo(p[0], p[1]); for (let i = 2; i < p.length; i += 2) x.lineTo(p[i], p[i + 1]); x.closePath(); x.fill(); }, O = (cx, cy, rr, fill) => { x.beginPath(); x.arc(cx, cy, rr, 0, 7); fill ? x.fill() : x.stroke(); };
+  const wolf = () => { F(22, 30, 30, 8, 42, 26, 54, 26, 66, 8, 74, 30, 70, 56, 48, 84, 26, 56); x.globalCompositeOperation = 'destination-out'; O(38, 44, 4, 1); O(58, 44, 4, 1); x.globalCompositeOperation = 'source-over'; };
+  switch (id) {
+    case 'anchor': O(48, 20, 8); L(48, 28, 48, 80); L(30, 42, 66, 42); x.beginPath(); x.arc(48, 56, 26, 0.15, Math.PI - 0.15); x.stroke(); F(18, 54, 30, 58, 20, 68); F(78, 54, 66, 58, 76, 68); break;
+    case 'wolfh': wolf(); break;
+    case 'h_valcarne': wolf(); x.lineWidth = 5; x.beginPath(); x.arc(48, 46, 42, -2.4, -0.75); x.stroke(); break;
+    case 'serpent': x.lineWidth = 9; x.beginPath(); x.moveTo(30, 16); x.bezierCurveTo(80, 18, 76, 46, 46, 48); x.bezierCurveTo(14, 50, 20, 82, 70, 80); x.stroke(); F(24, 8, 40, 16, 24, 24); break;
+    case 'h_draemor': x.lineWidth = 8; x.beginPath(); x.moveTo(40, 18); x.bezierCurveTo(74, 22, 70, 48, 46, 50); x.bezierCurveTo(22, 52, 28, 80, 62, 82); x.stroke(); F(40, 34, 10, 18, 22, 44); F(54, 34, 86, 18, 74, 44); F(30, 8, 36, 18, 42, 8, 48, 18, 54, 8, 52, 22, 32, 22); break;
+    case 'rose': O(48, 36, 18); x.lineWidth = 5; x.beginPath(); x.arc(48, 36, 9, 0.6, 5.2); x.stroke(); O(48, 36, 3, 1); x.lineWidth = 6; L(48, 54, 48, 88); F(48, 70, 28, 60, 34, 78); F(48, 76, 68, 66, 62, 84); break;
+    case 'skull': x.beginPath(); x.arc(48, 40, 26, 0, 7); x.fill(); F(32, 56, 64, 56, 60, 82, 36, 82); x.globalCompositeOperation = 'destination-out'; O(38, 40, 7, 1); O(58, 40, 7, 1); F(48, 50, 43, 60, 53, 60); x.fillRect(41, 68, 3, 14); x.fillRect(47, 68, 3, 14); x.fillRect(53, 68, 3, 14); x.globalCompositeOperation = 'source-over'; break;
+    case 'dagger': F(48, 6, 58, 54, 38, 54); L(28, 56, 68, 56); L(48, 58, 48, 82); O(48, 86, 5, 1); break;
+    case 'moon': x.beginPath(); x.arc(48, 48, 30, 0, 7); x.fill(); x.globalCompositeOperation = 'destination-out'; O(60, 40, 26, 1); x.globalCompositeOperation = 'source-over'; break;
+    case 'raven': x.beginPath(); x.ellipse(46, 50, 24, 13, -0.35, 0, 7); x.fill(); O(68, 30, 11, 1); F(76, 25, 94, 33, 76, 37); F(28, 50, 2, 76, 12, 58, 2, 54, 24, 42); F(34, 40, 58, 36, 30, 68); x.lineWidth = 4; L(46, 62, 44, 82); L(54, 60, 56, 82); L(36, 84, 50, 82); L(50, 84, 64, 82); x.globalCompositeOperation = 'destination-out'; O(70, 28, 2.5, 1); x.globalCompositeOperation = 'source-over'; break;
+    case 'tree': O(48, 20, 15, 1); O(29, 34, 15, 1); O(67, 34, 15, 1); O(48, 40, 15, 1); F(42, 50, 54, 50, 57, 80, 39, 80); x.lineWidth = 5; L(42, 78, 22, 88); L(54, 78, 74, 88); L(48, 80, 48, 91); break;
+    case 'wave': for (const yy of [30, 54, 78]) { x.beginPath(); x.moveTo(8, yy); x.bezierCurveTo(24, yy - 22, 34, yy + 10, 48, yy - 6); x.bezierCurveTo(62, yy - 22, 72, yy + 10, 88, yy - 4); x.stroke(); } break;
+    case 'band': x.fillRect(4, 34, 88, 7); x.fillRect(4, 62, 88, 7); for (let q = 0; q < 6; q++) F(6 + q * 15, 60, 13 + q * 15, 44, 20 + q * 15, 60); break;
+    case 'star': F(48, 4, 56, 40, 92, 48, 56, 56, 48, 92, 40, 56, 4, 48, 40, 40); x.globalCompositeOperation = 'destination-out'; O(48, 48, 6, 1); x.globalCompositeOperation = 'source-over'; break;
+    case 'h_moranthe': F(20, 18, 34, 28, 62, 28, 76, 18, 78, 62, 48, 90, 18, 62); x.globalCompositeOperation = 'destination-out'; O(36, 46, 10, 1); O(60, 46, 10, 1); x.globalCompositeOperation = 'source-over'; O(36, 46, 4, 1); O(60, 46, 4, 1); F(48, 54, 43, 64, 53, 64); break;
+    case 'h_thornvale': x.beginPath(); x.ellipse(48, 46, 30, 24, 0, 0, 7); x.fill(); F(22, 30, 14, 12, 34, 24); F(74, 30, 82, 12, 62, 24); x.lineWidth = 6; L(30, 62, 20, 84); L(66, 62, 76, 84); x.globalCompositeOperation = 'destination-out'; O(38, 40, 4, 1); O(58, 40, 4, 1); x.beginPath(); x.ellipse(48, 56, 9, 6, 0, 0, 7); x.fill(); x.globalCompositeOperation = 'source-over'; break;
+    case 'h_solmire': x.lineWidth = 9; O(48, 48, 22); x.lineWidth = 5; for (let q = 0; q < 12; q++) { const a = q / 12 * 6.283; L(48 + Math.cos(a) * 32, 48 + Math.sin(a) * 32, 48 + Math.cos(a) * 44, 48 + Math.sin(a) * 44); } break;
+    case 'h_crown': F(12, 76, 12, 30, 30, 52, 48, 18, 66, 52, 84, 30, 84, 76); x.globalCompositeOperation = 'destination-out'; x.fillRect(18, 62, 60, 5); x.globalCompositeOperation = 'source-over'; O(48, 14, 5, 1); O(12, 26, 4, 1); O(84, 26, 4, 1); break;
+    case 'm_guard': x.beginPath(); x.moveTo(48, 6); x.lineTo(84, 18); x.lineTo(84, 48); x.quadraticCurveTo(84, 76, 48, 92); x.quadraticCurveTo(12, 76, 12, 48); x.lineTo(12, 18); x.closePath(); x.stroke(); L(48, 24, 48, 72); L(28, 42, 68, 42); break;
+    case 'm_under': x.lineWidth = 6; x.beginPath(); x.moveTo(48, 8); x.lineTo(90, 84); x.lineTo(6, 84); x.closePath(); x.stroke(); x.beginPath(); x.moveTo(26, 60); x.quadraticCurveTo(48, 38, 70, 60); x.quadraticCurveTo(48, 80, 26, 60); x.stroke(); O(48, 60, 6, 1); break;
+    case 'm_faith': x.beginPath(); x.arc(48, 62, 22, Math.PI, 0); x.fill(); x.lineWidth = 6; L(6, 64, 90, 64); for (let q = 0; q < 7; q++) { const a = Math.PI + q / 6 * Math.PI; L(48 + Math.cos(a) * 30, 62 + Math.sin(a) * 30, 48 + Math.cos(a) * 44, 62 + Math.sin(a) * 44); } break;
+    default: O(48, 48, 20); }
+}
 function pose3Key(P) { return (P.dir | 0) + '|' + (P.ride ? 'rd' : '') + (P.med ? 'md' + P.med + (P.medEl || '') : '') + (P.bed ? 'bd' : '') + (P.shea ? 'S' : '') + (P.shb ? 'B' : '') + (P.tool ? 'T' + P.tool : '') + (P.gait ? 'g' + P.gait : '') + (P.hold ? 'o' + P.hold : '') + (P.walk >= 0 ? (P.run ? 'r' : 'w') + P.walk : '') + (P.act ? P.act.k + P.act.f : '') + (P.idle ? P.idle.k + P.idle.f : '') + (P.sit ? 's' + P.sit + (P.sv || '') : '') + (P.smk != null ? 'k' + Math.floor(P.smk * 8) + (P.cig ? 'cg' : '') : '') + (P.eat != null ? 'e' + Math.floor(P.eat * 8) : '') + (P.carry ? 'c' : '') + (P.down ? 'd' + (P.prone ? 'p' : '') : '') + (P.nowp ? 'nw' : '') + (P.wpn === 'halberd' ? 'hb' : '') + (P.crawl ? 'cw' + P.crawl : '') + (P.drag ? 'D' + P.drag : '') + (P.tied ? 'T' + P.tied : '') + (P.surr ? 'U' : '') + (P.led ? 'L' : '') + (P.held ? 'H' + P.held + (P.held === 2 ? Math.floor(Date.now() / 90) % 4 : '') : '') + (P.cr ? 'K' : '') + (P.sl ? 'L' : '') + (P.hs ? 'h' + P.hs : '') + (P.br != null ? 'b' + P.br : '') + (P.limp ? 'm' + P.limp : '') + (P.armw ? 'W' : '') + (P.lost ? 'X' + P.lost + '_' + (P.pro || 0) : ''); }
 function heroSprite3D(cls, skin, color, P) {
   const lk = cls + ':' + skin + ':' + color + (P.wpn === 'halberd' && !P.uni ? ':hb' : '') + (P.uni ? ':u' + P.uni : '') + (P.cloak && !P.uni ? ':k' + P.cloak : '');
   return cache3('h3|' + lk + '|' + pose3Key(P) , () => {
     const L = lookFor(lk, () => { const L0 = skin === 'weaver' ? WEAVER_LOOK() : heroLook(cls, skin, color); if (P.uni) return uniformLook(L0, P.uni); if (P.wpn === 'halberd') { L0.weapon = 'halberd'; L0.shield = null; } if (P.cloak) cloakLook(L0, P.cloak); return L0; });
-    let R = _rigs.get(lk); if (!R) { R = buildHumanoid(L, skin === 'weaver' ? { scale: 1.12 } : undefined); if (skin === 'weaver') weaverExtras(R); else epicHero(R, L, 1, String(skin).replace(/~f$/, '')); _rigs.set(lk, R); }
+    let R = _rigs.get(lk); if (!R) { R = buildHumanoid(L, skin === 'weaver' ? { scale: 1.12 } : undefined); if (skin === 'weaver') weaverExtras(R); else epicHero(R, L, 1, String(skin).split('~')[0]); _rigs.set(lk, R); }
     const Q = buildPose(cls, P);
     applyLost(R, P.lost || 0, P.pro || 0);
     applyPose(R, Q, P, P.walk >= 0 ? P.walk / 12 * Math.PI * 2 : 0);

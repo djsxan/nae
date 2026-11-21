@@ -13,7 +13,7 @@ const NPC_HAIRS = ['#141110', '#2a1c12', '#4a3424', '#6a3a22', '#8a4a22', '#a856
 function npcSeedOf(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 function npcSeedRng(seed) { let a = seed >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 /* desenhados à mão (rei, corte, lordes, figuras conhecidas): só mudam um pouco de altura e de peso */
-const NPC_HAND = k => /^(k_king|k_hand|k_herald|k_maester|k_coin|k_cmd|k_prince|k_princess|k_torturer|priest|innkeeper|captain|st_witch|st_dojo|masseur|v_maiko)$/.test(k) || /^h[hb]_(lord|spouse|heir)_/.test(k);
+const NPC_HAND = k => /^(k_king|k_hand|k_herald|k_maester|k_coin|k_cmd|k_prince|k_princess|k_torturer|priest|innkeeper|captain|st_witch|st_dojo|masseur|v_maiko|tattooist|ysolde|butler)$/.test(k) || /^h[hb]_(lord|spouse|heir)_/.test(k);
 /* quem usa uniforme e pode ter prótese: sentinelas, guardas, criados, mensageiros, gente da rua */
 const NPC_ROUGH = k => /^(guard|k_guard|hh_guard_|hh_serv_|v_|courier|smith|gardener|jailer|executioner|supplier|bankporter|st_saw|st_mine|st_carp|st_wheat|k_jailer|k_page|k_cook|crier|barefoot|cupbearer)/.test(k);
 function npcTraits(L, kind, nid) {
@@ -26,11 +26,12 @@ function npcTraits(L, kind, nid) {
   else { L.hairStyle = pick(['short', 'short', 'short', 'short', 'bald', 'long', 'curly', 'curly', 'tail', 'braid', 'bun', 'mohawk'], r[5]); if (L.hairStyle === 'mohawk' && !NPC_ROUGH(kind)) L.hairStyle = 'short';
     const bs = pick(['none', 'none', 'none', 'none', 'full', 'full', 'goatee', 'goatee', 'mustache', 'mustache', 'long', 'full'], r[6]); L.beard = bs === 'none' ? null : tone(NPC_HAIRS[hi]); L.beardStyle = bs === 'goatee' || bs === 'mustache' ? bs : null; L.beardLong = bs === 'long'; }
   L.bald = L.hairStyle === 'bald';
+  if (NPC_ROUGH(kind) && r[12] < 0.38) { const n = 1 + Math.floor(r[13] * 3), tt = [0, 0, 0, 0, 0]; for (let q = 0; q < n; q++) tt[Math.floor(((r[12] * 97 + q * 1.7) % 1) * 5)] = 1 + Math.floor(((r[13] * 53 + q * 2.3) % 1) * 12); L.tats = tt; }   /* gente do trabalho pesado: uma a três tatuagens, que só aparecem sem a roupa */
   if (r[7] < 0.13) L.scar = 1; if (NPC_ROUGH(kind)) { if (r[8] < 0.06) L.eyepatch = r[9] < 0.5 ? -1 : 1; if (r[10] < 0.05) L.lost = r[11] < 0.5 ? 8 : 16; else if (r[10] < 0.085) L.lost = 4; }   /* perna de pau (esquerda ou direita) ou gancho no braço esquerdo */
   return L; }
 function npcLookOf(kind, nid) { const L = NPC_LOOKS[kind](); if (femKind(kind)) femLook(L); return npcTraits(L, kind, nid); }
 function heroLook(cls, skinId, accentHex) {
-  const fem = /~f$/.test(skinId || ''); if (fem) skinId = skinId.slice(0, -2);
+  const SP = skinParts(skinId), fem = SP.fem; skinId = SP.base;
   const A = tone(accentHex || '#8b2e2e');
   const L = {
     skin: tone('#d8a47f'), hair: tone('#4a3424'), hairStyle: 'short', beard: null, eyes: px('#20160e'),
@@ -64,6 +65,7 @@ function heroLook(cls, skinId, accentHex) {
       beard: tone('#d8d2c4'), hair: tone('#d8d2c4'), pattern: 'leaves', trim: tone('#8fbf5a'), extra: 'leaf' }); break;
   }
   if (fem) { femLook(L); if (cls === 'mage' && skinId === 'adept') L.hair = tone('#6a3a22'); }   /* a maga não herda o cabelo branco do velho mago */
+  if (SP.tats) L.tats = SP.tats;
   return L;
 }
 function shadeHex(hex, amt) {

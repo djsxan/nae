@@ -362,6 +362,8 @@ function interiorLayout0(b, fl = 0) {
     if (wk === 'bakery') { put('stove', w - 2, 0); put('stove', w - 3, 0); put('display', 1, 0, { v: 0 }); }
     else if (wk === 'mill' || wk === 'wheat') { put('crate', w - 2, 0); put('hay', 1, 0); }
     else if (wk === 'alch') { put('stove', w - 2, 0); put('shelf', 1, 0); } else if (wk === 'mine') { put('anvil', w - 2, 1); put('rack', 1, 0); } else if (wk === 'saw' || wk === 'carp') { put('rack', 1, 0); put('crate', w - 1, h - 1); } else { put('crate', 1, 0); put('barrel', w - 1, h - 1); }
+  } else if (k === 'house' && b.office === 'tattoo') {   // estúdio de tatuagem: a cadeira, a mesa das tintas, o quadro de desenhos e o baú do velho marinheiro
+    npcAt(1, 1); put('tatchair', 2, 1, { seat: 7 }); put('inktable', 3, 1); put('flashwall', 1, 0, { w: 2, block: false }); put('anchorprop', 0, 0, { block: false, force: true }); put('crate', w - 1, h - 1); put('barrel', 0, h - 1); put('rug', 1, 2, { w: 2, block: false, force: true });
   } else if (k === 'house' && b.office === 'agency') {   // agência de empregos: balcão com a agenciadora, quadro de candidatos com retratos e banco de espera junto à fachada
     npcAt(1, 1); put('cairocounter', 1, 2, { h: 2 }); put('niches', 0, 0, { h: 2, block: false, wp: 'left' }); put('jobboard', 0, h - 1, { w: 2, block: false, v: 1, wp: 'front' }); put('kilim', 2, 2, { w: 2, h: 2, block: false }); put('cushion', 3, 2, { block: false }); put('cushion', 3, 3, { block: false });   /* a câmera vê a parede norte e a da porta: Mestre Farid e o balcão ao norte, o quadro ao lado da porta, os candidatos nas almofadas ao sul */
   } else if (k === 'house' && b.office && w >= 5 && h >= 4) {   // escritório do corretor: escrivaninha com livros-razão, mapa emoldurado, quadro de chaves, arquivos, cadeira do cliente e a maquete da cidade
@@ -557,7 +559,7 @@ function interiorLayout0(b, fl = 0) {
 const LAYOUT_MEMO = new Map();
 // móveis que continuam sólidos: paredes e divisórias, balcões, lareiras e fogões, prateleiras e armários de parede, camas, grades e cofres.
 // O resto (mesas, cadeiras, bancos, barris, caixotes, tapetes, decoração) não bloqueia a passagem.
-const FURN_SOLID = new Set(['tcascade', 'labrum', 'tmassage', 'winetable', 'hpillar', 'brazier', 'drawers', 'apothcounter', 'distill', 'blk', 'hpart', 'counter', 'bar', 'bankdesk', 'wandcounter', 'vault', 'bars', 'celldoor', 'fireplace', 'hearth', 'stove', 'forge', 'shelf', 'wandwall', 'fabricwall', 'taps', 'bottles', 'filing', 'jamshelf', 'pillar', 'throne', 'altar', 'still', 'bed', 'bunk', 'cot']);
+const FURN_SOLID = new Set(['tatchair', 'inktable', 'tcascade', 'labrum', 'tmassage', 'winetable', 'hpillar', 'brazier', 'drawers', 'apothcounter', 'distill', 'blk', 'hpart', 'counter', 'bar', 'bankdesk', 'wandcounter', 'vault', 'bars', 'celldoor', 'fireplace', 'hearth', 'stove', 'forge', 'shelf', 'wandwall', 'fabricwall', 'taps', 'bottles', 'filing', 'jamshelf', 'pillar', 'throne', 'altar', 'still', 'bed', 'bunk', 'cot']);
 function interiorLayout(b, fl = 0) {
   const [w, h] = bDims(b), mk = [b.kind, w, h, b.v || 0, floorsOf(b), fl, b.office || '', JSON.stringify(b.stairs || 0), b.extSide || '', b.cellar ? b.cellar.join(',') : '', b.deco || ''].join('|');
   let L = LAYOUT_MEMO.get(mk); if (L) return L;
@@ -1181,6 +1183,7 @@ function generateWorld() {
     BUILDINGS.push({ x: X0 + 18, y: C - 28, ...BH('club', 9, 8, 4.2, 1.2, 'Clube do Cervo de Prata', { door: 'W', floors: 1, deco: 'club', noble: 1 }) },   /* rua nova: clube de cavalheiros, termas romanas e o palácio da Dama Ysolde (no fim da lista) */
       { x: X0 + 17, y: C - 19, ...BH('baths', 13, 18, 4.2, 1.0, 'Termas de Aurora', { door: 'W', floors: 1, deco: 'thermae' }) },   /* 13 x 18: do Clube até perto da Casa de Veludo */
       { x: X0 + 17, y: C + 7, ...BH('velvet', 13, 12, 5.0, 1.2, 'Casa de Veludo', { door: 'W', floors: 1, deco: 'velvet' }) });
+    BUILDINGS.push({ x: C - 11, y: C + 22, ...BH('house', 4, 4, 3.4, 2.0, 'Estúdio Âncora & Tinta', { v: 1, door: 'S', office: 'tattoo', floors: 1 }) });   /* estúdio de tatuagem, no lote ao lado do Estábulo (no fim da lista) */
     for (let y = y0; y <= y1; y++) for (let x = X0; x <= X1; x++) used[idx(x, y)] = 1;
     HOUSE_SEATS.forEach((S1, k) => { const bx = X0 + 4 + k * 2.4 | 0, by = k % 2 ? C + 4 : C - 3; const i = idx(bx, by); if (bld[i] < 0) { obj[i] = O.BANNER; BANNER_HOUSE[i] = S1.id; } });   /* estandartes das casas na praça */
   }
@@ -1471,6 +1474,7 @@ const WORLD = TEST3D ? generateDistrict() : generateWorld();
 if (STAGE.x >= 0) { const ex = NPCS.find(n => n.id === 'executioner'); if (ex) { const c = [[0.1, 1.05], [0.1, -1.05], [1.1, 1.0]].find(([dx, dy]) => !BLOCKING.has(WORLD.obj[Math.round(STAGE.y + dy) * MAP_W + Math.round(STAGE.x + dx)])) || [0.1, 1.05]; ex.x = STAGE.x + c[0]; ex.y = STAGE.y + c[1]; } }
 // corretor de imóveis (a casa do escritório só existe depois de gerar o mundo)
 if (!TEST3D) { const ab = BUILDINGS.find(b => b.office === 'agency'); if (ab) { const [ax, ay] = bLocal(ab, 1, 1), [c1x, c1y] = bLocal(ab, 4, 1), [c2x, c2y] = bLocal(ab, 4, 2), [c3x, c3y] = bLocal(ab, 3, 2), [c4x, c4y] = bLocal(ab, 3, 3);   /* dois no banco de pedra lá fora (lado sul), dois nas almofadas */ NPCS.push({ id: 'agent', name: 'Mestre Farid, o agenciador', kind: 'agent', x: ax, y: ay }, { id: 'cand1', name: 'Rosa, candidata a doméstica', kind: 'v_candf', x: c1x, y: c1y, sitting: 1 }, { id: 'cand2', name: 'Tobias, candidato a doméstico', kind: 'v_maidm', x: c2x, y: c2y, sitting: 1 }, { id: 'cand3', name: 'Inês, candidata a doméstica', kind: 'v_maidf2', x: c3x, y: c3y, kneel: 1 }, { id: 'cand4', name: 'Nuno, candidato a segurança', kind: 'v_segm2', x: c4x, y: c4y, kneel: 1 }); } }
+if (!TEST3D) { const tb = BUILDINGS.find(b => b.office === 'tattoo'); if (tb) NPCS.push({ id: 'tattooist', name: 'Velho Tibúrcio, o Tatuador', kind: 'tattooist', ...npcIn(tb, { x: tb.x + 1, y: tb.y + 1 }) }); }
 if (!TEST3D) { const ob = BUILDINGS.find(b => b.office === 'estate'); if (ob) NPCS.push({ id: 'broker', name: 'Mestre Anselmo, o Corretor', kind: 'broker', ...npcIn(ob, { x: ob.x + 1, y: ob.y + 1 }) }); }
 // ---------- gente dos negócios: artesãos das oficinas, balconistas das lojas vagas e mensageiros (os 12 primeiros moradores) ----------
 if (!TEST3D) { const hb = BUILDINGS.find(b => b.kind === 'hotel'); if (hb) NPCS.push({ id: 'hotelkeeper', name: 'Dona Ilsa, a Estalajadeira', kind: 'hotelkeeper', ...npcIn(hb, { x: hb.x + hb.w - 2, y: hb.y + hb.h - 1 }) }); }

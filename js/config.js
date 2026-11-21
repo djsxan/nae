@@ -7,13 +7,24 @@ const GAME_NAME = 'Nae';
 const CASTLE_OPEN = true;   /* temporário: as sentinelas deixam qualquer um entrar no castelo para conferir os andares */
 const CASTLE_INT = true;   /* interior novo do castelo */
 // brasões das casas rivais (os mesmos dados servem para a família que tomar o trono)
+// ---------- tatuagens: 5 lugares do corpo; f = marca de uma facção (tem efeito social depois que alguém dela vê) ----------
+const TAT_SLOTS = [['armA', 'Braço esquerdo'], ['armB', 'Braço direito'], ['chest', 'Peito'], ['back', 'Costas'], ['leg', 'Perna']];
+const TATS = [null,
+  { id: 'anchor', n: 'Âncora', p: 40 }, { id: 'wolfh', n: 'Cabeça de lobo', p: 40 }, { id: 'serpent', n: 'Serpente', p: 40 }, { id: 'rose', n: 'Rosa', p: 40 }, { id: 'skull', n: 'Caveira', p: 40 }, { id: 'dagger', n: 'Adaga', p: 40 },
+  { id: 'moon', n: 'Lua crescente', p: 40 }, { id: 'raven', n: 'Corvo', p: 40 }, { id: 'tree', n: 'Árvore', p: 40 }, { id: 'wave', n: 'Onda', p: 40 }, { id: 'band', n: 'Faixa tribal', p: 40 }, { id: 'star', n: 'Estrela do norte', p: 40 },
+  { id: 'h_valcarne', n: 'Lobo de Valcarne', p: 120, f: 'valcarne' }, { id: 'h_draemor', n: 'Serpe de Draemor', p: 120, f: 'draemor' }, { id: 'h_moranthe', n: 'Coruja de Moranthe', p: 120, f: 'moranthe' }, { id: 'h_thornvale', n: 'Javali de Thornvale', p: 120, f: 'thornvale' }, { id: 'h_solmire', n: 'Sol eclipsado de Solmire', p: 120, f: 'solmire' },
+  { id: 'h_crown', n: 'Coroa de Aurenfell', p: 120, f: 'crown' }, { id: 'm_guard', n: 'Escudo da Guarda', p: 120, f: 'guard' }, { id: 'm_under', n: 'Olho do Submundo', p: 120, f: 'under' }, { id: 'm_faith', n: 'Sol da Aurora', p: 120, f: 'faith' }];
+const TAT_I = id => TATS.findIndex(t => t && t.id === id);
+/* a aparência leva sufixos: ~f (corpo feminino) e ~t + 5 letras (uma tatuagem por lugar, '0' = nada) */
+function skinParts(skin) { const sp = String(skin || '').split('~'), tc = sp.find(x => /^t[0-9a-z]{5}$/.test(x)); let tats = null; if (tc) { tats = tc.slice(1).split('').map(ch => { const i = parseInt(ch, 36); return TATS[i] ? i : 0; }); if (!tats.some(Boolean)) tats = null; } return { base: sp[0], fem: sp.includes('f'), tats }; }
+function skinJoin(base, fem, tats) { return base + (fem ? '~f' : '') + (tats && tats.some(Boolean) ? '~t' + tats.map(i => (i | 0).toString(36)).join('') : ''); }
 const HERALDS = {
   valcarne: { house: 'Valcarne', field: '#2c4258', field2: '#1b2a3a', metal: '#d9dde2', charge: 'wolf' }, draemor: { house: 'Draemor', field: '#5a1712', field2: '#2a0e0c', metal: '#e8b44a', charge: 'wyvern' },
   moranthe: { house: 'Moranthe', field: '#33295a', field2: '#1d1630', metal: '#c9c2e8', charge: 'owl' }, thornvale: { house: 'Thornvale', field: '#21492f', field2: '#14301f', metal: '#e4dcc0', charge: 'boar' },
   solmire: { house: 'Solmire', field: '#4a3a22', field2: '#2b2216', metal: '#e8a33c', charge: 'eclipse' } };
 const HERALD = { house: 'Aurenfell', name: 'Casa Aurenfell', field: '#9a2a1c', field2: '#6e1d14', metal: '#f1cf6a', charge: 'tower', motto: 'A Luz Não se Curva' };
-const VERSION = 'v1.101.2';
-const VERSION_NAME = 'Nae · Rostos de Nae';
+const VERSION = 'v1.102.0';
+const VERSION_NAME = 'Nae · Tinta e Veludo';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
