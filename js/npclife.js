@@ -34,14 +34,14 @@ function updateNpcMotion(now, dt) {
 function drawNpcState(ctx, e, sx, sy, now) {
   if (e.onBackBy) return true;
   if (e.kind && e.kind.startsWith('ent_')) return false;   /* a guardiã se desenha sozinha (tronco seco incluído) */
-  if (e.npSleep && !e.npDown && !e.npDead) { const s = npcSprite3D(e.kind, { dir: e.dir || 0, walk: -1, down: true }); ctx.imageSmoothingEnabled = true; pblit(ctx, s, sx, sy); if (typeof drawZzz === 'function') drawZzz(ctx, sx, sy - 22, now); return true; }   // dormindo
+  if (e.npSleep && !e.npDown && !e.npDead) { const s = npcSprite3D(e.kind, { dir: e.dir || 0, walk: -1, down: true, nid: e.id }); ctx.imageSmoothingEnabled = true; pblit(ctx, s, sx, sy); if (typeof drawZzz === 'function') drawZzz(ctx, sx, sy - 22, now); return true; }   // dormindo
   if (!(e.npDown || e.npDead)) return false;
   if (typeof TOWS !== 'undefined' && TOWS['n:' + e.id] && drawTow(ctx, 'n:' + e.id, now)) return true;
   if (FALLS['n' + e.id] && e.npDead) { drawFall(ctx, FALLS['n' + e.id], sx, sy, now, 1, 0); return true; }
   const P = { dir: e.dragged && typeof dragDir === 'function' ? dragDir(e) : (e.dir || 0), walk: -1, down: true, prone: !!e.prone || !!e.crawl };
   if (e.crawl || (e.npDown && !e.npDead && !e.dragged)) { P.prone = true; P.crawl = e.crawl ? 1 + Math.floor(now / 260) % 4 : 5; }   // se arrastando (ou parado, com a mão estendida)
   if (e.npDown && !e.npDead && !e.dragged && Math.random() < 0.004) addBlood(e.rx, e.ry, 0, 0.3 + Math.random() * 0.2, 90000);
-  const s = npcSprite3D(e.kind, P); ctx.imageSmoothingEnabled = true; pblit(ctx, s, sx, sy);
+  const s = npcSprite3D(e.kind, (P.nid = e.id, P)); ctx.imageSmoothingEnabled = true; pblit(ctx, s, sx, sy);
   if (e.npDead) { ctx.save(); ctx.globalAlpha = 0.5; ctx.fillStyle = '#5a0c0c'; ctx.beginPath(); ctx.ellipse(sx + 6, sy + 2, 14, 5, 0, 0, 7); ctx.fill(); ctx.restore(); }
   return true;
 }

@@ -7,7 +7,28 @@
 function femLook(L) { L.fem = true; L.beard = null; if (!L.hairStyle || L.hairStyle === 'short') L.hairStyle = 'long'; return L; }
 const FEM_KINDS = new Set(['priest', 'tavmaid', 'captain', 'fruit', 'noble', 'hotelkeeper', 'banker2', 'banker5', 'st_apoth', 'st_tailor', 'st_witch', 'st_alch', 'st_farm', 'st_mill', 'courier2', 'v_noblef', 'v_peasf', 'v_elderf', 'v_candf', 'v_maidf', 'v_maidf2', 'v_maiko', 'v_segf', 'v_gymf', 'k_princess', 'k_cook', 'k_maid', 'bathkeeper']);
 const femKind = k => FEM_KINDS.has(k) || /^h[hb]_(spouse_(valcarne|draemor|thornvale|solmire)|lord_moranthe|heir_moranthe|serv_thornvale)$/.test(k);
-function npcLookOf(kind) { const L = NPC_LOOKS[kind](); return femKind(kind) ? femLook(L) : L; }
+/* ---- traços únicos de cada NPC, sorteados a partir do nome (sempre os mesmos): pele, cabelo, barba, altura, peso, próteses e cicatrizes ---- */
+const NPC_SKINS = ['#f3d6bc', '#e8c3a0', '#d8a47f', '#c68e63', '#a9714a', '#8a5a3a', '#6e4429', '#553320'];
+const NPC_HAIRS = ['#141110', '#2a1c12', '#4a3424', '#6a3a22', '#8a4a22', '#a8562a', '#c8a060', '#e0c890', '#8a8580', '#d8d2c4'];
+function npcSeedOf(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
+function npcSeedRng(seed) { let a = seed >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+/* desenhados à mão (rei, corte, lordes, figuras conhecidas): só mudam um pouco de altura e de peso */
+const NPC_HAND = k => /^(k_king|k_hand|k_herald|k_maester|k_coin|k_cmd|k_prince|k_princess|k_torturer|priest|innkeeper|captain|st_witch|st_dojo|masseur|v_maiko)$/.test(k) || /^h[hb]_(lord|spouse|heir)_/.test(k);
+/* quem usa uniforme e pode ter prótese: sentinelas, guardas, criados, mensageiros, gente da rua */
+const NPC_ROUGH = k => /^(guard|k_guard|hh_guard_|hh_serv_|v_|courier|smith|gardener|jailer|executioner|supplier|bankporter|st_saw|st_mine|st_carp|st_wheat|k_jailer|k_page|k_cook|crier|barefoot|cupbearer)/.test(k);
+function npcTraits(L, kind, nid) {
+  const R = npcSeedRng(npcSeedOf(kind + '|' + (nid || ''))), r = [], pick = (list, x) => list[Math.min(list.length - 1, Math.floor(x * list.length))]; for (let i = 0; i < 14; i++) r.push(R());   /* todos os sorteios de uma vez, sempre na mesma ordem */
+  L.hS = 0.93 + r[0] * 0.15; L.wS = 0.9 + r[1] * r[1] * 0.36; if (L.fem) L.wS = 0.9 + r[1] * r[1] * 0.26;
+  if (NPC_HAND(kind)) { L.hS = 0.97 + r[0] * 0.07; L.wS = 0.95 + r[1] * 0.12; return L; }
+  const si = Math.floor(r[2] * NPC_SKINS.length); L.skin = tone(NPC_SKINS[si]);
+  const old = r[3] < 0.16, hi = old ? (r[4] < 0.5 ? 8 : 9) : si >= 5 ? Math.floor(r[4] * 3) : Math.floor(r[4] * 8); L.hair = tone(NPC_HAIRS[hi]);
+  if (L.fem) { L.hairStyle = pick(['long', 'long', 'long', 'bun', 'bun', 'braid', 'braid', 'tail', 'tail', 'curly', 'curly', 'short'], r[5]); L.beard = null; }
+  else { L.hairStyle = pick(['short', 'short', 'short', 'short', 'bald', 'long', 'curly', 'curly', 'tail', 'braid', 'bun', 'mohawk'], r[5]); if (L.hairStyle === 'mohawk' && !NPC_ROUGH(kind)) L.hairStyle = 'short';
+    const bs = pick(['none', 'none', 'none', 'none', 'full', 'full', 'goatee', 'goatee', 'mustache', 'mustache', 'long', 'full'], r[6]); L.beard = bs === 'none' ? null : tone(NPC_HAIRS[hi]); L.beardStyle = bs === 'goatee' || bs === 'mustache' ? bs : null; L.beardLong = bs === 'long'; }
+  L.bald = L.hairStyle === 'bald';
+  if (r[7] < 0.13) L.scar = 1; if (NPC_ROUGH(kind)) { if (r[8] < 0.06) L.eyepatch = r[9] < 0.5 ? -1 : 1; if (r[10] < 0.05) L.lost = r[11] < 0.5 ? 8 : 16; else if (r[10] < 0.085) L.lost = 4; }   /* perna de pau (esquerda ou direita) ou gancho no braço esquerdo */
+  return L; }
+function npcLookOf(kind, nid) { const L = NPC_LOOKS[kind](); if (femKind(kind)) femLook(L); return npcTraits(L, kind, nid); }
 function heroLook(cls, skinId, accentHex) {
   const fem = /~f$/.test(skinId || ''); if (fem) skinId = skinId.slice(0, -2);
   const A = tone(accentHex || '#8b2e2e');
@@ -807,7 +828,7 @@ function heroSprite(cls, skin, color, P) {
 }
 const NPC_CLS = { v_maiko: 'archer', v_candf: 'archer', v_segm: 'knight', v_segm2: 'knight', v_segf: 'knight', agent: 'archer', v_maidf: 'archer', v_maidm: 'archer', v_maidf2: 'archer', v_maidm2: 'archer', st_witch: 'mage', hotelkeeper: 'archer', banker4: 'mage', banker5: 'mage', banker6: 'mage', bankporter: 'archer', v_house3: 'archer', v_house4: 'archer', v_trav3: 'archer', v_monk: 'mage', v_noblef: 'mage', v_noblem: 'knight', v_peasm: 'knight', v_peasf: 'archer', v_elderm: 'mage', v_elderf: 'archer', banker: 'mage', banker2: 'mage', banker3: 'mage', v_house1: 'archer', v_house2: 'archer', v_trav1: 'knight', v_trav2: 'archer', v_vis1: 'mage', v_vis2: 'archer', v_thug1: 'archer', v_thug2: 'knight', supplier: 'knight', st_saw: 'knight', st_mine: 'knight', st_farm: 'archer', st_carp: 'archer', st_alch: 'mage', st_apoth: 'mage', st_arcane: 'mage', st_tailor: 'archer', st_scroll: 'mage', courier1: 'archer', courier2: 'archer', courier3: 'knight', broker: 'archer', noble: 'archer', noble2: 'knight', gardener: 'archer', tailor: 'mage', jailer: 'knight', executioner: 'knight', fruit: 'archer', priest: 'mage', merchant: 'archer', innkeeper: 'archer', guard: 'knight', captain: 'knight', smith: 'knight' };
 function npcSprite(kind, P) {
-  const L = lookFor('npc:' + kind, NPC_LOOKS[kind] ? () => npcLookOf(kind) : NPC_LOOKS[kind]);
+  const L = lookFor('npc:' + kind, NPC_LOOKS[kind] ? () => npcLookOf(kind, '') : NPC_LOOKS[kind]);
   return sprite('n|' + kind + '|' + poseKey(P), HW, HH, HAX, HAY, pc => drawHeroPC(pc, L, P, NPC_CLS[kind] || 'knight'), { ok: 0.42 });
 }
 

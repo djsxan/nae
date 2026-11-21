@@ -598,7 +598,7 @@ const NPCS = TEST3D ? [] : [
   { id: 'fruit', name: 'Marta, a Fruteira', kind: 'fruit', x: C - 3, y: C + 9, stall: [C - 3, C + 10] },
   { id: 'executioner', name: 'Mestre Corvo, o Carrasco', kind: 'executioner', x: C - 3.9, y: C + 4.05 },
   { id: 'tailor', name: 'Mestre Aurélio, o Alfaiate Real', kind: 'tailor', ...npcIn(BLD_BY('boutique'), { x: C - 12, y: C + 1 }) },
-  { id: 'noble1', name: 'Lady Ysolde Valmont', kind: 'noble', x: C + 23, y: C - 18, route: [[C + 23, C - 18], [C + 23, C - 12], [C + 21, C - 6], [C + 23, C + 2], [C + 23, C - 18]] },
+  { id: 'noble1', name: 'Lady Isaura Valmont', kind: 'noble', x: C + 23, y: C - 18, route: [[C + 23, C - 18], [C + 23, C - 12], [C + 21, C - 6], [C + 23, C + 2], [C + 23, C - 18]] },
   { id: 'noble2', name: 'Lorde Cassian Aldren', kind: 'noble2', x: C + 21, y: C + 2, route: [[C + 21, C + 2], [C + 21, C - 4], [C + 23, C - 11], [C + 21, C - 16], [C + 21, C + 2]] },
   { id: 'gardener', name: 'Tobias, o Jardineiro', kind: 'gardener', x: C + 19.5, y: C - 15.5 },
   { id: 'guard5', name: 'Sentinela Corin', kind: 'guard', x: C - 28.7, y: C + 4.3 },

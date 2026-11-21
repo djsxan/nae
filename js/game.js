@@ -901,7 +901,7 @@ function openDialog(id) {
   const pc = $('dlg-portrait'), pctx = pc.getContext('2d');
   pctx.setTransform(1, 0, 0, 1, 0, 0); pctx.clearRect(0, 0, pc.width, pc.height); pctx.imageSmoothingEnabled = false;
   R3.budget = Math.max(R3.budget || 0, 1);   // foto nova (não a última do mundo, que pode estar de costas)
-  const spr = anySprite(null, null, null, { view: 'S', dir: 1, walk: -1 }, n.kind), kk = R3.ok ? 2.4 : 1.6;
+  const spr = anySprite(null, null, null, { view: 'S', dir: 1, walk: -1, nid: n.id }, n.kind), kk = R3.ok ? 2.4 : 1.6;   /* o retrato usa a mesma aparência do NPC no mundo */
   pctx.imageSmoothingEnabled = true;
   // 3D: a cabeça fica ~15 unidades abaixo do topo do quadro; enquadra o corpo inteiro (cabeça perto do topo, pés perto da base)
   pctx.drawImage(spr.c, pc.width / 2 - spr.ax * kk, R3.ok ? 6 - 30 * kk : pc.height - spr.ay * kk + 46, spr.w * kk, spr.h * kk);

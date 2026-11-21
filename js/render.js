@@ -463,7 +463,7 @@ function drawHeroEntity(ctx, e, sx, sy, now) {
   }
   if (R3.ok && e.sleepB && !e.downed) {   // deitado na cama, dormindo
     const pr = e.massageUntil > performance.now(), P = { dir: pr ? ((e.dir || 0) + 4) % 8 : (e.dir || 0), walk: -1, down: true, bed: 1, nowp: 1, lost: e.lost || 0, pro: e.pro || 0, prone: pr ? 1 : 0 };   /* de bruços o corpo tomba para o outro lado: gira para a cabeça ficar no travesseiro */   /* massagem: de bruços */
-    const s = !e.isNpc && typeof massageSprite === 'function' ? massageSprite(e, P.dir, pr) : e.isNpc ? npcSprite3D(e.kind, P) : heroSprite3D(e.cls, e.skin, e.color, P);   /* na cama, sempre de sunga */
+    const s = !e.isNpc && typeof massageSprite === 'function' ? massageSprite(e, P.dir, pr) : e.isNpc ? npcSprite3D(e.kind, (P.nid = e.id, P)) : heroSprite3D(e.cls, e.skin, e.color, P);   /* na cama, sempre de sunga */
     ctx.imageSmoothingEnabled = true; pblit(ctx, s, sx, sy - 11); if (typeof drawZzz === 'function') drawZzz(ctx, sx, sy - 26, now); e._spr = null; return;
   }
   if (R3.ok && e.knockUntil && now < e.knockUntil && !e.downed) { const kf = FALLS['kp' + e.id]; if (now < e.knockUntil - 650 && kf) { drawFall(ctx, kf, sx, sy, now, 1, woundLevel(e)); e._spr = null; return; } }
@@ -486,7 +486,7 @@ function drawHeroEntity(ctx, e, sx, sy, now) {
     let s = null; if (typeof TOWS !== 'undefined') for (const k in TOWS) { const f = TOWS[k]; if (f.combined && f.c === e) { s = carrySprite(e, f, P); if (s && !e.isNpc) s = woundOf(s, woundLevel(e)); break; } }
     if (!s && e.isNpc && G.entDeaths && G.entDeaths[e.id] && typeof entDrawDeath === 'function' && entDrawDeath(ctx, e, sx, sy, now)) return;   /* a guardiã desaba */
     if (!s && e.isNpc && e.kind && e.kind.startsWith('ent_') && typeof entSprite3D === 'function') { s = entSprite3D(e, P); if (G.ents[e.id] && G.ents[e.id].sl && typeof drawZzz === 'function') drawZzz(ctx, sx, sy - s.ay * 0.6, now); }   /* guardiã do mago */
-    if (!s) s = e.isNpc ? npcSprite3D(e.kind, P) : woundOf(heroSprite3D(e.cls, e.skin, e.color, P), woundLevel(e));
+    if (!s) s = e.isNpc ? npcSprite3D(e.kind, (P.nid = e.id, P)) : woundOf(heroSprite3D(e.cls, e.skin, e.color, P), woundLevel(e));
     ctx.imageSmoothingEnabled = true;
     softDab(ctx, sx, sy, 10, '#000000', 0.35);
     const kb = knockOf(e, now); sx += kb.x * 0.6; sy += kb.y * 0.6;
@@ -1052,7 +1052,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       else if (it.k === 0 && it.o === O.TOWER) { const p = iso(it.x - 0.5, it.y - 0.5); castShadow(towerSprite(WORLD.tvar[it.y * MAP_W + it.x], WORLD.toff[it.y * MAP_W + it.x]), p.sx + ox, p.sy + oy, sh, kSh); }
       else if (it.k === 4 && it.first) castShadow(it.sp, it.sx, it.sy, sh, kSh);
       else if (it.k === 1 && !it.e.dieAt) castShadow(R3.ok ? monSprite3D(it.e.type, -1, -1, 0) : monSprite(PAINT_AS[it.e.type] || it.e.type, 0, -1), it.sx, it.sy, sh, kSh);
-      else if ((it.k === 2 || it.k === 3) && !it.e.downed) castShadow(R3.ok ? (it.e.isNpc ? npcSprite3D(it.e.kind, { dir: 0, walk: -1 }) : heroSprite3D(it.e.cls, it.e.skin, it.e.color, { dir: 0, walk: -1 })) : (it.e.isNpc ? npcSprite(it.e.kind, { view: 'S', walk: -1 }) : heroSprite(it.e.cls, it.e.skin, it.e.color, { view: 'S', walk: -1 })), it.sx, it.sy, sh, kSh);
+      else if ((it.k === 2 || it.k === 3) && !it.e.downed) castShadow(R3.ok ? (it.e.isNpc ? npcSprite3D(it.e.kind, { dir: 0, walk: -1, nid: it.e.id }) : heroSprite3D(it.e.cls, it.e.skin, it.e.color, { dir: 0, walk: -1 })) : (it.e.isNpc ? npcSprite(it.e.kind, { view: 'S', walk: -1 }) : heroSprite(it.e.cls, it.e.skin, it.e.color, { view: 'S', walk: -1 })), it.sx, it.sy, sh, kSh);
     }
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.globalAlpha = shAlpha; ctx.imageSmoothingEnabled = true; ctx.drawImage(shadowC, 0, 0, Math.round(W * dpr), Math.round(H * dpr)); ctx.restore();
   }

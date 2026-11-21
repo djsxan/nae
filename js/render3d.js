@@ -218,7 +218,12 @@ function buildHead(head, L, S, skinM, accM, trimM) {
     cap.geometry = geo('hairCap' + S, () => new THREE.SphereGeometry(0.112 * S, 20, 14, 0, Math.PI * 2, 0, Math.PI * 0.55));
     cap.rotation.x = -0.42;   // inclina para trás: a franja sobe acima dos olhos e a nuca fica coberta
     if (L.hairStyle === 'long') { const back = mesh(capG(0.09 * S, 0.22 * S), hairM, 0, -0.12 * S, -0.05 * S); back.scale.set(1.1, 1, 0.6); head.add(back); }
-    if (L.fem && !L.nihongami && !L.topknot) { const back = mesh(capG(0.1 * S, 0.34 * S), hairM, 0, -0.2 * S, -0.065 * S); back.scale.set(1.15, 1, 0.55); head.add(back); for (const s of [-1, 1]) { const lk = mesh(capG(0.036 * S, 0.2 * S), hairM, s * 0.092 * S, -0.12 * S, 0.02 * S); lk.rotation.z = s * 0.08; head.add(lk); } }   /* cabelo comprido: cai pelas costas e duas mechas na frente dos ombros */
+    if (L.hairStyle === 'curly') { for (let q = 0; q < 9; q++) { const a2 = Math.PI * 1.5 + (q / 8 - 0.5) * Math.PI * 1.35; head.add(mesh(sphG(0.046 * S), hairM, Math.cos(a2) * 0.088 * S, 0.045 * S + Math.sin(q * 2.1) * 0.02 * S, Math.sin(a2) * 0.088 * S - 0.01 * S)); } for (let q = 0; q < 5; q++) { const a2 = q / 5 * 6.283; head.add(mesh(sphG(0.05 * S), hairM, Math.cos(a2) * 0.045 * S, 0.112 * S, Math.sin(a2) * 0.045 * S - 0.02 * S)); } }   /* cacheado: cachos atrás, dos lados e no alto, sem cobrir o rosto */
+    if (L.hairStyle === 'bun') { const bn = mesh(sphG(0.055 * S), hairM, 0, 0.09 * S, -0.085 * S); head.add(bn); }   /* coque */
+    if (L.hairStyle === 'braid') { const br2 = mesh(capG(0.028 * S, 0.3 * S), hairM, 0, -0.19 * S, -0.09 * S); br2.rotation.x = 0.12; head.add(br2); head.add(mesh(sphG(0.034 * S), hairM, 0, -0.37 * S, -0.115 * S)); }   /* trança pelas costas */
+    if (L.hairStyle === 'tail') { const tl3 = mesh(capG(0.035 * S, 0.2 * S), hairM, 0, -0.06 * S, -0.13 * S); tl3.rotation.x = 0.5; head.add(tl3); }   /* rabo de cavalo */
+    if (L.hairStyle === 'mohawk') { cap.visible = false; for (let q = 0; q < 5; q++) head.add(mesh(boxG(0.022 * S, 0.075 * S, 0.045 * S), hairM, 0, 0.115 * S - Math.abs(q - 2) * 0.012 * S, (q - 2) * 0.042 * S - 0.01 * S)); }   /* moicano */
+    if (L.fem && L.hairStyle !== 'bun' && L.hairStyle !== 'short' && L.hairStyle !== 'braid' && L.hairStyle !== 'tail' && L.hairStyle !== 'curly' && !L.nihongami && !L.topknot) { const back = mesh(capG(0.1 * S, 0.34 * S), hairM, 0, -0.2 * S, -0.065 * S); back.scale.set(1.15, 1, 0.55); head.add(back); for (const s of [-1, 1]) { const lk = mesh(capG(0.036 * S, 0.2 * S), hairM, s * 0.092 * S, -0.12 * S, 0.02 * S); lk.rotation.z = s * 0.08; head.add(lk); } }   /* cabelo comprido: cai pelas costas e duas mechas na frente dos ombros */
   }
   else if (L.fem && L.hair && !L.bald && !L.nihongami) { const tail = mesh(capG(0.05 * S, 0.3 * S), hairM, 0, -0.2 * S, -0.1 * S); tail.rotation.x = 0.18; head.add(tail); for (const s of [-1, 1]) { const lk = mesh(capG(0.03 * S, 0.16 * S), hairM, s * 0.095 * S, -0.13 * S, 0.03 * S); head.add(lk); } }   /* de elmo ou capuz: a trança sai por trás e duas mechas escapam na frente */
   if (L.nihongami) {   /* coque de maiko: volume no alto, abas dos lados, flores e pingentes dourados */
@@ -233,7 +238,10 @@ function buildHead(head, L, S, skinM, accM, trimM) {
   if (L.scarf) {   /* lenço amarrado na cabeça, com o nó atrás */
     const scm = mat(hx(L.scarf), 'cloth'); const sc = mesh(sphG(0.118 * S), scm, 0, 0.025 * S, -0.01 * S); sc.geometry = geo('scarf' + S, () => new THREE.SphereGeometry(0.118 * S, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.5)); sc.rotation.x = -0.5; head.add(sc);
     const kn = mesh(sphG(0.035 * S), scm, 0, -0.03 * S, -0.115 * S); head.add(kn); for (const s of [-1, 1]) { const tl = mesh(boxG(0.03 * S, 0.09 * S, 0.01 * S), scm, s * 0.025 * S, -0.08 * S, -0.115 * S); tl.rotation.z = s * 0.3; head.add(tl); } }
-  if (L.beard && !L.braids) { const b = mesh(coneG(0.075 * S, L.beardLong ? 0.3 * S : 0.16 * S, 12), mat(hx(L.beard), 'hair'), 0, L.beardLong ? -0.19 * S : -0.12 * S, 0.05 * S); b.rotation.x = Math.PI; head.add(b); if (L.beardLong) head.add(mesh(capG(0.026 * S, 0.07 * S), mat(hx(L.beard), 'hair'), 0, -0.03 * S, 0.1 * S).rotateZ(Math.PI / 2)); }
+  if (L.eyepatch) { const pm = mat('#1a1614', 'leather'); head.add(mesh(boxG(0.04 * S, 0.035 * S, 0.012 * S), pm, L.eyepatch * 0.035 * S, 0.015 * S, 0.1 * S)); const bd2 = mesh(torG(0.1 * S, 0.006 * S), pm, 0, 0.03 * S, 0); bd2.rotation.x = Math.PI / 2; bd2.rotation.y = L.eyepatch * 0.25; head.add(bd2); }   /* tapa-olho */
+  if (L.beard && L.beardStyle === 'mustache') { const bm2 = mat(hx(L.beard), 'hair'); for (const sd of [-1, 1]) { const mu = mesh(capG(0.012 * S, 0.035 * S), bm2, sd * 0.022 * S, -0.04 * S, 0.1 * S); mu.rotation.z = sd * 1.25; head.add(mu); } }   /* bigode */
+  else if (L.beard && L.beardStyle === 'goatee') { const gt = mesh(coneG(0.03 * S, 0.09 * S, 8), mat(hx(L.beard), 'hair'), 0, -0.115 * S, 0.075 * S); gt.rotation.x = Math.PI; head.add(gt); head.add(mesh(boxG(0.05 * S, 0.012 * S, 0.012 * S), mat(hx(L.beard), 'hair'), 0, -0.04 * S, 0.1 * S)); }   /* cavanhaque */
+  else if (L.beard && !L.braids) { const b = mesh(coneG(0.075 * S, L.beardLong ? 0.3 * S : 0.16 * S, 12), mat(hx(L.beard), 'hair'), 0, L.beardLong ? -0.19 * S : -0.12 * S, 0.05 * S); b.rotation.x = Math.PI; head.add(b); if (L.beardLong) head.add(mesh(capG(0.026 * S, 0.07 * S), mat(hx(L.beard), 'hair'), 0, -0.03 * S, 0.1 * S).rotateZ(Math.PI / 2)); }
   if (L.braids) {   /* barba cheia com duas tranças e argolas de ouro */
     const hm = mat(hx(L.beard), 'hair'), gold = mat('#d4a94a', 'metal'); const b = mesh(coneG(0.1 * S, 0.2 * S, 12), hm, 0, -0.12 * S, 0.055 * S); b.rotation.x = Math.PI; b.scale.set(1.1, 1, 0.8); head.add(b);
     for (const sx of [-1, 1]) { for (let k = 0; k < 4; k++) head.add(mesh(sphG(0.026 * S), hm, sx * 0.045 * S, (-0.2 - k * 0.045) * S, 0.07 * S)); head.add(mesh(cylG(0.024 * S, 0.024 * S, 0.02 * S, 8), gold, sx * 0.045 * S, -0.39 * S, 0.07 * S)); }
@@ -618,14 +626,16 @@ function heroSprite3D(cls, skin, color, P) {
 }
 function npcSprite3D(kind, P) {
   if (kind && kind.startsWith('ent_') && typeof entSprite3D === 'function') return entSprite3D({ id: Object.keys(G.ents || {}).find(id => G.npcs[id] && G.npcs[id].kind === kind) || '_cut', kind }, P);   /* guardiã do mago */
-  return cache3('n3|' + kind + '|' + pose3Key(P), () => {
-    const L = lookFor('npc:' + kind, typeof npcLookOf === 'function' && NPC_LOOKS[kind] ? () => npcLookOf(kind) : NPC_LOOKS[kind]);
-    const R = rigFor('npc:' + kind, L, NPC_SCALE[kind] ? { scale: NPC_SCALE[kind] } : undefined);
+  const nid = P && P.nid ? String(P.nid) : '', vk = kind + (nid ? '#' + nid : '');   /* cada NPC tem a sua aparência: mesma roupa do ofício, traços próprios */
+  return cache3('n3|' + vk + '|' + pose3Key(P), () => {
+    const L = lookFor('npc:' + vk, typeof npcLookOf === 'function' && NPC_LOOKS[kind] ? () => npcLookOf(kind, nid) : NPC_LOOKS[kind]);
+    const R = rigFor('npc:' + vk, L, NPC_SCALE[kind] ? { scale: NPC_SCALE[kind] } : undefined);
     if (L.braids && !R._stocky) { R._stocky = 1; R.root.scale.set(1.28, 1, 1.22); }   /* anão: baixo e largo */
+    else if (L.hS && !R._stocky) { R._stocky = 1; R.root.scale.set(L.wS, L.hS, L.wS); if (L.lost && typeof applyLost === 'function') applyLost(R, L.lost, L.lost); }   /* altura, peso e prótese de cada um */
     const Q = buildPose(NPC_CLS[kind] || 'knight', P);
     applyPose(R, Q, P, 0);
     return shoot3D(R, P.dir | 0, P.down ? -Math.PI / 2 : 0);
-  }, 'n|' + kind + (P.dir | 0));
+  }, 'n|' + vk + (P.dir | 0));
 }
 
 // ---------- monstros ----------
