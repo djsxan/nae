@@ -203,7 +203,7 @@ function hostOnClient(from, m) {
     Net.toOne(from, { t: 'welcome', you: from, x: np.x, y: np.y, z: np.z || 0, fl: np.fl || 0, fb: np.fb ?? -1, players: Object.values(S.players).map(pinfo), objs: S.objMods || {} });
     tubSendAll(from); if (typeof empWelcome === 'function') empWelcome(from);
     Net.toOthers({ t: 'pinfo', p: pinfo(np) }, from);
-    setTimeout(() => { if (S.players[from] && S.npcs) Net.toOne(from, { t: 'vlist', list: Object.values(S.npcs).filter(n => n.transient).map(visPublic) }); if (S.players[from] && S.estate && typeof tatNpcAll === 'function') Net.toOne(from, tatNpcAll()); }, 600);
+    setTimeout(() => { if (S.players[from] && S.npcs) Net.toOne(from, { t: 'vlist', list: Object.values(S.npcs).filter(n => n.transient).map(visPublic) }); if (S.players[from] && S.estate && typeof tatNpcAll === 'function') Net.toOne(from, tatNpcAll()); if (S.npSent) delete S.npSent[from];   /* agora que ele conhece todos os NPCs, as linhas vão todas de novo */ }, 600);
     sendStat(np);
     sys(`${np.name}, ${CLASSES[cls].name}, chegou à Cidadela de Nae.`);
     if (S.coins && Object.keys(S.coins).length) setTimeout(() => Net.toOne(from, { t: 'coins', add: Object.values(S.coins).map(c => ({ ...c, d: 0 })) }), 1200);
@@ -3166,6 +3166,7 @@ function hostTick() {
   }
 
   // pacotes de estado: cada jogador recebe só o que está perto
+  if (S.npSent) for (const id in S.npSent) if (!S.players[id]) delete S.npSent[id];
   const mons = Object.values(S.monsters);
   for (const r of players) {
     const pl = [], ml = [];
@@ -3182,7 +3183,9 @@ function hostTick() {
     }
     const ch = []; for (const id in S.chests) { const c = S.chests[id]; if (Math.abs(c.x - r.x) <= VIEW_RADIUS && Math.abs(c.y - r.y) <= VIEW_RADIUS) ch.push([c.id, Math.round(c.x * 100), Math.round(c.y * 100), c.opened.has(r.id) ? 1 : 0, c.who.has(r.id) ? 1 : 0]); }
     const co = []; for (const id in S.corpses || {}) { const c = S.corpses[id]; if (Math.abs(c.x - r.x) <= VIEW_RADIUS && Math.abs(c.y - r.y) <= VIEW_RADIUS) co.push([c.id, MON_TYPES.indexOf(c.type), Math.round(c.x * 100), Math.round(c.y * 100), c.z, c.looted ? 1 : 0, Math.round(c.ix * 10), Math.round(c.iy * 10), c.lost || 0, c.onBack || 0]); }
-    const np = []; for (const n of Object.values(S.npcs || {})) { if (Math.abs(n.x - r.x) > VIEW_RADIUS + 4 || Math.abs(n.y - r.y) > VIEW_RADIUS + 4) continue; np.push([n.id, Math.round(n.x * 100), Math.round(n.y * 100), (n.downed ? 1 : 0) | (n.dead ? 2 : 0) | (n.dragBy && n.dragMode !== 'back' ? 4 : 0) | (n.dragMode === 'foot' ? 8 : 0) | (n.walk ? 32 : 0) | (n.lead && n.lead.phase === 'walk' ? 64 : 0) | (n.crawl ? 128 : 0) | (n.sleeping ? 256 : 0) | (n.job && n.job.st === 'levando' ? 512 : 0) | (n.drunkT > now ? 1024 : 0) | (n.arrest || n.aggro || n.fight || n.threat || n.chaseNpc || n.goFetch ? 2048 : 0) | (n.sitting ? 4096 : 0) | (n.sitting && n.doze ? 8192 : 0), n.onBack || 0, n.carrying || 0, n.fl || 0, n.fl ? n.fb : -1]); }
+    const np = [], NS = S.npSent || (S.npSent = {}), sent = NS[r.id] || (NS[r.id] = { k: 0, m: {} }), sm0 = sent.m; let ni = 0; sent.k++;   /* NPCs: só vai a linha que mudou (duas vezes, porque o canal rápido pode perder pacote) e um reenvio de segurança a cada 2 s */
+    for (const n of Object.values(S.npcs || {})) { if (Math.abs(n.x - r.x) > VIEW_RADIUS + 4 || Math.abs(n.y - r.y) > VIEW_RADIUS + 4) continue; ni++; const row = [n.id, Math.round(n.x * 100), Math.round(n.y * 100), (n.downed ? 1 : 0) | (n.dead ? 2 : 0) | (n.dragBy && n.dragMode !== 'back' ? 4 : 0) | (n.dragMode === 'foot' ? 8 : 0) | (n.walk ? 32 : 0) | (n.lead && n.lead.phase === 'walk' ? 64 : 0) | (n.crawl ? 128 : 0) | (n.sleeping ? 256 : 0) | (n.job && n.job.st === 'levando' ? 512 : 0) | (n.drunkT > now ? 1024 : 0) | (n.arrest || n.aggro || n.fight || n.threat || n.chaseNpc || n.goFetch ? 2048 : 0) | (n.sitting ? 4096 : 0) | (n.sitting && n.doze ? 8192 : 0), n.onBack || 0, n.carrying || 0, n.fl || 0, n.fl ? n.fb : -1];
+      const key = row.join(','), q = sm0[n.id]; if (!q || q.k !== key) { sm0[n.id] = { k: key, c: 1 }; np.push(row); } else if (q.c < 2) { q.c++; np.push(row); } else if ((sent.k + ni) % 20 === 0) np.push(row); }
     const sm = { t: 's', p: pl, m: ml, ch, co, np, jc: (S.cells || []).map(c => c.open ? 1 : 0) }; S.bw = S.bw || {}; if (r.id !== Net.myId && Date.now() - ((S.bw[r.id] || {}).t || 0) > 2000) S.bw[r.id] = { t: Date.now(), kb: JSON.stringify(sm).length * 10 / 1024 };
     Net.toOne(r.id, sm, true);
   }
