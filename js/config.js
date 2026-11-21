@@ -12,8 +12,8 @@ const HERALDS = {
   moranthe: { house: 'Moranthe', field: '#33295a', field2: '#1d1630', metal: '#c9c2e8', charge: 'owl' }, thornvale: { house: 'Thornvale', field: '#21492f', field2: '#14301f', metal: '#e4dcc0', charge: 'boar' },
   solmire: { house: 'Solmire', field: '#4a3a22', field2: '#2b2216', metal: '#e8a33c', charge: 'eclipse' } };
 const HERALD = { house: 'Aurenfell', name: 'Casa Aurenfell', field: '#9a2a1c', field2: '#6e1d14', metal: '#f1cf6a', charge: 'tower', motto: 'A Luz Não se Curva' };
-const VERSION = 'v1.99.0';
-const VERSION_NAME = 'Nae · A Rua dos Prazeres';
+const VERSION = 'v1.99.1';
+const VERSION_NAME = 'Nae · Chamas do Pentagrama';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -411,9 +411,9 @@ const TREE = {
     { name: 'Fogo', icon: '🔥', el: 'fire', base: 'ember', nodes: [
       { id: 'w_flame', name: 'Chama Viva', max: 3, eff: { fire: 0.08 }, desc: '+8% de dano de fogo por ponto.' },
       { id: 'w_focus', name: 'Foco Arcano', max: 3, eff: { dmg: 0.04 }, desc: '+4% de dano por ponto.' },
-      { id: 'w_sparks', name: 'Faíscas', soon: 1, max: 0, desc: 'Arremessa as brasas da mão nos inimigos à distância.' },
-      { id: 'w_fireball', name: 'Bola de Fogo', soon: 1, max: 0, desc: 'Uma bola de fogo que explode no alvo e queima em volta.' },
-      { id: 'w_meteor', name: 'Chuva de Meteoros', soon: 1, max: 0, desc: 'Pedras em chamas caem do céu sobre uma área.' }] },
+      { id: 'w_sparks', name: 'Faíscas', evo: 1, need: 25, max: 0, mp: 10, cd: 5000, desc: 'Um leque de 5 faíscas na direção do mouse (até 7 casas): cada uma acerta o primeiro inimigo no caminho e o deixa ardendo; as que erram podem pôr fogo no mato.' },
+      { id: 'w_fireball', name: 'Bola de Fogo Maior', evo: 1, need: 45, max: 0, mp: 28, cd: 16000, desc: 'Uma bola de fogo enorme e lenta voa até o mouse (até 9 casas) e explode em 3,5 casas: muito dano, derruba os menores e deixa o chão queimando por 6 s.' },
+      { id: 'w_meteor', name: 'Chuva de Meteoros', evo: 1, need: 70, max: 0, mp: 36, cd: 32000, desc: 'Pedras em chamas caem do céu por 3 s numa área de 3,5 casas onde está o mouse (até 9 casas): cada uma explode e queima quem estiver perto.' }] },
     { name: 'Terra', icon: '🌿', el: 'earth', base: 'bloom', nodes: [
       { id: 'w_roots', name: 'Raízes Fundas', max: 3, eff: { hp: 0.05 }, desc: '+5% de vida máxima por ponto.' },
       { id: 'w_bark', name: 'Casca de Carvalho', max: 3, eff: { armor: 0.03 }, desc: '-3% de dano recebido por ponto.' },

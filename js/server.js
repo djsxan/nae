@@ -923,6 +923,19 @@ function mageEvo(p, nd, msg, now) {
       const big = MON[m.type] && MON[m.type].big, push = (big ? 0.8 : 2.6) * (1 - d / R * 0.5), pa = Math.atan2(dy, dx); for (let s = 0; s < 12; s++) { const nx = m.x + Math.cos(pa) * push / 12, ny = m.y + Math.sin(pa) * push / 12; if (!monStand(nx, ny, m)) break; m.x = nx; m.y = ny; }
       if (!big) knockMon(m, p, now); hitMonster(p, m, 0.4, 150); n++; }
     anim('p', p, 'castup', p.x + Math.cos(a), p.y + Math.sin(a), shout); evoFx(p, { k: 'gust', a, r: R }); useGain(p, 'el_wind', 2 + Math.min(3, n)); return true; }
+  /* evoluções do Fogo */
+  if (nd.id === 'w_sparks') { const B = useBonus(p, 'el_fire'), R = 7 + B * 2, N = 5 + Math.round(B * 2), ends = []; let n = 0;
+    for (let i = 0; i < N; i++) { const aa = a + (i / (N - 1) - 0.5) * 0.7, ca = Math.cos(aa), sa = Math.sin(aa); let tgt = null, best = 1e9;
+      for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || (m.alt || 0) > 1) continue; const dx = m.x - p.x, dy = m.y - p.y, al = dx * ca + dy * sa; if (al < 0.3 || al > R || al >= best) continue; if (Math.abs(-dx * sa + dy * ca) > 0.45 + (MON[m.type].rad || 0)) continue; best = al; tgt = m; }
+      const ex = tgt ? tgt.x : p.x + ca * R, ey = tgt ? tgt.y : p.y + sa * R, dl = Math.round(dist(p.x, p.y, ex, ey) * 60); ends.push([+ex.toFixed(2), +ey.toFixed(2)]);
+      if (tgt) { n++; const id = tgt.id; setTimeout(() => { const m = S.monsters[id], pp = S.players[p.id]; if (!m || !pp || m.hp <= 0) return; pp._el = 'fire'; hitMonster(pp, m, 0.7 * (1 + B), 0); pp._el = null; if (S.monsters[id] && !(m._burnT > now_())) { m._burnT = now_() + 3000; emberBurn(pp, m); } }, dl); }
+      else if (Math.random() < 0.5) setTimeout(() => { const list = []; igniteTile(ex, ey, now_(), list, false); if (list.length) near(ex, ey, { t: 'fires', l: list }); }, dl); }
+    anim('p', p, 'cast', p.x + Math.cos(a), p.y + Math.sin(a), shout); evoFx(p, { k: 'sparks', l: ends, ms: 900 }); useGain(p, 'el_fire', 1 + Math.min(3, n)); return true; }
+  if (nd.id === 'w_fireball') { let tx = +msg.tx, ty = +msg.ty; if (!isFinite(tx) || !isFinite(ty) || dist(p.x, p.y, tx, ty) > 9.5) { tx = p.x + Math.cos(a) * 7; ty = p.y + Math.sin(a) * 7; } const d = Math.round(500 + dist(p.x, p.y, tx, ty) * 170), R = 3.5 + useBonus(p, 'el_fire');
+    anim('p', p, 'castup', tx, ty, shout); evoFx(p, { k: 'bigball', tx, ty, d, ms: d + 150 }); setTimeout(() => bigFireBoom(p, tx, ty, R), d); useGain(p, 'el_fire', 3); return true; }
+  if (nd.id === 'w_meteor') { let tx = +msg.tx, ty = +msg.ty; if (!isFinite(tx) || !isFinite(ty) || dist(p.x, p.y, tx, ty) > 9.5) { tx = p.x + Math.cos(a) * 5; ty = p.y + Math.sin(a) * 5; } const B = useBonus(p, 'el_fire'), R = 3.5 + B, N = 9 + Math.round(B * 3), l = [];
+    for (let i = 0; i < N; i++) { const an = Math.random() * 6.283, rr = Math.sqrt(Math.random()) * R, mx = +(tx + Math.cos(an) * rr).toFixed(2), my = +(ty + Math.sin(an) * rr).toFixed(2), dl = 300 + i * Math.round(2700 / N); l.push([mx, my, dl]); setTimeout(() => meteorHit(p, mx, my, B), dl + 650); }
+    anim('p', p, 'castup', tx, ty, shout); evoFx(p, { k: 'meteor', tx, ty, r: R, l, ms: 300 + 2700 + 1300 }); useGain(p, 'el_fire', 3); return true; }
   /* evoluções da Água */
   if (nd.id === 'w_mist') { S.mists = (S.mists || []).filter(w => w.until > now); const r = 3 + useBonus(p, 'el_water') * 1.5; S.mists.push({ x: p.x, y: p.y, fl, r, until: now + 10000, by: p.id }); for (const m of Object.values(S.monsters)) { if (m.aggro && S.players[m.aggro] && inMist(S.players[m.aggro], m)) { m.aggro = null; m.atk = null; m.lostAt = 0; } }
     anim('p', p, 'castup', p.x, p.y, shout); evoFx(p, { k: 'mist', r, ms: 10000 }); useGain(p, 'el_water', 2); return true; }
@@ -2669,7 +2682,7 @@ function treeSkill(p, b, msg) {
   const sameLvl = q => Math.abs((q.z || 0) - (p.z || 0)) < 0.5 && (q.alt || 0) < 1.2;
   const pickTgt = rng => { let q = S.monsters[msg.id]; if (q && sameLvl(q) && dist(p.x, p.y, q.x, q.y) <= rng) return q; let best = null, bs = 1e9; for (const o of Object.values(S.monsters)) { if (!sameLvl(o)) continue; const d = dist(p.x, p.y, o.x, o.y); if (d > rng) continue; const da = Math.abs(angDiff(Math.atan2(o.y - p.y, o.x - p.x), a)); if (da > 0.7) continue; const sc = d + da * 4; if (sc < bs) { bs = sc; best = o; } } return best; };
   switch (nd.id) {
-    case 'w_gust': case 'w_shield': case 'w_glide': case 'w_handlight': case 'w_prayer': case 'w_restore': case 'w_mist': case 'w_tide': case 'w_frost': if (!mageEvo(p, nd, msg, now)) return; break;   /* evoluções do Ar e da Luz */
+    case 'w_gust': case 'w_shield': case 'w_glide': case 'w_handlight': case 'w_prayer': case 'w_restore': case 'w_mist': case 'w_tide': case 'w_frost': case 'w_sparks': case 'w_fireball': case 'w_meteor': if (!mageEvo(p, nd, msg, now)) return; break;   /* evoluções do Ar e da Luz */
     case 'charge': {
       let d = 0; for (let s = 0.25; s <= 4; s += 0.25) { if (!canStand(p.x + Math.cos(a) * s, p.y + Math.sin(a) * s, p.z || 0, 0.25)) break; d = s; }
       anim('p', p, 'dash', p.x + Math.cos(a), p.y + Math.sin(a), shout); Net.toOne(p.id, { t: 'push', a, d });
@@ -2722,6 +2735,26 @@ function fireballBoom(p, x, y, skipId) {
     const f = 1 - d / BOOM_R * 0.6, raw = Math.round((p.lvl * 2.2 + 12) * f * (q === p ? 0.6 : 1)); if (q !== p && inSafe(q.x, q.y)) witnessCrime(p, p.x, p.y);
     damagePlayer(q, raw, { x, y, name: p.name }, 0, 'torso'); if (S.players[q.id] && !q.downed) { const a = Math.atan2(q.y - y, q.x - x) || 0; Net.toOne(q.id, { t: 'push', a, d: 1.2 * f + 0.4 }); } sendStat(q); }
   const z = addZone(p, 'burn', x, y, 0, 3000); z.t = now + 300;
+}
+/* Bola de Fogo Maior: explosão grande, derruba os menores, chão queimando por 6 s */
+function bigFireBoom(p, x, y, R) {
+  if (!S.players[p.id]) return; const now = now_(), B = useBonus(p, 'el_fire');
+  aoe('bigboom', x, y, {}); near(x, y, { t: 'shake', s: 10 }, 16);
+  for (const q of Object.values(S.monsters)) { if (q.dead || q.hp <= 0) continue; const d = dist(q.x, q.y, x, y); if (d > R + (MON[q.type].rad || 0.3) * 0.5) continue;
+    const f = 1 - Math.min(1, d / R) * 0.5; p._el = 'fire'; hitMonster(p, q, 3.2 * f * (1 + B), 0); p._el = null; if (!S.monsters[q.id]) continue; if (!MON[q.type].big) knockMon(q, { x, y }, now); if (!(q._burnT > now)) { q._burnT = now + 3000; emberBurn(p, q); } }
+  for (const q of Object.values(S.players)) { if (q.downed || q.dev || (q.fl || 0) !== (p.fl || 0) || Math.abs((q.z || 0) - (p.z || 0)) > 0.5) continue; const d = dist(q.x, q.y, x, y); if (d > R) continue;
+    const f = 1 - d / R * 0.5, raw = Math.round((p.lvl * 3 + 18) * f * (q === p ? 0.5 : 1)); if (q !== p && inSafe(q.x, q.y)) witnessCrime(p, p.x, p.y);
+    damagePlayer(q, raw, { x, y, name: p.name }, 0, 'torso'); if (S.players[q.id] && !q.downed) { const an = Math.atan2(q.y - y, q.x - x) || 0; Net.toOne(q.id, { t: 'push', a: an, d: 1.6 * f + 0.4 }); ignitePlayer(q, now); } sendStat(q); }
+  for (let k = 0; k < 7; k++) { const an = k / 6 * Math.PI * 2, r = k ? R * 0.5 : 0, z = addZone(p, 'burn', x + Math.cos(an) * r, y + Math.sin(an) * r, 0, 6000); z.t = now + 300; }
+  { const list = []; for (let k = 0; k < 10; k++) { const an = Math.random() * 6.283, r = Math.random() * R; igniteTile(x + Math.cos(an) * r, y + Math.sin(an) * r, now, list, true); } if (list.length) near(x, y, { t: 'fires', l: list }); }
+}
+/* Chuva de Meteoros: cada pedra explode onde cai */
+function meteorHit(p, x, y, B) {
+  if (!S.players[p.id]) return; const now = now_();
+  aoe('boom', x, y, {}); near(x, y, { t: 'shake', s: 3 }, 12);
+  for (const q of Object.values(S.monsters)) { if (q.dead || q.hp <= 0 || dist(q.x, q.y, x, y) > 1.5 + (MON[q.type].rad || 0.3) * 0.5) continue; p._el = 'fire'; hitMonster(p, q, 1.3 * (1 + B), 0); p._el = null; if (!S.monsters[q.id]) continue; if (!MON[q.type].big) knockMon(q, { x, y }, now); if (!(q._burnT > now)) { q._burnT = now + 3000; emberBurn(p, q); } }
+  for (const q of Object.values(S.players)) { if (q.downed || q.dev || (q.fl || 0) !== (p.fl || 0) || dist(q.x, q.y, x, y) > 1.3) continue; if (q !== p && inSafe(q.x, q.y)) witnessCrime(p, p.x, p.y); damagePlayer(q, Math.round((p.lvl * 1.4 + 8) * (q === p ? 0.5 : 1)), { x, y, name: p.name }, 0, 'torso'); if (S.players[q.id] && !q.downed) ignitePlayer(q, now); sendStat(q); }
+  const list = []; igniteTile(x, y, now, list, true); if (list.length) near(x, y, { t: 'fires', l: list });
 }
 function addZone(p, k, x, y, a, ms) {
   const z = { k, x, y, a, by: p.id, until: now_() + ms, t: 0 }; (S.zones = S.zones || []).push(z);
