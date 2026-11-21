@@ -253,7 +253,7 @@ function clientOnServer(m) {
       if (m.k === 'p' && m.id === G.myId) { G.knockUntil = now + m.ms; G.shake = Math.max(G.shake, 7); }
       break;
     }
-    case 'push': G.push = { t0: now, v: [Math.cos(m.a), Math.sin(m.a)], d: m.d }; G.shake = Math.max(G.shake, 4); break;
+    case 'push': if ((G.stoneUntil || 0) > now) break; G.push = { t0: now, v: [Math.cos(m.a), Math.sin(m.a)], d: m.d }; G.shake = Math.max(G.shake, 4); break;   /* Pele de Pedra: nada empurra */
     case 'clang': { const w = tileW(m.x, m.y, 26); for (let k = 0; k < (m.perfect ? 26 : 12); k++) spawnPart('spark', w.x, w.y, { color: m.perfect ? 'rgba(255,230,120,A)' : 'rgba(255,240,200,A)' }); G.shake = Math.max(G.shake, m.perfect ? 5 : 2.5); if (m.blockBy) { const q = G.monsters[m.blockBy]; if (q) q.blockAt = now; } break; }
     case 'whiff': case 'swoosh': break;
     case 'miss': { const e = G.monsters[m.id]; if (e) { const w = tileW(e.rx, e.ry, 30); for (let k = 0; k < 5; k++) spawnPart('dust', w.x, w.y); } break; }

@@ -12,8 +12,8 @@ const HERALDS = {
   moranthe: { house: 'Moranthe', field: '#33295a', field2: '#1d1630', metal: '#c9c2e8', charge: 'owl' }, thornvale: { house: 'Thornvale', field: '#21492f', field2: '#14301f', metal: '#e4dcc0', charge: 'boar' },
   solmire: { house: 'Solmire', field: '#4a3a22', field2: '#2b2216', metal: '#e8a33c', charge: 'eclipse' } };
 const HERALD = { house: 'Aurenfell', name: 'Casa Aurenfell', field: '#9a2a1c', field2: '#6e1d14', metal: '#f1cf6a', charge: 'tower', motto: 'A Luz Não se Curva' };
-const VERSION = 'v1.99.1';
-const VERSION_NAME = 'Nae · Chamas do Pentagrama';
+const VERSION = 'v1.99.2';
+const VERSION_NAME = 'Nae · Força da Terra';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -417,9 +417,9 @@ const TREE = {
     { name: 'Terra', icon: '🌿', el: 'earth', base: 'bloom', nodes: [
       { id: 'w_roots', name: 'Raízes Fundas', max: 3, eff: { hp: 0.05 }, desc: '+5% de vida máxima por ponto.' },
       { id: 'w_bark', name: 'Casca de Carvalho', max: 3, eff: { armor: 0.03 }, desc: '-3% de dano recebido por ponto.' },
-      { id: 'w_sapling', name: 'Muda', soon: 1, max: 0, desc: 'Com a Terra forte (perícia + pontos na árvore), a Fonte sobre as suas flores faz nascer uma muda: cura, devolve mana, protege e acalma os bichos em volta. Em breve ela desperta como guardiã.' },
-      { id: 'w_thorns', name: 'Espinheiro', soon: 1, max: 0, desc: 'Uma cerca de espinhos brota do chão e prende quem passar.' },
-      { id: 'w_ent', name: 'Despertar do Ent', soon: 1, max: 0, desc: 'A muda vira um Ent que luta ao seu lado e depois volta a dormir como árvore.' }] },
+      { id: 'w_stone', name: 'Pele de Pedra', evo: 1, need: 25, max: 0, mp: 14, cd: 22000, desc: 'A pele vira rocha por 8 s: você recebe 45% menos dano e nada empurra você, mas anda 15% mais devagar.' },
+      { id: 'w_thorns', name: 'Espinheiro', evo: 1, need: 45, max: 0, mp: 18, cd: 12000, desc: 'Uma linha de espinhos rasga o chão até o mouse (7 casas), como uma onda: fere, prende por 2,5 s e faz sangrar quem estiver no caminho, e volta para a terra logo depois.' },
+      { id: 'w_quake', name: 'Tremor', evo: 1, need: 70, max: 0, mp: 30, cd: 28000, desc: 'Você bate o cajado no chão e a terra treme em 4,5 casas em volta: dano em todos os inimigos, os menores caem e ficam tontos por 2 s (os grandes, 1 s), e o chão racha.' }] },
     { name: 'Ar', icon: '🌬', el: 'wind', base: 'windstep', nodes: [
       { id: 'w_feather', name: 'Pés de Pluma', max: 3, eff: { speed: 0.04 }, desc: 'Anda 4% mais rápido por ponto.' },
       { id: 'w_eye', name: 'Olho do Vento', max: 3, eff: { crit: 0.02 }, desc: '+2% de chance de crítico por ponto.' },

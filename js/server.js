@@ -742,6 +742,7 @@ function damagePlayer(p, raw, m, delay = 0, zone = null, exactPart = null) {
   if (buffOn(p, 'warcry')) mult *= 0.8;
   if (buffOn(p, 'bless')) mult *= 0.9;
   if ((p._sapT || 0) > now_()) mult *= 0.85;   /* casca protetora da muda */
+  if ((p.stoneSk || 0) > now_()) mult *= 0.55;   /* Pele de Pedra */
   mult *= Math.max(0.4, 1 - treeEff(p, 'armor')); if (buffOn(p, 'iron')) mult *= 0.6; if (buffOn(p, 'sanct')) mult *= 0.75;
   if ((p.windSh || 0) > now_()) { if (m && m.cls === 'archer' && S.players[m.id]) { near(p.x, p.y, { t: 'evofx', id: p.id, x: p.x, y: p.y, k: 'deflect' }); return; } mult *= 0.7; if (m && S.monsters[m.id] && dist(m.x, m.y, p.x, p.y) < 2.2 && !(MON[m.type] && MON[m.type].big)) knockMon(m, p, now_()); }   /* Escudo de Vento: flechas desviam, menos dano, quem bate é jogado longe */
   useGain(p, 'vigor', 0.5);
@@ -923,6 +924,19 @@ function mageEvo(p, nd, msg, now) {
       const big = MON[m.type] && MON[m.type].big, push = (big ? 0.8 : 2.6) * (1 - d / R * 0.5), pa = Math.atan2(dy, dx); for (let s = 0; s < 12; s++) { const nx = m.x + Math.cos(pa) * push / 12, ny = m.y + Math.sin(pa) * push / 12; if (!monStand(nx, ny, m)) break; m.x = nx; m.y = ny; }
       if (!big) knockMon(m, p, now); hitMonster(p, m, 0.4, 150); n++; }
     anim('p', p, 'castup', p.x + Math.cos(a), p.y + Math.sin(a), shout); evoFx(p, { k: 'gust', a, r: R }); useGain(p, 'el_wind', 2 + Math.min(3, n)); return true; }
+  /* evoluções da Terra */
+  if (nd.id === 'w_stone') { p.stoneSk = now + 8000; anim('p', p, 'castup', p.x, p.y, shout); evoFx(p, { k: 'stone', ms: 8000 }); useGain(p, 'el_earth', 2); return true; }
+  if (nd.id === 'w_thorns') { const B = useBonus(p, 'el_earth'), L = 7 + B * 2, ca = Math.cos(a), sa = Math.sin(a); let n = 0;
+    for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || (m.alt || 0) > 1) continue; const dx = m.x - p.x, dy = m.y - p.y, al = dx * ca + dy * sa; if (al < 0.3 || al > L || Math.abs(-dx * sa + dy * ca) > 0.8 + (MON[m.type].rad || 0)) continue;
+      n++; const id = m.id; setTimeout(() => { const q = S.monsters[id], pp = S.players[p.id]; if (!q || !pp || q.hp <= 0) return; const big = MON[q.type] && MON[q.type].big, ms = big ? 1200 : 2500, t2 = now_(); q.stunUntil = Math.max(q.stunUntil || 0, t2 + ms); q.atk = null; q.nextAtk = Math.max(q.nextAtk || 0, t2 + ms + 200);
+        pp._el = 'earth'; hitMonster(pp, q, 1.0 * (1 + B), 0); pp._el = null; if (S.monsters[id]) near(q.x, q.y, { t: 'mroot', id, ms });
+        for (let k = 1; k <= 3; k++) setTimeout(() => { const r = S.monsters[id], p2 = S.players[p.id]; if (!r || !p2 || r.hp <= 0) return; p2._el = 'earth'; hitMonster(p2, r, 0.15 * (1 + B), 0); p2._el = null; }, k * 900); }, Math.round(al * 85)); }
+    anim('p', p, 'cast', p.x + ca, p.y + sa, shout); evoFx(p, { k: 'thorns', a, r: L, ms: Math.round(L * 85) + 1300 }); useGain(p, 'el_earth', 2 + Math.min(3, n)); return true; }
+  if (nd.id === 'w_quake') { const B = useBonus(p, 'el_earth'), R = 4.5 + B * 1.5; let n = 0;
+    for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || (m.alt || 0) > 1) continue; const d = dist(m.x, m.y, p.x, p.y); if (d > R + (MON[m.type].rad || 0)) continue; const big = MON[m.type] && MON[m.type].big, ms = big ? 1000 : 2000;
+      p._el = 'earth'; hitMonster(p, m, 1.8 * (1 + B) * (1 - Math.min(1, d / R) * 0.4), 0); p._el = null; if (!S.monsters[m.id]) continue; if (!big) knockMon(m, p, now); m.stunUntil = Math.max(m.stunUntil || 0, now + ms); m.atk = null; m.nextAtk = Math.max(m.nextAtk || 0, now + ms + 200); n++; }
+    for (const q of Object.values(S.players)) { if (q === p || q.downed || q.dev || (q.fl || 0) !== (p.fl || 0) || dist(q.x, q.y, p.x, p.y) > R) continue; if (pvpOk(p, q)) { if (inSafe(q.x, q.y)) witnessCrime(p, p.x, p.y); damagePlayer(q, Math.round(p.lvl * 1.5 + 10), { x: p.x, y: p.y, name: p.name }, 0, 'legL'); sendStat(q); } }
+    anim('p', p, 'castup', p.x, p.y, shout); near(p.x, p.y, { t: 'shake', s: 12 }, R + 10); evoFx(p, { k: 'quake', r: R, ms: 2600 }); useGain(p, 'el_earth', 3 + Math.min(3, n)); return true; }
   /* evoluções do Fogo */
   if (nd.id === 'w_sparks') { const B = useBonus(p, 'el_fire'), R = 7 + B * 2, N = 5 + Math.round(B * 2), ends = []; let n = 0;
     for (let i = 0; i < N; i++) { const aa = a + (i / (N - 1) - 0.5) * 0.7, ca = Math.cos(aa), sa = Math.sin(aa); let tgt = null, best = 1e9;
@@ -2682,7 +2696,7 @@ function treeSkill(p, b, msg) {
   const sameLvl = q => Math.abs((q.z || 0) - (p.z || 0)) < 0.5 && (q.alt || 0) < 1.2;
   const pickTgt = rng => { let q = S.monsters[msg.id]; if (q && sameLvl(q) && dist(p.x, p.y, q.x, q.y) <= rng) return q; let best = null, bs = 1e9; for (const o of Object.values(S.monsters)) { if (!sameLvl(o)) continue; const d = dist(p.x, p.y, o.x, o.y); if (d > rng) continue; const da = Math.abs(angDiff(Math.atan2(o.y - p.y, o.x - p.x), a)); if (da > 0.7) continue; const sc = d + da * 4; if (sc < bs) { bs = sc; best = o; } } return best; };
   switch (nd.id) {
-    case 'w_gust': case 'w_shield': case 'w_glide': case 'w_handlight': case 'w_prayer': case 'w_restore': case 'w_mist': case 'w_tide': case 'w_frost': case 'w_sparks': case 'w_fireball': case 'w_meteor': if (!mageEvo(p, nd, msg, now)) return; break;   /* evoluções do Ar e da Luz */
+    case 'w_gust': case 'w_shield': case 'w_glide': case 'w_handlight': case 'w_prayer': case 'w_restore': case 'w_mist': case 'w_tide': case 'w_frost': case 'w_sparks': case 'w_fireball': case 'w_meteor': case 'w_stone': case 'w_thorns': case 'w_quake': if (!mageEvo(p, nd, msg, now)) return; break;   /* evoluções do Ar e da Luz */
     case 'charge': {
       let d = 0; for (let s = 0.25; s <= 4; s += 0.25) { if (!canStand(p.x + Math.cos(a) * s, p.y + Math.sin(a) * s, p.z || 0, 0.25)) break; d = s; }
       anim('p', p, 'dash', p.x + Math.cos(a), p.y + Math.sin(a), shout); Net.toOne(p.id, { t: 'push', a, d });
