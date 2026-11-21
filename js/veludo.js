@@ -58,7 +58,7 @@ function velTick(now) {
   if (show && now - (S.velDance || 0) > 3000) { S.velDance = now; for (const id of ['vl_d1', 'vl_d2']) { const n = S.npcs[id]; if (n) near(n.x, n.y, { t: 'anim', w: 'n', id, a: 'dance', ms: 3200 }); } }
   for (const p of Object.values(S.players)) {
     if (p.vlRest && now >= p.vlRest.until) { const C = p.vlRest; p.vlRest = null; if (p.sit === 'g') p.sit = null; p.buffs.rested = now + 600000; p.cst = cstMaxOf(p); p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.3));
-      tell(p, 'Você volta ao salão leve e descansado: Bem descansado por 10 minutos, fôlego cheio e 30% da vida de volta.');
+      tell(p, 'Você volta ao salão leve e descansado: Bem descansado por 10 minutos, fôlego cheio e 30% da vida de volta.'); if (typeof tatVelSeen === 'function') tatVelSeen(p, C.who);
       const vis = HOUSES.filter(h => velVisiting(h.id)); if (Math.random() < (vis.length ? 0.5 : 0.25)) { const pick = secRandom(p, vis.length ? [vis[0].id, 'visit'] : null); if (pick) secGive(p, pick[0], pick[1], C.who + ' contou baixinho'); } sendStat(p); }
     if (show && velIn(p, 'velvet') && !p.vlRest && R.show[estOwner(p)] !== day) { p.vlShow = (p.vlShow || 0) + 0.5;
       if (p.vlShow >= VL_SHOW_SECS) { p.vlShow = 0; R.show[estOwner(p)] = day; p.buffs.cheer = now + 600000; tell(p, 'O show das dançarinas levanta o ânimo: Animado por 10 minutos (+8% de experiência).'); sendStat(p); } }

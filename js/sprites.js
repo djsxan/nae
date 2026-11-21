@@ -29,7 +29,7 @@ function npcTraits(L, kind, nid) {
   if (NPC_ROUGH(kind) && r[12] < 0.38) { const n = 1 + Math.floor(r[13] * 3), tt = [0, 0, 0, 0, 0]; for (let q = 0; q < n; q++) tt[Math.floor(((r[12] * 97 + q * 1.7) % 1) * 5)] = 1 + Math.floor(((r[13] * 53 + q * 2.3) % 1) * 12); L.tats = tt; }   /* gente do trabalho pesado: uma a três tatuagens, que só aparecem sem a roupa */
   if (r[7] < 0.13) L.scar = 1; if (NPC_ROUGH(kind)) { if (r[8] < 0.06) L.eyepatch = r[9] < 0.5 ? -1 : 1; if (r[10] < 0.05) L.lost = r[11] < 0.5 ? 8 : 16; else if (r[10] < 0.085) L.lost = 4; }   /* perna de pau (esquerda ou direita) ou gancho no braço esquerdo */
   return L; }
-function npcLookOf(kind, nid) { const L = NPC_LOOKS[kind](); if (femKind(kind)) femLook(L); return npcTraits(L, kind, nid); }
+function npcLookOf(kind, nid) { const L = NPC_LOOKS[kind](); if (femKind(kind)) femLook(L); npcTraits(L, kind, nid); if (L.tatFix) L.tats = L.tatFix; const o = nid && typeof G !== 'undefined' && G.ntat && G.ntat[nid]; if (o) L.tats = o; return L; }
 function heroLook(cls, skinId, accentHex) {
   const SP = skinParts(skinId), fem = SP.fem; skinId = SP.base;
   const A = tone(accentHex || '#8b2e2e');

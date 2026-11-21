@@ -203,7 +203,7 @@ function hostOnClient(from, m) {
     Net.toOne(from, { t: 'welcome', you: from, x: np.x, y: np.y, z: np.z || 0, fl: np.fl || 0, fb: np.fb ?? -1, players: Object.values(S.players).map(pinfo), objs: S.objMods || {} });
     tubSendAll(from); if (typeof empWelcome === 'function') empWelcome(from);
     Net.toOthers({ t: 'pinfo', p: pinfo(np) }, from);
-    setTimeout(() => { if (S.players[from] && S.npcs) Net.toOne(from, { t: 'vlist', list: Object.values(S.npcs).filter(n => n.transient).map(visPublic) }); }, 600);
+    setTimeout(() => { if (S.players[from] && S.npcs) Net.toOne(from, { t: 'vlist', list: Object.values(S.npcs).filter(n => n.transient).map(visPublic) }); if (S.players[from] && S.estate && typeof tatNpcAll === 'function') Net.toOne(from, tatNpcAll()); }, 600);
     sendStat(np);
     sys(`${np.name}, ${CLASSES[cls].name}, chegou à Cidadela de Nae.`);
     if (S.coins && Object.keys(S.coins).length) setTimeout(() => Net.toOne(from, { t: 'coins', add: Object.values(S.coins).map(c => ({ ...c, d: 0 })) }), 1200);

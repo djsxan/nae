@@ -1142,6 +1142,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       if (typeof drawPackage === 'function' && (e.isNpc || (e.stb & 16))) drawPackage(ctx, e.isNpc ? e : { pkg: true, walking: e.walking, walkDist: e.walkDist }, it.sx, it.sy, now);
       if (typeof drawNpcBubble === 'function') drawNpcBubble(ctx, e, it.sx, it.sy, now);
       if (typeof thWadeNpc === 'function' && !(e.fl || 0) && thermaePoolAt(e.rx, e.ry)) thWadeNpc(ctx, e, it.sx, it.sy, now); else drawHeroEntity(ctx, e, it.sx, it.sy, now); if (e.arrows) drawStuck(ctx, e, it.sx, it.sy, now);
+      if (e.tatInk && typeof tatInkFx === 'function') tatInkFx(ctx, e, it.sx, it.sy, performance.now());
       if (e.carrying && G.players[e.carrying]) drawCarried(ctx, G.players[e.carrying], it.sx, it.sy);
       labels.push({ sx: it.sx, sy: it.sy - (R3.ok ? 56 : 78), name: e.name, color: '#b8e0a8', npc: e, e });
     } else {
