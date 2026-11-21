@@ -618,10 +618,11 @@ function qAutoTick(now) {
   const Q = G.qMon || (G.qMon = { t: now, n: 0, low: 0, high: 0, fps: 60 }); Q.n++;
   if (now - Q.t < 1000) return; Q.fps = Q.n * 1000 / (now - Q.t); Q.t = now; Q.n = 0; G.fps = Q.fps;
   if (!G.started || (SET.quality && SET.quality !== 'auto') || document.hidden) return;
+  if (!Q.t0) Q.t0 = now; if (now - Q.t0 < 20000) return;   /* os primeiros 20 s montam o cenário: não contam */
   if (Q.fps < 40) { Q.low++; Q.high = 0; } else if (Q.fps > 57) { Q.high++; Q.low = 0; } else { Q.low = 0; Q.high = 0; }
   const L = qLevelNow();
-  if (Q.low >= 3 && L > 0) { G.qLevel = L - 1; Q.low = 0; resize(); showToast('Qualidade gráfica: ' + QLEVELS[G.qLevel].n + ' (para rodar liso)'); }
-  else if (Q.high >= 15 && L < 5) { G.qLevel = L + 1; Q.high = 0; resize(); showToast('Qualidade gráfica: ' + QLEVELS[G.qLevel].n); }
+  if (Q.low >= 3 && L > 0) { G.qLevel = L - 1; Q.low = 0; Q.ceil = L - 1; Q.ceilT = now + 300000;   /* este nível não aguentou: não volta a subir para ele por 5 min (sem sobe-e-desce) */ resize(); showToast('Qualidade gráfica: ' + QLEVELS[G.qLevel].n + ' (para rodar liso)'); }
+  else if (Q.high >= 15 && L < 5 && !(Q.ceilT > now && L + 1 > Q.ceil)) { G.qLevel = L + 1; Q.high = 0; resize(); showToast('Qualidade gráfica: ' + QLEVELS[G.qLevel].n); }
 }
 function resize() {
   DPR = Math.min(QLEVELS[qLevelNow()].dpr, Math.max(0.7, window.devicePixelRatio || 1));
