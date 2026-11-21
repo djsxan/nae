@@ -728,13 +728,13 @@ body.em-on #hud, body.em-on #chat, body.em-on .hotbar { opacity: .25; transition
 /* ---------- Grimório do mago (Pentagrama dos cinco elementos) ---------- */
 #pause .gm-pane #tree.grim-on, #tree.grim-on { background: #1a120b !important; padding: 6px !important; }
 #tree.grim-on .gp-head { font-family: 'IM Fell English SC', serif; }
-.grim-book { position: relative; display: grid; grid-template-columns: minmax(0, 1.25fr) 14px minmax(0, 1fr); border-radius: 6px; overflow: hidden;
+.grim-book { position: relative; display: grid; grid-template-columns: minmax(0, 1.5fr) 14px minmax(0, 1fr); border-radius: 6px; overflow: hidden;
   background: radial-gradient(ellipse at 22% 30%, rgba(255,250,230,.55), transparent 55%), radial-gradient(ellipse at 80% 70%, rgba(120,80,30,.16), transparent 60%), radial-gradient(circle at 70% 18%, rgba(140,90,40,.12) 0 40px, transparent 41px), linear-gradient(180deg, #ecdfbd, #dcc79a);
   box-shadow: inset 0 0 60px rgba(90,55,20,.45), inset 0 0 6px rgba(60,35,10,.6), 0 8px 24px rgba(0,0,0,.6); color: #3b2a17; font-family: 'IM Fell English', Georgia, serif; }
 .grim-spine { background: linear-gradient(90deg, rgba(70,40,15,0), rgba(70,40,15,.38) 45%, rgba(40,22,8,.55) 50%, rgba(70,40,15,.38) 55%, rgba(70,40,15,0)); }
 .grim-page { padding: 14px 16px; min-width: 0; }
 .grim-l { display: flex; align-items: center; justify-content: center; }
-.grim-svg { width: 100%; max-width: 560px; height: auto; display: block; }
+.grim-svg { width: 100%; max-width: 660px; height: auto; display: block; }
 .grim-svg .g-ink { fill: none; stroke: #3b2a17; }
 .grim-svg .g-gold { fill: none; stroke: #b08a34; stroke-linejoin: round; opacity: .85; }
 .grim-svg .g-goldfill { fill: #b08a34; stroke: #3b2a17; stroke-width: .8; }
@@ -820,3 +820,15 @@ body.touch #pplbtn { bottom: auto; top: 54px; right: calc(10px + env(safe-area-i
 
 /* escolha de corpo no lobby */
 #bodysel { display: flex; gap: 8px; margin: 4px 0 10px; } #bodysel button { flex: 1; padding: 7px 10px; border-radius: 8px; border: 1px solid rgba(201,162,74,.45); background: rgba(0,0,0,.25); color: inherit; font: inherit; cursor: pointer; } #bodysel button.sel { background: rgba(201,162,74,.28); border-color: #e8c060; color: #fff3d0; }
+
+/* Pentagrama: ícone próprio por magia, botões maiores e o painel "Minhas teclas" */
+.grim-svg .g-ico { fill: none; stroke: #3b2a17; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+.grim-svg .g-node.got .g-ico { stroke: #fff6dc; } .grim-svg .g-node.soon .g-ico { opacity: .5; }
+.grim-svg .g-combo .g-ico { stroke: #fffaf0; stroke-width: 1.9; filter: drop-shadow(0 0 1px rgba(0,0,0,.75)); }
+.grim-svg .g-lockbg { fill: #efe3c2; stroke: #6a5232; stroke-width: 1.2; } .grim-svg .g-eqdot { fill: #ffd76a; stroke: #3b2a17; stroke-width: 1; }
+.grim-svg .g-rank { font-size: 11px; }
+.grim-keys li { display: flex; align-items: center; gap: 8px; padding: 3px 0; } .grim-keys li b { min-width: 46px; }
+.grim-sel { margin-left: auto; flex: 1 1 auto; min-width: 0; max-width: 68%; font: inherit; font-size: 14px; padding: 5px 6px; border-radius: 7px; border: 1px solid #8a6a3a; background: #fff8e6; color: #3b2a17; }
+.grim-keyhint { font-size: 12.5px; opacity: .8; margin: 4px 0 0; }
+/* celular: o Pentagrama não encolhe abaixo de 560 de largura (arrasta para os lados), para os botões caberem no dedo */
+@media (max-width: 900px) { .grim-l { overflow-x: auto; justify-content: flex-start; -webkit-overflow-scrolling: touch; } .grim-svg { min-width: 560px; } }

@@ -12,14 +12,14 @@ const HERALDS = {
   moranthe: { house: 'Moranthe', field: '#33295a', field2: '#1d1630', metal: '#c9c2e8', charge: 'owl' }, thornvale: { house: 'Thornvale', field: '#21492f', field2: '#14301f', metal: '#e4dcc0', charge: 'boar' },
   solmire: { house: 'Solmire', field: '#4a3a22', field2: '#2b2216', metal: '#e8a33c', charge: 'eclipse' } };
 const HERALD = { house: 'Aurenfell', name: 'Casa Aurenfell', field: '#9a2a1c', field2: '#6e1d14', metal: '#f1cf6a', charge: 'tower', motto: 'A Luz Não se Curva' };
-const VERSION = 'v1.101.0';
-const VERSION_NAME = 'Nae · Termas de Aurora';
+const VERSION = 'v1.101.1';
+const VERSION_NAME = 'Nae · Minhas Teclas';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
 // migração do nome antigo (World of Sxan) para Nae: copia os saves para as chaves novas
 try { for (const [a, b] of [['wos-settings', 'nae-settings'], ['wos-chars-v4', 'nae-chars-v4'], ['sxan_apple', 'nae_apple']]) { const v = localStorage.getItem(a); if (v != null && localStorage.getItem(b) == null) localStorage.setItem(b, v); } for (let i = 0; i < localStorage.length; i++) { const k = localStorage.key(i); if (k && k.startsWith('wos-fog-')) { const n = 'nae-fog-' + k.slice(8); if (localStorage.getItem(n) == null) localStorage.setItem(n, localStorage.getItem(k)); } } } catch (e) { }
-const SET = (() => { const d = { quality: 'auto', bright: 1, zoom: 1, chat: 'fade', phys: 'ragdoll', tele: 'soft', duel: false, pad: (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) ? 0.75 : 0.5 }; try { const S0 = Object.assign(d, JSON.parse(localStorage.getItem('nae-settings') || '{}')); if (!S0.qv) { S0.qv = 1; S0.quality = 'auto'; } return S0; } catch (e) { return d; } })();   /* v1.57: todos passam para a qualidade automática uma vez */
+const SET = (() => { const d = { quality: 'auto', bright: 1, zoom: 1, chat: 'fade', phys: 'ragdoll', blood: '1', tele: 'soft', duel: false, pad: (typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches) ? 0.75 : 0.5 }; try { const S0 = Object.assign(d, JSON.parse(localStorage.getItem('nae-settings') || '{}')); if (!S0.qv) { S0.qv = 1; S0.quality = 'auto'; } return S0; } catch (e) { return d; } })();   /* v1.57: todos passam para a qualidade automática uma vez */
 // níveis de qualidade: resolução e efeitos (o 'auto' escolhe sozinho conforme o FPS)
 const QLEVELS = [{ n: 'Mínima', dpr: 0.7 }, { n: 'Muito baixa', dpr: 0.85 }, { n: 'Baixa', dpr: 1 }, { n: 'Média', dpr: 1.25 }, { n: 'Alta', dpr: 1.5 }, { n: 'Ultra', dpr: 2 }];
 const QFIXED = { low: 2, med: 3, high: 5 };
@@ -68,16 +68,16 @@ const MAGE_EL = [
 // combinações de dois elementos (no meio do Pentagrama, ainda trancadas: em breve)
 const COMBO_NEED = 50;   /* força pedida em cada um dos dois elementos (mais 1 ponto de talento) */
 const MAGE_COMBOS = [
-  { id: 'c_tornado', a: 'fire', b: 'wind', dk: 'fire', mp: 34, cd: 36000, n: 'Tornado de Fogo', d: 'Um redemoinho de chamas nasce à sua frente e anda devagar na direção do mouse por 6 s: puxa para dentro os inimigos em 2,5 casas, queima quem está nele e põe fogo no mato por onde passa.' },
-  { id: 'c_dome', a: 'holy', b: 'wind', dk: 'wind', mp: 32, cd: 40000, n: 'Campo de Defesa', d: 'Uma cúpula de vento e luz de 3,5 casas onde você está, por 8 s: as flechas desviam, os aliados lá dentro levam 40% menos dano e os bichos menores que entram são jogados para fora.' },
-  { id: 'c_steam', a: 'fire', b: 'water', dk: 'water', mp: 30, cd: 34000, n: 'Vapor Escaldante', d: 'Uma nuvem fervente de 3 casas onde está o mouse, por 8 s: os aliados lá dentro ficam escondidos dos bichos, e os inimigos dentro dela queimam a cada segundo e ficam molhados.' },
-  { id: 'c_embers', a: 'fire', b: 'earth', dk: 'fire', mp: 30, cd: 32000, n: 'Chão de Brasas', d: 'A terra racha e vira brasa em 3 casas onde está o mouse, por 10 s: quem pisa queima e anda 40% mais devagar.' },
-  { id: 'c_sflame', a: 'fire', b: 'holy', dk: 'holy', mp: 34, cd: 40000, n: 'Chama Sagrada', d: 'Uma chama dourada de 3 casas em volta de você, por 8 s: cura os aliados (4% da vida por segundo), aquece no frio e queima os inimigos, em dobro os mortos-vivos.' },
-  { id: 'c_mud', a: 'water', b: 'earth', dk: 'earth', mp: 30, cd: 34000, n: 'Lodaçal', d: 'A terra vira lama funda em 3,5 casas onde está o mouse, por 10 s: os bichos menores ficam presos 3 s ao entrar e depois andam 60% mais devagar (os grandes só ficam lentos). Apaga o fogo e deixa todos molhados.' },
-  { id: 'c_storm', a: 'water', b: 'wind', dk: 'wind', mp: 38, cd: 42000, n: 'Tempestade', d: 'Uma nuvem escura sobre 4 casas onde está o mouse, por 8 s: a chuva molha e apaga o fogo, e a cada segundo cai um raio num inimigo, com dano e 1 s de atordoamento (mais dano em quem já está molhado).' },
-  { id: 'c_hwater', a: 'water', b: 'holy', dk: 'water', mp: 30, cd: 36000, n: 'Água Benta', d: 'Uma onda de água abençoada em 4 casas em volta de você: limpa infecção, sangramento e fogo dos aliados, cura 15% da vida e queima os mortos-vivos.' },
-  { id: 'c_sand', a: 'earth', b: 'wind', dk: 'earth', mp: 32, cd: 38000, n: 'Tempestade de Areia', d: 'Um redemoinho de areia de 4 casas que acompanha você por 8 s: os inimigos dentro dele erram metade dos golpes e perdem de vista quem está a mais de 2 casas.' },
-  { id: 'c_grove', a: 'earth', b: 'holy', dk: 'holy', mp: 34, cd: 45000, n: 'Bosque Sagrado', d: 'Uma clareira de flores e brotos de luz de 3,5 casas onde você está, por 20 s: quem fica parado ou sentado nela recupera 5% da vida por segundo e o fôlego, e os animais ficam calmos.' },
+  { id: 'c_tornado', a: 'fire', b: 'wind', dk: 'fire', mp: 34, cd: 14000, n: 'Tornado de Fogo', d: 'Um redemoinho de chamas nasce à sua frente e anda devagar na direção do mouse por 6 s: puxa para dentro os inimigos em 2,5 casas, queima quem está nele e põe fogo no mato por onde passa.' },
+  { id: 'c_dome', a: 'holy', b: 'wind', dk: 'wind', mp: 32, cd: 14000, n: 'Campo de Defesa', d: 'Uma cúpula de vento e luz de 3,5 casas onde você está, por 8 s: as flechas desviam, os aliados lá dentro levam 40% menos dano e os bichos menores que entram são jogados para fora.' },
+  { id: 'c_steam', a: 'fire', b: 'water', dk: 'water', mp: 30, cd: 12000, n: 'Vapor Escaldante', d: 'Uma nuvem fervente de 3 casas onde está o mouse, por 8 s: os aliados lá dentro ficam escondidos dos bichos, e os inimigos dentro dela queimam a cada segundo e ficam molhados.' },
+  { id: 'c_embers', a: 'fire', b: 'earth', dk: 'fire', mp: 30, cd: 12000, n: 'Chão de Brasas', d: 'A terra racha e vira brasa em 3 casas onde está o mouse, por 10 s: quem pisa queima e anda 40% mais devagar.' },
+  { id: 'c_sflame', a: 'fire', b: 'holy', dk: 'holy', mp: 34, cd: 14000, n: 'Chama Sagrada', d: 'Uma chama dourada de 3 casas em volta de você, por 8 s: cura os aliados (4% da vida por segundo), aquece no frio e queima os inimigos, em dobro os mortos-vivos.' },
+  { id: 'c_mud', a: 'water', b: 'earth', dk: 'earth', mp: 30, cd: 12000, n: 'Lodaçal', d: 'A terra vira lama funda em 3,5 casas onde está o mouse, por 10 s: os bichos menores ficam presos 3 s ao entrar e depois andam 60% mais devagar (os grandes só ficam lentos). Apaga o fogo e deixa todos molhados.' },
+  { id: 'c_storm', a: 'water', b: 'wind', dk: 'wind', mp: 38, cd: 14000, n: 'Tempestade', d: 'Uma nuvem escura sobre 4 casas onde está o mouse, por 8 s: a chuva molha e apaga o fogo, e a cada segundo cai um raio num inimigo, com dano e 1 s de atordoamento (mais dano em quem já está molhado).' },
+  { id: 'c_hwater', a: 'water', b: 'holy', dk: 'water', mp: 30, cd: 12000, n: 'Água Benta', d: 'Uma onda de água abençoada em 4 casas em volta de você: limpa infecção, sangramento e fogo dos aliados, cura 15% da vida e queima os mortos-vivos.' },
+  { id: 'c_sand', a: 'earth', b: 'wind', dk: 'earth', mp: 32, cd: 13000, n: 'Tempestade de Areia', d: 'Um redemoinho de areia de 4 casas que acompanha você por 8 s: os inimigos dentro dele erram metade dos golpes e perdem de vista quem está a mais de 2 casas.' },
+  { id: 'c_grove', a: 'earth', b: 'holy', dk: 'holy', mp: 34, cd: 14000, n: 'Bosque Sagrado', d: 'Uma clareira de flores e brotos de luz de 3,5 casas onde você está, por 20 s: quem fica parado ou sentado nela recupera 5% da vida por segundo e o fôlego, e os animais ficam calmos.' },
 ];
 
 // Skins (visuais) de cada vocação

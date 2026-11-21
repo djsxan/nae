@@ -45,6 +45,7 @@ function weatherNow() {
   return { rain, wind: 0.6 + Math.sin(t / 40) * 0.4 };
 }
 function spawnPart(kind, x, y, extra) {
+  if (kind === 'blood' && typeof bloodOn === 'function' && !bloodOn()) return;
   if (G.parts.length > 350) return;
   const p = { kind, x, y, vx: 0, vy: 0, t0: performance.now(), life: 1000, seed: Math.random() * 100, ...extra };
   switch (kind) {
@@ -329,7 +330,7 @@ function healthState(e) {
 // ferimentos no corpo: mais sangue, sujeira e rasgos a cada estado (à beira da morte 1, de joelhos 2, caído 3)
 function woundLevel(e) { if (e.isNpc || !e.maxHp) return 0; if (e.downed) return 3; const h = healthState(e); return h === 3 ? 2 : h === 2 ? 1 : 0; }
 const WOUNDS = new WeakMap();
-function woundOf(s, lv) {
+function woundOf(s, lv) { if (typeof bloodOn === 'function' && !bloodOn()) return s;   /* sem sangue: o corpo ferido não fica vermelho */
   if (!s || !lv) return s;
   let m = WOUNDS.get(s); if (!m) { m = {}; WOUNDS.set(s, m); }
   if (m[lv]) return m[lv];

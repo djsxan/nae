@@ -938,7 +938,7 @@ function comboSkill(p, msg) {
   if (p.mp < C.mp) { tell(p, 'Mana insuficiente.'); return; }
   const a = isFinite(+msg.a) ? +msg.a : (p.fa || 0), fl = p.fl || 0, B = (useBonus(p, 'el_' + C.a) + useBonus(p, 'el_' + C.b)) / 2, shout = { s: C.n + '!' };
   let tx = +msg.tx, ty = +msg.ty; if (!isFinite(tx) || !isFinite(ty) || dist(p.x, p.y, tx, ty) > 8.5) { tx = p.x + Math.cos(a) * 4; ty = p.y + Math.sin(a) * 4; }
-  const F = o => { const f = Object.assign({ k: C.id, x: tx, y: ty, fl, by: p.id, B, t: now, until: now + o.ms }, o); (S.cfields = S.cfields || []).push(f); return f; };
+  const F = o => { const f = Object.assign({ k: C.id, x: tx, y: ty, fl, by: p.id, B, t: now, until: now + o.ms }, o); S.cfields = (S.cfields || []).filter(q => !(q.by === p.id && q.k === C.id)); S.cfields.push(f); return f; };   /* lançar de novo troca o campo antigo */
   const douse = (x, y, r) => { const put = []; for (let yy = Math.floor(y - r); yy <= Math.ceil(y + r); yy++) for (let xx = Math.floor(x - r); xx <= Math.ceil(x + r); xx++) if (dist(xx, yy, x, y) <= r) douseTile(xx, yy, put); if (put.length) near(x, y, { t: 'fireout', l: put }); };
   switch (C.id) {
     case 'c_tornado': { const sx = p.x + Math.cos(a) * 1.2, sy = p.y + Math.sin(a) * 1.2; F({ x: sx, y: sy, a, v: 1.3, r: 2.5, ms: 6000 }); anim('p', p, 'cast', sx, sy, shout); evoFx(p, { k: C.id, sx, sy, a, v: 1.3, ms: 6000 }); break; }
@@ -1188,7 +1188,8 @@ function autoMsg(p, m) {
   if (p.cls !== 'archer' && p.cls !== 'mage') return;
   if (!m.on) { if (p.autoAtk) { p.autoAtk = 0; if (p.flame && p.flame.auto) flameStop(p); Net.toOne(p.id, { t: 'autoatk', on: 0 }); tell(p, 'Ataque automático desligado.'); } return; }
   if (p.cls === 'archer' && p.sheathed) { tell(p, 'Saque o arco primeiro (G).'); Net.toOne(p.id, { t: 'autoatk', on: 0 }); return; }
-  p.autoAtk = 1; Net.toOne(p.id, { t: 'autoatk', on: 1 }); tell(p, 'Ataque automático ligado: ' + (p.cls === 'archer' ? 'flechas em todo monstro à vista' : 'Chamas mirando onde pega mais monstros, e as magias de apoio quando fizer falta (sem mana, espera e volta)') + '. R desliga.');
+  if (Array.isArray(m.slots)) p.autoSlots = m.slots.slice(0, 5).map(s => s && s.c != null ? { c: s.c | 0 } : { b: s.b | 0, n: s.n | 0 }); if (p.autoAtk) return;   /* só atualizou as teclas */
+  p.autoAtk = 1; Net.toOne(p.id, { t: 'autoatk', on: 1 }); tell(p, 'Ataque automático ligado: ' + (p.cls === 'archer' ? 'flechas em todo monstro à vista' : 'usa tudo o que está nas suas teclas (ataques, defesas e curas quando fizerem falta) e as Chamas no intervalo; sem mana, espera e volta') + '. R desliga.');
 }
 function autoTick(now) {
   for (const p of Object.values(S.players)) { if (!p.autoAtk) continue;
@@ -1257,8 +1258,42 @@ function autoArcherSkill(p, q, now) {   /* arqueiro: Chuva em grupo, Perfurante 
   if (ready(idx('double')) && d <= 6.5 && (p.mp || 0) >= SK[idx('double')].mp + 12) return use('double', q);   /* guarda mana para as outras */
   return false;
 }
+/* mago no automático: evoluções e combinadas que estão nas teclas. Curas e defesas primeiro (quando fazem falta), depois as combinadas e as evoluções de ataque */
+function autoMageKeys(p, now) {
+  const hostile = o => o.hp > 0 && (o.alt || 0) < 1.2 && Math.abs((o.z || 0) - (p.z || 0)) < 0.5 && ((MON[o.type] || {}).beh !== 'flee' || o.aggro === p.id), nearM = r => Object.values(S.monsters).filter(o => hostile(o) && dist(p.x, p.y, o.x, o.y) <= r);
+  const M7 = nearM(7), M4 = nearM(4), M3 = nearM(3), hpK = p.hp / Math.max(1, p.maxHp); let T = null, bc = -1; for (const o of M7) { let n = 0; for (const q of M7) if (dist(o.x, o.y, q.x, q.y) < 2.5) n++; if (n > bc) { bc = n; T = o; } }
+  const aT = T ? Math.atan2(T.y - p.y, T.x - p.x) : (p.fa || 0), dT = T ? dist(p.x, p.y, T.x, T.y) : 99, at = T ? { a: aT, tx: T.x, ty: T.y } : null;
+  const want = id => { switch (id) {
+    case 'w_sparks': case 'w_tide': case 'w_thorns': return T && dT <= 6 ? { a: aT } : null;
+    case 'w_gust': return T && dT <= 3.5 ? { a: aT } : null;
+    case 'w_fireball': return T && dT >= 4.2 ? at : null;   /* longe o bastante para a explosão não pegar o próprio mago */
+    case 'w_meteor': return T && dT >= 3.2 ? at : null;
+    case 'w_frost': return at;
+    case 'w_quake': return M4.length ? {} : null;
+    case 'w_shield': return M3.length && !((p.windSh || 0) > now) ? {} : null;
+    case 'w_stone': return M3.length && hpK < 0.75 && !((p.stoneSk || 0) > now) ? {} : null;
+    case 'w_mist': return M7.length && hpK < 0.5 ? {} : null;
+    case 'w_glide': return M3.length >= 2 && hpK < 0.5 ? { a: aT + Math.PI } : null;
+    case 'w_prayer': return hpK < 0.7 ? {} : null;
+    case 'w_restore': return hpK < 0.6 ? {} : null;
+    case 'w_handlight': { const al = Object.values(S.players).find(q => q !== p && (q.fl || 0) === (p.fl || 0) && dist(q.x, q.y, p.x, p.y) < 7 && (q.downed || q.hp < q.maxHp * 0.6)); return al ? { tx: al.x, ty: al.y } : T && dT <= 7 ? { a: aT, tx: T.x, ty: T.y } : null; }
+    case 'c_tornado': return T ? { a: aT } : null;
+    case 'c_steam': case 'c_embers': case 'c_mud': case 'c_storm': return at;
+    case 'c_sand': return M3.length ? {} : null;
+    case 'c_dome': return M7.length && hpK < 0.7 ? {} : null;
+    case 'c_sflame': return (M7.length && hpK < 0.8) || M3.length >= 2 ? {} : null;
+    case 'c_hwater': return hpK < 0.6 || (p.burnUntil || 0) > now || p.infect ? {} : null;
+    case 'c_grove': return hpK < 0.6 ? {} : null; } return null; };
+  const PRI = id => /^(w_prayer|w_restore|c_hwater|c_grove|c_dome|w_stone|w_mist|w_shield|w_glide)$/.test(id) ? 0 : id[0] === 'c' ? 1 : 2;
+  const list = p.autoSlots.map(s => { if (s.c != null) { const C = MAGE_COMBOS[s.c]; return C && { id: C.id, c: s.c, mp: C.mp, key: 'c' + s.c, ok: treeHas(p, C.id) && elemStrength(p, C.a) >= COMBO_NEED && elemStrength(p, C.b) >= COMBO_NEED }; }
+    const br = TREE.mage[s.b], nd = br && br.nodes[s.n]; return nd && nd.evo ? { id: nd.id, b: s.b, n: s.n, mp: nd.mp, key: s.b + 20 + s.n * 10, ok: elemStrength(p, br.el) >= nd.need } : null; }).filter(Boolean).sort((a, b) => PRI(a.id) - PRI(b.id));
+  p.tcd = p.tcd || {};
+  for (const s of list) { if (!s.ok || now < (p.tcd[s.key] || 0) || (p.mp || 0) < s.mp) continue; const m = want(s.id); if (!m) continue; if (p.flame) flameStop(p); const mp0 = p.mp;
+    if (s.c != null) comboSkill(p, Object.assign({ c: s.c }, m)); else treeSkill(p, s.b, Object.assign({ n: s.n }, m)); if (p.mp < mp0 || (p.tcd[s.key] || 0) > now) return true; }
+  return false; }
 function autoMage(p, now) {
   if (p.duel || p.bath || p.sleep != null || p.carrying || p.lifted || p.grabbed || p.bound || p.casting || p.train || p.medit || inSafe(p.x, p.y)) { if (p.flame && p.flame.auto) flameStop(p); return; }
+  if (p.autoSlots && p.autoSlots.length && now >= (p._autoCast || 0) && now >= (p.stunUntil || 0) && now >= (p.knockUntil || 0)) { if (autoMageKeys(p, now)) { p._autoCast = now + 900; return; } }
   const SK = SKILLS.mage, idx = id => SK.findIndex(s => s.id === id), ready = i => i >= 0 && now >= (p.cds[i] || 0) && (p.mp || 0) >= SK[i].mp, hostile = o => o.hp > 0 && (o.alt || 0) < 1.2 && Math.abs((o.z || 0) - (p.z || 0)) < 0.5 && ((MON[o.type] || {}).beh !== 'flee' || o.aggro === p.id);
   const cast = (id, msg) => { if (p.flame) flameStop(p); useSkill(p, idx(id), msg || {}); };
   const close = Object.values(S.monsters).find(o => hostile(o) && dist(p.x, p.y, o.x, o.y) < 1.1);

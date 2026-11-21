@@ -534,7 +534,10 @@ function slotTreeLoad() { try { G.slotTree = JSON.parse(localStorage.getItem(slo
 function slotTreeSave() { try { localStorage.setItem(slotKey(), JSON.stringify(G.slotTree)); } catch (e) { } }
 function slotTreeNode(i) { const s = G.slotTree && G.slotTree[i]; if (!s || !G.me) return null;
   if (s.c != null) { const C = MAGE_COMBOS[s.c]; return C && C.id === s.id && G.me.cls === 'mage' && G.me.tree && G.me.tree[C.id] && typeof mStr === 'function' && mStr(G.me, C.a) >= COMBO_NEED && mStr(G.me, C.b) >= COMBO_NEED ? { ...s, b: -1, n: -1, nd: { id: C.id, name: C.n, desc: C.d, mp: C.mp, cd: C.cd, combo: 1 }, br: { icon: '✦' } } : null; }   /* combinada do centro do Pentagrama */ const br = TREE[G.me.cls] && TREE[G.me.cls][s.b], nd = br && br.nodes[s.n >= 2 && s.n <= 5 ? s.n : 4]; return nd && nd.id === s.id && (nd.evo ? typeof mStr === 'function' && mStr(G.me, br.el) >= nd.need : G.me.tree && G.me.tree[nd.id]) ? { ...s, nd, br } : null; }   /* evolução do mago: vale enquanto tiver a força */
-function slotEquip(i, b, n, id) { if (!G.slotTree) slotTreeLoad(); for (let k = 0; k < 4; k++) if (G.slotTree[k] && G.slotTree[k].id === id) G.slotTree[k] = null; G.slotTree[i] = id ? { b, n, id } : null; slotTreeSave(); buildHotbar(); }
+function slotEquip(i, b, n, id) { if (!G.slotTree) slotTreeLoad(); for (let k = 0; k < G.slotTree.length; k++) if (G.slotTree[k] && G.slotTree[k].id === id) G.slotTree[k] = null; G.slotTree[i] = id ? { b, n, id } : null; slotTreeSave(); buildHotbar(); autoSlotsSync(); }
+/* o que está em cada tecla, para o ataque automático do mago usar */
+function autoSlots() { const L = []; for (let i = 0; i < 5; i++) { const T = slotTreeNode(i); if (!T) continue; L.push(T.nd.combo ? { c: T.c } : { b: T.b, n: T.n }); } return L; }
+function autoSlotsSync() { if (G.autoAtk && G.me && G.me.cls === 'mage') Net.send({ t: 'auto', on: 1, slots: autoSlots() }); }
 function treeEquipMenu(nd, bi, i) {
   let d = $('tequip'); if (d) d.remove(); d = document.createElement('div'); d.id = 'tequip'; d.className = 'gpanel';
   const n = i === 5 ? 5 : 4, cur = (G.slotTree || []).findIndex(s => s && s.id === nd.id);
@@ -1105,7 +1108,7 @@ window.addEventListener('keydown', e => {
   if (k === '5' && G.me && SKILLS[G.me.cls].length > 4) { if (!e.repeat) castSkill(4); return; }
   if (k === 'q') { drinkPot('hp'); return; }
   if (k === 'e') { drinkPot('mp'); return; }
-  if (k === 'r' && !G.me.downed && !e.repeat) { if (G.me.cls === 'knight') Net.send({ t: 'sbash', a: G.me.fa ?? 0 }); else { G.autoAtk = !G.autoAtk; Net.send({ t: 'auto', on: G.autoAtk ? 1 : 0 }); } return; }   /* arqueiro e mago: R liga/desliga o ataque automático */
+  if (k === 'r' && !G.me.downed && !e.repeat) { if (G.me.cls === 'knight') Net.send({ t: 'sbash', a: G.me.fa ?? 0 }); else { G.autoAtk = !G.autoAtk; Net.send({ t: 'auto', on: G.autoAtk ? 1 : 0, slots: G.me.cls === 'mage' ? autoSlots() : undefined }); } return; }   /* arqueiro e mago: R liga/desliga o ataque automático */
   if (k === 'r' && G.me.downed) { if (!PERMADEATH) { Net.send({ t: 'giveup' }); return; } gameAsk('Desistir é MORTE PERMANENTE: seu personagem será apagado. Tem certeza?', { yes: 'Desistir', no: 'Continuar lutando' }).then(ok => { if (ok) Net.send({ t: 'giveup' }); }); return; }
   if (k === 'f' && !e.repeat && typeof empNear === 'function' && empNear()) { empMenu(); return; }
   if (k === 'f' && !e.repeat && typeof segNear === 'function' && segNear()) { segMenu(segNear().id); return; }
@@ -1160,7 +1163,7 @@ window.addEventListener('keydown', e => {
   if ((k === '5' || k === '6' || k === '7') && !e.repeat) { Net.send({ t: 'tskill', b: +k - 5, a: G.me.fa ?? 0, id: G.target || 0 }); return; }
   if (k === '8' && !e.repeat) { Net.send({ t: 'tskill', b: 2, n: 5, a: G.me.fa ?? 0 }); return; }
   if (k === 'm' && !e.repeat) { toggleWorldMap(); return; }
-  if (k === 't') { if (!e.repeat) openEmoteWheel(); return; }
+  if (k === 't') { if (!e.repeat) { if (document.body.classList.contains('touch')) { if (G.wheel) closeEmoteWheel(false); else { openEmoteWheel(); if (G.wheel) G.wheel.tap = true; } } else openEmoteWheel(); } return; }   /* no celular a roda fica aberta até tocar num gesto (ou no botão de novo) */
   if (k === ' ' && G.pick) { e.preventDefault(); if (!e.repeat) lockpickKey(); return; }
   if (k === ' ' && G.me && G.me.bound) { e.preventDefault(); if (!e.repeat) Net.send({ t: 'struggle' }); return; }
   if (k === ' ' && G.me && (G.me.gripped || G.me.tied)) { e.preventDefault(); Net.send({ t: 'struggle' }); return; }   // agarrado: martelar espaço
@@ -1178,7 +1181,7 @@ window.addEventListener('keyup', e => {
   if (!e.key) return; const k = e.key.toLowerCase();
   if (k === '1' && typeof flameStop === 'function') flameStop();   /* soltou a tecla: as chamas param */
   G.keys.delete(k);
-  if (k === 't' && G.wheel) closeEmoteWheel(true);
+  if (k === 't' && G.wheel && !G.wheel.tap) closeEmoteWheel(true);
   if (k === 'h' && typeof grabKeyUp === 'function' && grabKeyUp()) return;
   if (typeof jobsKeyUp === 'function') jobsKeyUp(k);
   if (k === 'f' && G.reviving && !G.reviveSticky) { Net.send({ t: 'revive', id: G.reviving, on: false }); G.reviving = null; }
@@ -1740,6 +1743,7 @@ function applySettings() {
   canvas.style.filter = SET.bright !== 1 ? 'brightness(' + SET.bright + ')' : '';
   { const c = $('chat'), m = SET.chat || 'fade'; if (c) { c.classList.toggle('fade', m === 'fade'); c.classList.toggle('off', m === 'off'); } for (const b of document.querySelectorAll('#pz-chat button')) b.classList.toggle('on', b.dataset.c === m); }
   { G.intMode = SET.intMode || 'fade'; for (const b of document.querySelectorAll('#pz-int button')) b.classList.toggle('on', b.dataset.i === G.intMode); }
+  for (const b of document.querySelectorAll('#pz-blood button')) b.classList.toggle('on', b.dataset.b === (SET.blood === '0' ? '0' : '1'));
   if (typeof S3 !== 'undefined' && S3.ok) S3.renderer.shadowMap.enabled = qLevelNow() >= 2;
   for (const b of document.querySelectorAll('#pz-quality button')) b.classList.toggle('on', b.dataset.q === SET.quality);
   $('pz-bright').value = SET.bright; $('pz-bright-v').textContent = Math.round(SET.bright * 100) + '%';
@@ -1755,6 +1759,7 @@ for (const b of document.querySelectorAll('#pz-duel button')) b.addEventListener
 for (const b of document.querySelectorAll('#pz-phys button')) b.addEventListener('click', () => { SET.phys = b.dataset.p; saveSettings(); applySettings(); });
 for (const b of document.querySelectorAll('#pz-chat button')) b.addEventListener('click', () => { SET.chat = b.dataset.c; saveSettings(); applySettings(); });
 for (const b of document.querySelectorAll('#pz-int button')) b.addEventListener('click', () => { SET.intMode = b.dataset.i; saveSettings(); applySettings(); });
+for (const b of document.querySelectorAll('#pz-blood button')) b.addEventListener('click', () => { SET.blood = b.dataset.b; saveSettings(); applySettings(); if (SET.blood === '0') { G.blood = []; G.parts = G.parts.filter(q => q.kind !== 'blood'); } });
 $('pz-pad').addEventListener('input', e => { SET.pad = +e.target.value; saveSettings(); applySettings(); });
 function togglePause(force) {
   if (typeof gmToggle === 'function') { if (force === false) gmClose(); else if (force === true) gmOpen(); else gmToggle(); return; }
@@ -1863,7 +1868,7 @@ function updateNeeds() {
   if ($('pz-surv')) $('pz-surv').innerHTML = '<div><b>Fome</b> ' + Math.round(100 - (me.food ?? 100)) + '% · <b>Sede</b> ' + Math.round(100 - (me.water ?? 100)) + '% · <b>Frio</b> ' + Math.round(me.cold || 0) + '%</div><div><b>Infecção</b> ' + ['nenhuma', 'febre', 'grave'][me.infect || 0] + (me.sick > 0 ? ' · <b>enjoado</b>' : '') + '</div><div class="gp-note">Coma e beba, fique perto do fogo à noite, trate feridas graves com bandagem. A morte é permanente.</div>';
 }
 // ---------- sangue em jato e pedaços decepados ----------
-function sprayBlood(x, y, dx, dy, n) {
+function sprayBlood(x, y, dx, dy, n) { if (!bloodOn()) return;
   const sx = dx - dy, sy = (dx + dy) * 0.5, l = Math.hypot(sx, sy) || 1;
   for (let k = 0; k < n; k++) { if (G.parts.length > 400) break; const s = 0.03 + Math.random() * 0.08, sp = (Math.random() - 0.5) * 1.1, c = Math.cos(sp), si = Math.sin(sp), ux = (sx / l) * c - (sy / l) * si, uy = (sx / l) * si + (sy / l) * c, big = Math.random();
     G.parts.push({ kind: 'blood', x: x - G.view.ox + (Math.random() - 0.5) * 3, y: y - G.view.oy + (Math.random() - 0.5) * 3, vx: ux * s, vy: uy * s - 0.03 - Math.random() * 0.04, t0: performance.now(), life: 650 + Math.random() * 450, seed: Math.random() * 100, sz: big < 0.5 ? 1.6 + Math.random() : big < 0.85 ? 2.6 + Math.random() * 1.2 : 4 + Math.random() * 1.5 }); }
@@ -1923,7 +1928,8 @@ function liftOrThrow() {
 }
 // ---------- sangue no chão: respingos, pingos de quem sangra e rastro de quem se arrasta caído (5 min) ----------
 const NO_BLOOD = new Set(['skeleton', 'cryptlord', 'slime', 'elderslime', 'wisp', 'spider']);   // aranhas e insetos não sangram
-function addBlood(x, y, z, r, ms) { G.blood.push({ x, y, z, r, t0: performance.now(), until: performance.now() + ms, seed: Math.random() * 1000 }); if (G.blood.length > 500) G.blood.shift(); }
+const bloodOn = () => SET.blood !== '0';   /* opção de desligar o sangue: manchas, respingos e feridas */
+function addBlood(x, y, z, r, ms) { if (!bloodOn()) return; G.blood.push({ x, y, z, r, t0: performance.now(), until: performance.now() + ms, seed: Math.random() * 1000 }); if (G.blood.length > 500) G.blood.shift(); }
 function bleed(e, now) {
   if (!e.visible) return;
   const bleedingNow = e === G.me ? (e.bleed && BODY_PARTS.some(k => e.bleed[k] > 0)) : e.bleeding;

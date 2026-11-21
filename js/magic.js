@@ -338,8 +338,26 @@ const GRIM_GLYPH = {   // desenhos dos elementos (centro 0,0; ~22 de altura)
   earth: '<path d="M-8 9 C -9 -3 -1 -10 9 -10 C 9 0 3 8 -8 9 Z"/><path d="M-8 9 L 5 -5 M-3 4 h4 M0 1 v-4"/>',
   wind: '<path d="M-10 -4 h11 a4 4 0 1 0 -4 -4"/><path d="M-10 2 h15 a4 4 0 1 1 -4 4"/><path d="M-8 8 h6"/>',
 };
+/* desenho de cada evolução e de cada combinada (centro 0,0; cabe num círculo de raio 7) */
+const GRIM_ICO = {
+  w_handlight: '<path d="M0 -6.5 V2 M-3.5 -1.5 L0 2 L3.5 -1.5"/><path d="M-5 5.5 h10"/>', w_prayer: '<circle r="5.5"/><circle r="1.8"/>', w_restore: '<path d="M0 -6 v12 M-6 0 h12"/>',
+  w_mist: '<path d="M-6 -3.5 q3 -3 6 0 t6 0 M-6 0.5 q3 -3 6 0 t6 0 M-6 4.5 q3 -3 6 0 t6 0"/>', w_tide: '<path d="M-6.5 2 q3 -9 8 -3 q2 2.5 5 -1 M-6.5 5.5 h13"/>', w_frost: '<path d="M0 -6.5 v13 M-5.6 -3.2 l11.2 6.4 M-5.6 3.2 l11.2 -6.4"/>',
+  w_sparks: '<path d="M-4 5 l-2 -5 M0 5.5 v-6 M4 5 l2 -5"/><circle cx="-6.2" cy="-3" r="1.3"/><circle cy="-4.5" r="1.3"/><circle cx="6.2" cy="-3" r="1.3"/>', w_fireball: '<circle cx="1.8" cy="1.8" r="4"/><path d="M-6.5 -6.5 l4.2 4.2 M-6.5 -1.5 l2.6 2 M-1.5 -6.5 l2 2.6"/>', w_meteor: '<path d="M6 -6.5 l-4 6 M0.5 -6 l-4 6 M6.5 -0.5 l-3.5 5"/><circle cx="1.2" cy="1.2" r="1.5"/><circle cx="-4.3" cy="1.8" r="1.5"/><circle cx="2.4" cy="6" r="1.5"/>',
+  w_stone: '<path d="M0 -6.5 L5.6 -3.2 L5.6 3.2 L0 6.5 L-5.6 3.2 L-5.6 -3.2 Z M0 -6.5 V0 L5.6 3.2 M0 0 L-5.6 3.2"/>', w_thorns: '<path d="M-6.5 5.5 L-3.5 -5.5 L-0.5 5.5 L2.5 -5.5 L6.5 5.5"/>', w_quake: '<path d="M-6.5 -3.5 h13 M0 -3.5 l-2.4 3.6 l3.4 2.2 l-2.4 4"/>',
+  w_gust: '<path d="M-6.5 -3 h8.5 a2.6 2.6 0 1 0 -2.6 -2.6 M-6.5 2 h10.5 a2.6 2.6 0 1 1 -2.6 2.6"/>', w_shield: '<path d="M0 -6.5 L5.5 -4.5 V1 C5.5 4 2.5 6 0 6.8 C-2.5 6 -5.5 4 -5.5 1 V-4.5 Z"/>', w_glide: '<path d="M-5.5 5.5 C-4.5 -3 2 -6.5 6.5 -6.5 C5.5 -1 2 4.5 -5.5 5.5 Z M-5.5 5.5 L3 -3"/>',
+  c_tornado: '<path d="M-6 -5.5 h12 M-4.6 -2 h9.2 M-3.2 1.5 h6.4 M-1.6 5 h3.2"/>', c_dome: '<path d="M-6.5 4.5 a6.5 6.5 0 0 1 13 0 Z M-6.5 4.5 h13"/>', c_steam: '<path d="M-4.2 5.5 q-2.2 -3 0 -5.5 t0 -5.5 M0 5.5 q-2.2 -3 0 -5.5 t0 -5.5 M4.2 5.5 q-2.2 -3 0 -5.5 t0 -5.5"/>',
+  c_embers: '<path d="M-6.5 5.5 h13 M-3 3.5 q-2.4 -3.4 0 -7 q2.4 3.6 0 7 M3.2 3.5 q-2 -2.6 0 -5.4 q2 2.8 0 5.4"/>', c_sflame: '<path d="M0 -6.8 C4.6 -2 4.6 3.4 0 6.6 C-4.6 3.4 -4.6 -2 0 -6.8 Z M0 -1.5 v5 M-2.2 1 h4.4"/>', c_mud: '<path d="M-6.5 3.5 q3.2 -3.4 6.5 0 t6.5 0"/><circle cx="-2.2" cy="-2.4" r="1.7"/><circle cx="3.2" cy="-4.6" r="1.1"/>',
+  c_storm: '<path d="M-5.5 -0.5 a3 3 0 0 1 4 -3.4 a3.6 3.6 0 0 1 6.4 2 a2.2 2.2 0 0 1 -1 3.4 h-8.4 Z M0.4 1.5 l-2.2 3 h3 l-2 3"/>', c_hwater: '<path d="M0 -6.8 C3.2 -2.2 5.4 1 5.4 3 a5.4 5.4 0 0 1 -10.8 0 C-5.4 1 -3.2 -2.2 0 -6.8 Z M0 -0.5 v5.4 M-2.2 2 h4.4"/>', c_sand: '<path d="M-6.5 0 a6.5 6.5 0 0 1 11 -4.4 M6.5 0 a6.5 6.5 0 0 1 -11 4.4"/><circle r="1.5"/>', c_grove: '<circle r="1.8"/><path d="M0 -6.5 v3 M0 3.5 v3 M-6.5 0 h3 M3.5 0 h3 M-4.6 -4.6 l2.1 2.1 M2.5 2.5 l2.1 2.1 M4.6 -4.6 l-2.1 2.1 M-2.5 2.5 l-2.1 2.1"/>',
+};
+const GRIM_LOCK = '<g transform="translate(10,10) scale(.6)"><circle r="7.5" class="g-lockbg"/><path d="M-3.5 -1 v-2.5 a3.5 3.5 0 0 1 7 0 v2.5 M-5 -1 h10 v7 h-10 Z" class="g-lock"/></g>';
 function grimSpell(el) { return (SKILLS.mage || []).find(s => s.el === el) || null; }
 function grimUseLvl(me, el) { return typeof useLvl === 'function' ? Math.floor(useLvl(me, 'el_' + el)) : 0; }
+/* painel "Minhas teclas": uma lista por tecla com tudo o que pode ir nela */
+function grimKeys(me) { const T = TREE.mage;
+  return SKILLS.mage.map((sk, i) => { const E = MAGE_EL.find(e => e.k === sk.el), bI = T.findIndex(b => b.el === sk.el), br = T[bI], cur = slotTreeNode(i), opts = ['<option value="base"' + (!cur ? ' selected' : '') + '>' + grimEsc(sk.name) + ' · base</option>'];
+    if (br) br.nodes.forEach((nd, n) => { if (nd.evo && mStr(me, br.el) >= nd.need) opts.push('<option value="e:' + bI + ',' + n + '"' + (cur && cur.nd.id === nd.id ? ' selected' : '') + '>' + grimEsc(nd.name) + ' · evolução</option>'); });
+    MAGE_COMBOS.forEach((C, ci) => { if ((C.a === sk.el || C.b === sk.el) && me.tree && me.tree[C.id] && mStr(me, C.a) >= COMBO_NEED && mStr(me, C.b) >= COMBO_NEED) opts.push('<option value="c:' + ci + '"' + (cur && cur.nd.id === C.id ? ' selected' : '') + '>' + grimEsc(C.n) + ' · combinada</option>'); });
+    return '<li><span class="grim-key">' + (i + 1) + '</span><b style="color:' + E.ink + '">' + E.n + '</b><select class="grim-sel" data-key="' + i + '" aria-label="Tecla ' + (i + 1) + '">' + opts.join('') + '</select></li>'; }).join(''); }
 function grimPage(me) {   // anotações da página da direita
   const T = TREE.mage, free = Math.max(0, (me.lvl || 1) - 1 - treePts(me)), sel = GRIM.sel;
   let det = '<p class="grim-hint">Passe o mouse sobre um selo, um talento ou uma combinação do Pentagrama para ler as anotações.</p>';
@@ -357,11 +375,11 @@ function grimPage(me) {   // anotações da página da direita
   return '<div class="grim-h">Grimório</div><div class="grim-sub">do Pentagrama dos Cinco Elementos</div>' +
     '<div class="grim-pts">' + free + (free === 1 ? ' ponto livre' : ' pontos livres') + '</div>' +
     '<div class="grim-det">' + det + '</div>' +
-    '<div class="grim-h2">As cinco magias</div><ul class="grim-spells">' + spells + '</ul>' +
+    '<div class="grim-h2">Minhas teclas</div><ul class="grim-spells grim-keys">' + grimKeys(me) + '</ul><p class="grim-keyhint">Escolha o que cada tecla lança: a magia base, uma evolução liberada ou uma combinada aprendida.</p>' +
     '<p class="grim-foot">Cada ponta é um elemento e começa com uma magia. Os talentos e as evoluções descem pela ponta até o centro; no meio do Pentagrama ficam as combinações de dois elementos. 1 ponto por nível · uso: sobe usando a magia · a Irmã Lúmina, na Catedral, apaga os talentos por ouro.</p>';
 }
 function grimSVG(me) {
-  const W = 540, H = 586, cx = 270, cy = 300, R = 206, T = TREE.mage, free = Math.max(0, (me.lvl || 1) - 1 - treePts(me));
+  const W = 620, H = 668, cx = 310, cy = 340, R = 240, T = TREE.mage, free = Math.max(0, (me.lvl || 1) - 1 - treePts(me));
   const ang = i => (-90 + i * 72) * Math.PI / 180, pt = (i, r) => [cx + Math.cos(ang(i)) * r, cy + Math.sin(ang(i)) * r], f = n => n.toFixed(1);
   let o = '<svg viewBox="0 0 ' + W + ' ' + H + '" class="grim-svg"><defs>' +
     '<radialGradient id="gWax" cx="38%" cy="32%"><stop offset="0" stop-color="#fff" stop-opacity=".55"/><stop offset=".45" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".35"/></radialGradient>' +
@@ -378,15 +396,15 @@ function grimSVG(me) {
   o += '<circle cx="' + cx + '" cy="' + cy + '" r="' + f(R * 0.25) + '" class="g-ink" stroke-width=".8" stroke-dasharray="2 3"/>';
   // combinações: as de vizinhos nos cruzamentos da estrela; as de pontas opostas no anel do meio
   MAGE_COMBOS.forEach((C, ci) => { const ia = MAGE_EL.findIndex(e => e.k === C.a), ib = MAGE_EL.findIndex(e => e.k === C.b), adj = (ia - ib + 5) % 5 === 1 || (ib - ia + 5) % 5 === 1;
-    let x, y; if (adj) { const lo = (ia - ib + 5) % 5 === 1 ? ib : ia, a = ang(lo) + Math.PI / 5; x = cx + Math.cos(a) * R * 0.382; y = cy + Math.sin(a) * R * 0.382; } else { const mid = [0, 1, 2, 3, 4].find(k => k !== ia && k !== ib && (k - ia + 5) % 5 !== 0 && ((k - ia + 5) % 5 === 1 && (ib - k + 5) % 5 === 1 || (k - ib + 5) % 5 === 1 && (ia - k + 5) % 5 === 1)); const a = ang(mid); x = cx + Math.cos(a) * R * 0.17; y = cy + Math.sin(a) * R * 0.17; }
+    let x, y; if (adj) { const lo = (ia - ib + 5) % 5 === 1 ? ib : ia, a = ang(lo) + Math.PI / 5; x = cx + Math.cos(a) * R * 0.382; y = cy + Math.sin(a) * R * 0.382; } else { const mid = [0, 1, 2, 3, 4].find(k => k !== ia && k !== ib && (k - ia + 5) % 5 !== 0 && ((k - ia + 5) % 5 === 1 && (ib - k + 5) % 5 === 1 || (k - ib + 5) % 5 === 1 && (ia - k + 5) % 5 === 1)); const a = ang(mid); x = cx + Math.cos(a) * R * 0.155; y = cy + Math.sin(a) * R * 0.155; }
     const A = MAGE_EL[ia], B = MAGE_EL[ib], on = GRIM.sel && GRIM.sel.k === 'combo' && GRIM.sel.i === ci, cgot = !!(me.tree && me.tree[C.id]), ceq = cgot && (G.slotTree || []).some(s => s && s.id === C.id), ccan = !cgot && free > 0 && mStr(me, C.a) >= COMBO_NEED && mStr(me, C.b) >= COMBO_NEED;
-    o += '<g class="g-combo' + (ceq ? ' eq' : cgot ? ' got' : ccan ? ' can' : '') + (on ? ' on' : '') + '" data-combo="' + ci + '" transform="translate(' + f(x) + ',' + f(y) + ')"><path d="M0 -10 L10 0 L0 10 Z" fill="' + B.c + '"/><path d="M0 -10 L-10 0 L0 10 Z" fill="' + A.c + '"/><path d="M0 -10 L10 0 L0 10 L-10 0 Z" class="g-ink" stroke-width="1.2"/>' + (cgot ? '<text class="g-cstar" y="3.2">' + (ceq ? '★' : '✦') + '</text>' : '<circle r="2.2" class="g-lockdot"/>') + '</g>'; });
+    o += '<g class="g-combo' + (ceq ? ' eq' : cgot ? ' got' : ccan ? ' can' : '') + (on ? ' on' : '') + '" data-combo="' + ci + '" transform="translate(' + f(x) + ',' + f(y) + ')"><path d="M0 -14 L14 0 L0 14 Z" fill="' + B.c + '"/><path d="M0 -14 L-14 0 L0 14 Z" fill="' + A.c + '"/><path d="M0 -14 L14 0 L0 14 L-14 0 Z" class="g-ink" stroke-width="1.3"/><g class="g-ico" transform="scale(.8)">' + (GRIM_ICO[C.id] || '') + '</g>' + (cgot ? (ceq ? '<circle cx="9.5" cy="-9.5" r="4" class="g-eqdot"/>' : '') : GRIM_LOCK) + '</g>'; });
   o += '<g transform="translate(' + cx + ',' + cy + ')" class="g-center"><circle r="13" class="g-ink" stroke-width="1.2"/><path d="M0 -8 L2.4 -2.4 L8 0 L2.4 2.4 L0 8 L-2.4 2.4 L-8 0 L-2.4 -2.4 Z" class="g-goldfill"/></g>';
   // cada ponta: selo de cera com a magia base e, descendo para o centro, 2 talentos e 3 evoluções
-  T.forEach((br, b) => { const E = MAGE_EL[b], radii = [0.77, 0.645, 0.53, 0.43, 0.335], bp = branchPts(me, br);
+  T.forEach((br, b) => { const E = MAGE_EL[b], radii = [0.79, 0.675, 0.56, 0.445, 0.33], bp = branchPts(me, br);
     br.nodes.forEach((nd, n) => { if (nd.evo) { const [x, y] = pt(b, R * radii[n]), ok = mStr(me, br.el) >= nd.need, si = evoSlotOf(br), eq = G.slotTree && G.slotTree[si] && G.slotTree[si].id === nd.id, on = GRIM.sel && GRIM.sel.k === 'node' && GRIM.sel.b === b && GRIM.sel.n === n;   /* evolução: cadeado até ter a força; acesa quando está na tecla */
-        o += '<g class="g-node' + (ok ? (eq ? ' got' : ' can') : ' soon') + (on ? ' on' : '') + '" data-node="' + b + ',' + n + '" transform="translate(' + f(x) + ',' + f(y) + ')"><circle r="16" class="g-halo" fill="' + E.c + '"/><circle r="10" class="g-disc"' + (eq ? ' style="fill:' + E.c + '"' : '') + '/>' + (ok ? '<text class="g-rank" y="4">' + (eq ? '★' : '✦') + '</text>' : '<path d="M-3.5 -1 v-2.5 a3.5 3.5 0 0 1 7 0 v2.5 M-5 -1 h10 v7 h-10 Z" class="g-lock"/>') + '</g>'; return; }
-      const [x, y] = pt(b, R * radii[n]), r0 = (me.tree && me.tree[nd.id]) | 0, unl = bp >= TREE_REQ[n], can = !nd.soon && unl && free > 0 && r0 < nd.max, on = GRIM.sel && GRIM.sel.k === 'node' && GRIM.sel.b === b && GRIM.sel.n === n, rr = nd.soon ? 9 : 10.5;
+        o += '<g class="g-node' + (ok ? (eq ? ' got' : ' can') : ' soon') + (on ? ' on' : '') + '" data-node="' + b + ',' + n + '" transform="translate(' + f(x) + ',' + f(y) + ')"><circle r="20" class="g-halo" fill="' + E.c + '"/><circle r="13.5" class="g-disc"' + (eq ? ' style="fill:' + E.c + '"' : '') + '/><g class="g-ico">' + (GRIM_ICO[nd.id] || '') + '</g>' + (ok ? '' : GRIM_LOCK) + '</g>'; return; }   /* cada evolução com o seu desenho; cadeado pequeno no canto até ter a força */
+      const [x, y] = pt(b, R * radii[n]), r0 = (me.tree && me.tree[nd.id]) | 0, unl = bp >= TREE_REQ[n], can = !nd.soon && unl && free > 0 && r0 < nd.max, on = GRIM.sel && GRIM.sel.k === 'node' && GRIM.sel.b === b && GRIM.sel.n === n, rr = nd.soon ? 11 : 12.5;
       o += '<g class="g-node' + (nd.soon ? ' soon' : '') + (r0 ? ' got' : '') + (can ? ' can' : '') + (!unl && !nd.soon ? ' locked' : '') + (on ? ' on' : '') + '" data-node="' + b + ',' + n + '" transform="translate(' + f(x) + ',' + f(y) + ')">' +
         '<circle r="' + (rr + 6) + '" class="g-halo" fill="' + E.c + '"/><circle r="' + rr + '" class="g-disc"' + (r0 ? ' style="fill:' + E.c + '"' : '') + '/>' +
         (nd.soon ? '<path d="M-3.5 -1 v-2.5 a3.5 3.5 0 0 1 7 0 v2.5 M-5 -1 h10 v7 h-10 Z" class="g-lock"/>' : '<text class="g-rank" y="4">' + r0 + '/' + nd.max + '</text>') + '</g>'; });
@@ -404,7 +422,12 @@ function grimRender() {
   const head = tree && tree.querySelector('.gp-head span'); if (head) head.textContent = 'Grimório';
   $('tree-pts').textContent = ''; const info = $('tree-info'); if (info) info.style.display = 'none';
   box.innerHTML = '<div class="grim-book"><div class="grim-page grim-l">' + grimSVG(me) + '</div><div class="grim-spine"></div><div class="grim-page grim-r">' + grimPage(me) + '</div></div>';
-  const pick = sel => { GRIM.sel = sel; const r = box.querySelector('.grim-r'); if (r) r.innerHTML = grimPage(me); box.querySelectorAll('.on').forEach(e => e.classList.remove('on')); };
+  box.onchange = ev => { const s = ev.target; if (!s || !s.matches || !s.matches('select.grim-sel')) return; const i = +s.dataset.key, v2 = s.value;   /* troca o que a tecla lança */
+    if (v2 === 'base') { if (!G.slotTree) slotTreeLoad(); G.slotTree[i] = null; slotTreeSave(); buildHotbar(); if (typeof autoSlotsSync === 'function') autoSlotsSync(); showToast(SKILLS.mage[i].name + ' voltou para a tecla ' + (i + 1) + '.'); }
+    else if (v2[0] === 'e') { const [b2, n2] = v2.slice(2).split(',').map(Number), nd2 = TREE.mage[b2].nodes[n2]; slotEquip(i, b2, n2, nd2.id); showToast(nd2.name + ' na tecla ' + (i + 1) + '.'); }
+    else { comboEquip(i, +v2.slice(2)); showToast(MAGE_COMBOS[+v2.slice(2)].n + ' na tecla ' + (i + 1) + '.'); }
+    grimRender(); };
+  const pick = sel => { GRIM.sel = sel; if (document.activeElement && document.activeElement.matches && document.activeElement.matches('select.grim-sel')) return;   /* não redesenha a página enquanto uma lista está aberta */ const r = box.querySelector('.grim-r'); if (r) r.innerHTML = grimPage(me); box.querySelectorAll('.on').forEach(e => e.classList.remove('on')); };
   box.querySelectorAll('[data-base]').forEach(g => { g.addEventListener('mouseenter', () => { pick({ k: 'base', b: +g.dataset.base }); g.classList.add('on'); }); });
   box.querySelectorAll('[data-combo]').forEach(g => { g.addEventListener('mouseenter', () => { pick({ k: 'combo', i: +g.dataset.combo }); g.classList.add('on'); });
     g.addEventListener('click', () => { const ci = +g.dataset.combo, C = MAGE_COMBOS[ci], free = Math.max(0, (me.lvl || 1) - 1 - treePts(me));
@@ -417,7 +440,7 @@ function grimRender() {
       if (nd.evo) { const br = TREE.mage[b], si = evoSlotOf(br); if (mStr(me, br.el) < nd.need) { showToast(nd.name + ': precisa de força ' + nd.need + ' (agora ' + Math.floor(mStr(me, br.el)) + ').'); return; } const eq = G.slotTree && G.slotTree[si] && G.slotTree[si].id === nd.id; slotEquip(si, b, n, eq ? null : nd.id); showToast(eq ? SKILLS.mage[si].name + ' voltou para a tecla ' + (si + 1) + '.' : nd.name + ' na tecla ' + (si + 1) + '.'); grimRender(); return; } if (nd.soon) { showToast(nd.name + ': em breve.'); return; } if (branchPts(me, TREE.mage[b]) < TREE_REQ[n]) { showToast('Gaste ' + TREE_REQ[n] + ' pontos ' + (GRIM_ART[MAGE_EL[b].k] === 'do' ? 'no ' : 'na ') + MAGE_EL[b].n + ' para liberar.'); return; } if (!free) { showToast('Sem pontos livres: suba de nível.'); return; } if (r0 >= nd.max) return; Net.send({ t: 'tlearn', id: nd.id }); }); });
 }
 /* combinada: o jogador escolhe em qual das duas teclas (a de cada elemento) ela entra */
-function comboEquip(si, ci) { if (!G.slotTree) slotTreeLoad(); const C = MAGE_COMBOS[ci]; for (let k = 0; k < G.slotTree.length; k++) if (G.slotTree[k] && G.slotTree[k].id === C.id) G.slotTree[k] = null; if (si >= 0) G.slotTree[si] = { c: ci, id: C.id }; slotTreeSave(); buildHotbar(); }
+function comboEquip(si, ci) { if (!G.slotTree) slotTreeLoad(); const C = MAGE_COMBOS[ci]; for (let k = 0; k < G.slotTree.length; k++) if (G.slotTree[k] && G.slotTree[k].id === C.id) G.slotTree[k] = null; if (si >= 0) G.slotTree[si] = { c: ci, id: C.id }; slotTreeSave(); buildHotbar(); if (typeof autoSlotsSync === 'function') autoSlotsSync(); }
 function comboMenu(ci) {
   const C = MAGE_COMBOS[ci], A = MAGE_EL.find(e => e.k === C.a), B = MAGE_EL.find(e => e.k === C.b), ka = evoSlotOf({ el: C.a }), kb = evoSlotOf({ el: C.b }), cur = (G.slotTree || []).findIndex(s => s && s.id === C.id);
   let d = $('tequip'); if (d) d.remove(); d = document.createElement('div'); d.id = 'tequip'; d.className = 'gpanel';
