@@ -442,6 +442,7 @@ function hostOnClient(from, m) {
     case 'tat': if (typeof tatMsg === 'function') tatMsg(p, m); break;
     case 'vel': if (typeof velMsg === 'function') velMsg(p, m); break;
     case 'casa': if (typeof csMsg === 'function') csMsg(p, m); break;
+    case 'camp': if (typeof cpMsg === 'function') cpMsg(p, m); break;
     case 'duel': duelMsg(p, m); break;
     case 'hipthrow': hipThrow(p); break;
     case 'train': trainMsg(p, m); break;
