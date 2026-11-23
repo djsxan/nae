@@ -465,7 +465,7 @@ function drawStaffFx(ctx, P, now) {
 // ============================================================
 const segNid = r => 'seg_' + r.id;
 function segHire(p, key, C) {
-  const L = segLoad(), list = L[key] || (L[key] = []); if (list.length >= 2) { tell(p, 'No máximo dois seguranças.'); return; }
+  const L = segLoad(), list = L[key] || (L[key] = []); if (list.length >= 5) { tell(p, 'No máximo cinco seguranças.'); return; }
   const d = C.w ? debit(key, p, C.w) : { bank: 0, cofre: 0, gold: 0 }; if (!d) { tell(p, 'A taxa da agência é ' + C.w + ' de ouro (um dia de salário).'); return; }
   const day = estDay(); if (!C.test) { if (!S.empTaken || S.empTaken.day !== day) S.empTaken = { day, set: new Set() }; S.empTaken.set.add(C.i); }
   const mx = C.tr === 'valente' ? 160 : 120, r = { id: (S.estate.empN = (S.estate.empN || 0) + 1) + 's' + (Date.now() % 100000), n: C.n, g: C.g, tr: C.tr, xp: C.xp, w: C.w, look: C.look, mode: 'follow', hp: mx, maxHp: mx, paid: day, warn: 0 };
