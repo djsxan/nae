@@ -63,15 +63,15 @@ function sucTick(now) { if (!S.estate || !castleB()) return; const U = sucRec(),
   if (!S.sucInit) { S.sucInit = 1; sucInitCourt(); }
   if (U.dayT !== day) { U.dayT = day; sucDaily(day); }
   sucCourtFix(); sucCorwynTick(dt);
-  if (U.stage === 'dying' && now >= U.dieAt && csIn(h, SUC.deathHour)) { U.stage = 'death'; U.dead = sucKingName(); U.next = sucLine()[0]; const kn = S.npcs.k_king; if (kn) visGone(kn); U.edricDead = 1;
+  if (U.stage === 'dying' && now >= U.dieAt && csIn(h, SUC.deathHour)) { U.stage = 'death'; U.dead = sucKingName(); if (U.alive[U.king] != null) U.alive[U.king] = 0; U.next = sucLine()[0]; const kn = S.npcs.k_king; if (kn) visGone(kn); U.edricDead = 1;
     sys('🔔 O sino da praça toca sem parar: o ' + U.dead + ' morreu esta noite. Hoje às ' + SUC.funeral[0] + 'h o cortejo leva o caixão do castelo à Catedral; às ' + SUC.corona[0] + 'h, ' + sucName(U.next) + ' será coroado no salão do trono.'); hNews('Morreu o ' + U.dead + '. ' + sucName(U.next) + ' é o próximo na linha de sangue.'); near(CENTER, CENTER, { t: 'shake', s: 1 }, 999); estateSave(); }
   if (U.stage === 'death' && csIn(h, SUC.funeral)) { U.stage = 'funeral'; sucCoffinStart(); }
   if (U.stage === 'funeral') { const cf = S.npcs.k_coffin, [tx, ty] = sucTempleIn(); if (cf) { if (dist(cf.x, cf.y, tx, ty) > 0.5) { cf.walk = !npcWalk(cf, tx, ty, 0.7, dt); } else cf.walk = false; }
-    if (h >= SUC.funeral[1]) { U.stage = 'mourning'; if (cf) visGone(cf); sys('O ' + (U.dead || 'rei') + ' foi sepultado na cripta da Catedral da Aurora.'); } }
+    if (!csIn(h, SUC.funeral)) { U.stage = 'mourning'; if (cf) visGone(cf); sys('O ' + (U.dead || 'rei') + ' foi sepultado na cripta da Catedral da Aurora.'); } }
   if ((U.stage === 'mourning' || U.stage === 'death') && csIn(h, SUC.corona)) { U.stage = 'coronation'; U.cTold = {}; sucApplyKing(U.next || sucLine()[0]); sys('👑 No salão do trono, ' + sucKingName() + ' é coroado diante da corte e dos cinco lordes. Quem estiver lá ganha o favor da coroa.'); hNews(sucKingName() + ' foi coroado.'); }
   if (U.stage === 'coronation') { const b = castleB(), bi = BUILDINGS.indexOf(b);
     for (const p of Object.values(S.players)) { const key = estOwner(p); if (U.cTold[key] || (p.fl || 0) || WORLD.bld[tileAt(p.x, p.y)] !== bi) continue; const [u] = worldToLocal(b, p.x, p.y); if (u < 4 || u > 16) continue; U.cTold[key] = 1; crownFavor(p, SUC.coronFavor, 'esteve na coroação de ' + sucKingName()); }
-    if (h >= SUC.corona[1]) { U.stage = 'done'; estateSave(); } } }
+    if (!csIn(h, SUC.corona)) { U.stage = 'done'; estateSave(); } } }
 if (typeof housesTick === 'function') { const _htS = housesTick; housesTick = function (now) { _htS(now); sucTick(now); }; }
 
 // ---------------- CLIENTE ----------------
