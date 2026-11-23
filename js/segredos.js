@@ -40,9 +40,10 @@ function secMsg(p, m) {   /* devolve true quando a mensagem era daqui */
     else hFavor(p, h.id, Math.round(C.favor * f), 'favor arrancado com um segredo');
     empSay(n, ['Terá o que pede. E eu terei boa memória.', 'Tome. E reze para eu nunca saber de mais nada.', 'Pago. Desta vez.'][Math.floor(Math.random() * 3)]); }
   else { hFavor(p, h.id, -(5 + Math.round(10 * f)), 'tentou chantagear o lorde'); empSay(n, ['Saia da minha casa.', 'Você escolheu mal a quem ameaçar.', 'Ninguém acreditaria em você.'][Math.floor(Math.random() * 3)]); tell(p, h.lord + ' recusou. O segredo ainda serve para um boato ou para vender.'); }
-  if (react) { const r = Math.random(), type = r < 0.4 ? 'thugs' : r < 0.7 ? 'guard' : 'cold';
+  if (react) { const heavy = C.w >= 4 || f >= 0.75, r = Math.random(), type = heavy ? (r < 0.4 ? 'thugs' : r < 0.7 ? 'guard' : 'cold') : (r < 0.5 ? 'guard' : 'cold');   /* capangas só por segredo pesado ou por pedir muito */
     if (type === 'cold') hFavor(p, h.id, -10, 'a casa não esquece');
-    else secPend().push({ o: estOwner(p), h: h.id, type, at: now + 45000 + Math.random() * 75000, n: f >= 0.75 ? 3 : 2 }); }
+    else if (type === 'thugs') secPend().push({ o: estOwner(p), h: h.id, type, at: now + Math.random() * SEC_HIT_DAYS * ESTATE_DAY_MS, n: secThugN(h.id), kill: 1 });   /* tentativa de assassinato: a qualquer hora nos 2 dias seguintes */
+    else secPend().push({ o: estOwner(p), h: h.id, type, at: now + 45000 + Math.random() * 75000, w: C.w, val: what === 'gold' ? Math.round(C.gold * f) : Math.round(C.favor * f) * 15, crown: !!CV_SELL[s.k] }); }
   if (typeof estateSave === 'function') estateSave(); sendStat(p); secBmMenu(p, n); return true; }
 /* ---- rotina das casas: onde cada um vai estar hoje (é isto que permite entrar num casarão na hora certa) ---- */
 const ROUTINE_COST = 30, CV_BUY = 80, CV_SELL = { crown: 55, rel: 55, plan: 55 }, CV_SELL0 = 30;
@@ -62,16 +63,35 @@ function secCorvin(p, m) { const n = S.npcs.k_whisper; if (!n || n.dead || n.dow
   else if (m.op === 'sell') { const s = L[m.i | 0]; if (!s) return; const v = CV_SELL[s.k] || CV_SELL0; L.splice(m.i | 0, 1); p.gold = (p.gold || 0) + v; empSay(n, v > CV_SELL0 ? 'Isto interessa à coroa. Muito.' : 'Fofoca de salão. Mas anoto.'); if (typeof estateSave === 'function') estateSave(); sendStat(p); }
   else if (m.op === 'rt') { const h = HOUSE_BY[m.h]; if (!h) return; if ((p.gold || 0) < ROUTINE_COST) { empSay(n, 'São ' + ROUTINE_COST + ' de ouro pela rotina de uma casa.'); return; } p.gold -= ROUTINE_COST; const R = secRoutine(h.id); for (const t of R) tell(p, t); sendStat(p); secCorvinMenu(p, n, { h: h.id, l: R }); return; }
   secCorvinMenu(p, n); }
+/* ---- troco da chantagem: capangas pelo poder da casa, multa que vira dívida, julgamento ---- */
+const SEC_HIT_DAYS = 2, SEC_FINE_X = 2, SEC_DEATH = 0.5, SEC_JAIL_DAYS = 2, SEC_NOBLE_REP = -10;
+function secThugN(hid) { const pw = hRec().st[hid].power; return pw < 40 ? 2 : pw < 60 ? 3 : 4; }
+function secAvail(key, p) { const A = key && bankLoad().acc[key], bk = A ? Math.max(0, Math.floor(A.g)) : 0, cf = key ? Object.values(estateLoad().r).filter(r => r.owner === key && r.biz && !r.biz._vc).reduce((t, r) => t + Math.max(0, Math.floor(r.biz.cofre)), 0) : 0; return bk + cf + Math.max(0, Math.floor(p.gold || 0)); }
+function secCharge(p, amt) { const key = estOwner(p), take = Math.min(amt, secAvail(key, p)); if (take > 0) debit(key, p, take); return take; }   /* banco, cofre e bolsa, nessa ordem */
+function secCrime(p, k, txt, ms) { if (!CRIME_MS[k]) { CRIME_MS[k] = ms || 150000; CRIME_TXT[k] = txt; } const now = now_(); p.wanted = now + 300000; crimeSentence(p, k); Net.toAll({ t: 'wanted', id: p.id, ms: 300000 }); }
+function secDenounce(p, e) { const h = HOUSE_BY[e.h], R = velRec(), key = estOwner(p);
+  if ((e.w || 2) <= 3) { const fine = SEC_FINE_X * (e.val || 60), paid = secCharge(p, fine), owe = fine - paid; sendStat(p);
+    if (owe > 0) { R.debt = R.debt || {}; R.debt[key] = (R.debt[key] || 0) + owe; secCrime(p, 'extort', 'extorsão'); }
+    tell(p, 'A ' + h.n + ' denunciou você por extorsão: multa de ' + fine + ' de ouro' + (paid ? ' (' + paid + ' descontados do banco, do cofre e da bolsa)' : '') + '.' + (owe > 0 ? ' Faltaram ' + owe + ': a dívida é com a coroa, e você fica procurado até pagar (ela é descontada sozinha quando houver ouro).' : ''));
+    if (typeof estateSave === 'function') estateSave(); return; }
+  const death = !!e.crown && Math.random() < SEC_DEATH; secCrime(p, 'extort', 'extorsão'); repAdd(p, 'nobres', SEC_NOBLE_REP, 'julgado por chantagear uma casa');
+  if (death) { p.murderer = true; p.wanted = now_() + ESTATE_DAY_MS; tell(p, 'A ' + h.n + ' levou a chantagem à corte. Como o segredo tocava a coroa, o julgamento foi duro: se a Guarda te pegar, é a guilhotina.'); }
+  else { p.trialJail = SEC_JAIL_DAYS * ESTATE_DAY_MS; p.wanted = now_() + ESTATE_DAY_MS; tell(p, 'A ' + h.n + ' levou a chantagem à corte. Sentença: ' + SEC_JAIL_DAYS + ' dias do jogo na cadeia quando a Guarda te pegar.'); }
+  if (typeof estateSave === 'function') estateSave(); }
+/* a pena do julgamento vale quando a Guarda prende */
+if (typeof jailPlayer === 'function') { const _jpS = jailPlayer; jailPlayer = function (q, ms, opt) { if (q && q.trialJail) { ms = Math.max(ms || 0, q.trialJail); q.trialJail = 0; } return _jpS(q, ms, opt); }; }
+function secDebtTick(now) { const R = velRec(); if (!R.debt) return; for (const p of Object.values(S.players)) { const key = estOwner(p), d = R.debt[key]; if (!d) continue; const got = secCharge(p, d); if (got) { R.debt[key] -= got; sendStat(p); if (R.debt[key] <= 0) { delete R.debt[key]; p.wanted = 0; Net.toAll({ t: 'wanted', id: p.id, ms: 0 }); tell(p, 'Dívida com a coroa paga (' + got + ' de ouro). Você não é mais procurado.'); } else tell(p, got + ' de ouro descontados da dívida com a coroa. Faltam ' + R.debt[key] + '.'); if (typeof estateSave === 'function') estateSave(); }
+    else if (!(p.wanted > now + 30000) && !(p.jailUntil > now)) { p.wanted = now + 300000; Net.toAll({ t: 'wanted', id: p.id, ms: 300000 }); } } }
 function secThugSpot(p) { for (let k = 0; k < 24; k++) { const a = Math.random() * Math.PI * 2, r = 4 + Math.random() * 3, x = Math.round(p.x + Math.cos(a) * r), y = Math.round(p.y + Math.sin(a) * r); if (x > 2 && y > 2 && x < MAP_W - 3 && y < MAP_H - 3 && WORLD.bld[tileAt(x, y)] < 0 && monStand(x, y, { aggro: 1 })) return [x, y]; } return null; }
 function secTick(now) {
-  if (!S.estate || now - (S.secT || 0) < 1000) return; S.secT = now; const R = velRec(), P = R.pend; if (!P || !P.length) return;
+  if (!S.estate || now - (S.secT || 0) < 1000) return; S.secT = now; const R = velRec(); if (now - (S.secDT || 0) > 10000) { S.secDT = now; secDebtTick(now); } const P = R.pend; if (!P || !P.length) return;
   for (let i = P.length - 1; i >= 0; i--) { const e = P[i]; if (now < e.at) continue; const p = Object.values(S.players).find(q => estOwner(q) === e.o); if (!p) continue;   /* espera o jogador estar no reino */
     if (p.downed || p.jailUntil > now || (p.fl || 0) || (p.fb != null && p.fb >= 0)) { e.at = now + 15000; continue; }
     const h = HOUSE_BY[e.h];
-    if (e.type === 'guard') { p.wanted = now + 300000; if (!CRIME_MS.extort) { CRIME_MS.extort = 150000; CRIME_TXT.extort = 'extorsão'; } crimeSentence(p, 'extort'); Net.toAll({ t: 'wanted', id: p.id, ms: 300000 }); tell(p, 'A ' + h.n + ' denunciou você à Guarda por extorsão. Você está sendo procurado.'); P.splice(i, 1); continue; }
+    if (e.type === 'guard') { secDenounce(p, e); P.splice(i, 1); continue; }
     if (WORLD.bld[tileAt(Math.round(p.x), Math.round(p.y))] >= 0) { e.at = now + 15000; continue; }   /* os capangas esperam você sair para a rua */
     let made = 0; for (let k = 0; k < (e.n || 2); k++) { const sp = secThugSpot(p); if (!sp) continue; const id = S.nextMid++; S.monsters[id] = { id, type: 'bandit', zone: zoneAt(sp[0], sp[1]), x: sp[0], y: sp[1], homeX: sp[0], homeY: sp[1], hp: MON.bandit.hp, nextAtk: 0, stunUntil: 0, slowUntil: 0, taunt: null, aggro: p.id, returning: false, face: 1, path: null, pathT: 0, wander: null, waitUntil: 0, hired: e.h }   /* já vêm atrás do jogador: só assim um bandido entra na cidade */; made++; }
-    if (!made) { e.at = now + 15000; continue; } tell(p, made + ' capangas da ' + h.n + ' vieram cobrar o seu atrevimento.'); P.splice(i, 1); }
+    if (!made) { e.at = now + 15000; continue; } tell(p, e.kill ? made + ' capangas da ' + h.n + ' vieram te matar.' : made + ' capangas da ' + h.n + ' vieram cobrar o seu atrevimento.'); P.splice(i, 1); }
   if (typeof estateSave === 'function') estateSave(); }
 if (typeof velMsg === 'function') { const _vmS = velMsg; velMsg = function (p, m) { if (secMsg(p, m)) return; return _vmS(p, m); }; }
 if (typeof velTick === 'function') { const _vtS = velTick; velTick = function (now) { _vtS(now); secTick(now); }; }

@@ -36,7 +36,19 @@ function cpDone(p, m, extra) { const R = cpRec(), C = R[m]; if (!C || C.st !== '
   if (m === 'y') t += ' A voz ' + cpDe(cpVoiceName(M.voice)) + ' está dobrada.';
   if (m === 'c' && typeof crownFavor === 'function') crownFavor(p, CP.favC, 'trabalho discreto para a coroa');
   if (m === 'y' && (M.k === 'office' || M.k === 'safe')) cpSecOf(p, C.target, 'achado no casarão');
-  tell(p, t); for (const q of Object.values(S.players)) if (q !== p && M.acc.includes(cpKey(q))) tell(q, 'Outra pessoa cumpriu a missão de hoje para ' + cpMasterName(m) + '.'); sendStat(p); cpSendJ(); estateSave(); }
+  tell(p, t); cpCross(p, m, C);
+  for (const q of Object.values(S.players)) if (q !== p && M.acc.includes(cpKey(q))) tell(q, 'Outra pessoa cumpriu a missão de hoje para ' + cpMasterName(m) + '.'); sendStat(p); cpSendJ(); estateSave(); }
+/* trair um mestre: a missão para um atingiu a casa que o outro favorece */
+const CP_BETRAY = 0.3, CP_RECONCILE = 2000;
+function cpCut(m, k) { const R = cpRec(); R.cut = R.cut || { y: {}, c: {} }; return !!R.cut[m][k]; }
+function cpCross(p, m, C) { const R = cpRec(), k = cpKey(p), o = m === 'y' ? 'c' : 'y', O = R[o]; R.worked = R.worked || { y: {}, c: {} }; R.worked[m][k] = 1;
+  if (!R.worked[o][k] || cpCut(o, k)) return; let cross = false;
+  if (m === 'y' && O && O.st === 'run' && O.cand === C.target) cross = true;
+  if (m === 'c' && R.y && R.y.st === 'run' && (R.y.bent || []).includes('l:' + C.target)) cross = true;
+  if (!cross || Math.random() >= CP_BETRAY) return; R.cut[o][k] = 1; const who = o === 'y' ? 'A Dama Ysolde' : 'O Mestre Corvin', hid = C.target, h = HOUSE_BY[hid];
+  if (Math.random() < 0.5) { hFavor(p, hid, -15, 'alguém contou o que você fez contra a casa'); secPend().push({ o: k, h: hid, type: 'thugs', at: now_() + Math.random() * SEC_HIT_DAYS * ESTATE_DAY_MS, n: secThugN(hid), kill: 1 }); tell(p, who + ' descobriu que você trabalhou contra ' + (o === 'y' ? 'ela' : 'ele') + ' e cortou relações. Contou tudo à ' + h.n + ', que agora quer a sua cabeça.'); }
+  else { secCrime(p, 'spy', 'espionagem', 150000); tell(p, who + ' descobriu que você trabalhou contra ' + (o === 'y' ? 'ela' : 'ele') + ', cortou relações e te denunciou à Guarda por espionagem.'); }
+  estateSave(); }
 function cpFail(m, why) { const R = cpRec(), C = R[m]; if (!C || !C.mis || C.mis.st !== 'open') return; C.mis.st = 'fail'; if (m === 'y') C.closed.push(C.mis.voice); cpTellAcc(C, 'A missão de hoje para ' + cpMasterName(m) + ' falhou: ' + why + '. Esse apoio está perdido.'); cpSendJ(); estateSave(); }
 /* fim da campanha: o rei decide por sorteio */
 function cpResolve(m, day) { const R = cpRec(), C = R[m], ch = Math.min(CP.max, CP.base + CP.per * C.pts), win = Math.random() < ch; C.st = 'over'; C.won = win; C.chance = ch;
@@ -85,8 +97,9 @@ function cpInfo(p, m) { const R = cpRec(), C = R[m], day = estDay(), k = cpKey(p
   Net.toOne(p.id, I); }
 function cpMasterNear(p, m) { const R = cpRec(); if (m === 'y') { const n = S.npcs.vl_ysolde || S.npcs.k_dama; return n && dist(p.x, p.y, n.x, n.y) <= 4 && (n.fl || 0) === (p.fl || 0) ? n : null; } const n = R.cvGone ? S.npcs.k_hand : S.npcs.k_whisper; return n && dist(p.x, p.y, n.x, n.y) <= 4 && (n.fl || 0) === (p.fl || 0) ? n : null; }
 function cpMsg(p, m) { if (!S.estate || p.downed) return; const R = cpRec(), day = estDay(), k = cpKey(p), now = now_(), mm = m.m === 'c' ? 'c' : 'y';
-  if (m.a === 'open') { if (!cpMasterNear(p, mm)) return; cpInfo(p, mm); return; }
-  if (m.a === 'accept') { const n = cpMasterNear(p, mm), C = R[mm]; if (!n || !C || C.st !== 'run') return; const M = cpMission(mm, C, day); if (M.st !== 'open' || M.acc.includes(k)) { cpInfo(p, mm); return; }
+  if (m.a === 'open') { if (!cpMasterNear(p, mm)) return; if (cpCut(mm, k)) { Net.toOne(p.id, { t: 'campinfo', m: mm, who: mm === 'y' ? 'Dama Ysolde Verane' : 'Mestre Corvin', cut: 1, cost: CP_RECONCILE }); return; } cpInfo(p, mm); return; }
+  if (m.a === 'reconcile') { const n = cpMasterNear(p, mm); if (!n || !cpCut(mm, k)) return; const got = secAvail(k, p); if (got < CP_RECONCILE) { empSay(n, 'São ' + CP_RECONCILE + ' de ouro. Nem uma moeda a menos.'); return; } debit(k, p, CP_RECONCILE); delete cpRec().cut[mm][k]; sendStat(p); empSay(n, 'Ouro apaga muita coisa. Não tudo. Não me faça arrepender.'); cpInfo(p, mm); estateSave(); return; }
+  if (m.a === 'accept') { const n = cpMasterNear(p, mm), C = R[mm]; if (!n || !C || C.st !== 'run' || cpCut(mm, k)) return; const M = cpMission(mm, C, day); if (M.st !== 'open' || M.acc.includes(k)) { cpInfo(p, mm); return; }
     if (R.acc[k] && R.acc[k][0] === day && R.acc[k][1] !== mm) { empSay(n, 'Você já trabalha para outra pessoa hoje.'); return; }
     if (mm === 'y') { const H = hRec(), v = H.vow[k]; if (!v || ((H.favor[k] || {})[v] || 0) < 10) { empSay(n, 'Volte quando uma casa confiar em você.'); return; } }
     M.acc.push(k); R.acc[k] = [day, mm]; empSay(n, mm === 'y' ? 'Sabia que podia contar com você. Ninguém pode saber.' : 'A coroa agradece. Ou agradeceria, se soubesse.'); cpInfo(p, mm); cpSendJ(); estateSave(); return; }
@@ -118,7 +131,9 @@ if (typeof velSpawn === 'function') { const _vsC = velSpawn; velSpawn = function
   else if (R.ysGone && R.mirela) { const T = VEL_STAFF.find(t => t.id === 'vl_ysolde'); if (T && T.name !== 'Mirela, a Dama da Casa') { T.name = 'Mirela, a Dama da Casa'; T.kind = (VEL_STAFF.find(t => t.id === 'vl_mirela') || {}).kind || T.kind; if (ys) visGone(ys); } const mi = S.npcs.vl_mirela; if (mi) visGone(mi); const iM = VEL_STAFF.findIndex(t => t.id === 'vl_mirela'); if (iM >= 0) VEL_STAFF.splice(iM, 1); }
   else if (R.ysDama) { const atCourt = h >= 8 && h < 12, dm = S.npcs.k_dama; if (atCourt) { if (ys) visGone(ys); if (!dm && typeof castleB === 'function' && castleB()) { const s = typeof throneSeat === 'function' ? throneSeat() : null; if (s) { const v = { id: 'k_dama', kind: 'ysolde', name: 'Dama Ysolde Verane', transient: true, court: 'dama', x: s.x + 1.6, y: s.y + 1.2, z: 0, fl: 0, fb: -1, hp: 300, maxHp: 300, downed: null, dead: false, dir: 0 }; S.npcs[v.id] = v; Net.toAll({ t: 'vspawn', v: visPublic(v) }); } } } else if (dm) visGone(dm); }
   return r; }; }
-if (typeof velMsg === 'function') { const _vmP = velMsg; velMsg = function (p, m) { const R = S.estate && S.estate.camp; if (R && R.ysGone && !R.mirela && (m.a === 'buy' || m.a === 'sell' || m.a === 'rumor')) { tell(p, 'A Casa de Veludo não compra nem vende segredos por enquanto.'); return; } return _vmP(p, m); }; }
+if (typeof velMsg === 'function') { const _vmP = velMsg; velMsg = function (p, m) { const R = S.estate && S.estate.camp; if (R && R.ysGone && !R.mirela && (m.a === 'buy' || m.a === 'sell' || m.a === 'rumor')) { tell(p, 'A Casa de Veludo não compra nem vende segredos por enquanto.'); return; }
+  if (R && !R.ysGone && (m.a === 'buy' || m.a === 'sell' || m.a === 'rumor') && cpCut('y', estOwner(p))) { tell(p, 'A Dama Ysolde não negocia mais com você. Pergunte a ela como voltar às boas.'); return; }
+  if (R && !R.cvGone && m.a === 'cv' && ['buy', 'sell', 'rt'].includes(m.op) && cpCut('c', estOwner(p))) { tell(p, 'O Mestre Corvin não fala mais com você. Pergunte a ele como voltar às boas.'); return; } return _vmP(p, m); }; }
 function cpTick(now) { if (!S.estate || !HOUSES.length) return; const R = cpRec(), day = estDay(); if (R.dayT !== day) { R.dayT = day; cpDaily(day); cpSendJ(); }
   if (R.cvGone && COURT.some(d => d.id === 'k_whisper')) cpCorvinGone();   /* mundo reaberto: o Corvin continua preso */
   S.cpSeenP = S.cpSeenP || {}; for (const id in S.players) if (!S.cpSeenP[id]) { S.cpSeenP[id] = 1; const st = cpState(); Net.toOne(id, st); Net.toOne(id, { t: 'campj', l: cpJFor(S.players[id]) }); }
@@ -138,6 +153,7 @@ if (typeof housesTick === 'function') { const _htP = housesTick; housesTick = fu
 // ---------------- CLIENTE ----------------
 if (typeof COURT_LINES !== 'undefined') COURT_LINES.dama = ['A corte é só uma Casa de Veludo com tronos.', 'Quem diria. Eu, aqui. Sente-se, se a Mão deixar.'];
 function cpPanel(I) { const who = I.who, M = I.mis; let html = '<div class="est-cost">';
+  if (I.cut) { const d = velPanel(who, '<div class="est-cost">“Você trabalhou contra mim. Não tenho mais nada para você.”<br><br>Para voltar às boas: <b>' + I.cost + ' de ouro</b> (do banco, do cofre ou da bolsa).</div><div class="tq-btns"><button class="est-btn" data-rec>Pagar ' + I.cost + ' de ouro</button></div>'); d.querySelector('[data-rec]').onclick = () => Net.send({ t: 'camp', a: 'reconcile', m: I.m }); return; }
   if (I.idle) html += I.over ? '“Por enquanto, nada. Volte outro dia.”' : '“Não tenho trabalho para você agora.”';
   else { html += '<b>Objetivo</b>: ' + I.goal + '.<br><b>Dia ' + I.day + ' de ' + I.days + '</b> · apoios conseguidos: <b>' + I.pts + '</b> · chance hoje: <b>' + I.chance + '%</b>' + (I.voices && I.voices.length ? '<br><b>Vozes dobradas</b>: ' + I.voices.join(', ') : '') + '</div>';
     html += '<div class="vel-sub">Missão de hoje</div><div class="est-cost"><b>' + M.n + '</b>' + (M.h[0] || M.h[1] < 24 ? ' (das ' + M.h[0] + 'h às ' + M.h[1] + 'h)' : ' (a qualquer hora)') + (M.voice ? '<br>Voz que ela vai dobrar: <b>' + M.voice + '</b>' : '') + '<br>Pagamento: <b>' + M.pay + ' de ouro</b>' + (I.m === 'c' ? ' e favor da coroa' : '') + '<br>' + (M.st === 'done' ? (M.byMe ? 'Cumprida por você.' : 'Já foi cumprida hoje.') : M.st === 'fail' ? 'Falhou hoje.' : M.mine ? '<b>Aceita.</b> Veja os detalhes na Jornada (J).' : 'Aberta: quem cumprir primeiro recebe.') + (I.req ? '<br><i>' + I.req + '</i>' : '') + (I.busy ? '<br><i>Você já aceitou a missão do outro mestre hoje.</i>' : ''); }
