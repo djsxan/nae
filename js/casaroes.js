@@ -29,9 +29,9 @@ function csMarketPt(k, who) { return [CENTER - 6 + (k % 5) * 1.3 + who * 0.6, CE
 function csTemplePt(k) { const bi = typeof templeBi === 'function' ? templeBi() : -1, T = bi >= 0 ? bldTiles(bi) : []; if (!T.length) return [CENTER + 12, CENTER + 15]; const t = T[(k * 7 + 3) % T.length]; return [t[0], t[1]]; }
 function csAlert(hid) { return !!(S.csAlert && S.csAlert[hid] === estDay()); }
 /* posto de agora para quem tem rotina nova (cônjuge, criado, guarda de sobreaviso, sono); o resto segue o posto de sempre */
-function csPost(def, n) { const b = csSeat(n.house); if (!b) return null; const h = empHour(), D = csDay(n.house), k = HOUSES.findIndex(x => x.id === n.house), L = (fl, u, v) => { const [x, y] = localToWorld(b, u, v); return { x, y, fl }; };
+function csPost(def, n) { const b = csSeat(n.house); if (!b) return null; const h = empHour(), D = csDay(n.house), k = HOUSES.findIndex(x => x.id === n.house), L = (fl, u, v) => { const [x, y] = seatPt(b, fl, u, v); return { x, y, fl }; };
   n.csSleep = false;
-  if (n.hrole === 'spouse') { const O = CS_SPOUSE[D.spouse]; if (csIn(h, O.h)) { if (D.spouse === 'mass') { const [x, y] = csTemplePt(k); return { x, y, fl: 0, out: 1 }; } if (D.spouse === 'market') { const [x, y] = csMarketPt(k, 0); return { x, y, fl: 0, out: 1 }; } const o = csSeat(D.visitTo); if (o) { const [x, y] = localToWorld(o, 4.6, 6.2); return { x, y, fl: 0, out: 1 }; } }
+  if (n.hrole === 'spouse') { const O = CS_SPOUSE[D.spouse]; if (csIn(h, O.h)) { if (D.spouse === 'mass') { const [x, y] = csTemplePt(k); return { x, y, fl: 0, out: 1 }; } if (D.spouse === 'market') { const [x, y] = csMarketPt(k, 0); return { x, y, fl: 0, out: 1 }; } const o = csSeat(D.visitTo); if (o) { const [x, y] = seatPt(o, 0, 4.6, 6.2); return { x, y, fl: 0, out: 1 }; } }
     if (csSleeping(h, CS.sleep)) n.csSleep = true; return null; }
   if (n.hrole === 'serv') {
     if (csIn(h, CS_SERV.market)) { const [x, y] = csMarketPt(k, 1); return { x, y, fl: 0, out: 1 }; }
@@ -45,9 +45,9 @@ if (typeof hPost === 'function') { const _hpC = hPost; hPost = function (def, n)
 /* andar de verdade pela cidade (antes eles sumiam e reapareciam quando o destino estava longe) */
 if (typeof hMove === 'function') { const _hmC = hMove; hMove = function (n, T, dt) { const b = hSeatB(n.house), bi = BUILDINGS.indexOf(b); n.sleeping = !!n.csSleep && dist(n.x, n.y, T.x, T.y) < 0.6;
   if ((n.fl || 0) !== (T.fl || 0)) {   /* troca de andar só dentro do casarão: a escada fica no térreo, no canto dos fundos */
-    if (n.fl) { const [x, y] = localToWorld(b, 6.5, 1.5); n.x = x; n.y = y; n.fl = 0; n.fb = -1; n.legs = null; n.path = null; return; }
-    if (WORLD.bld[tileAt(n.x, n.y)] === bi) { const [sx, sy] = localToWorld(b, 6.5, 1.5); if (dist(n.x, n.y, sx, sy) < 0.7) { n.x = T.x; n.y = T.y; n.fl = T.fl; n.fb = bi; n.walk = false; n.legs = null; n.path = null; return; } npcWalk(n, sx, sy, 1.1, dt); n.walk = true; return; }
-    const [sx, sy] = localToWorld(b, 6.5, 1.5); npcWalk(n, sx, sy, 1.1, dt); n.walk = true; return; }
+    if (n.fl) { const [x, y] = seatPt(b, 0, 6.5, 1.5); n.x = x; n.y = y; n.fl = 0; n.fb = -1; n.legs = null; n.path = null; return; }
+    if (WORLD.bld[tileAt(n.x, n.y)] === bi) { const [sx, sy] = seatPt(b, 0, 6.5, 1.5); if (dist(n.x, n.y, sx, sy) < 0.7) { n.x = T.x; n.y = T.y; n.fl = T.fl; n.fb = bi; n.walk = false; n.legs = null; n.path = null; return; } npcWalk(n, sx, sy, 1.1, dt); n.walk = true; return; }
+    const [sx, sy] = seatPt(b, 0, 6.5, 1.5); npcWalk(n, sx, sy, 1.1, dt); n.walk = true; return; }
   if (T.fl) { _hmC(n, T, dt); return; }
   const d = dist(n.x, n.y, T.x, T.y); if (d < 0.2) { n.walk = false; n.legs = null; n.path = null; return; }
   if (d < 0.9 && WORLD.bld[tileAt(n.x, n.y)] === WORLD.bld[tileAt(T.x, T.y)]) { _hmC(n, T, dt); return; }
@@ -90,8 +90,8 @@ function csActs(now) { for (const p of Object.values(S.players)) { const A = p.c
   if (A.k === 'ivy' && A.up && !A.checked && now - A.t0 > 1500) { A.checked = 1; const w = Object.values(S.npcs).find(n => !n.dead && !n.downed && !n.sleeping && !(n.fl || 0) && WORLD.bld[tileAt(n.x, n.y)] < 0 && dist(n.x, n.y, p.x, p.y) < 7 && ((n.court === 'house' && n.house === b.seat) || n.kind === 'guard' || n.kind === 'captain')); if (w) { Net.toOne(p.id, { t: 'csact', on: 0 }); csCaught(p, w, b, 'subindo pela hera'); continue; } }   /* quem está na rua de trás pode ver */
   if (now < A.until) continue; p.csAct = null; Net.toOne(p.id, { t: 'csact', on: 0 });
   if (A.k === 'pick') { const B = (S.csBack = S.csBack || {})[A.bi] || (S.csBack[A.bi] = {}); B[String(p.name).trim().toLowerCase()] = now + CS.backOpenMs; let msg = 'A fechadura cedeu: a porta dos fundos da ' + HOUSE_BY[b.seat].n + ' está aberta para você por 1 minuto.'; if (Math.random() < CS.pickBreak) { p.inv.lockpick = (p.inv.lockpick | 0) - 1; if (p.inv.lockpick <= 0) delete p.inv.lockpick; msg += ' A gazua entortou e não serve mais.'; sendStat(p); } csTell(p, msg); csSendLocks(true); }
-  else if (A.k === 'ivy') { if (A.up) { const [x, y] = localToWorld(b, SEAT_WIN[0], SEAT_WIN[1]); csTp(p, x, y, 1, A.bi); csTell(p, 'Você passa pela janela e cai no corredor do 1º andar.'); } else { const [x, y] = localToWorld(b, SEAT_WIN[0], -0.7); csTp(p, x, y, 0, -1); csTell(p, 'Você desce pela hera até a rua de trás.'); } } } }
-function csIvyBase(b) { return localToWorld(b, SEAT_WIN[0], -0.7); }
+  else if (A.k === 'ivy') { if (A.up) { const [x, y] = localToWorld(b, seatWin(b)[0], seatWin(b)[1]); csTp(p, x, y, 1, A.bi); csTell(p, 'Você passa pela janela e cai no corredor do 1º andar.'); } else { const [x, y] = localToWorld(b, ...seatIvyOut(b)); csTp(p, x, y, 0, -1); csTell(p, 'Você desce pela hera até a rua de trás.'); } } } }
+function csIvyBase(b) { return localToWorld(b, ...seatIvyOut(b)); }
 function csBackOut(b) { const d2 = door2Of(b); return [d2.x + DOOR_V[d2.s][0] * 0.9, d2.y + DOOR_V[d2.s][1] * 0.9]; }
 /* o que o criado (ou o Mestre Corvin) conta da rotina de hoje */
 function csRoutine(hid) { const h = HOUSE_BY[hid], D = csDay(hid), L = [], nm = id => HOUSE_BY[id] ? HOUSE_BY[id].n : '';
@@ -113,7 +113,7 @@ function csMsg(p, m) { if (!S.estate || p.downed) return; const now = now_();
   const b = BUILDINGS[m.bi | 0]; if ((m.a === 'pick' || m.a === 'ivy') && (!b || b.deco !== 'seat')) return;
   if (m.a === 'pick') { if (p.csAct) return; const [ox, oy] = csBackOut(b); if ((p.fl || 0) || dist(p.x, p.y, ox, oy) > 1.4) return; if (!(p.inv.lockpick > 0)) { tell(p, 'A porta dos fundos está trancada. Os marginais da cidade vendem gazuas.'); return; }
     p.csAct = { k: 'pick', bi: m.bi | 0, t0: now, until: now + CS.pickMs, x: p.x, y: p.y, fl: 0 }; Net.toOne(p.id, { t: 'csact', on: 1, k: 'pick', ms: CS.pickMs }); return; }
-  if (m.a === 'ivy') { if (p.csAct) return; const up = !!m.up, [bx, by] = csIvyBase(b), [wx, wy] = localToWorld(b, SEAT_WIN[0], SEAT_WIN[1]);
+  if (m.a === 'ivy') { if (p.csAct) return; const up = !!m.up, [bx, by] = csIvyBase(b), [wx, wy] = localToWorld(b, seatWin(b)[0], seatWin(b)[1]);
     if (up ? ((p.fl || 0) || dist(p.x, p.y, bx, by) > 1.3) : ((p.fl || 0) !== 1 || p.fb !== (m.bi | 0) || dist(p.x, p.y, wx, wy) > 1.3)) return;
     p.csAct = { k: 'ivy', up, bi: m.bi | 0, t0: now, until: now + CS.ivyMs, x: p.x, y: p.y, fl: p.fl || 0 }; Net.toOne(p.id, { t: 'csact', on: 1, k: 'ivy', up: up ? 1 : 0, ms: CS.ivyMs }); return; }
   if (m.a === 'serv') { const n = S.npcs[m.id]; if (!n || n.court !== 'house' || n.hrole !== 'serv' || n.dead || n.downed || n.sleeping || dist(n.x, n.y, p.x, p.y) > 3 || (n.fl || 0) !== (p.fl || 0)) return; const hid = n.house, H = hRec(), fav = ((H.favor[estOwner(p)] || {})[hid] || 0);
@@ -131,8 +131,8 @@ if (typeof LOOT !== 'undefined' && !LOOT.lockpick) LOOT.lockpick = { name: 'Gazu
 function csSeatNear(r) { const me = G.me; if (!me || me.downed) return null; let best = null, bd = r; for (const b of BUILDINGS) { if (b.deco !== 'seat') continue; const d = dist(me.x, me.y, b.x + b.w / 2, b.y + b.h / 2); if (d < bd) { bd = d; best = b; } } return best; }   /* o casarão mais perto */
 function csSpot() { const me = G.me, b = csSeatNear(9); if (!b) return null; const bi = BUILDINGS.indexOf(b);
   if (!(me.fl || 0)) { const d2 = door2Of(b), ox = d2.x + DOOR_V[d2.s][0] * 0.9, oy = d2.y + DOOR_V[d2.s][1] * 0.9; if (dist(me.x, me.y, ox, oy) < 1.1) { const open = G.seatL && G.seatL[bi] && G.seatL[bi].b.includes(String(me.name).trim().toLowerCase()); if (open) return null; return { k: 'pick', bi, has: !!(me.inv && me.inv.lockpick > 0) }; }
-    const [bx, by] = localToWorld(b, SEAT_WIN[0], -0.7); if (dist(me.x, me.y, bx, by) < 1.0) return { k: 'ivy', bi, up: 1 }; }
-  else if (me.fl === 1 && me.fb === bi) { const [wx, wy] = localToWorld(b, SEAT_WIN[0], SEAT_WIN[1]); if (dist(me.x, me.y, wx, wy) < 1.0) return { k: 'ivy', bi, up: 0 }; }
+    const [bx, by] = localToWorld(b, ...seatIvyOut(b)); if (dist(me.x, me.y, bx, by) < 1.0) return { k: 'ivy', bi, up: 1 }; }
+  else if (me.fl === 1 && me.fb === bi) { const [wx, wy] = localToWorld(b, seatWin(b)[0], seatWin(b)[1]); if (dist(me.x, me.y, wx, wy) < 1.0) return { k: 'ivy', bi, up: 0 }; }
   return null; }
 function csHint() { if (G.csAct) return G.csAct.k === 'pick' ? 'Forçando a fechadura… não se mexa' : 'Escalando a hera… não se mexa'; const s = csSpot(); if (!s) return ''; if (s.k === 'pick') return s.has ? 'F: forçar a porta dos fundos com a gazua (4 s)' : 'Porta dos fundos trancada: precisa de uma gazua (os marginais vendem)'; return s.up ? 'F: subir pela hera até a janela (5 s; quem passar na rua de trás vê)' : 'F: descer pela hera até a rua de trás (5 s)'; }
 function csF() { if (G.csAct) return true; const s = csSpot(); if (!s) return false; if (s.k === 'pick') { if (!s.has) { showToast('A porta dos fundos está trancada. Os marginais da cidade vendem gazuas.'); return true; } Net.send({ t: 'casa', a: 'pick', bi: s.bi }); return true; } Net.send({ t: 'casa', a: 'ivy', bi: s.bi, up: s.up }); return true; }

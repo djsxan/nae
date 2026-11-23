@@ -1714,7 +1714,7 @@ function drawWorldMap() {
   if (typeof cmNames === 'function') cmNames(x, V, size, seen);   /* nomes de bairros, ruas e prédios (botão Nomes) */
   // lugares da cidade: ícones pequenos e simples na porta (passe o mouse para ver o nome)
   G.mapIcons = []; const R = V.z >= 2.5 ? 7 : V.z >= 1.5 ? 5.5 : 4;
-  BUILDINGS.forEach((b, bi) => { const ic = mapIconOf(b, bi); if (!ic) return; const [dx, dy] = doorTile(b); if (!seen(dx, dy) && !G.dev) return; const [px, py] = P(dx, dy); if (px < -10 || py < -10 || px > size + 10 || py > size + 10) return; mapIcon(x, ic, px, py, R); G.mapIcons.push({ px, py, name: (b.name || (ic === 'home' ? 'Sua casa' : '')) }); });
+  BUILDINGS.forEach((b, bi) => { if (b.lot) return; const ic = mapIconOf(b, bi); if (!ic) return; const [dx, dy] = doorTile(b); if (!seen(dx, dy) && !G.dev) return; const [px, py] = P(dx, dy); if (px < -10 || py < -10 || px > size + 10 || py > size + 10) return; mapIcon(x, ic, px, py, R); G.mapIcons.push({ px, py, name: (b.name || (ic === 'home' ? 'Sua casa' : '')) }); });
   if (G.mapHover) { const h = G.mapHover; x.font = '700 12px "Alegreya Sans SC", sans-serif'; const w = x.measureText(h.name).width + 12; x.fillStyle = 'rgba(42,26,10,0.88)'; x.fillRect(h.px - w / 2, h.py - R - 22, w, 17); x.fillStyle = '#f4e4b8'; x.fillText(h.name, h.px, h.py - R - 13); }
   for (const gt of WORLD.gates) { const gx = (gt.x0 + gt.x1) / 2, gy = gt.vert ? (gt.y0 + gt.y) / 2 : gt.y; if (gt.kind !== 'keep' && seen(gx, gy)) mark(gx, gy, false); }
   // jogadores: todos do reino (os longe vêm da lista que o anfitrião manda a cada 2 s)
@@ -2014,7 +2014,7 @@ function fadeFlash() {
 function prebakeCity(done) {
   if (typeof S3 === 'undefined' || !S3.ok) { done && done(); return; }
   const jobs = [], seen = new Set(), X0 = CASTLE.x0 - 6, X1 = CASTLE.x1 + 6, Y0 = CASTLE.y0 - 6, Y1 = CASTLE.y1 + 6;
-  for (const b of BUILDINGS) { const k = archKey(b) + (b.door || 'S'); if (!seen.has(k)) { seen.add(k); jobs.push(() => { const sp = buildingSprite(b, false); if (sp) { maskOf(sp); silhouette(sp); } }); } }
+  for (const b of BUILDINGS) { if (b.lot) continue; const k = archKey(b) + (b.door || 'S'); if (!seen.has(k)) { seen.add(k); jobs.push(() => { const sp = buildingSprite(b, false); if (sp) { maskOf(sp); silhouette(sp); } }); } }
   for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) {
     if (!inBounds(x, y)) continue;
     const i = y * MAP_W + x, o = WORLD.obj[i];

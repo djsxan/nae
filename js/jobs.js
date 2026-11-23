@@ -42,7 +42,7 @@ function jobsPrompt() {
 // dentro de um negócio, perto do balcão/bancada (onde fica o funcionário)
 function shiftHere() {
   const me = G.me; if (!me || (me.fl || 0) !== 0) return false; /* turno só no térreo, onde ficam os balconistas */ const bi = WORLD.bld[tileAt(me.x, me.y)]; if (bi < 0) return false;
-  for (const id in G.npcs) { const n = G.npcs[id], N = NPCS.find(q => q.id === id); if (!N || N.kind === 'guard' || N.kind === 'broker') continue; if (WORLD.bld[tileAt(N.x, N.y)] === bi && dist(me.x, me.y, N.x, N.y) < 2.6) return true; }
+  for (const id in G.npcs) { const n = G.npcs[id], N = NPCS.find(q => q.id === id); if (!N || N.kind === 'guard' || N.kind === 'broker' || N.transient || /^(h|ph|k|vl|cl|pz|sg)_/.test(id)) continue;   /* moradores e visitantes não oferecem turno */ if (WORLD.bld[tileAt(N.x, N.y)] === bi && dist(me.x, me.y, N.x, N.y) < 2.6) return true; }
   return false;
 }
 // F: retorna true se usou a tecla

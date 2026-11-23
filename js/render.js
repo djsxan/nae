@@ -1015,7 +1015,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   const occTest = (sp, x, y, d, cx0, cx1) => { let mine = false; for (const q of PL) { if (q.d >= d || (cx0 != null && (q.x < cx0 || q.x > cx1))) continue; if (covers(sp, x, y, q.x, q.y)) { q.e._hid = true; if (q.me) mine = true; } } return mine; };
   G.bldDrawn = 0;
   BUILDINGS.forEach((b, bi) => {
-    const p = iso(b.x - 0.5, b.y - 0.5), bx = p.sx + ox, by = p.sy + oy;
+    if (b.lot) return; const p = iso(b.x - 0.5, b.y - 0.5), bx = p.sx + ox, by = p.sy + oy;
     if (bx < -1100 || bx > vw + 1100 || by < -1400 || by > vh + 700) return;
     if (bi === inB) { inside = { b, bi, sx: bx, sy: by }; return; }
     if (G.dev && G.hideKinds && G.hideKinds.includes(b.kind)) return;   /* só para fotos de teste */
@@ -1235,7 +1235,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
 
   // luzes das casas à noite: todas as janelas, lanterna na porta e o cômodo onde você está
   if (day.dark > 0.2) for (const b of BUILDINGS) {
-    if (b.kind === 'stairtower') continue;
+    if (b.kind === 'stairtower' || b.lot) continue;
     const c = iso(b.x + b.w / 2, b.y + b.h / 2), cx = c.sx + ox, cy = c.sy + oy; if (cx < -300 || cx > vw + 300 || cy < -400 || cy > vh + 300) continue;
     const col = b.kind === 'temple' ? '190,210,255' : '255,190,100';
     for (const [wx, wy, wz] of buildingWindows(b)) { const p = iso(wx, wy); G.lights.push({ x: p.sx + ox, y: p.sy + oy - wz, r: 34, c: col, a: 0.9 }); }

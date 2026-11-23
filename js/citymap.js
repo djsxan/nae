@@ -4,15 +4,15 @@
 //  Coordenadas relativas ao centro da cidade (CENTER).
 // ============================================================
 const CM_DISTRICTS = [
-  { n: 'Alto da Catedral', x: -22, y: -24 }, { n: 'Rua Nova', x: -22, y: 11 }, { n: 'Centro', x: -3, y: 8 }, { n: 'Bairro do Mercado', x: 0, y: 24 },
-  { n: 'Bairro Nobre', x: 22, y: -12 }, { n: 'Bairro da Guarda', x: 24, y: 25 }, { n: 'Castelo de Nae', x: -1, y: -17, big: 1 },
-  { n: 'Casas Nobres', x: 41, y: -20 }, { n: 'Rua dos Prazeres', x: 56, y: -2 }, { n: 'Vila do Oeste', x: -68, y: -20 },
+  { n: 'Alto do Banco', x: -22, y: -24 }, { n: 'Rua Nova', x: -22, y: 11 }, { n: 'Centro', x: -3, y: 8 }, { n: 'Bairro do Mercado', x: 0, y: 24 },
+  { n: 'Bairro Nobre', x: 22, y: -12 }, { n: 'Bairro da Guarda', x: 25, y: -27 }, { n: 'Castelo de Nae', x: -1, y: -17, big: 1 },
+  { n: 'Casas Nobres', x: 44, y: 24 }, { n: 'Largo da Catedral', x: 33, y: 12 }, { n: 'Rua dos Prazeres', x: 56, y: -2 }, { n: 'Vila do Oeste', x: -68, y: -20 },
 ];
 const CM_STREETS = [
   { n: 'Avenida Real', a: [0.5, 9], b: [0.5, 30] }, { n: 'Rua do Mercado', a: [-30, 5.5], b: [-10, 5.5] }, { n: 'Rua do Mercado', a: [8, 5.5], b: [30, 5.5] },
   { n: 'Rua Nova', a: [-31, 8.5], b: [-10, 8.5] }, { n: 'Avenida das Bétulas', a: [18.5, -20], b: [18.5, -6] }, { n: 'Beco dos Mercadores', a: [19.5, 4], b: [19.5, 30] },
   { n: 'Rua do Templo', a: [-24, -15.5], b: [-14, -15.5] }, { n: 'Rua do Banco', a: [-24, -29], b: [-24, -18] }, { n: 'Rua de Baixo', a: [-23, 19.5], b: [17, 19.5] },
-  { n: 'Travessa do Norte', a: [14, -23.5], b: [31, -23.5] }, { n: 'Largo do Castelo', a: [-14, -1.5], b: [11, -1.5] },
+  { n: 'Travessa do Norte', a: [14, -23.5], b: [33, -23.5] }, { n: 'Rua das Termas', a: [34, -20.5], b: [62, -20.5] }, { n: 'Rua da Catedral', a: [34, 18.5], b: [62, 18.5] }, { n: 'Rua do Sul', a: [21, 28.5], b: [48, 28.5] }, { n: 'Rua da Pousada', a: [-19, 29.5], b: [0, 29.5] }, { n: 'Largo do Castelo', a: [-14, -1.5], b: [11, -1.5] },
   { n: 'Rua da Muralha Velha', a: [34.5, -29], b: [34.5, 30] }, { n: 'Avenida das Casas', a: [36, 0.5], b: [63, 0.5] }, { n: 'Rua dos Prazeres', a: [48.5, -29], b: [48.5, -4] },
 ];
 const CM_PLAZAS = [{ n: 'Praça do Mercado', x: 0.5, y: 13 }, { n: 'Praça do Chafariz', x: 18, y: -2 }, { n: 'Praça das Casas', x: 42, y: 2.5 }];
@@ -41,7 +41,7 @@ function cmNames(x, V, size, seen) {
   if (z >= 2.6) { for (const s of CM_STREETS) { if (!ok((s.a[0] + s.b[0]) / 2, (s.a[1] + s.b[1]) / 2)) continue; const [ax, ay] = P(s.a[0], s.a[1]), [bx, by] = P(s.b[0], s.b[1]); let ang = Math.atan2(by - ay, bx - ax); if (ang > Math.PI / 2) ang -= Math.PI; if (ang < -Math.PI / 2) ang += Math.PI;
       const len = Math.hypot(bx - ax, by - ay), fs = Math.min(15, 2.6 + z * 1.6); x.font = 'italic 600 ' + fs + 'px Georgia, serif'; if (x.measureText(s.n).width > len * 0.95) continue; x.save(); x.translate((ax + bx) / 2, (ay + by) / 2); x.rotate(ang); halo(s.n, 0, 0, fs, x.font, '#5a3a1e', 0.8, 3); x.restore(); }
     for (const p of CM_PLAZAS) { if (!ok(p.x, p.y)) continue; const [px, py] = P(p.x, p.y), fs = Math.min(15, 3 + z * 1.6); halo(p.n, px, py, fs, 'italic 600 ' + fs + 'px Georgia, serif', '#5a3a1e', 0.8, 3); } }
-  if (z >= 4) BUILDINGS.forEach((b, bi) => { if (!b.name || b.kind === 'house' || b.kind === 'stairtower') return; const [w, h] = [b.w, b.h], cx = b.x + w / 2, cy = b.y + h / 2; if (!G.dev && seen && !seen(cx, cy)) return; const [px, py] = V.P(cx, cy); if (px < -80 || py < -20 || px > size + 80 || py > size + 20) return; const fs = Math.min(12, 2 + z * 1.2); halo(b.name, px, py + 11, fs, '600 ' + fs + 'px "Alegreya Sans SC", Georgia, sans-serif', '#2a1a0a', 0.9, 2.6); });
+  if (z >= 4) BUILDINGS.forEach((b, bi) => { if (!b.name || b.kind === 'house' || b.kind === 'stairtower' || b.lot) return; const [w, h] = [b.w, b.h], cx = b.x + w / 2, cy = b.y + h / 2; if (!G.dev && seen && !seen(cx, cy)) return; const [px, py] = V.P(cx, cy); if (px < -80 || py < -20 || px > size + 80 || py > size + 20) return; const fs = Math.min(12, 2 + z * 1.2); halo(b.name, px, py + 11, fs, '600 ' + fs + 'px "Alegreya Sans SC", Georgia, sans-serif', '#2a1a0a', 0.9, 2.6); });
   x.restore(); }
 /* barra: Nomes, filtros e arrastar */
 (function cmControls() {

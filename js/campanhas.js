@@ -8,7 +8,7 @@ const CP = { start: [3, 6], gap: [3, 6], days: 5, auto: 0.4, base: 0.1, per: 0.0
 const CP_MIS = { thermae: { n: 'Ouvir o lorde nas Termas', h: [16, 18] }, club: { n: 'Embebedar um conselheiro no Clube', h: [19, 21] }, office: { n: 'Roubar uma carta do escritório', h: [0, 24] }, letter: { n: 'Seguir o criado no recado da noite', h: [20, 21] }, safe: { n: 'Plantar uma prova no cofre', h: [0, 24] } };
 const CP_ORDER = { y: ['thermae', 'club', 'office', 'letter', 'safe'], c: ['thermae', 'office', 'club', 'letter', 'safe'] };
 const CP_COUNS = [['k_hand', 'a Mão do Rei'], ['k_coin', 'o Mestre da Moeda'], ['k_maester', 'o Meistre'], ['k_cmd', 'o Comandante da Guarda Real']];
-const CP_DESK = [2, 5.5], CP_SAFE = [6.5, 7.5], CP_CLUBSPOT = [5.6, 5.6];
+const CP_DESK = [2, 5.5], CP_SAFE = [6.5, 7.5], CP_CLUBSPOT = [5.5, 3.5];
 
 // ---------------- SERVIDOR ----------------
 function cpRec() { const E = S.estate; if (!E.camp) { const L = HOUSES.map(h => h.id); for (let i = L.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [L[i], L[j]] = [L[j], L[i]]; } E.camp = { born: estDay(), line: L, y: null, c: null, dama: null, whisper: {}, lastFree: {}, pend: {}, acc: {} }; } return E.camp; }
@@ -109,7 +109,7 @@ function cpMsg(p, m) { if (!S.estate || p.downed) return; const R = cpRec(), day
     if (c < CP.drinks) { empSay(n, ['À sua saúde.', 'Generoso. Muito generoso.', 'Mais uma? Bem... só mais uma.'][Math.min(2, c - 1)]); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'drink', ms: 1500 }); return; }
     empSay(n, 'Vou te contar uma coisa... mas não diga a ninguém que fui eu.'); const Jc = J.find(j => j.k === 'club'); if (Jc) cpDone(p, Jc.m, mm === 'y' ? 'Ele soltou um segredo da corte' : 'Agora você sabe de que lado ele está');
     else tell(p, 'Ele fala, fala... mas nada que interesse hoje.'); return; }
-  if (m.a === 'desk' || m.a === 'safe') { const kk = m.a === 'desk' ? 'office' : 'safe', Jo = J.find(j => j.k === kk); if (!Jo || p.cpAct) return; const b = csSeat(Jo.target), bi = BUILDINGS.indexOf(b), P0 = m.a === 'desk' ? CP_DESK : CP_SAFE, [x, y] = localToWorld(b, P0[0], P0[1]);
+  if (m.a === 'desk' || m.a === 'safe') { const kk = m.a === 'desk' ? 'office' : 'safe', Jo = J.find(j => j.k === kk); if (!Jo || p.cpAct) return; const b = csSeat(Jo.target), bi = BUILDINGS.indexOf(b), P0 = m.a === 'desk' ? CP_DESK : CP_SAFE, [x, y] = seatPt(b, 1, P0[0], P0[1]);
     if ((p.fl || 0) !== 1 || p.fb !== bi || dist(p.x, p.y, x, y) > 1.4 || (seatRoom(b, 1, p.x, p.y) || {}).n !== (m.a === 'desk' ? 'escritório' : 'quarto do casal')) return; const ms = m.a === 'desk' ? CP.deskMs : CP.safeMs; p.cpAct = { k: m.a, m: Jo.m, until: now + ms, x: p.x, y: p.y }; Net.toOne(p.id, { t: 'csact', on: 1, k: m.a, ms }); return; }
   if (m.a === 'pick') { const Jl = J.find(j => j.k === 'letter' && j.m === 'y'); if (!Jl) return; const n = cpServ(Jl.target); if (!n || dist(n.x, n.y, p.x, p.y) > 1.5) { tell(p, 'Longe demais.'); return; } const fc = cpFacing(n, p); if (fc > 0.3) { cpFail('y', n.name.split(',')[0] + ' viu a sua mão no bolso dele'); return; } if (fc > -0.2) { tell(p, 'Assim ele percebe. Chegue por trás.'); return; } cpDone(p, 'y', 'A carta que ele levava está com você'); return; } }
 function cpFacing(n, p) { let hx = n.hx, hy = n.hy; if (hx == null) { const a = (n.dir | 0) * Math.PI / 4; hx = Math.cos(a); hy = Math.sin(a); } const dx = p.x - n.x, dy = p.y - n.y, d = Math.hypot(dx, dy) || 1; return (hx * dx + hy * dy) / d; }   /* 1 = olhando para o jogador, -1 = de costas */
@@ -163,7 +163,7 @@ function cpJHtml() { const L = G.campJ || []; if (!L.length) return ''; return '
 if (typeof updateQuests === 'function' && typeof G !== 'undefined') { const _uqP = updateQuests; updateQuests = function () { _uqP.apply(this, arguments); let d = $('journal-camp'); if (!d) { d = document.createElement('div'); d.id = 'journal-camp'; $('journal').appendChild(d); } d.innerHTML = cpJHtml(); }; }
 function cpSpot() { const me = G.me, L = G.campJ || []; if (!me || me.downed || !L.length) return null;
   for (const j of L) { if (j.st !== 'open') continue; const b = BUILDINGS.find(q => q.seat === j.target); if (!b) continue; const bi = BUILDINGS.indexOf(b);
-    if ((j.k === 'office' || j.k === 'safe') && me.fl === 1 && me.fb === bi) { const P0 = j.k === 'office' ? CP_DESK : CP_SAFE, [x, y] = localToWorld(b, P0[0], P0[1]); if (dist(me.x, me.y, x, y) < 1.3) return { k: j.k === 'office' ? 'desk' : 'safe', bi }; }
+    if ((j.k === 'office' || j.k === 'safe') && me.fl === 1 && me.fb === bi) { const P0 = j.k === 'office' ? CP_DESK : CP_SAFE, [x, y] = seatPt(b, 1, P0[0], P0[1]); if (dist(me.x, me.y, x, y) < 1.3) return { k: j.k === 'office' ? 'desk' : 'safe', bi }; }
     if (j.k === 'letter' && j.m === 'y') { const sv = Object.values(G.npcs).find(e => e.kind === 'hh_serv_' + j.target && !e.npDead); if (sv && Math.hypot(sv.rx - me.x, sv.ry - me.y) < 1.4) return { k: 'pick' }; } }
   return null; }
 function cpHint() { const s = cpSpot(); if (!s) return ''; return s.k === 'desk' ? 'F: procurar a carta na escrivaninha (3 s)' : s.k === 'safe' ? 'F: plantar a prova falsa no cofre (4 s)' : 'F: tirar a carta do bolso dele (só por trás)'; }

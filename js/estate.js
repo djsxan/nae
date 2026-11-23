@@ -183,7 +183,7 @@ function estDrawMap() {
   c.drawImage(G.est.bg, 0, 0);
   const sel = PROPS_BY[G.est.sel], fl = G.est.flash && performance.now() - G.est.flash < 1500;
   BUILDINGS.forEach((b, bi) => {
-    const pts = [[b.x - 0.5, b.y - 0.5], [b.x + b.w - 0.5, b.y - 0.5], [b.x + b.w - 0.5, b.y + b.h - 0.5], [b.x - 0.5, b.y + b.h - 0.5]].map(([x, y]) => pr(x, y));
+    if (b.lot) return; const pts = [[b.x - 0.5, b.y - 0.5], [b.x + b.w - 0.5, b.y - 0.5], [b.x + b.w - 0.5, b.y + b.h - 0.5], [b.x - 0.5, b.y + b.h - 0.5]].map(([x, y]) => pr(x, y));
     c.beginPath(); pts.forEach(([u, v], k) => k ? c.lineTo(u, v) : c.moveTo(u, v)); c.closePath();
     c.fillStyle = estBldColor(b, bi); c.globalAlpha = 0.9; c.fill(); c.globalAlpha = 1;
     c.strokeStyle = sel && sel.bi === bi ? '#fff' : 'rgba(0,0,0,0.5)'; c.lineWidth = sel && sel.bi === bi ? 2 + (fl ? Math.sin(performance.now() / 90) + 1 : 0) : 1; c.stroke();

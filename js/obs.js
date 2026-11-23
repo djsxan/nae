@@ -178,7 +178,7 @@ function obsDraw(now) {
   x.setTransform(1, 0, 0, 1, 0, 0); x.fillStyle = '#2b4a6a'; x.fillRect(0, 0, SZ, SZ);
   x.save(); x.translate(SZ / 2, SZ / 2); x.scale(S, S); x.translate(-V[0], -V[1]); x.imageSmoothingEnabled = false; if (typeof MINI !== 'undefined') x.drawImage(MINI, 0, 0);
   const bst = {}; if (D) for (const b of D.biz) if (b[3] != null) bst[b[3]] = b;
-  BUILDINGS.forEach((b, bi) => { if (b.kind === 'stairtower') return; const kc = OBS_KC[obsKind(bi)], st = OBS.layers.status && bst[bi] && bst[bi][5]; x.fillStyle = (st ? OBS_STC[st] : kc) + 'cc'; x.fillRect(b.x, b.y, b.w, b.h); x.strokeStyle = kc; x.lineWidth = 0.45; x.strokeRect(b.x + 0.2, b.y + 0.2, b.w - 0.4, b.h - 0.4); });
+  BUILDINGS.forEach((b, bi) => { if (b.kind === 'stairtower' || b.lot) return; const kc = OBS_KC[obsKind(bi)], st = OBS.layers.status && bst[bi] && bst[bi][5]; x.fillStyle = (st ? OBS_STC[st] : kc) + 'cc'; x.fillRect(b.x, b.y, b.w, b.h); x.strokeStyle = kc; x.lineWidth = 0.45; x.strokeRect(b.x + 0.2, b.y + 0.2, b.w - 0.4, b.h - 0.4); });
   if (OBS.sel && OBS.sel.k === 'b') { const b = BUILDINGS[OBS.sel.bi]; if (b) { x.strokeStyle = '#fff'; x.lineWidth = 0.6; x.strokeRect(b.x - 0.4, b.y - 0.4, b.w + 0.8, b.h + 0.8); } }
   x.restore();
   x.globalCompositeOperation = 'multiply'; x.fillStyle = 'rgba(230,205,160,0.5)'; x.fillRect(0, 0, SZ, SZ); x.globalCompositeOperation = 'source-over';

@@ -3747,7 +3747,7 @@ function estateTick(now) {
   const E = estateLoad(), day = estDay();
   if (gameNow() - (S.bizT || 0) >= BIZ_HOUR_MS || gameNow() < (S.bizT || 0)) { S.bizT = gameNow(); bizHour(now); }
   for (const pid of Object.keys(E.r)) {
-    const r = E.r[pid], P = PROPS_BY[pid], owed = Math.floor((day - r.paid) / RENT_DAYS); if (owed <= 0) continue;   // semanas vencidas
+    const r = E.r[pid], P = PROPS_BY[pid]; if (!P) { estateEnd(pid, 'O imóvel que era seu deixou de existir na reforma da cidade. O que você pagou voltou para a sua bolsa.', (r.price || 0) + (r.dep || 0)); continue; } const owed = Math.floor((day - r.paid) / RENT_DAYS); if (owed <= 0) continue;   // semanas vencidas
     const due = (r.mode === 'own' ? 1 : P.rent) * RENT_DAYS, q = ownerOnline(r);
     if (r.mode === 'own' && tenantsOf(P).length && !(E.evict || {})[pid] && r.tenPaid !== r.paid) { r.tenPaid = r.paid; const v = P.week * owed, BK = bankLoad(), A = BK.acc[r.owner] || (BK.acc[r.owner] = { g: 0, loan: 0, due: 0, wk: estDay() }); A.g += v; bankSave(); if (q) tell(q, 'Os inquilinos de ' + P.name + ' pagaram ' + v + ' de ouro de aluguel: foi direto para a sua conta no banco.'); }   /* aluguel dos inquilinos vai para o banco */
     if (!q) {   // dono fora do jogo: paga do banco e do cofre do negócio

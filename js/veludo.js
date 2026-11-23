@@ -8,17 +8,17 @@
 // ============================================================
 const CLUB_FEE = 30, CLUB_BETS = [20, 50, 100, 200, 300], CLUB_MAXDAY = 12, CLUB_HOURS = [19, 21];
 const VL_WINE = 15, VL_COMPANY = 60, VL_SECRET = 80, VL_SELL = 40, VL_SHOW = [20, 24], VL_HOURS = [21, 24], VL_SHOW_SECS = 20, SEC_MAX = 12;
-const CLUB_SPOTS = [[6.6, 4.5], [6.6, 5.6], [4.5, 6.5], [5.6, 3.6], [3.5, 6.5]], VL_SPOTS = [[1.5, 3.6], [1.5, 6.6], [10.5, 3.6], [10.5, 6.5], [1.5, 7.5]];
+const CLUB_SPOTS = [[4.5, 3.5], [2.5, 3.5], [5.5, 5.5], [4.5, 6.5], [6.5, 3.5]], VL_SPOTS = [[1.5, 3.0], [1.5, 6.0], [10.5, 3.0], [10.5, 6.0], [2.5, 6.5]];
 const VEL_STAFF = [
-  { id: 'cl_anselmo', b: 'club', kind: 'butler', name: 'Anselmo, o Mordomo do Clube', at: [5.6, 7.5], menu: 'club' },
+  { id: 'cl_anselmo', b: 'club', kind: 'butler', name: 'Anselmo, o Mordomo do Clube', at: [2.5, 6.6], menu: 'club' },
   { id: 'cl_hugo', b: 'club', kind: 'dealer', name: 'Mestre Hugo, da Mesa dos Dados', at: [3.5, 4.6], menu: 'bet' },
   { id: 'vl_ysolde', b: 'velvet', kind: 'ysolde', name: 'Dama Ysolde Verane', at: [6, 0.75], menu: 'ysolde' },
-  { id: 'vl_mirela', b: 'velvet', kind: 'vl_host', name: 'Mirela, a Anfitriã', at: [7.4, 11.4], menu: 'host' },
-  { id: 'vl_jade', b: 'velvet', kind: 'vl_barmaid', name: 'Jade, do Balcão', at: [1.5, 10.5], menu: 'bar' },
-  { id: 'vl_lis', b: 'velvet', kind: 'vl_comp1', name: 'Lis', at: [1.5, 4.6], menu: 'comp' },
+  { id: 'vl_mirela', b: 'velvet', kind: 'vl_host', name: 'Mirela, a Anfitriã', at: [7.4, 9.5], menu: 'host' },
+  { id: 'vl_jade', b: 'velvet', kind: 'vl_barmaid', name: 'Jade, do Balcão', at: [1.5, 7.2], menu: 'bar' },
+  { id: 'vl_lis', b: 'velvet', kind: 'vl_comp1', name: 'Lis', at: [1.5, 4.5], menu: 'comp' },
   { id: 'vl_dalia', b: 'velvet', kind: 'vl_comp2', name: 'Dália', at: [10.5, 7.5], menu: 'comp' },
-  { id: 'vl_d1', b: 'velvet', kind: 'vl_dancer1', name: 'Safira, dançarina', at: [8.9, 10.7], show: 1 },
-  { id: 'vl_d2', b: 'velvet', kind: 'vl_dancer2', name: 'Ambar, dançarina', at: [10.1, 11.2], show: 1 },
+  { id: 'vl_d1', b: 'velvet', kind: 'vl_dancer1', name: 'Safira, dançarina', at: [8.9, 8.7], show: 1 },
+  { id: 'vl_d2', b: 'velvet', kind: 'vl_dancer2', name: 'Ambar, dançarina', at: [10.1, 9.2], show: 1 },
 ];
 
 // ---------------- SERVIDOR ----------------
