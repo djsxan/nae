@@ -848,3 +848,6 @@ body.touch #pplbtn { bottom: auto; top: 54px; right: calc(10px + env(safe-area-i
 .vel-panel.win .vel-res { color: #b9e08a; } .vel-panel.lose .vel-res { color: #e8a08a; } .vel-res { text-align: center; }
 #vel-fade { position: fixed; inset: 0; z-index: 99990; background: #050304; opacity: 0; transition: opacity 1s ease; display: flex; align-items: center; justify-content: center; text-align: center; color: #e8d2b0; font-family: Georgia, serif; font-size: 22px; line-height: 1.6; pointer-events: all; } #vel-fade.on { opacity: 1; } #vel-fade small { font-size: 15px; opacity: .7; font-style: italic; }
 .vel-sec .est-btn small { display: block; }
+
+/* Jornada: rotinas anotadas dos casarões */
+.cs-note { margin: 6px 0 10px; font-size: 13px; line-height: 1.4; } .cs-note ul { margin: 4px 0 0 18px; padding: 0; }

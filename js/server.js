@@ -205,7 +205,7 @@ function hostOnClient(from, m) {
     Net.toOne(from, { t: 'welcome', you: from, x: np.x, y: np.y, z: np.z || 0, fl: np.fl || 0, fb: np.fb ?? -1, players: Object.values(S.players).map(pinfo), objs: S.objMods || {} });
     tubSendAll(from); if (typeof empWelcome === 'function') empWelcome(from);
     Net.toOthers({ t: 'pinfo', p: pinfo(np) }, from);
-    setTimeout(() => { if (S.players[from] && S.npcs) Net.toOne(from, { t: 'vlist', list: Object.values(S.npcs).filter(n => n.transient).map(visPublic) }); if (S.players[from] && S.estate && typeof tatNpcAll === 'function') Net.toOne(from, tatNpcAll()); if (S.npSent) delete S.npSent[from];   /* agora que ele conhece todos os NPCs, as linhas vão todas de novo */ }, 600);
+    setTimeout(() => { if (S.players[from] && S.npcs) Net.toOne(from, { t: 'vlist', list: Object.values(S.npcs).filter(n => n.transient).map(visPublic) }); if (S.players[from] && S.estate && typeof tatNpcAll === 'function') Net.toOne(from, tatNpcAll()); if (S.players[from] && S.seatL) Net.toOne(from, { t: 'seatL', L: S.seatL }); if (S.npSent) delete S.npSent[from];   /* agora que ele conhece todos os NPCs, as linhas vão todas de novo */ }, 600);
     sendStat(np);
     sys(`${np.name}, ${CLASSES[cls].name}, chegou à Cidadela de Nae.`);
     if (S.coins && Object.keys(S.coins).length) setTimeout(() => Net.toOne(from, { t: 'coins', add: Object.values(S.coins).map(c => ({ ...c, d: 0 })) }), 1200);
@@ -441,6 +441,7 @@ function hostOnClient(from, m) {
     case 'praz': if (typeof prazMsg === 'function') prazMsg(p, m); break;
     case 'tat': if (typeof tatMsg === 'function') tatMsg(p, m); break;
     case 'vel': if (typeof velMsg === 'function') velMsg(p, m); break;
+    case 'casa': if (typeof csMsg === 'function') csMsg(p, m); break;
     case 'duel': duelMsg(p, m); break;
     case 'hipthrow': hipThrow(p); break;
     case 'train': trainMsg(p, m); break;
@@ -476,7 +477,7 @@ function handleMove(p, m) {
   const dt = Math.min(3, (now - p.lastMv) / 1000);   /* tolera até 3 s de atraso da rede */
   const maxStep = PLAYER_SPEED * (m.sl || now < (p.dodgeAllow || 0) ? RUN_MUL * 2.6 : m.r ? RUN_MUL * 1.5 : 1.7) * (dt + 0.25) + 0.4;
   const ok = dist(p.x, p.y, x, y) <= maxStep && canStandZ(x, y, z, 0.18, p.fl || 0, p.fb ?? -1) && Math.abs(z - (+m.z || 0)) < 0.45 && !(p.kjail && typeof kjailBlocked === 'function' && kjailBlocked(p, x, y));
-  if (!ok || estateBlocked(p.name, p.x, p.y, x, y, S.estateL) || ((p.fl || 0) !== 0 && p.fb >= 0 && !p.dev && aptBlocked(p.name, p.fb, p.fl, p.x, p.y, x, y, S.estateL))) {
+  if (!ok || estateBlocked(p.name, p.x, p.y, x, y, S.estateL) || (!p.dev && typeof seatBlocked === 'function' && seatBlocked(p.name, p.x, p.y, x, y, S.seatL)) || ((p.fl || 0) !== 0 && p.fb >= 0 && !p.dev && aptBlocked(p.name, p.fb, p.fl, p.x, p.y, x, y, S.estateL))) {
     const far = dist(p.x, p.y, x, y), lagOnly = far > maxStep && far < 10 && canStandZ(x, y, z, 0.18, p.fl || 0, p.fb ?? -1) && Math.abs(z - (+m.z || 0)) < 0.45 && !estateBlocked(p.name, p.x, p.y, x, y, S.estateL);
     if (lagOnly) return;   /* passo longo só por atraso: ignora (o próximo, com mais tempo passado, é aceito) em vez de puxar o jogador de volta */
     Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: p.z, fl: p.fl || 0, fb: p.fb ?? -1 }); return; }

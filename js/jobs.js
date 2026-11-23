@@ -22,6 +22,7 @@ function jobsPrompt() {
   if (typeof segNear === 'function' && segNear()) return segPrompt();   /* seus empregados: o F abre as ordens */
   if (typeof entLogNear === 'function' && entLogNear()) return 'F: recolher o galho (lenha)';
   if (G.riding) return 'F: descer da guardiã';
+  if (typeof csHint === 'function' && csHint()) return csHint();
   if (typeof velHint === 'function' && velHint()) return velHint();
   if (typeof tatNear === 'function' && tatNear()) return G.me.tatInk ? 'Tatuando… não se mexa' : 'F: falar com o Velho Tibúrcio (tatuagens)';
   if (typeof prazNear === 'function' && prazNear()) return 'F: falar com Lívia, a Banhista (entrada das Termas)';

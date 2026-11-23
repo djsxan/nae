@@ -12,6 +12,7 @@ const COURT = [
   { id: 'k_hand', kind: 'k_hand', name: 'Lorde Osric Vane, a Mão do Rei', role: 'hand', day: [0, 7.4, 2.4], off: [2, 3.5, 15] },
   { id: 'k_herald', kind: 'k_herald', name: 'Mestre Bram, o Arauto', role: 'herald', day: [0, 10.5, 14.5], off: [0, 17.5, 12.5] },
   { id: 'k_maester', kind: 'k_maester', name: 'Meistre Aldous', role: 'maester', day: [2, 14.5, 3.5], off: [2, 14.5, 3.5] },
+  { id: 'k_whisper', kind: 'k_whisper', name: 'Mestre Corvin, o Mestre dos Sussurros', role: 'whisper', day: [0, 5.4, 3.6], off: [2, 5.5, 14.5] },
   { id: 'k_coin', kind: 'k_coin', name: 'Lorde Cassian Merrow, o Mestre da Moeda', role: 'coin', day: [2, 14.5, 8.5], off: [2, 14.5, 8.5] },
   { id: 'k_cmd', kind: 'k_cmd', name: 'Sor Gareth Holt, Comandante da Guarda Real', role: 'cmd', day: [0, 12.6, 2.6], off: [0, 2.5, 9.5] },
   { id: 'k_prince', kind: 'k_prince', name: 'Príncipe Alaric Aurenfell', role: 'prince', day: [0, 'yard', -1, -8], off: [4, 2.5, 3] },
@@ -141,6 +142,7 @@ if (typeof NPC_LOOKS !== 'undefined' && typeof heroLook === 'function') {
     k_hand: () => robe('#2a2a34', '#14141a', '#c9a24a', { hair: tone('#5a4a3a'), beard: tone('#4a3a2a'), hairStyle: 'short' }),
     k_herald: () => robe('#9a2a1c', '#e2b74e', '#f1cf6a', { head: 'cap', hair: tone('#3a2a1e') }),
     k_maester: () => robe('#5a5a5e', '#3a3a3e', '#a8a8b0', { hair: tone('#9a9890'), beard: tone('#b8b6ae'), beardLong: 1, bald: 1 }),
+    k_whisper: () => robe('#2a2236', '#15111c', '#8a7ab0', { hair: tone('#3a3a40'), hairStyle: 'short', beard: tone('#3a3a40'), beardStyle: 'goatee' }),   /* Mestre Corvin: roxo-escuro, discreto */
     k_coin: () => robe('#2c4a3a', '#1a2c22', '#e2b74e', { hair: tone('#2a1e14'), hairStyle: 'short', beard: tone('#2a1e14') }),
     k_cmd: () => Object.assign(heroLook('knight', 'iron', '#e8e4d8'), { head: 'none', hair: tone('#6a5a4a'), hairStyle: 'short', beard: tone('#7a6a5a'), cape: true, capeTone: tone('#9a2a1c'), weapon: 'sword', shield: null, pauldron: 'round', scar: true }),
     k_prince: () => Object.assign(heroLook('knight', 'iron', '#9a2a1c'), { head: 'circlet', hair: tone('#c8a060'), hairStyle: 'short', beard: null, cape: true, capeTone: tone('#9a2a1c'), weapon: 'sword', shield: null }),
@@ -152,7 +154,7 @@ if (typeof NPC_LOOKS !== 'undefined' && typeof heroLook === 'function') {
     k_torturer: () => Object.assign(heroLook('knight', 'iron', '#1a1a1a'), { armor: 'vest', body: tone('#1a1a1a'), head: 'hood', hair: tone('#1a1a1a'), beard: null, weapon: 'axe', shield: null, cape: false }),
     k_guard: () => Object.assign(heroLook('knight', 'iron', '#e8d8a8'), { head: 'helm', cape: true, capeTone: tone('#9a2a1c'), weapon: 'spear', shield: null, beard: tone('#5a4a3a') }),
   });
-  if (typeof NPC_CLS !== 'undefined') Object.assign(NPC_CLS, { k_king: 'mage', k_hand: 'mage', k_herald: 'mage', k_maester: 'mage', k_coin: 'mage', k_princess: 'mage', k_cmd: 'knight', k_prince: 'knight', k_jailer: 'knight', k_torturer: 'knight', k_guard: 'knight', k_cook: 'archer', k_maid: 'archer', k_page: 'archer' });
+  if (typeof NPC_CLS !== 'undefined') Object.assign(NPC_CLS, { k_king: 'mage', k_hand: 'mage', k_herald: 'mage', k_maester: 'mage', k_whisper: 'mage', k_coin: 'mage', k_princess: 'mage', k_cmd: 'knight', k_prince: 'knight', k_jailer: 'knight', k_torturer: 'knight', k_guard: 'knight', k_cook: 'archer', k_maid: 'archer', k_page: 'archer' });
 }
 if (typeof G !== 'undefined') G.crownTtl = G.crownTtl || {};
 if (typeof progEvent === 'function' && typeof G !== 'undefined') { const _peC = progEvent; progEvent = function (m, now) {
@@ -162,7 +164,7 @@ if (typeof progEvent === 'function' && typeof G !== 'undefined') { const _peC = 
   return _peC(m, now); }; }
 function courtNear() { const me = G.me; if (!me) return null; let best = null, bd = 2.4; for (const id in G.npcs) { const e = G.npcs[id]; if (!e.kind || !e.kind.startsWith('k_') || e.dead) continue; if ((e.fl || 0) !== (me.fl || 0)) continue; const d = Math.hypot(e.rx - me.x, e.ry - me.y); if (d < bd) { bd = d; best = e; } } return best; }
 function courtPrompt() { const e = courtNear(); return e ? 'F: falar com ' + e.name : ''; }
-const COURT_LINES = { prince: ['Um dia esse trono será meu... se meu pai deixar.', 'Treino todo dia. A Mão do Rei diz que é perda de tempo.'], princess: ['A biblioteca é o único lugar quieto deste castelo.', 'Meu pai piora a cada dia. O meistre não diz nada.'], servant: ['Com licença, tenho muito o que fazer.', 'A cozinha não para nunca.', 'Se a governanta me pega parada...'], torturer: ['Ninguém mente aqui embaixo por muito tempo.', 'Saia, antes que eu ache um uso para você.'], guard: ['Circulando.', 'Arma guardada perto do rei.', 'A luz não se curva.'], cmd: [] };
+const COURT_LINES = { whisper: ['Os muros deste castelo têm ouvidos. A maioria é minha.', 'Sirvo ao rei. Todos servimos, não é?'], prince: ['Um dia esse trono será meu... se meu pai deixar.', 'Treino todo dia. A Mão do Rei diz que é perda de tempo.'], princess: ['A biblioteca é o único lugar quieto deste castelo.', 'Meu pai piora a cada dia. O meistre não diz nada.'], servant: ['Com licença, tenho muito o que fazer.', 'A cozinha não para nunca.', 'Se a governanta me pega parada...'], torturer: ['Ninguém mente aqui embaixo por muito tempo.', 'Saia, antes que eu ache um uso para você.'], guard: ['Circulando.', 'Arma guardada perto do rei.', 'A luz não se curva.'], cmd: [] };
 function courtMenu(m) {
   if (!m.role) return; const s = m.s || {}, opt = (o, ic, t, sub, extra) => '<button class="lift-btn" data-o="' + o + '"' + (extra || '') + '><span class="lift-n">' + ic + '</span><span><b>' + t + '</b><br><small>' + sub + '</small></span></button>';
   const tt = s.title ? CROWN_TITLES[s.title].n : 'sem título', head = '<div style="padding:8px 14px 0;font-size:14px;opacity:.85">Favor da coroa: <b>' + s.favor + '</b> · ' + tt + (s.vow ? ' · vassalo Aurenfell' : '') + '</div>';

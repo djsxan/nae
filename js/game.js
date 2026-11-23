@@ -1118,6 +1118,7 @@ window.addEventListener('keydown', e => {
   if (k === 'f' && !e.repeat && typeof leverNear === 'function' && leverNear()) { Net.send({ t: 'tub' }); return; }
   if (k === 'f' && !e.repeat && typeof ofuroNear === 'function' && ofuroNear()) { bathEnter(); return; }
 
+  if (k === 'f' && !e.repeat && typeof csF === 'function' && csF()) return;   /* casarões: gazua na porta dos fundos, hera da janela */
   if (k === 'f' && !e.repeat && typeof velNear === 'function' && velNear()) { Net.send({ t: 'vel', a: 'talk', id: velNear().id }); return; }   /* Clube e Casa de Veludo */
   if (k === 'f' && !e.repeat && typeof tatNear === 'function' && tatNear()) { Net.send({ t: 'tat', a: 'open' }); return; }   /* o tatuador */
   if (k === 'f' && !e.repeat && typeof prazNear === 'function' && prazNear()) { Net.send({ t: 'praz', a: 'open' }); return; }   /* Lívia, das Termas */

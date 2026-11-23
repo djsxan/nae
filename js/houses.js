@@ -14,7 +14,7 @@ const HOUSES = [
 ];
 const HOUSE_BY = Object.fromEntries(HOUSES.map(h => [h.id, h]));
 /* moradores: papel, posto de dia e de noite no casarão ([andar, u, v] no quadro local) ou 'door' (na frente da porta) / 'plaza' (na praça) */
-const HROLES = [['lord', [0, 3, 2], [1, 2, 1.5]], ['spouse', [1, 4, 3], [1, 3, 1.5]], ['heir', ['plaza'], [2, 2, 2]], ['serv', [0, 5, 4], [0, 1.5, 4.5]], ['guard', ['door', -1], ['door', -1]], ['guard', ['door', 1], ['door', 1]]];
+const HROLES = [['lord', [0, 1.6, 4.8], [1, 6.5, 5]], ['spouse', [1, 3.5, 4], [1, 3.6, 5.5]], ['heir', ['plaza'], [2, 4.5, 3.5]], ['serv', [0, 1.5, 1.5], [0, 4.3, 1.6]], ['guard', ['door', -1], ['door', -1]], ['guard', ['door', 1], ['door', 1]]];   /* lorde no salão de dia e no quarto do casal à noite; cônjuge no quarto; herdeiro no sótão; criado na cozinha e no quarto dele */
 function hSeatB(id) { return BUILDINGS.find(b => b.seat === id); }
 function hRec() { S.estate.houses = S.estate.houses || { day: 0, st: {}, favor: {}, vow: {}, task: {}, news: [] }; const H = S.estate.houses; for (const h of HOUSES) if (!H.st[h.id]) H.st[h.id] = Object.assign({ rel: {} }, h.st); return H; }
 function hNews(t) { const H = hRec(); H.news.unshift([estDay(), t]); H.news.length = Math.min(H.news.length, 20); }

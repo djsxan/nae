@@ -13,7 +13,7 @@ const NPC_HAIRS = ['#141110', '#2a1c12', '#4a3424', '#6a3a22', '#8a4a22', '#a856
 function npcSeedOf(str) { let h = 2166136261; for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); } return h >>> 0; }
 function npcSeedRng(seed) { let a = seed >>> 0; return () => { a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
 /* desenhados à mão (rei, corte, lordes, figuras conhecidas): só mudam um pouco de altura e de peso */
-const NPC_HAND = k => /^(k_king|k_hand|k_herald|k_maester|k_coin|k_cmd|k_prince|k_princess|k_torturer|priest|innkeeper|captain|st_witch|st_dojo|masseur|v_maiko|tattooist|ysolde|butler)$/.test(k) || /^h[hb]_(lord|spouse|heir)_/.test(k);
+const NPC_HAND = k => /^(k_whisper|k_king|k_hand|k_herald|k_maester|k_coin|k_cmd|k_prince|k_princess|k_torturer|priest|innkeeper|captain|st_witch|st_dojo|masseur|v_maiko|tattooist|ysolde|butler)$/.test(k) || /^h[hb]_(lord|spouse|heir)_/.test(k);
 /* quem usa uniforme e pode ter prótese: sentinelas, guardas, criados, mensageiros, gente da rua */
 const NPC_ROUGH = k => /^(guard|k_guard|hh_guard_|hh_serv_|v_|courier|smith|gardener|jailer|executioner|supplier|bankporter|st_saw|st_mine|st_carp|st_wheat|k_jailer|k_page|k_cook|crier|barefoot|cupbearer)/.test(k);
 function npcTraits(L, kind, nid) {

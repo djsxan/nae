@@ -89,7 +89,8 @@
     <h2>Em breve</h2>
     <p class="era-meta">Ideias e pedidos em andamento — podem mudar.</p>
     <div class="soon">
-      <div><h4>Segredos em uso</h4><p>Chantagem, boatos e missões de espionagem com a Dama Ysolde e o Mestre Corvin.</p></div>
+      <div><h4>Campanhas dos mestres</h4><p>Missões de espionagem da Dama Ysolde (quer ser nomeada Dama) e do Mestre Corvin (quer escolher o próximo rei), com invasões aos casarões.</p></div>
+      <div><h4>Sucessão ao trono</h4><p>Linha de sangue, morte do rei, tramas, rebelião e cerco ao castelo.</p></div>
       <div><h4>Cobranças</h4><p>Seguranças cobrando dívidas para você.</p></div>
       <div><h4>Mais insumos para os negócios</h4><p>Taverna e forja recebendo mais coisas das oficinas e novas receitas (a padaria já usa trigo e frutas).</p></div>
       <div><h4>Interiores sem atrapalhar a vista</h4><p>Escolha definitiva de como os prédios da frente aparecem quando você está dentro de uma casa.</p></div>
@@ -263,12 +264,13 @@ const ERAS = [
       ['1.102.3', 'Rede Leve', '21/11', 'O anfitrião passa a enviar a cada jogador só os NPCs que mudaram (com reenvio de segurança a cada 2 s), em vez de todos os NPCs por perto 9 vezes por segundo: na praça, o tráfego por jogador caiu de cerca de 15 para 7 kB por segundo', 0, '', 1],
       ['1.102.4', 'Passo Firme', '21/11', 'Qualidade automática mais estável: os primeiros 20 segundos (em que o cenário é montado) não contam, e um nível que não aguentou não volta a ser tentado por 5 minutos, acabando com o sobe-e-desce de qualidade', 0, '', 1],
       ['1.102.5', 'Porto Seguro', '21/11', 'Fim das quedas a cada versão publicada: dentro do mundo ninguém é mais recarregado sozinho (antes, o anfitrião recarregava e o reino fechava para todos); a versão nova entra ao sair e voltar, e o anfitrião é avisado quando alguém com a versão nova não consegue entrar; erro passageiro num canal ainda aberto não derruba mais o jogador', 0, '', 1],
+      ['1.103', 'Sussurros e Fechaduras', '23/11', 'Segredos em uso: chantagem diante do lorde (ouro ou favor, quatro degraus, troco com capangas, denúncia ou perda de favor) e boato espalhado pela Dama Ysolde; Mestre Corvin, o Mestre dos Sussurros, no salão do trono; os casarões das casas ganham cômodos, porta dos fundos com gazua, janela com hera, moradores com rotina que andam pela cidade, guardas que só deixam entrar vassalos ou quem tem favor, a regra de ser pego por cômodo e a rotina anotada na Jornada', 1, '🗝'],
     ] },
 ];
 // ===== fim dos dados =====
 const all = ERAS.flatMap(e => e.v);
 document.getElementById('curv').textContent = 'v' + all[all.length - 1][0];
-const days = 9;
+const days = 11;
 document.getElementById('stats').innerHTML = [[all.length, 'versões'], [all.filter(v => v[4]).length, 'grandes marcos'], [days, 'dias de desenvolvimento'], ['50', 'moradores e NPCs'], ['43', 'prédios na cidade'], ['19', 'tipos de monstro']].map(([n, t]) => '<div class="stat"><b>' + n + '</b><span>' + t + '</span></div>').join('');
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;');
 document.getElementById('eras').innerHTML = ERAS.slice().reverse().map(e => '<section id="' + e.id + '"><h2>' + esc(e.name) + '</h2><p class="era-meta">' + esc(e.when) + ' · ' + e.v.length + ' versões (v' + e.v[0][0] + ' a v' + e.v[e.v.length - 1][0] + ')</p><p>' + esc(e.intro) + '</p>' +

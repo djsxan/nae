@@ -207,10 +207,26 @@ const THERMAE = { depth: 0.85,
   casc: { u0: 14, v0: 7, u1: 17, v1: 8 }, fall: { u0: 14, v0: 6.1, u1: 17, v1: 7 }, lions: [3.5, 6, 8.5], labrum: [3, 11.6], keeper: [10.5, 10.4] };
 function thermaeWalls(b) { const dc = doorCol(b);   /* vãos de 1,2 nas passagens */
   return [[6, 0, 6, 3.4], [6, 4.6, 6, 9.9], [6, 11.1, 6, 13], [12, 0, 12, 3.4], [12, 4.6, 12, 9.9], [12, 11.1, 12, 13], [6, 8, dc - 0.1, 8], [dc + 1.1, 8, 12, 8], [12, 8, 12.4, 8], [13.6, 8, 18, 8]]; }
-const hasIwalls = b => !!b && (b.deco === 'machiya' || b.kind === 'castle' || b.deco === 'thermae');
+const hasIwalls = b => !!b && (b.deco === 'machiya' || b.kind === 'castle' || b.deco === 'thermae' || b.deco === 'seat');
+/* casarões das casas: cômodos por andar no quadro local (u ao longo da fachada 0..7, v em profundidade: 0 = fundos/leste, 8 = rua/oeste) e portas [linha, valor, posição] */
+const SEAT_ROOMS = {
+  0: { r: [[0, 3, 7, 8, 'salão'], [0, 0, 3, 3, 'cozinha'], [3, 0, 5, 3, 'quarto do criado'], [5, 0, 7, 3, 'escada']], d: [['v', 3, 1], ['v', 3, 4], ['v', 3, 5], ['v', 3, 6]] },
+  1: { r: [[0, 0, 7, 2, 'corredor'], [0, 2, 3, 8, 'escritório'], [3, 2, 7, 8, 'quarto do casal']], d: [['v', 2, 1], ['v', 2, 5]] },
+  2: { r: [[0, 0, 3, 8, 'depósito'], [3, 0, 7, 8, 'quarto do herdeiro']], d: [['u', 3, 5]] } };
+const SEAT_WIN = [3.5, 0.75];   /* janela com hera no 1º andar: por dentro (u, v); por fora fica na parede dos fundos */
+function roomsWalls(R, A, D) { const units = new Set();
+  for (const [u0, v0, u1, v1] of R.r) { for (let u = u0; u < u1; u++) { if (v0 > 0) units.add('v,' + v0 + ',' + u); if (v1 < D) units.add('v,' + v1 + ',' + u); } for (let v = v0; v < v1; v++) { if (u0 > 0) units.add('u,' + u0 + ',' + v); if (u1 < A) units.add('u,' + u1 + ',' + v); } }
+  for (const [ax, val, pos] of R.d) units.delete(ax + ',' + val + ',' + pos);
+  const segs = []; for (const s of units) { const [ax, val, pos] = s.split(','), a = +val, p = +pos; segs.push(ax === 'u' ? [a, p, a, p + 1] : [p, a, p + 1, a]); } return segs; }
+const SEAT_WALL_MEMO = {};
+function seatWalls(fl) { if (SEAT_WALL_MEMO[fl]) return SEAT_WALL_MEMO[fl]; const R = SEAT_ROOMS[fl]; return R ? (SEAT_WALL_MEMO[fl] = roomsWalls(R, 7, 8)) : null; }
+/* em que cômodo do casarão está este ponto? (null fora do casarão ou de outro andar sem planta) */
+function seatRoom(b, fl, x, y) { if (!b || b.deco !== 'seat') return null; const R = SEAT_ROOMS[fl | 0]; if (!R) return null; const [u, v] = worldToLocal(b, x, y);
+  for (let i = 0; i < R.r.length; i++) { const [u0, v0, u1, v1, n] = R.r[i]; if (u >= u0 && u < u1 && v >= v0 && v < v1) return { i, n, fl: fl | 0 }; } return null; }
 function iwallsLocal(b, fl) {
   if (b.kind === 'castle') return castleWalls(fl);
   if (b.deco === 'thermae') return fl === 0 ? thermaeWalls(b) : null;
+  if (b.deco === 'seat') return seatWalls(fl);
   if (b.deco !== 'machiya') return null; const [A, D] = bDims(b);
   // quadro local: u ao longo da fachada (0 = sul, A = norte), v em profundidade (0 = fundo/oeste, D = rua/leste). Corredor + elevador em u 6..8
   if (fl === 0) return [[6, 0, 6, D]];   // corredor do elevador (ponta norte) separado do dojô
@@ -318,6 +334,21 @@ function interiorLayout0(b, fl = 0) {
     else if (fl === -2) { put('altar', 7, 0, { w: 2 }); for (const i of [4, 6, 9, 11]) put('candles', i, 0); put('dskull', 8, 5, { block: false }); for (const j of [3, 6]) { put('chest', 5, j); put('chest', 10, j); }
       put('rack', 12, 0); put('rack', 13, 0); put('table', 16, 3, { w: 2 }); put('cauldron', 19, 0); put('candles', 19, 8);
       for (const c of [12, 16]) { put('bars', c, 11, { v: 0 }); put('celldoor', c + 1, 11, { v: 0, block: false }); put('bars', c + 2, 11, { v: 0 }); put('cot', c, 14, { h: 2 }); put('bucket', c + 1, 15, { block: false }); } for (const j of [10, 13, 16]) put('candles', 4, j); }
+    return { F, npc: null };
+  }
+  if (k === 'manor' && b.deco === 'seat') {   /* casarão de uma casa nobre: um salão, cozinha e quarto do criado no térreo; escritório e quarto do casal no 1º; herdeiro e depósito no sótão */
+    if (fl === 0) { for (const q of [[1, 0], [1, 1], [1, 2]]) taken.add(key(q[0], q[1]));   /* passagem da porta dos fundos */
+      put('fireplace', 0, 4); if (put('table', 5, 4, { h: 2 })) { put('chair', 4, 4, { seat: 1 }); put('chair', 4, 5, { seat: 1 }); put('chair', 6, 4, { seat: 5 }); put('chair', 6, 5, { seat: 5 }); }
+      put('shelf', 0, 6); put('rug', 1, 4, { w: 2, h: 2, block: false }); put('candles', 6, 7);
+      put('stove', 2, 0); put('barrel', 0, 0); put('crate', 0, 1); put('table', 2, 2);   /* cozinha */
+      put('bed', 3, 0, { h: 2 }); put('chest', 4, 0);   /* quarto do criado */
+      put('candles', 5, 0); }
+    else if (fl === 1) { for (const q of [[3, 0], [3, 1]]) taken.add(key(q[0], q[1]));   /* debaixo da janela */
+      put('candles', 5, 0);
+      put('shelf', 0, 4); put('shelf', 0, 5); if (put('desk', 1, 5, { w: 2 })) put('chair', 1, 6, { seat: 3 }); put('fireplace', 0, 7); put('rug', 1, 3, { w: 2, block: false });   /* escritório do lorde */
+      put('bed', 4, 5, { w: 2, h: 2, v: 1 }); put('strongbox', 6, 7, { v: 1 }); put('chest', 3, 7); put('mirror', 6, 3, { block: false }); put('rug', 4, 3, { w: 2, block: false }); }   /* quarto do casal com o cofre */
+    else { put('crate', 0, 0); put('barrel', 2, 0); put('crate', 0, 3); put('barrel', 0, 4); put('chest', 2, 6); put('crate', 0, 7);   /* depósito */
+      put('bed', 5, 0, { h: 2 }); put('chest', 6, 0); put('rack', 6, 4); if (put('table', 4, 6)) put('chair', 5, 6, { seat: 5 }); put('rug', 4, 2, { w: 2, block: false }); }   /* quarto do herdeiro */
     return { F, npc: null };
   }
   if (fl < 0) {   // porão: o cofre do banco (ouro, barras e baús) ou a adega (barris e caixotes); velas para iluminar
@@ -559,7 +590,7 @@ function interiorLayout0(b, fl = 0) {
 const LAYOUT_MEMO = new Map();
 // móveis que continuam sólidos: paredes e divisórias, balcões, lareiras e fogões, prateleiras e armários de parede, camas, grades e cofres.
 // O resto (mesas, cadeiras, bancos, barris, caixotes, tapetes, decoração) não bloqueia a passagem.
-const FURN_SOLID = new Set(['tatchair', 'inktable', 'tcascade', 'labrum', 'tmassage', 'winetable', 'hpillar', 'brazier', 'drawers', 'apothcounter', 'distill', 'blk', 'hpart', 'counter', 'bar', 'bankdesk', 'wandcounter', 'vault', 'bars', 'celldoor', 'fireplace', 'hearth', 'stove', 'forge', 'shelf', 'wandwall', 'fabricwall', 'taps', 'bottles', 'filing', 'jamshelf', 'pillar', 'throne', 'altar', 'still', 'bed', 'bunk', 'cot']);
+const FURN_SOLID = new Set(['strongbox', 'tatchair', 'inktable', 'tcascade', 'labrum', 'tmassage', 'winetable', 'hpillar', 'brazier', 'drawers', 'apothcounter', 'distill', 'blk', 'hpart', 'counter', 'bar', 'bankdesk', 'wandcounter', 'vault', 'bars', 'celldoor', 'fireplace', 'hearth', 'stove', 'forge', 'shelf', 'wandwall', 'fabricwall', 'taps', 'bottles', 'filing', 'jamshelf', 'pillar', 'throne', 'altar', 'still', 'bed', 'bunk', 'cot']);
 function interiorLayout(b, fl = 0) {
   const [w, h] = bDims(b), mk = [b.kind, w, h, b.v || 0, floorsOf(b), fl, b.office || '', JSON.stringify(b.stairs || 0), b.extSide || '', b.cellar ? b.cellar.join(',') : '', b.deco || ''].join('|');
   let L = LAYOUT_MEMO.get(mk); if (L) return L;
@@ -1179,7 +1210,7 @@ function generateWorld() {
     for (let y = y0 + 2; y <= y1 - 2; y++) for (let x = X0 + 1; x <= X0 + 2; x++) { const i = idx(x, y); ground[i] = T.COBBLE; rdir[i] = 2; }   /* rua do bairro, ao longo das casas */
     for (let y = y0 + 2; y <= y1 - 2; y++) for (let x = X0 + 15; x <= X0 + 16; x++) { const i = idx(x, y); ground[i] = T.COBBLE; rdir[i] = 2; }   /* rua nova, atrás dos casarões */
     for (let y = C - 3; y <= C + 4; y++) for (let x = X0 + 3; x <= X0 + 14; x++) { const i = idx(x, y); if (rdir[i]) continue; ground[i] = (x + y) % 3 ? T.FLOORSTONE : T.STONE; }   /* praça das Casas */
-    for (const S1 of HOUSE_SEATS) BUILDINGS.push({ x: X0 + 6, y: C + S1.y, ...BH('manor', 8, 7, 5.2, 3.2, S1.name, { door: 'W', seat: S1.id, v: 1 }) });   /* casarões das casas (no fim da lista) */
+    for (const S1 of HOUSE_SEATS) BUILDINGS.push({ x: X0 + 6, y: C + S1.y, ...BH('manor', 8, 7, 5.2, 3.2, S1.name, { door: 'W', seat: S1.id, v: 1, deco: 'seat', stairs: { 0: 'spiral', 1: 'ladder' }, door2L: [1, 0, 'E'] }) });   /* com cômodos, porta dos fundos na cozinha e janela com hera no 1º andar */   /* casarões das casas (no fim da lista) */
     BUILDINGS.push({ x: X0 + 18, y: C - 28, ...BH('club', 9, 8, 4.2, 1.2, 'Clube do Cervo de Prata', { door: 'W', floors: 1, deco: 'club', noble: 1 }) },   /* rua nova: clube de cavalheiros, termas romanas e o palácio da Dama Ysolde (no fim da lista) */
       { x: X0 + 17, y: C - 19, ...BH('baths', 13, 18, 4.2, 1.0, 'Termas de Aurora', { door: 'W', floors: 1, deco: 'thermae' }) },   /* 13 x 18: do Clube até perto da Casa de Veludo */
       { x: X0 + 17, y: C + 7, ...BH('velvet', 13, 12, 5.0, 1.2, 'Casa de Veludo', { door: 'W', floors: 1, deco: 'velvet' }) });
@@ -1188,7 +1219,7 @@ function generateWorld() {
     HOUSE_SEATS.forEach((S1, k) => { const bx = X0 + 4 + k * 2.4 | 0, by = k % 2 ? C + 4 : C - 3; const i = idx(bx, by); if (bld[i] < 0) { obj[i] = O.BANNER; BANNER_HOUSE[i] = S1.id; } });   /* estandartes das casas na praça */
   }
   { const S0 = { 'Empório do Borin': { 0: 'ladder' }, 'Pergaminhos & Mapas': { 0: 'spiral' }, 'Imobiliária Chave de Bronze': { 0: 'ext' }, 'Casa Morvane': { 0: 'spiral', 1: 'ladder' }, 'Elixires da Lua Prateada': { 0: 'spiral' } };   // escadas: o resto usa a de parede
-    for (const b of BUILDINGS) { if (S0[b.name]) b.stairs = S0[b.name]; else if (b.kind === 'manor') b.stairs = { 1: 'ladder' }; }
+    for (const b of BUILDINGS) { if (S0[b.name]) b.stairs = S0[b.name]; else if (b.kind === 'manor' && !b.seat) b.stairs = { 1: 'ladder' }; }
     const CEL = { 'Ronco do Dragão': [2, 0], 'Banco de Nae': [3, 1] }; for (const b of BUILDINGS) if (CEL[b.name]) b.cellar = CEL[b.name]; }   // porões: adega atrás do balcão da taverna, cofre embaixo do banco   // casarões: o sótão é pelo alçapão
   BUILDINGS.forEach((b, bi) => {
     for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { bld[idx(x, y)] = bi; obj[idx(x, y)] = O.NONE; ground[idx(x, y)] = T.COBBLE; }
@@ -1582,6 +1613,12 @@ if (!TEST3D) {
   for (const n of NPCS) if (RES_HOME[n.id] != null) n.home = RES_HOME[n.id];
 }
 // porta trancada: L = { bi: [nomes em minúsculas que podem entrar] }; só bloqueia ENTRAR (quem já está dentro sai)
+/* casarões das casas: os guardas só deixam entrar pela frente quem a casa aceita; a porta dos fundos só abre com gazua (L vem do anfitrião) */
+function seatBlocked(name, ox, oy, x, y, L) {
+  if (!L) return false; const bi = WORLD.bld[tileAt(x, y)]; if (bi == null || bi < 0) return false; const b = BUILDINGS[bi]; if (!b || b.deco !== 'seat') return false;
+  if (WORLD.bld[tileAt(ox, oy)] === bi) return false; const s = L[bi]; if (!s) return false; const nm = String(name || '').trim().toLowerCase(), d2 = door2Of(b);
+  if (d2 && Math.round(x) === d2.x && Math.round(y) === d2.y) return !(s.b || []).includes(nm);
+  return !!s.g && !(s.f || []).includes(nm); }
 function estateBlocked(name, ox, oy, x, y, L) {
   if (!L) return false; const bi = WORLD.bld[tileAt(x, y)]; if (bi == null || bi < 0) return false;
   const a = L[bi]; if (!a) return false; if (WORLD.bld[tileAt(ox, oy)] === bi) return false;
@@ -1650,7 +1687,7 @@ function edgeOk(ax, ay, bx, by) {
   const B = (x, y) => WORLD.bld[y * MAP_W + x];
   const a = B(ax, ay), c = B(bx, by);
   if (ax !== bx && ay !== by) return a === c && B(ax, by) === a && B(bx, ay) === a;
-  if (a === c) return !(a >= 0 && (BUILDINGS[a].deco === 'machiya' || BUILDINGS[a].deco === 'thermae') && iwallCross(a, 0, ax, ay, bx, by));
+  if (a === c) return !(a >= 0 && (BUILDINGS[a].deco === 'machiya' || BUILDINGS[a].deco === 'thermae' || BUILDINGS[a].deco === 'seat') && iwallCross(a, 0, ax, ay, bx, by));
   const inB = a >= 0 ? a : c, ix = a >= 0 ? ax : bx, iy = a >= 0 ? ay : by, ox = a >= 0 ? bx : ax, oy = a >= 0 ? by : ay;
   if (a >= 0 && c >= 0) return false;
   const b = BUILDINGS[inB], [dtx, dty] = doorTile(b), v = DOOR_V[b.door || 'S'], d2 = door2Of(b);

@@ -2054,6 +2054,15 @@ function mBuilding(b, night) {
     gD.add(mk(new THREE.BoxGeometry(dw + 0.5, 0.12, 0.5).translate(0, 0.06, 0.25), smat('stoneblock', '#8a857a')));   // degrau
     gD.position.set(doorX, 0, h + 0.02); gD.scale.setScalar(0.62);
     o.add(gD);
+    if (b.deco === 'seat' && b.door2L && b.door2L[1] === 0) {   /* casarão nobre: porta dos fundos da cozinha (trancada) e janela do 1º andar com hera até o chão */
+      const gB = gD.clone(); gB.rotation.y = Math.PI; gB.position.set(b.door2L[0] + 0.5, 0, -0.02); gB.scale.setScalar(0.56); o.add(gB);
+      const lock = smat(null, '#2a2a2e', { metal: 0.85, rough: 0.4 }); o.add(wbox(0.07, 0.1, 0.03, b.door2L[0] + 0.32, 0.62, -0.06, lock, 1));
+      const wx = SEAT_WIN[0], wy = fh + fh * 0.5, fr = smat('wood', '#4a3020', { bump: 1 }), gl = smat(null, night ? '#ffd68a' : '#9ab4c4', { emissive: night ? '#ffb040' : '#000000', ei: night ? 0.8 : 0, rough: 0.15 });
+      o.add(wbox(0.8, 0.95, 0.06, wx, wy, -0.03, fr, 1)); o.add(wbox(0.64, 0.8, 0.03, wx, wy, -0.06, gl, 1)); o.add(wbox(0.05, 0.8, 0.07, wx, wy, -0.07, fr, 1)); o.add(wbox(0.64, 0.05, 0.07, wx, wy, -0.07, fr, 1)); o.add(wbox(1.0, 0.07, 0.2, wx, wy - 0.5, -0.1, smat('stoneblock', '#b8b0a0'), 1));
+      const ivy = smat(null, '#3e6a2c', { rough: 0.85 }), ivy2 = smat(null, '#2c5220', { rough: 0.9 }), R2 = rng(b.x * 13 + b.y);
+      for (let k = 0; k < 70; k++) { const yy = 0.1 + R2() * (wy + 0.45), spread = 0.25 + yy * 0.18, xx = wx + (R2() - 0.5) * 2 * spread; if (Math.abs(xx - wx) < 0.3 && Math.abs(yy - wy) < 0.42) continue; o.add(mk(new THREE.SphereGeometry(0.07 + R2() * 0.06, 6, 5).translate(xx, yy, -0.05 - R2() * 0.06), k % 3 ? ivy : ivy2)); }
+      for (let k = 0; k < 3; k++) o.add(mk(new THREE.CylinderGeometry(0.018, 0.022, wy + 0.3, 5).translate(wx - 0.32 + k * 0.32, (wy + 0.3) / 2, -0.04), smat('wood', '#4a3a26')));   /* galhos grossos: dá para subir */
+    }
   }
   // telhado: duas águas (oitões) ou quatro águas, com beiral
   if (b.kind === 'hotel') mHotelRoof(o, b, W2, H2, H, RH, st, glassM, night);
@@ -2312,7 +2321,8 @@ function mInterior(b, fl = 0) {
   const KH = 0.34, wallH = f => knee.includes(f) ? KH : hw, dx = doorCol(b) + 0.5;
   const lightWin = smat(null, '#ffe2a8', { emissive: '#ffcc80', ei: 0.7, rough: 0.3 }), capM = smat('stoneblock', '#b0a998', { bump: 1 });
   const wallSeg = (f, w2, d2, x, z) => { const hh = wallH(f); o.add(mk(wuv(new THREE.BoxGeometry(w2, hh, d2).translate(x, hh / 2, z), 0.7), wallM)); if (hh === KH) o.add(mk(new THREE.BoxGeometry(w2 + 0.02, 0.05, d2 + 0.04).translate(x, KH + 0.025, z), capM)); };
-  wallSeg('back', w, t, w / 2, t / 2); wallSeg('left', t, h, t / 2, h / 2);
+  if (b.door2L && fl === 0 && b.door2L[1] === 0) { const d2 = b.door2L[0] + 0.5; if (d2 - 0.6 > 0) wallSeg('back', d2 - 0.6, t, (d2 - 0.6) / 2, t / 2); if (w - d2 - 0.6 > 0) wallSeg('back', w - d2 - 0.6, t, (d2 + 0.6 + w) / 2, t / 2); }   /* porta dos fundos */
+  else wallSeg('back', w, t, w / 2, t / 2); wallSeg('left', t, h, t / 2, h / 2);
   wallSeg('right', t, h, w - t / 2, h / 2);
   if (b.deco === 'machiya' && fl > 0) { for (const [u0, v0, u1, v1] of iwallsLocal(b, fl) || []) if (Math.abs(v0 - h) < 0.01 && Math.abs(v1 - h) < 0.01) wallSeg('front', u1 - u0, t, (u0 + u1) / 2, h - t / 2); }   /* fachada com os vãos das portas para a varanda */
   else if (b.door2L && fl === 0 && b.door2L[1] === h - 1) { const d2 = b.door2L[0] + 0.5, a0 = Math.min(dx, d2), a1 = Math.max(dx, d2);   /* duas portas na frente (dojô e corredor do elevador) */
@@ -2391,6 +2401,12 @@ function mInterior(b, fl = 0) {
       else o.add(mk(new THREE.BoxGeometry(alongX ? L : 0.06, HH - 0.1, alongX ? 0.06 : L).translate(cx, (HH - 0.1) / 2 + 0.05, cz), pap));
       o.add(mk(new THREE.BoxGeometry(alongX ? L + 0.04 : 0.1, 0.08, alongX ? 0.1 : L + 0.04).translate(cx, HH, cz), dk)); o.add(mk(new THREE.BoxGeometry(alongX ? L : 0.1, 0.06, alongX ? 0.1 : L).translate(cx, 0.03, cz), dk));
       for (const e of [0, 1]) { const px = alongX ? (e ? u1 : u0) : u0, pz = alongX ? v0 : (e ? v1 : v0); o.add(mk(new THREE.BoxGeometry(0.1, HH, 0.1).translate(px, HH / 2, pz), dk)); } }
+  }
+  if (b.deco === 'seat') { const pl = smat('plaster', '#efe6d4', { bump: 0.4 }), wd = smat('wood', '#5a3a22', { bump: 1 }), HH = 1.45;   /* cômodos do casarão: reboco claro com rodapé e cimalha de madeira */
+    for (const [u0, v0, u1, v1] of iwallsLocal(b, fl) || []) { const alongX = Math.abs(v0 - v1) < 0.01, L = alongX ? Math.abs(u1 - u0) : Math.abs(v1 - v0), cx = (u0 + u1) / 2, cz = (v0 + v1) / 2;
+      o.add(mk(wuv(new THREE.BoxGeometry(alongX ? L : 0.14, HH, alongX ? 0.14 : L).translate(cx, HH / 2, cz), 0.6), pl));
+      o.add(mk(new THREE.BoxGeometry(alongX ? L + 0.02 : 0.18, 0.07, alongX ? 0.18 : L + 0.02).translate(cx, HH + 0.035, cz), wd)); o.add(mk(new THREE.BoxGeometry(alongX ? L : 0.16, 0.12, alongX ? 0.16 : L).translate(cx, 0.06, cz), wd)); }
+    if (fl === 1) { const fr = smat('wood', '#4a3020', { bump: 1 }), gl = smat(null, '#bcd4e0', { rough: 0.15, metal: 0.1, transparent: true, opacity: 0.55 }); o.add(wbox(0.9, 0.95, 0.06, SEAT_WIN[0], 1.15, 0.12, fr, 1)); o.add(wbox(0.74, 0.8, 0.03, SEAT_WIN[0], 1.15, 0.15, gl, 1)); o.add(wbox(0.06, 0.8, 0.07, SEAT_WIN[0], 1.15, 0.16, fr, 1)); }   /* a janela da hera, vista de dentro */
   }
   if (b.kind === 'castle') { const sm = smat('stoneblock', fl < 0 ? '#8e7a62' : '#cdb08a', { bump: 1.2 }), cap = smat('stoneblock', '#e2c898', { bump: 1 }), HH = 1.7;
     for (const [u0, v0, u1, v1] of iwallsLocal(b, fl) || []) { const alongX = Math.abs(v0 - v1) < 0.01, L = alongX ? Math.abs(u1 - u0) : Math.abs(v1 - v0), cx = (u0 + u1) / 2, cz = (v0 + v1) / 2;
