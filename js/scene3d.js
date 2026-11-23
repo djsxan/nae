@@ -1296,7 +1296,7 @@ function mGateHouse(gt, f, pc = 0) {
 }
 function gateHouseSprite(gi) {
   const gt = WORLD.gates[gi], f = (G.gateF && G.gateF[gi]) || 0, q = Math.round(f * 4), pq = gt.kind === 'keep' ? Math.round(((G.pcF && G.pcF[gi]) || 0) * 6) : 0;
-  return scen3('gh|' + gi + '|' + q + '|' + pq, () => mGateHouse(gt, q / 4, pq / 6)) || (q ? null : gateSprite(true));
+  return scen3('gh|' + gi + '|' + q + '|' + pq + ((typeof G !== 'undefined' && G.rkHd) ? '|K' + G.rkHd : ''), () => mGateHouse(gt, q / 4, pq / 6)) || (q ? null : gateSprite(true));
 }
 // ---------- torre-escada (3x3): por fora uma torre de pedra; cortada mostra a escada em espiral ----------
 function mStairTower(b, cut) {
@@ -2243,7 +2243,7 @@ function mBuilding(b, night) {
     o.add(mk(new THREE.ExtrudeGeometry(tri, { depth: 0.9, bevelEnabled: false }).translate(w / 2, Hc + 0.38, h + 0.1), marble));
     o.add(mk(new THREE.CircleGeometry(0.28, 16).translate(w / 2, Hc + 0.72, h + 1.01), gold)); o.add(mk(new THREE.TorusGeometry(0.28, 0.03, 6, 20).translate(w / 2, Hc + 0.72, h + 1.02), gold));
   }
-  if (b.seat && typeof HERALDS !== 'undefined' && HERALDS[b.seat]) { const hd = HERALDS[b.seat], { H: HB } = bldDims(b), dc0 = doorCol(b) + 0.5, cy = Math.max(HB * 0.55, 2.9);
+  if ((b.seat || b.phouse) && typeof HERALDS !== 'undefined' && HERALDS[b.seat || b.phouse]) { const hd = HERALDS[b.seat || b.phouse], { H: HB } = bldDims(b), dc0 = doorCol(b) + 0.5, cy = Math.max(HB * 0.55, 2.9);
     for (const sx of [-1.2, 1.2]) { const bn = heraldBanner(0.7, 1.9, hd); bn.position.set(dc0 + sx, cy, h + 0.08); o.add(bn); o.add(mk(new THREE.CylinderGeometry(0.02, 0.02, 0.85, 6).rotateZ(Math.PI / 2).translate(dc0 + sx, cy + 0.97, h + 0.1), smat(null, '#c9a24a', { metal: 1, rough: 0.3 }))); }
     const sp = mk(new THREE.PlaneGeometry(0.75, 0.92), new THREE.MeshStandardMaterial({ map: heraldTex('shield', hd), transparent: true, alphaTest: 0.5, roughness: 0.6, metalness: 0.2 })); sp.position.set(dc0, 2.2, h + 0.09); o.add(sp);
     o.add(mk(CYL(0.03, 0.035, 2.6, w - 0.4, HB + 1.3, 0.4, 6), DWOOD())); const fl = heraldBanner(0.6, 1.2, hd); fl.rotation.z = Math.PI / 2; fl.position.set(w - 0.4 + 0.6, HB + 2.2, 0.4); o.add(fl);
@@ -3021,7 +3021,7 @@ function mInterior(b, fl = 0) {
   return o;
 }
 function interiorSprite(b, fl = 0) {
-  const key = 'in|' + archKey(b) + '|' + (b.door || 'S') + '|' + fl;
+  const key = 'in|' + archKey(b) + '|' + (b.door || 'S') + '|' + fl + (b.kind === 'castle' ? ((typeof G !== 'undefined' && G.rkHd) ? '|K' + G.rkHd : '') : '');
   return scen3(key, () => b.kind === 'stairtower' ? placeRot(b, mStairTower({ ...localB(b), realDoor: b.door || 'S' }, true)) : placeRot(b, mInterior({ ...localB(b), realDoor: b.door || 'S' }, fl)));
 }
 // ============================================================
@@ -3056,7 +3056,7 @@ function interiorSprite(b, fl = 0) {
   wrap('stairsSprite', (d, k) => `st|${d}|${k | 0}`, (d, k) => mStairs(d, k | 0));
   wrap('slabSprite', v => `sl|${v}`, v => mSlab(v));
   wrap('cliffSprite', (h, v, s) => `cl|${h}|${v}|${s}`, (h, v, s) => mCliff(h, v, s));
-  wrap('buildingSprite', (b, n) => `bd|${archKey(b)}|${b.door || 'S'}`, (b, n) => mBuildingRot(b, false));
+  wrap('buildingSprite', (b, n) => `bd|${archKey(b)}|${b.door || 'S'}` + (b.kind === 'castle' ? ((typeof G !== 'undefined' && G.rkHd) ? '|K' + G.rkHd : '') : '') + (b.phouse && typeof HERALDS !== 'undefined' && HERALDS[b.phouse] ? '|' + HERALDS[b.phouse].house + HERALDS[b.phouse].charge + HERALDS[b.phouse].field + HERALDS[b.phouse].field2 + HERALDS[b.phouse].metal : ''), (b, n) => mBuildingRot(b, false));
   // luzes das janelas na altura nova das paredes
   window.buildingWindows = function (b) {
     if (b.kind === 'stairtower') return [];

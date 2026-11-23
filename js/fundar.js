@@ -1,0 +1,155 @@
+// ============================================================
+//  FUNDAR UMA CASA (parte I): o jogador com título de Lorde, um casarão próprio no bairro nobre,
+//  5.000 de ouro e o apoio de duas casas (favor 30) funda a sua casa: nome, lema, cores e brasão
+//  de uma lista. A casa nova entra na disputa (aba Casas, Voz do Povo, fim da linha de sangue),
+//  ganha criado e dois guardas com as cores dela, estandartes e o brasão sobre a porta; outros
+//  jogadores juram lealdade a ela; renda diária pelo prestígio e homens de armas (poder).
+//  As casas de jogador ficam num registro próprio (PH_BY), fora da lista das cinco casas NPC:
+//  não viram alvo de campanhas, tramas, invasões nem rebeliões automáticas.
+// ============================================================
+const PH = { cost: 5000, favor: 30, need: 2, title: 3, menCost: 300, menPow: 5, chestCost: 500, chestGold: 5, incomeMul: 2, vowDay: 1, st: { prestige: 30, power: 15, gold: 20, crown: 10 } };
+const PH_CHARGES = [['wolf', 'Lobo', '🐺'], ['stag', 'Cervo', '🦌'], ['lion', 'Leão', '🦁'], ['tower', 'Torre', '🏰'], ['sword', 'Espada', '🗡️'], ['raven', 'Corvo', '🐦'], ['rose', 'Rosa', '🌹'], ['moon', 'Lua', '🌙'], ['sun', 'Sol', '☀️'], ['tree', 'Árvore', '🌳'], ['fish', 'Peixe', '🐟'], ['axe', 'Machado', '🪓']];
+const PH_FIELDS = ['#7a1a14', '#a8321e', '#1b2a5a', '#2a5a8a', '#1f4a2a', '#3a6a2a', '#3a2458', '#8a2a4a', '#18181c', '#5a3a1a', '#6a6a72', '#e8e2d0'];
+const PH_METALS = ['#f1cf6a', '#d9dde2', '#f4efe2', '#c0392b', '#1a1a1a', '#e8a33c', '#7ab8e8', '#9ad08a'];
+const PH_BY = {};
+/* registra a casa (servidor e cliente; o anfitrião passa duas vezes, sem problema) */
+function phReg(h) { PH_BY[h.id] = h; const ch = PH_CHARGES.find(c => c[0] === h.ch) || PH_CHARGES[0];
+  const o = HOUSE_BY[h.id] || (HOUSE_BY[h.id] = {}); Object.assign(o, { id: h.id, n: h.n, motto: h.motto, ic: ch[2], c1: h.f1, c2: h.m, lord: 'Lorde ' + h.lord, serv: 'Criado da ' + h.n, trait: 'casa nova, fundada por ' + h.lord, plan: 'Crescer em prestígio e ganhar um lugar no conselho.', st: Object.assign({}, PH.st), player: 1 });
+  if (typeof HERALDS !== 'undefined') HERALDS[h.id] = { house: h.n, field: h.f1, field2: h.f2, metal: h.m, charge: 'p_' + h.ch, emoji: ch[2] };
+  if (typeof INF_HOUSES !== 'undefined' && !INF_HOUSES.includes(h.id)) { INF_HOUSES.push(h.id); INF_BASE[h.id] = { _: 8 }; INF_FAITH0[h.id] = 0; }
+  for (const b of BUILDINGS) if (b.phouse === h.id) delete b.phouse; if (h.bi >= 0 && BUILDINGS[h.bi] && BUILDINGS[h.bi].kind === 'manor') BUILDINGS[h.bi].phouse = h.id;
+  if (typeof NPC_LOOKS !== 'undefined' && typeof heroLook === 'function' && typeof tone === 'function') {
+    NPC_LOOKS['hh_serv_' + h.id] = () => Object.assign(heroLook('archer', 'scout', '#6a5a4a'), { armor: 'vest', body: tone('#6a5a4a'), body2: tone(h.f1), head: 'none', hair: tone('#4a3424'), hairStyle: 'short', beard: null, weapon: null, quiver: false });
+    NPC_LOOKS['hh_guard_' + h.id] = () => Object.assign(heroLook('knight', 'iron', h.m), { armor: 'plate', body: tone(h.f1), body2: tone(h.f2), accent: tone(h.m), trim: tone(h.m), head: 'helm', headTone: tone('#8a8c92'), cape: true, capeTone: tone(h.f1), weapon: 'spear', shield: null, beard: tone('#5a4a3a') });
+    if (typeof NPC_CLS !== 'undefined') Object.assign(NPC_CLS, { ['hh_serv_' + h.id]: 'archer', ['hh_guard_' + h.id]: 'knight' }); } }
+function phPublic(h) { return { id: h.id, n: h.n, motto: h.motto, lord: h.lord, ch: h.ch, f1: h.f1, f2: h.f2, m: h.m, bi: h.bi }; }
+
+// ---------------- SERVIDOR ----------------
+function phRec() { S.estate.ph = S.estate.ph || { l: [], seq: 0, names: {} }; return S.estate.ph; }
+function phMine(key) { return phRec().l.find(h => h.owner === key) || null; }
+function phMsgAll() { return { t: 'phouses', l: phRec().l.map(phPublic) }; }
+function phSync() { const R = phRec(), E = estateLoad(), H = hRec(); let ch = false;
+  for (const h of R.l) { if (!H.st[h.id]) H.st[h.id] = Object.assign({ rel: {} }, PH.st);
+    const r = h.bi >= 0 ? E.r['m' + h.bi] : null; if (h.bi >= 0 && !(r && r.owner === h.owner)) { h.bi = -1; ch = true; }   /* vendeu o casarão: a casa fica sem sede */
+    if (h.bi < 0) { const m = phManors(h.owner)[0]; if (m) { h.bi = m.bi; ch = true; } }   /* comprou outro: a sede muda para lá */
+    if (!S.phDone || !S.phDone[h.id] || ch) { (S.phDone = S.phDone || {})[h.id] = 1; phReg(h); } }
+  if (ch) { Net.toAll(phMsgAll()); estateSave(); } }
+function phManors(key) { const E = estateLoad(), used = new Set(phRec().l.map(h => h.bi)); return Object.keys(E.r).filter(pid => E.r[pid].owner === key && E.r[pid].mode === 'own' && PROPS_BY[pid] && PROPS_BY[pid].manor && /^m\d+$/.test(pid)).map(pid => ({ pid, bi: +pid.slice(1), n: PROPS_BY[pid].name })).filter(m => !used.has(m.bi) && BUILDINGS[m.bi] && !BUILDINGS[m.bi].seat); }
+function phGoldOf(p) { const A = bankLoad().acc[estOwner(p)]; return Math.floor((A ? Math.max(0, A.g) : 0) + (p.gold || 0)); }
+function phReq(p) { const k = estOwner(p), C = crownRec(), fav = hRec().favor[k] || {}, dama = typeof cpRec === 'function' && cpRec().dama === k;
+  return { lorde: (C.title[k] | 0) >= PH.title, dama, manors: phManors(k), gold: phGoldOf(p), cost: PH.cost, sup: HOUSES.filter(h => (fav[h.id] || 0) >= PH.favor).map(h => h.n), need: PH.need, favor: PH.favor, mine: phMine(k) ? phPublic(phMine(k)) : null, full: !BUILDINGS.some((b, bi) => b.kind === 'manor' && !b.seat && !phRec().l.some(h => h.bi === bi)) }; }
+function phClean(s, n) { return String(s || '').replace(/[<>"'&\\]/g, '').replace(/\s+/g, ' ').trim().slice(0, n); }
+function phFound(p, m) { const k = estOwner(p), R = phRec(), q = phReq(p);
+  if (q.mine) { tell(p, 'Você já fundou a ' + q.mine.n + '.'); return; }
+  if (!q.lorde) { tell(p, 'Só um Lorde pode fundar uma casa. Peça o título numa audiência no castelo.'); return; }
+  const man = q.manors.find(x => x.bi === (m.bi | 0)) || q.manors[0]; if (!man) { tell(p, 'Compre um casarão no bairro nobre primeiro (imobiliária).'); return; }
+  if (q.sup.length < PH.need) { tell(p, 'Faltam apoios no conselho: precisa de favor ' + PH.favor + ' com pelo menos ' + PH.need + ' casas.'); return; }
+  let n = phClean(m.n, 22); if (!n || n.length < 3) { tell(p, 'Escolha um nome para a casa.'); return; } if (!/^Casa /i.test(n)) n = 'Casa ' + n; n = n.replace(/^casa /i, 'Casa ');
+  if (HOUSES.concat(R.l).some(h => h.n.toLowerCase() === n.toLowerCase()) || /aurenfell/i.test(n)) { tell(p, 'Já existe uma casa com esse nome.'); return; }
+  const motto = phClean(m.motto, 40) || 'Nossa É a Palavra', ch = PH_CHARGES.some(c => c[0] === m.ch) ? m.ch : 'wolf', col = (L, v, d) => L.includes(v) ? v : d;
+  const f1 = col(PH_FIELDS, m.f1, PH_FIELDS[0]), f2 = col(PH_FIELDS, m.f2, PH_FIELDS[2]), mt = col(PH_METALS, m.m, PH_METALS[0]);
+  const paid = debit(k, p, PH.cost); if (!paid) { tell(p, 'Fundar uma casa custa ' + PH.cost + ' de ouro (banco, cofres e bolsa).'); return; }
+  R.seq = (R.seq || 0) + 1; const h = { id: 'p' + R.seq, n, motto, owner: k, lord: p.name, ch, f1, f2, m: mt, bi: man.bi, day: estDay() }; R.l.push(h); R.names[k] = p.name;
+  const H = hRec(); H.st[h.id] = Object.assign({ rel: {} }, PH.st); const C = crownRec(); if (C.vow[k]) delete C.vow[k]; H.vow[k] = h.id; H.favor[k] = H.favor[k] || {}; H.favor[k][h.id] = 100;
+  for (const hn of q.sup) { const o = HOUSES.find(x => x.n === hn); if (o) hRel(o.id, h.id, 20); }
+  (S.phDone = S.phDone || {})[h.id] = 1; phReg(h); estateSave(); sendStat(p); Net.toAll(phMsgAll());
+  sys('⚜ Nasce uma casa nobre: ' + p.name + ' fundou a ' + n + ' — “' + motto + '”. O conselho aceitou a casa com o apoio de ' + q.sup.slice(0, 3).join(' e ') + '.'); hNews('Lorde ' + p.name + ' fundou a ' + n + ' no ' + man.n + '. A casa entra no fim da linha de sangue.');
+  Net.toOne(p.id, Object.assign({ t: 'phmenu' }, phReq(p))); }
+/* criado e dois guardas na porta da sede */
+const PH_ROLES = ['serv', 'guard', 'guard'];
+function phSpot(b, i) { const [dx, dy] = doorTile(b), v = DOOR_V[b.door || 'S'];
+  if (i === 0) { for (const k of [1.6, 1.1, 2.2]) { const x = dx + 0.5 - v[0] * k, y = dy + 0.5 - v[1] * k; if (canStand(x, y, 0, 0.2)) return { x, y }; } return { x: dx + 0.5 - v[0] * 0.9, y: dy + 0.5 - v[1] * 0.9 }; }
+  const s = i === 1 ? -1 : 1, ox = v[0] ? 0 : s * 1.2, oy = v[1] ? 0 : s * 1.2; return { x: dx + v[0] * 1.6 + ox + 0.5, y: dy + v[1] * 1.6 + oy + 0.5 }; }
+function phNpcs() { for (const h of phRec().l) { const b = h.bi >= 0 ? BUILDINGS[h.bi] : null;
+    PH_ROLES.forEach((role, i) => { const id = 'ph_' + h.id + '_' + i, n0 = S.npcs[id]; if (!b) { if (n0) visGone(n0); return; } if (n0 && !n0.dead) return; if (n0 && n0.dead && now_() - (n0.deadT || (n0.deadT = now_())) < 300000) return;
+      const P = phSpot(b, i), n = { id, kind: 'hh_' + role + '_' + h.id, name: role === 'guard' ? 'Guarda da ' + h.n : 'Criado da ' + h.n, transient: true, court: 'phouse', house: h.id, hrole: role, x: P.x, y: P.y, z: 0, fl: 0, fb: -1, hp: 300, maxHp: 300, downed: null, dead: false, dir: 0 };
+      S.npcs[id] = n; Net.toAll({ t: 'vspawn', v: visPublic(n) }); }); } }
+function phDaily() { const R = phRec(), H = hRec(), BK = bankLoad();
+  for (const h of R.l) { const s = H.st[h.id]; if (!s) continue; const vas = Object.keys(H.vow).filter(k => H.vow[k] === h.id && k !== h.owner).length;
+    s.prestige = clampH(s.prestige + Math.min(3, vas) * PH.vowDay, 0, 100); s.gold = clampH(s.gold + Math.min(2, vas), 0, 100);
+    const inc = Math.round(s.prestige * PH.incomeMul), A = BK.acc[h.owner] || (BK.acc[h.owner] = { g: 0, loan: 0, due: 0, wk: estDay() }); A.g += inc;
+    const q = Object.values(S.players).find(o => estOwner(o) === h.owner); if (q) tell(q, 'Renda da ' + h.n + ': +' + inc + ' de ouro no banco (prestígio ' + s.prestige + (vas ? ', ' + vas + ' vassalo' + (vas > 1 ? 's' : '') : '') + ').'); }
+  if (R.l.length) { bankSave(); estateSave(); } }
+function phTick(now) { if (!S.estate || !S.npcs || now - (S.phT || 0) < 1000) return; S.phT = now; phSync(); if (!phRec().l.length) return; phNpcs(); const R = phRec(); if (R.day !== estDay()) { const first = !R.day; R.day = estDay(); if (!first) phDaily(); } }
+if (typeof housesTick === 'function') { const _htP = housesTick; housesTick = function (now) { _htP(now); phTick(now); }; }
+/* a casa nova vai para o fim da linha de sangue */
+if (typeof sucLine === 'function') { const _slP = sucLine; sucLine = function () { const L = _slP(); try { const U = sucRec(); for (const h of phRec().l) if (U.king !== 'h:' + h.id && !L.includes('h:' + h.id)) L.push('h:' + h.id); } catch (e) { } return L; }; }
+/* casas de jogador não se rebelam sozinhas */
+if (typeof sgRebelNow === 'function') { const _srP = sgRebelNow; sgRebelNow = function () { try { const nx = sucLine()[0]; if (nx && nx.startsWith('h:') && PH_BY[nx.slice(2)]) return null; } catch (e) { } return _srP.apply(this, arguments); }; }
+/* a aba Casas mostra as casas de jogador */
+if (typeof housePublic === 'function') { const _hpP = housePublic; housePublic = function (p) { const o = _hpP(p); try { const H = hRec(), fav = H.favor[estOwner(p)] || {};
+  for (const h of phRec().l) { const s = H.st[h.id], hb = HOUSE_BY[h.id]; if (!s || !hb) continue; const vas = Object.keys(H.vow).filter(k => H.vow[k] === h.id && k !== h.owner).length;
+    o.l.push({ id: h.id, n: h.n, motto: h.motto, ic: hb.ic, c1: h.f1, c2: h.m, lord: hb.lord, trait: 'casa fundada por um jogador' + (vas ? ' · ' + vas + ' vassalo' + (vas > 1 ? 's' : '') : ''), plan: h.bi >= 0 ? 'Sede: ' + ((PROPS_BY['m' + h.bi] || {}).name || 'casarão') + '.' : 'Sem sede: o casarão foi vendido.', prestige: s.prestige, power: s.power, gold: s.gold, crown: s.crown, rel: s.rel, fav: fav[h.id] || 0, pop: typeof infPop === 'function' ? infPop(h.id) : null, faith: typeof infRec === 'function' ? infRec().faith[h.id] : null, mine: h.owner === estOwner(p) ? 1 : 0, player: 1 }); }
+  o.canFound = 1; } catch (e) { } return o; }; }
+/* falar com o criado da casa: vassalos, doações; o dono contrata homens de armas, enche o cofre e escolhe o herdeiro */
+function phHouseSend(p, n) { const h = PH_BY[n.house], H = hRec(), k = estOwner(p), s = H.st[h.id], own = h.owner === k, R = phRec();
+  const vas = Object.keys(H.vow).filter(x => H.vow[x] === h.id && x !== h.owner).map(x => ({ k: x, n: R.names[x] || x.split('|')[0], f: (H.favor[x] || {})[h.id] || 0 }));
+  const rk = typeof crownRec === 'function' && crownRec().rk;
+  Net.toOne(p.id, { t: 'phhouse', id: n.id, role: n.hrole, h: phPublic(h), st: { prestige: s.prestige, power: s.power, gold: s.gold, crown: s.crown }, own: own ? 1 : 0, vow: H.vow[k] === h.id ? 1 : 0, fav: (H.favor[k] || {})[h.id] || 0, vas, gold: p.gold | 0, men: PH.menCost, menPow: PH.menPow, chest: PH.chestCost, chestGold: PH.chestGold, inc: Math.round(s.prestige * PH.incomeMul), heir: rk && rk.heir ? (R.names[rk.heir] || rk.heir.split('|')[0]) : (h.heir ? (R.names[h.heir] || h.heir.split('|')[0]) : null) }); }
+function phNpcMsg(p, n, m) { const h = PH_BY[n.house]; if (!h) return; if (dist(n.x, n.y, p.x, p.y) > 3 || (n.fl || 0) !== (p.fl || 0)) { tell(p, 'Chegue mais perto.'); return; }
+  const H = hRec(), k = estOwner(p), s = H.st[h.id], own = h.owner === k;
+  if (n.hrole === 'guard' && m.a === 'open') { empSay(n, own ? 'Às suas ordens, meu senhor.' : 'Esta é a sede da ' + h.n + '. Fale com o criado.'); return; }
+  if (m.a === 'vow' && !own) { if (H.vow[k] === h.id) return; const prev = H.vow[k]; H.vow[k] = h.id; phRec().names[k] = p.name; if (crownRec().vow[k]) { delete crownRec().vow[k]; crownFavor(p, -10, 'trocou a lealdade da coroa por uma casa'); } if (prev && HOUSE_BY[prev]) hFavor(p, prev, -20, 'você abandonou a casa'); hFavor(p, h.id, 5, 'jurou lealdade'); s.prestige = clampH(s.prestige + 1, 0, 100); hNews(p.name + ' jurou lealdade à ' + h.n + '.'); const o = Object.values(S.players).find(q => estOwner(q) === h.owner); if (o) tell(o, p.name + ' jurou lealdade à sua casa.'); }
+  else if (m.a === 'donate' && !own) { const v = [50, 200][m.i | 0] || 0; if (!v || (p.gold || 0) < v) { tell(p, 'Ouro insuficiente.'); return; } p.gold -= v; sendStat(p); s.gold = clampH(s.gold + Math.round(v / 50), 0, 100); hFavor(p, h.id, Math.round(v / 25), 'doação'); const BK = bankLoad(), A = BK.acc[h.owner] || (BK.acc[h.owner] = { g: 0, loan: 0, due: 0, wk: estDay() }); A.g += v; bankSave(); empSay(n, 'O meu senhor saberá da sua generosidade.'); }
+  else if (m.a === 'men' && own) { if (s.power >= 100) { tell(p, 'A casa já tem todos os homens que pode sustentar.'); return; } if (!debit(k, p, PH.menCost)) { tell(p, 'Homens de armas custam ' + PH.menCost + ' de ouro.'); return; } s.power = clampH(s.power + PH.menPow, 0, 100); sendStat(p); empSay(n, 'Os novos homens chegam amanhã cedo, meu senhor.'); hNews('A ' + h.n + ' contratou homens de armas.'); }
+  else if (m.a === 'chest' && own) { if (s.gold >= 100) return; if (!debit(k, p, PH.chestCost)) { tell(p, 'Faltam ' + PH.chestCost + ' de ouro.'); return; } s.gold = clampH(s.gold + PH.chestGold, 0, 100); s.prestige = clampH(s.prestige + 1, 0, 100); sendStat(p); empSay(n, 'O cofre da casa agradece, meu senhor.'); }
+  else if (m.a === 'heir' && own) { const key = String(m.k || ''); if (key && H.vow[key] !== h.id) return; h.heir = key || null; if (typeof crownRec === 'function' && crownRec().rk && sucRec().king === 'h:' + h.id) crownRec().rk.heir = h.heir; tell(p, key ? 'Herdeiro escolhido: ' + (phRec().names[key] || key.split('|')[0]) + '. Se você deixar o trono ou a casa, ele assume.' : 'Você não tem mais herdeiro escolhido.'); }
+  else if (m.a !== 'open') return;
+  estateSave(); phHouseSend(p, n); }
+if (typeof houseMsg === 'function') { const _hmP = houseMsg; houseMsg = function (p, m) { const n = m && m.id && S.npcs[m.id]; if (n && n.court === 'phouse') return phNpcMsg(p, n, m); return _hmP(p, m); }; }
+function phMsg(p, m) { if (m.a === 'menu') { Net.toOne(p.id, Object.assign({ t: 'phmenu' }, phReq(p))); return; } if (m.a === 'found') { phFound(p, m); return; } }
+/* o pedido à Dama supre o favor que falta para o título de Lorde */
+if (typeof courtMsg === 'function') { const _cmP = courtMsg; courtMsg = function (p, m) { try { if (m && m.a === 'title' && typeof cpRec === 'function') { const C = crownRec(), k = crownKey(p), t = (C.title[k] | 0) + 1, T = CROWN_TITLES[t], R = cpRec();
+    if (T && t === PH.title && R.dama === k && (C.favor[k] || 0) < T.favor && (p.gold || 0) >= T.fee && S.audCall && S.audCall.id === p.id) { const f0 = C.favor[k] || 0; C.favor[k] = T.favor; R.dama = null; const r = _cmP(p, m); if ((C.title[k] | 0) < t) { C.favor[k] = f0; R.dama = k; } else { C.favor[k] = f0; tell(p, 'A Dama Ysolde falou por você ao rei: o pedido à Dama foi usado.'); } return r; } } } catch (e) { } return _cmP(p, m); }; }
+if (typeof empWelcome === 'function') { const _ewP = empWelcome; empWelcome = function (to) { _ewP(to); try { if (S.estate && phRec().l.length) Net.toOne(to, phMsgAll()); } catch (e) { } }; }
+
+// ---------------- CLIENTE ----------------
+/* brasão: campo partido em duas cores, borda e símbolo na cor do metal (o desenho do emoji vira silhueta) */
+function phDrawCharge(x, cx, cy, size, emoji, metal, shade) { const c = document.createElement('canvas'); c.width = c.height = 160; const g = c.getContext('2d'); g.font = '120px "Segoe UI Emoji","Noto Color Emoji","Apple Color Emoji",sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText(emoji, 80, 86); g.globalCompositeOperation = 'source-in';
+  const c2 = document.createElement('canvas'); c2.width = c2.height = 160; const g2 = c2.getContext('2d'); g2.drawImage(c, 0, 0); g2.globalCompositeOperation = 'source-in'; g2.fillStyle = shade; g2.fillRect(0, 0, 160, 160);
+  g.fillStyle = metal; g.fillRect(0, 0, 160, 160); const s = size / 160; x.drawImage(c2, cx - size / 2 + 3 * s * 2, cy - size / 2 + 3 * s * 2, size, size); x.drawImage(c, cx - size / 2, cy - size / 2, size, size); }
+function phShieldCanvas(kind, hd, W, Hh) { W = W || 128; Hh = Hh || (kind === 'banner' ? 384 : 160); const c = document.createElement('canvas'); c.width = W; c.height = Hh; const x = c.getContext('2d');
+  const shape = () => { x.beginPath(); if (kind === 'banner') { x.moveTo(0, 0); x.lineTo(W, 0); x.lineTo(W, Hh); x.lineTo(W / 2, Hh - Hh * 0.12); x.lineTo(0, Hh); } else { x.moveTo(W * 0.05, Hh * 0.04); x.lineTo(W * 0.95, Hh * 0.04); x.lineTo(W * 0.95, Hh * 0.55); x.quadraticCurveTo(W * 0.94, Hh * 0.9, W / 2, Hh * 0.98); x.quadraticCurveTo(W * 0.06, Hh * 0.9, W * 0.05, Hh * 0.55); } x.closePath(); };
+  x.save(); shape(); x.clip(); x.fillStyle = hd.field; x.fillRect(0, 0, W / 2, Hh); x.fillStyle = hd.field2; x.fillRect(W / 2, 0, W / 2, Hh); const gr = x.createLinearGradient(0, 0, 0, Hh); gr.addColorStop(0, 'rgba(255,255,255,.12)'); gr.addColorStop(1, 'rgba(0,0,0,.25)'); x.fillStyle = gr; x.fillRect(0, 0, W, Hh); x.restore();
+  x.save(); shape(); x.clip(); x.strokeStyle = hd.metal; x.lineWidth = W * 0.08; shape(); x.stroke(); x.restore();
+  const cy = kind === 'banner' ? Hh * 0.39 : Hh * 0.5, sz = kind === 'banner' ? W * 0.95 : W * 0.68; phDrawCharge(x, W / 2, cy, sz, hd.emoji || '🐺', hd.metal, 'rgba(0,0,0,.45)'); return c; }
+if (typeof heraldTex === 'function' && typeof THREE !== 'undefined') { const _htxP = heraldTex; heraldTex = function (kind, hd) { hd = hd || (typeof HERALD !== 'undefined' ? HERALD : null); if (!hd || !/^p_/.test(hd.charge || '')) return _htxP(kind, hd); const key = kind + hd.house + hd.charge + hd.field + hd.field2 + hd.metal; if (_heraldTex[key]) return _heraldTex[key];
+  const t = new THREE.CanvasTexture(phShieldCanvas(kind, hd)); t.encoding = THREE.sRGBEncoding; t.anisotropy = 4; return (_heraldTex[key] = t); }; }
+function phHd(h) { const ch = PH_CHARGES.find(c => c[0] === h.ch) || PH_CHARGES[0]; return { house: h.n, field: h.f1, field2: h.f2, metal: h.m, charge: 'p_' + h.ch, emoji: ch[2] }; }
+function phFoundPanel(m) { if (typeof velPanel !== 'function') return; const ok = (b, t) => '<div style="display:flex;gap:8px;align-items:flex-start;margin:3px 0"><b style="color:' + (b ? '#8ad08a' : '#e07a5a') + '">' + (b ? '✔' : '✖') + '</b><span>' + t + '</span></div>';
+  if (m.mine) { velPanel('A sua casa', '<div style="display:flex;gap:14px;align-items:center;padding:4px 2px"><canvas id="ph-mine" width="96" height="120"></canvas><div><b style="font-size:16px">' + m.mine.n + '</b><br><i>“' + m.mine.motto + '”</i><br><small style="opacity:.8">Fale com o criado na porta do casarão para contratar homens de armas, encher o cofre da casa e escolher o herdeiro.</small></div></div>');
+    const cv = document.getElementById('ph-mine'); if (cv) cv.getContext('2d').drawImage(phShieldCanvas('shield', phHd(m.mine), 96, 120), 0, 0); return; }
+  const all = m.lorde && m.manors.length && m.gold >= m.cost && m.sup.length >= m.need;
+  const req = '<div class="vel-sub">O que o conselho exige</div><div style="font-size:13px;line-height:1.4">' + ok(m.lorde, 'O título de <b>Lorde</b> da coroa' + (m.lorde ? '' : m.dama ? ' — o seu pedido à Dama pode suprir o favor que falta: peça o título numa audiência.' : ' (peça numa audiência no castelo).')) +
+    ok(m.manors.length, m.manors.length ? 'Um casarão próprio no bairro nobre: <b>' + m.manors.map(x => x.n).join(', ') + '</b>' : 'Um casarão <b>comprado</b> no bairro nobre' + (m.full ? ' (todos já são sedes de casas)' : ' (na imobiliária)')) +
+    ok(m.gold >= m.cost, '<b>' + m.cost.toLocaleString('pt-BR') + '</b> de ouro (você tem ' + m.gold.toLocaleString('pt-BR') + ' no banco e na bolsa)') +
+    ok(m.sup.length >= m.need, 'O apoio de <b>' + m.need + ' casas</b> no conselho (favor ' + m.favor + ' com elas)' + (m.sup.length ? ': ' + m.sup.join(', ') : ': nenhuma ainda')) + '</div>';
+  const sw = (L, nm) => '<div style="display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 8px">' + L.map((c, i) => '<button data-' + nm + '="' + c + '" style="width:26px;height:26px;border-radius:6px;border:2px solid ' + (i === 0 ? '#fff' : 'rgba(255,255,255,.25)') + ';background:' + c + ';cursor:pointer"></button>').join('') + '</div>';
+  const html = req + '<div class="vel-sub">O brasão</div><div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start"><div style="text-align:center"><canvas id="ph-prev" width="128" height="160" style="width:112px;height:140px"></canvas><canvas id="ph-ban" width="64" height="192" style="width:40px;height:120px;margin-left:6px"></canvas></div><div style="flex:1;min-width:220px">' +
+    '<input id="ph-n" maxlength="22" placeholder="Nome (Casa …)" style="width:100%;box-sizing:border-box;padding:7px 9px;margin-bottom:6px;border-radius:7px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.35);color:inherit"><input id="ph-mo" maxlength="40" placeholder="Lema" style="width:100%;box-sizing:border-box;padding:7px 9px;border-radius:7px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.35);color:inherit">' +
+    '<div style="font-size:12px;opacity:.8;margin-top:8px">Símbolo</div><div style="display:grid;grid-template-columns:repeat(6,1fr);gap:4px;margin:4px 0 8px">' + PH_CHARGES.map((c, i) => '<button data-ch="' + c[0] + '" title="' + c[1] + '" style="padding:4px 0;border-radius:7px;border:2px solid ' + (i === 0 ? '#e8c060' : 'rgba(255,255,255,.2)') + ';background:rgba(0,0,0,.3);color:inherit;cursor:pointer;font-size:18px;line-height:1.1">' + c[2] + '<br><small style="font-size:9.5px">' + c[1] + '</small></button>').join('') + '</div>' +
+    '<div style="font-size:12px;opacity:.8">Campo, lado esquerdo</div>' + sw(PH_FIELDS, 'f1') + '<div style="font-size:12px;opacity:.8">Campo, lado direito</div>' + sw(PH_FIELDS.slice(2).concat(PH_FIELDS.slice(0, 2)), 'f2') + '<div style="font-size:12px;opacity:.8">Símbolo e borda</div>' + sw(PH_METALS, 'm') +
+    (m.manors.length > 1 ? '<div style="font-size:12px;opacity:.8">Sede</div><select id="ph-bi" style="width:100%;padding:6px;border-radius:7px;background:rgba(0,0,0,.35);color:inherit">' + m.manors.map(x => '<option value="' + x.bi + '">' + x.n + '</option>').join('') + '</select>' : '') + '</div></div>' +
+    '<div class="tq-btns" style="margin-top:10px"><button class="est-btn" data-found' + (all ? '' : ' disabled') + '>Fundar a casa<small>' + m.cost.toLocaleString('pt-BR') + ' de ouro' + (all ? '' : ' · faltam requisitos') + '</small></button></div>';
+  const d = velPanel('Fundar uma casa nobre', html), st = { ch: 'wolf', f1: PH_FIELDS[0], f2: PH_FIELDS[2], m: PH_METALS[0] };
+  const draw = () => { const nm = (d.querySelector('#ph-n').value || 'Casa Nova'), hd = phHd({ n: nm + st.ch + st.f1 + st.f2 + st.m, ch: st.ch, f1: st.f1, f2: st.f2, m: st.m }); const a = d.querySelector('#ph-prev').getContext('2d'); a.clearRect(0, 0, 128, 160); a.drawImage(phShieldCanvas('shield', hd, 128, 160), 0, 0); const b = d.querySelector('#ph-ban').getContext('2d'); b.clearRect(0, 0, 64, 192); b.drawImage(phShieldCanvas('banner', hd, 64, 192), 0, 0); };
+  const pick = (attr, key, on) => d.querySelectorAll('[data-' + attr + ']').forEach(b => b.onclick = () => { st[key] = b.dataset[attr]; d.querySelectorAll('[data-' + attr + ']').forEach(o => o.style.borderColor = o === b ? on : 'rgba(255,255,255,.25)'); draw(); });
+  pick('ch', 'ch', '#e8c060'); pick('f1', 'f1', '#fff'); pick('f2', 'f2', '#fff'); pick('m', 'm', '#fff'); d.querySelector('#ph-n').oninput = draw; draw();
+  const fb = d.querySelector('[data-found]'); if (fb) fb.onclick = () => { const n = d.querySelector('#ph-n').value.trim(); if (n.length < 3) { showToast('Escolha um nome para a casa.'); return; } if (!fb.dataset.sure) { fb.dataset.sure = 1; fb.innerHTML = 'Confirmar a fundação?<small>' + m.cost.toLocaleString('pt-BR') + ' de ouro</small>'; return; } const bi = d.querySelector('#ph-bi'); Net.send(Object.assign({ t: 'funda', a: 'found', n, motto: d.querySelector('#ph-mo').value.trim() }, st, bi ? { bi: +bi.value } : {})); }; }
+function phHousePanel(m) { if (typeof velPanel !== 'function') return; const h = m.h, bar = (n, v, c) => '<span>' + n + '</span><div style="height:6px;background:rgba(255,255,255,.12);border-radius:3px;overflow:hidden"><div style="height:100%;width:' + v + '%;background:' + c + '"></div></div>';
+  let html = '<div style="display:flex;gap:14px;align-items:center;padding:2px"><canvas id="ph-sh" width="80" height="100"></canvas><div style="flex:1"><b style="font-size:15px">' + h.n + '</b><br><i style="opacity:.85">“' + h.motto + '”</i><br><small>Lorde ' + h.lord + '</small><div style="display:grid;grid-template-columns:62px 1fr;gap:3px 8px;font-size:12px;align-items:center;margin-top:6px">' + bar('Prestígio', m.st.prestige, '#e8c060') + bar('Força', m.st.power, '#d86a4a') + bar('Ouro', m.st.gold, '#e8d070') + '</div></div></div>';
+  if (m.own) { html += '<div class="est-cost">Renda de hoje em diante: <b>' + m.inc + '</b> de ouro por dia no banco (prestígio × 2). Cada vassalo soma prestígio.</div><div class="tq-btns"><button class="est-btn" data-a="men"' + (m.st.power >= 100 ? ' disabled' : '') + '>Contratar homens de armas<small>' + m.men + ' de ouro · +' + m.menPow + ' de força</small></button><button class="est-btn" data-a="chest"' + (m.st.gold >= 100 ? ' disabled' : '') + '>Encher o cofre da casa<small>' + m.chest + ' de ouro · +' + m.chestGold + ' de ouro e +1 de prestígio</small></button></div>' +
+      '<div class="vel-sub">Vassalos (' + m.vas.length + ')</div><div style="font-size:13px;line-height:1.5">' + (m.vas.length ? m.vas.map(v => '<div style="display:flex;gap:8px;align-items:center">· ' + v.n + ' <small style="opacity:.7">favor ' + v.f + '</small><button class="est-btn ghost" data-heir="' + v.k + '" style="margin-left:auto;padding:3px 9px;font-size:12px">' + (m.heir === v.n ? '★ herdeiro' : 'Escolher herdeiro') + '</button></div>').join('') : '<div style="opacity:.7">Ninguém jurou lealdade ainda. Outros jogadores juram falando com este criado.</div>') + '</div>' + (m.heir ? '<div class="est-cost">Herdeiro: <b>' + m.heir + '</b> <button class="est-btn ghost" data-heir="" style="padding:2px 8px;font-size:12px">tirar</button></div>' : ''); }
+  else html += '<div class="est-cost">' + (m.vow ? 'Você jurou lealdade a esta casa. Seu favor: <b>' + m.fav + '</b>.' : 'Jure lealdade para servir a esta casa (você deixa a casa ou a coroa a que serve agora).') + '</div><div class="tq-btns">' + (m.vow ? '' : '<button class="est-btn" data-a="vow">Jurar lealdade à ' + h.n + '</button>') + '<button class="est-btn ghost" data-a="donate" data-i="0"' + (m.gold < 50 ? ' disabled' : '') + '>Doar 50 de ouro</button><button class="est-btn ghost" data-a="donate" data-i="1"' + (m.gold < 200 ? ' disabled' : '') + '>Doar 200 de ouro</button></div>';
+  const d = velPanel(m.role === 'serv' ? 'Criado da ' + h.n : h.n, html), cv = d.querySelector('#ph-sh'); if (cv) cv.getContext('2d').drawImage(phShieldCanvas('shield', phHd(h), 80, 100), 0, 0);
+  d.querySelectorAll('[data-a]').forEach(b => b.onclick = () => Net.send({ t: 'house', a: b.dataset.a, id: m.id, i: +(b.dataset.i || 0) })); d.querySelectorAll('[data-heir]').forEach(b => b.onclick = () => Net.send({ t: 'house', a: 'heir', id: m.id, k: b.dataset.heir })); }
+if (typeof progEvent === 'function' && typeof G !== 'undefined') { const _peP = progEvent; progEvent = function (m, now) {
+  if (m.t === 'phouses') { if (typeof S !== 'undefined' && S.estate && S.estate.ph) return true;   /* no anfitrião o servidor já registrou (com o dono) */
+    for (const h of m.l) phReg(h); for (const id in PH_BY) if (!m.l.some(h => h.id === id)) { delete PH_BY[id]; for (const b of BUILDINGS) if (b.phouse === id) delete b.phouse; } return true; }
+  if (m.t === 'phmenu') { phFoundPanel(m); return true; }
+  if (m.t === 'phhouse') { phHousePanel(m); return true; }
+  const r = _peP(m, now);
+  if (m.t === 'courtmenu' && m.id === 'k_herald') { const d = document.getElementById('courtmenu'); if (d) { const bt = document.createElement('button'); bt.className = 'lift-btn'; bt.style.margin = '0 14px 12px'; bt.innerHTML = '<span class="lift-n">⚜</span><span><b>Fundar uma casa nobre</b><br><small>Título de Lorde, um casarão, ' + PH.cost.toLocaleString('pt-BR') + ' de ouro e o apoio de ' + PH.need + ' casas.</small></span>'; bt.onclick = () => { d.remove(); Net.send({ t: 'funda', a: 'menu' }); }; d.appendChild(bt); } }
+  return r; }; }
+if (typeof gmHousesDraw === 'function') { const _ghP = gmHousesDraw; gmHousesDraw = function () { _ghP(); try { const pane = typeof gmPane === 'function' ? gmPane('houses') : null; if (!pane || pane.querySelector('[data-phfound]')) return; const D = G.houses || {}, mine = (D.l || []).find(h => h.mine);
+  const bt = document.createElement('button'); bt.className = 'est-btn'; bt.dataset.phfound = 1; bt.style.cssText = 'margin:0 4px 10px;display:inline-block'; bt.innerHTML = mine ? '⚜ A sua casa: ' + mine.n : '⚜ Fundar a sua casa'; bt.onclick = () => Net.send({ t: 'funda', a: 'menu' }); pane.insertBefore(bt, pane.children[1] || null); } catch (e) { } }; }

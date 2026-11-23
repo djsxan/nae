@@ -446,6 +446,8 @@ function hostOnClient(from, m) {
     case 'trama': if (typeof trMsg === 'function') trMsg(p, m); break;
     case 'cargo': if (typeof cgMsg === 'function') cgMsg(p, m); break;
     case 'cerco': if (typeof sgMsg === 'function') sgMsg(p, m); break;
+    case 'funda': if (typeof phMsg === 'function') phMsg(p, m); break;
+    case 'rei': if (typeof reiMsg === 'function') reiMsg(p, m); break;
     case 'duel': duelMsg(p, m); break;
     case 'hipthrow': hipThrow(p); break;
     case 'train': trainMsg(p, m); break;
