@@ -14,7 +14,8 @@ const O = {
   FLOWERBED: 28, SPIKES: 29, WALL: 30, TOWER: 31, PART: 32, GATE: 33, STAIRS: 34, RUBBLE: 35, RUBBLEBIG: 36,
   STATUE: 37, BRAZIER: 38, DUMMY: 39, WATERFALL: 40, LOWWALL: 41, IVY: 42, ANVIL: 43, WEAPONRACK: 44, CART: 45, TABLE: 46, CAVE: 47, HOARD: 48, ARMORPILE: 49, RUINTOWER: 50, OAK: 51, BIRCH: 52, WILLOW: 53, FERN: 54, ROOTS: 55, SHROOMS: 56, BERRY: 57, HERB: 58, WHEAT: 67, WHEATSPROUT: 68, BOULDER: 59, GUILLOTINE: 60, STOOL: 61, STAGEFLOOR: 62, VITRINE: 63, FRUITCRATE: 64, WATERWHEEL: 65, NOTICEBOARD: 66,
 };
-const BLOCKING = new Set([O.TREE, O.PINE, O.ROCK, O.FOUNTAIN, O.STUMP, O.DEADTREE, O.GRAVE, O.TENT,
+O.SCAFFOLD = 69;   /* andaime das obras do lote */
+const BLOCKING = new Set([O.SCAFFOLD, O.TREE, O.PINE, O.ROCK, O.FOUNTAIN, O.STUMP, O.DEADTREE, O.GRAVE, O.TENT,
   O.CAMPFIRE, O.FENCE, O.BARREL, O.CRATE, O.HAY, O.WELL, O.STALL, O.LOG, O.SPIKES,
   O.WALL, O.TOWER, O.PART, O.RUBBLEBIG, O.CAVE, O.HOARD, O.RUINTOWER, O.OAK, O.BIRCH, O.WILLOW, O.BOULDER, O.GUILLOTINE, O.STOOL, O.VITRINE, O.FRUITCRATE, O.WATERWHEEL, O.NOTICEBOARD, O.STATUE, O.BRAZIER, O.DUMMY, O.WATERFALL, O.LOWWALL, O.ANVIL, O.WEAPONRACK, O.CART, O.TABLE]);
 // objetos soltos que dá para pegar e arremessar (dano base)
@@ -1260,7 +1261,7 @@ function generateWorld() {
     for (const [ax, ay, bx, by] of L) for (let y = C + ay; y <= C + by; y++) for (let x = C + ax; x <= C + bx; x++) { if (!inb(x, y)) continue; const i = idx(x, y); if (obj[i] === O.WALL || obj[i] === O.PART || obj[i] === O.TOWER || obj[i] === O.GATE) continue; obj[i] = O.NONE; ground[i] = T.COBBLE; rdir[i] = bx - ax > by - ay ? 1 : 2; used[i] = 1; } }
   if (!TEST3D) for (const [bi, rx, ry, w, h, door, dc] of CITY_RELAYOUT) { const b = BUILDINGS[bi]; if (!b) continue; if (b.w !== w || b.h !== h) delete b.arch; delete b.gen; b._old = { x: b.x, y: b.y, w: b.w, h: b.h }; Object.assign(b, { x: C + rx, y: C + ry, w, h, door, dcol: dc }); if (b.deco === 'seat') { delete b._d2; b.seatMirror = door === 'S' ? 1 : 0; b.seatSide = door === 'S' ? 'R' : door === 'E' ? 'L' : null; const A2 = door === 'S' || door === 'N' ? w : h;   /* a porta dos fundos e a hera ficam numa parede que a câmera vê (leste ou sul) */
       b.door2L = door === 'S' ? [A2 - 1, 2, 'E'] : door === 'E' ? [0, 2, 'S'] : [Math.floor(seatMapU(b, 1.5)), 0, 'E']; } }
-  if (!TEST3D) for (const bi of CITY_LOTS) { const b = BUILDINGS[bi]; if (!b) continue; Object.assign(b, { kind: 'lot', name: 'Lote do bairro nobre', lot: 1, floors: 1 }); delete b.stairs; delete b.seat; }   /* terreno vazio cercado: fica na lista (os índices dos prédios salvos não mudam), mas não é desenhado nem mobiliado */
+  if (!TEST3D) for (const bi of CITY_LOTS) { const b = BUILDINGS[bi]; if (!b) continue; delete b.seat; b._lotPend = 1; }   /* o lote nasce construído (casarão comum) e vira terreno vazio no fim do arquivo: lotPrepare guarda as duas versões para a obra */   /* terreno vazio cercado: fica na lista (os índices dos prédios salvos não mudam), mas não é desenhado nem mobiliado */
   BUILDINGS.forEach((b, bi) => {
     if (b.lot) { const [dx, dy] = doorTile(b); for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { const i = idx(x, y), edge = x === b.x || y === b.y || x === b.x + b.w - 1 || y === b.y + b.h - 1; ground[i] = (x * 7 + y * 3) % 5 ? T.DIRT : T.GRASS; obj[i] = edge && !(Math.abs(x - dx) + Math.abs(y - dy) <= 1 && (x === dx || y === dy)) ? O.LOWWALL : O.NONE; used[i] = 1; rdir[i] = 0; } return; }
     for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { bld[idx(x, y)] = bi; obj[idx(x, y)] = O.NONE; ground[idx(x, y)] = T.COBBLE; }
@@ -1821,3 +1822,32 @@ function canStandZ(x, y, z, r = 0.24, fl = 0, fb = -1) {
 }
 // altura resultante depois de andar até (x, y)
 function heightAt(x, y, z) { const h = stairH(x, y); return h >= 0 ? h : (z >= 0.5 ? 1 : 0); }
+// ---------- o lote do bairro nobre: guarda o casarão pronto e o terreno vazio (a obra troca um pelo outro durante o jogo) ----------
+const LOT_STASH = {};
+function lotKeys() { const N = MAP_W * MAP_H; return Object.keys(WORLD).filter(k => WORLD[k] && ArrayBuffer.isView(WORLD[k]) && WORLD[k].length === N); }
+function lotSnap(S0) { const o = {}; for (const k of S0.keys) { const a = []; for (let y = S0.y0; y <= S0.y1; y++) for (let x = S0.x0; x <= S0.x1; x++) a.push(WORLD[k][y * MAP_W + x]); o[k] = a; } return o; }
+function lotPut(S0, T) { for (const k of S0.keys) { let n = 0; for (let y = S0.y0; y <= S0.y1; y++) for (let x = S0.x0; x <= S0.x1; x++) WORLD[k][y * MAP_W + x] = T[k][n++]; } }
+const LOT_LISTS = () => [['seats', WORLD.seats], ['BEDS', BEDS], ['KITCHENS', KITCHENS], ['DUMMIES', DUMMIES], ['CHESTS', CHESTS], ['APT_CHESTS', APT_CHESTS]];
+function lotPrepare() { if (TEST3D) return; for (const bi of CITY_LOTS) { const b = BUILDINGS[bi]; if (!b || !b._lotPend) continue; delete b._lotPend;
+  const S0 = { bi, x0: b.x - 1, y0: b.y - 1, x1: b.x + b.w, y1: b.y + b.h, keys: lotKeys(), def: { kind: b.kind, name: b.name, floors: b.floors, stairs: b.stairs } };
+  S0.built = lotSnap(S0); S0.lists = {};
+  for (const [nm, L] of LOT_LISTS()) { if (!L) continue; S0.lists[nm] = L.filter(e => e && e.bi === bi); for (let i = L.length - 1; i >= 0; i--) if (L[i] && L[i].bi === bi) L.splice(i, 1); }
+  S0.props = PROPS.filter(P => P.bi === bi); for (const P of S0.props) { PROPS.splice(PROPS.indexOf(P), 1); delete PROPS_BY[P.id]; }
+  Object.assign(b, { kind: 'lot', name: 'Lote do bairro nobre', lot: 1, floors: 1 }); delete b.stairs; const [dx, dy] = doorTile(b);
+  for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { const i = y * MAP_W + x, edge = x === b.x || y === b.y || x === b.x + b.w - 1 || y === b.y + b.h - 1;
+    for (const k of S0.keys) if (k !== 'ground' && k !== 'obj' && k !== 'zone' && k !== 'height' && k !== 'river' && k !== 'flow') WORLD[k][i] = k === 'bld' ? -1 : 0;
+    WORLD.ground[i] = (x * 7 + y * 3) % 5 ? T.DIRT : T.GRASS; WORLD.obj[i] = edge && !(Math.abs(x - dx) + Math.abs(y - dy) <= 1 && (x === dx || y === dy)) ? O.LOWWALL : O.NONE; }
+  S0.lotT = lotSnap(S0); LOT_STASH[bi] = S0; } }
+/* volta ao casarão pronto (fim da obra): tiles, móveis das listas, imóvel */
+function lotBuild(bi, style, name) { const S0 = LOT_STASH[bi], b = BUILDINGS[bi]; if (!S0 || !b || !b.lot) return false; lotPut(S0, S0.built);
+  Object.assign(b, S0.def, { lot: 0, mstyle: style || 'pedra', name: name || S0.def.name }); if (!S0.def.stairs) delete b.stairs;
+  for (const [nm, L] of LOT_LISTS()) if (L && S0.lists[nm]) for (const e of S0.lists[nm]) if (!L.includes(e)) L.push(e);
+  for (const P of S0.props) { P.name = b.name; if (!PROPS_BY[P.id]) { PROPS.push(P); PROPS_BY[P.id] = P; } } return true; }
+/* terreno durante a obra: cerca, chão batido e o canteiro (material, andaimes) conforme o estágio */
+function lotSite(bi, stage) { const S0 = LOT_STASH[bi], b = BUILDINGS[bi]; if (!S0 || !b || !b.lot) return; lotPut(S0, S0.lotT); if (stage == null) return;
+  const put = (u, v, o) => { const x = b.x + u, y = b.y + v; if (x > b.x && y > b.y && x < b.x + b.w - 1 && y < b.y + b.h - 1) WORLD.obj[y * MAP_W + x] = o; };
+  for (let y = b.y + 1; y < b.y + b.h - 1; y++) for (let x = b.x + 1; x < b.x + b.w - 1; x++) WORLD.ground[y * MAP_W + x] = stage >= 1 ? T.FLOORSTONE : T.DIRT;
+  put(1, 1, O.LOG); put(2, 1, O.LOG); put(b.w - 2, b.h - 2, O.CRATE); put(b.w - 3, b.h - 2, O.ROCK);
+  if (stage >= 1) { put(1, b.h - 2, O.SCAFFOLD); put(b.w - 2, 1, O.SCAFFOLD); put(3, 1, O.BARREL); }
+  if (stage >= 2) { put(1, 3, O.SCAFFOLD); put(b.w - 2, 3, O.SCAFFOLD); put(3, b.h - 2, O.CRATE); } }
+lotPrepare();

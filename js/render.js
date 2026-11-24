@@ -678,6 +678,7 @@ function objSprite(o, x, y) {
     case O.DEADTREE: return smallSprite('deadtree', v);
     case O.GRAVE: return smallSprite('grave', v & 1);
     case O.TENT: return smallSprite('tent');
+    case O.SCAFFOLD: return smallSprite('scaffold') || smallSprite('crate');
     case O.BARREL: return smallSprite('barrel');
     case O.CRATE: return smallSprite('crate');
     case O.HAY: return smallSprite('hay');

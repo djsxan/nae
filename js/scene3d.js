@@ -879,6 +879,12 @@ function mBarrel() {
   for (const y of [0.12, 0.4, 0.68]) o.add(mk(new THREE.TorusGeometry(0.24 + Math.sin(y / 0.8 * Math.PI) * 0.05 + 0.006, 0.014, 6, 24).rotateX(Math.PI / 2).translate(0, y, 0), IRON()));
   return o;
 }
+/* andaime da obra do lote: postes, travessas e tábuas em dois níveis */
+function mScaffold() { const o = grp(), W = smat('wood', '#9a7a4e'), P = smat('wood', '#b8955e');
+  for (const [x, z] of [[-0.42, -0.42], [0.42, -0.42], [-0.42, 0.42], [0.42, 0.42]]) o.add(mk(new THREE.CylinderGeometry(0.035, 0.04, 2.3, 6).translate(x, 1.15, z), W));
+  for (const y of [0.9, 1.8]) { o.add(wbox(0.98, 0.05, 0.9, 0, y, 0, P, 1.2)); o.add(mk(BOX(0.95, 0.04, 0.04, 0, y + 0.42, -0.44), W)); o.add(mk(BOX(0.04, 0.04, 0.95, -0.44, y + 0.42, 0), W)); }
+  const d = mk(BOX(0.04, 1.3, 0.04, 0, 0, 0), W); d.position.set(0, 0.95, 0.44); d.rotation.z = 0.68; o.add(d);
+  const bk = mk(new THREE.CylinderGeometry(0.1, 0.08, 0.16, 8).translate(0.2, 1.0, 0.1), smat('wood', '#6a4a2a')); o.add(bk); return o; }
 function mCrate() {
   const o = grp(wbox(0.6, 0.6, 0.6, 0, 0.3, 0, smat('wood', '#9a7448'), 1.6));
   const fm = smat('wood', '#6a4a2a');
@@ -1368,6 +1374,7 @@ const WSTYLE = {
   mill: { wall: '#e2d6bc', roof: '#5a4a3a', tex: 'plaster', roofTex: 'shingle', trim: '#4a3018' },
   bakery: { wall: '#efd49a', roof: '#b4482a', tex: 'plaster', roofTex: 'shingle', trim: '#3e2412' },   // enxaimel cor de trigo, vigas escuras, telha vermelha
 };
+const MSTYLE = { pedra: { wall: '#e8e0cc', roof: '#3a4252', tex: 'stoneblock', roofTex: 'slate', trim: '#8a7a5a' }, enxaimel: { wall: '#efe2c2', roof: '#7a3a26', tex: 'plaster', roofTex: 'shingle', trim: '#3a2212' }, tijolo: { wall: '#a8553a', roof: '#3e3a3a', tex: 'brick', roofTex: 'slate', trim: '#e8dcc0' } };
 function styleOf(b) {
   if (b.kind === 'kstable' || b.kind === 'kguard') return { wall: '#d2b07e', roof: '#7a2a22', tex: 'stoneblock', roofTex: 'slate', trim: '#4a2c16' };   /* pátio do castelo: arenito como a torre de menagem */
   if (b.deco === 'arcane') return { wall: '#3a2a20', roof: '#2c2a32', tex: 'oldplank', roofTex: 'slate', trim: '#a8823a' };   // varinhas: madeira quase preta, ouro gasto
@@ -1377,6 +1384,7 @@ function styleOf(b) {
   if (b.office === 'agency') return { wall: '#e6dfcf', roof: '#3a2c24', tex: 'stoneblock', roofTex: 'slate', trim: '#3a2416' };   // agência: pedra clara e madeira escura
   if (b.office) return { wall: '#e8e2d2', roof: '#34404e', tex: 'stoneblock', roofTex: 'slate', trim: '#b08a3a' };   // imobiliária: pedra clara e bronze
   if (b.kind === 'workshop') return WSTYLE[b.wk] || WSTYLE.carp;
+  if (b.kind === 'manor' && b.mstyle && MSTYLE[b.mstyle]) return MSTYLE[b.mstyle];   /* casarão construído no lote: o estilo escolhido */
   if (b.kind === 'house' || (b.kind === 'shop' && b.v)) { const h = HVAR[(b.v || 0) % HVAR.length]; return { tex: 'plaster', ...h }; }
   return BSTYLE[b.kind];
 }
@@ -3055,7 +3063,7 @@ function mInterior(b, fl = 0) {
   return o;
 }
 function interiorSprite(b, fl = 0) {
-  const key = 'in|' + archKey(b) + '|' + (b.door || 'S') + '|' + fl + (b.kind === 'castle' ? ((typeof G !== 'undefined' && G.rkHd) ? '|K' + G.rkHd : '') : '');
+  const key = 'in|' + archKey(b) + '|' + (b.door || 'S') + '|' + fl + (b.lot ? '|lot' : '') + (b.mstyle ? '|' + b.mstyle : '') + (b.kind === 'castle' ? ((typeof G !== 'undefined' && G.rkHd) ? '|K' + G.rkHd : '') : '');
   return scen3(key, () => b.kind === 'stairtower' ? placeRot(b, mStairTower({ ...localB(b), realDoor: b.door || 'S' }, true)) : placeRot(b, mInterior({ ...localB(b), realDoor: b.door || 'S' }, fl)));
 }
 // ============================================================
@@ -3074,8 +3082,8 @@ function interiorSprite(b, fl = 0) {
   wrap('bushSprite', v => `bu|${v}`, v => sc(mBush(v), 1.05));
   wrap('rockSprite', (v, m) => `ro|${v}|${m}`, (v, m) => mRock(v, m));
   wrap('grassSprite', (v, w, d) => `gr|${v}|${d}`, (v, w, d) => sc(mGrass(v, d), 0.7));
-  const SMALL = { mushroom: mMushroom, reeds: mReeds, stump: mStump, log: mLog, deadtree: mDeadTree, grave: mGrave, tent: mTent, barrel: mBarrel, crate: mCrate, hay: mHay, bench: mBench, well: mWell, stall: mStall, spikes: mSpikes, rubblebig: mRubble, dummy: mDummy, statue: mStatue, anvil: mAnvil, cave: mCave, chest: mChest, hoard: mHoard, armorpile: mArmorPile, ruintower: mRuinTower, weaponrack: mWeaponRack, cart: mCart, table: mTable };
-  const PS = { barrel: 0.5, crate: 0.5, hay: 0.55, bench: 0.5, well: 0.72, stall: 0.6, tent: 0.75, spikes: 0.7, rubblebig: 0.8, dummy: 0.55, statue: 1.0, anvil: 0.5, cave: 0.8, chest: 0.55, hoard: 0.9, armorpile: 0.8, ruintower: 0.9, weaponrack: 0.55, cart: 0.6, table: 0.5, grave: 0.6, stump: 0.75, log: 0.8, mushroom: 0.8, reeds: 0.8, deadtree: 1.25 };
+  const SMALL = { scaffold: mScaffold, mushroom: mMushroom, reeds: mReeds, stump: mStump, log: mLog, deadtree: mDeadTree, grave: mGrave, tent: mTent, barrel: mBarrel, crate: mCrate, hay: mHay, bench: mBench, well: mWell, stall: mStall, spikes: mSpikes, rubblebig: mRubble, dummy: mDummy, statue: mStatue, anvil: mAnvil, cave: mCave, chest: mChest, hoard: mHoard, armorpile: mArmorPile, ruintower: mRuinTower, weaponrack: mWeaponRack, cart: mCart, table: mTable };
+  const PS = { scaffold: 0.95, barrel: 0.5, crate: 0.5, hay: 0.55, bench: 0.5, well: 0.72, stall: 0.6, tent: 0.75, spikes: 0.7, rubblebig: 0.8, dummy: 0.55, statue: 1.0, anvil: 0.5, cave: 0.8, chest: 0.55, hoard: 0.9, armorpile: 0.8, ruintower: 0.9, weaponrack: 0.55, cart: 0.6, table: 0.5, grave: 0.6, stump: 0.75, log: 0.8, mushroom: 0.8, reeds: 0.8, deadtree: 1.25 };
   const sc = (g, k) => { g.scale.setScalar(k); return g; };
   const origSmall = window.smallSprite;
   window.smallSprite = function (kind, v = 0, w) { const f = SMALL[kind]; return (f && scen3(`sm|${kind}|${v}`, () => sc(f(v), PS[kind] || 1))) || origSmall(kind, v, w); };
@@ -3090,7 +3098,7 @@ function interiorSprite(b, fl = 0) {
   wrap('stairsSprite', (d, k) => `st|${d}|${k | 0}`, (d, k) => mStairs(d, k | 0));
   wrap('slabSprite', v => `sl|${v}`, v => mSlab(v));
   wrap('cliffSprite', (h, v, s) => `cl|${h}|${v}|${s}`, (h, v, s) => mCliff(h, v, s));
-  wrap('buildingSprite', (b, n) => `bd|${archKey(b)}|${b.door || 'S'}` + (b.kind === 'castle' ? ((typeof G !== 'undefined' && G.rkHd) ? '|K' + G.rkHd : '') : '') + (b.phouse && typeof HERALDS !== 'undefined' && HERALDS[b.phouse] ? '|' + HERALDS[b.phouse].house + HERALDS[b.phouse].charge + HERALDS[b.phouse].field + HERALDS[b.phouse].field2 + HERALDS[b.phouse].metal : ''), (b, n) => mBuildingRot(b, false));
+  wrap('buildingSprite', (b, n) => `bd|${archKey(b)}|${b.door || 'S'}` + (b.mstyle ? '|' + b.mstyle : '') + (b.kind === 'castle' ? ((typeof G !== 'undefined' && G.rkHd) ? '|K' + G.rkHd : '') : '') + (b.phouse && typeof HERALDS !== 'undefined' && HERALDS[b.phouse] ? '|' + HERALDS[b.phouse].house + HERALDS[b.phouse].charge + HERALDS[b.phouse].field + HERALDS[b.phouse].field2 + HERALDS[b.phouse].metal : ''), (b, n) => mBuildingRot(b, false));
   // luzes das janelas na altura nova das paredes
   window.buildingWindows = function (b) {
     if (b.kind === 'stairtower') return [];
