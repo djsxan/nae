@@ -194,7 +194,7 @@ function hostOnClient(from, m) {
     np.hp = np.maxHp; np.mp = np.maxMp;
     if (!m.lvl) { np.gold = 30; np.pots.hp = 3; np.pots.mp = 2; np.pots.band = 3; } // kit inicial
     np.joinT = Date.now(); np.recon = m._recon || 0; S.players[from] = np; if (S.blooms && S.blooms.length) setTimeout(() => { if (S.players[from]) bloomsSend(false, from); }, 3000); setTimeout(() => { if (S.players[from] && S.estate && (S.estate.saps || []).length) sapsSend(from); if (S.players[from] && typeof entsSend === 'function' && S.estate && S.estate.ents) entsSend(from); }, 3200);
-    estateJoin(np);
+    np.hadPos = isFinite(m.px) && isFinite(m.py) && !(+m.jailLeft > 0); estateJoin(np);   /* reconexão: o portal não leva para longe de onde estava */
     if (m.dev && typeof crypto !== 'undefined' && crypto.subtle) crypto.subtle.digest('SHA-256', new TextEncoder().encode(String(m.dev).trim().toUpperCase())).then(buf => {
       const h = [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, '0')).join('');
       if (h !== DEV_HASH || !S.players[from]) { Net.toOne(from, { t: 'dev', ok: 0 }); return; }
