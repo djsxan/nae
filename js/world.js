@@ -1591,6 +1591,13 @@ const WORKS = {
   carp: { n: 'Carpintaria', recipes: { woodgoods: { wood: 2 }, paper: { wood: 2 } } }, alch: { n: 'Alambique', recipes: { potion: { herb: 2 } } },
   dojo: { n: 'Dojô' },   // serviço: diárias de quem treina e aulas do sensei
 };
+/* funções dos contratados: lojas 1 vendedor + 2 no estoque; oficinas que extraem 1 vendedor + 2 fabricando + 3 coletando; oficinas que transformam 1 vendedor + 2 fabricando (o dojô continua como era) */
+const STAFF_ROLE_N = { sell: 'Vendedor', make: 'Fabricando', coll: 'Coletando', stock: 'No estoque' };
+const COLL_OF = { saw: ['saw'], mine: ['mine'], farm: ['farm'], wheat: ['wheat'] };   /* só as oficinas que extraem têm coletores; as que transformam recebem a matéria-prima pelos mensageiros */
+function staffCaps(P) { if (!P || P.wk === 'dojo') return null; if (P.kind === 'shop') return { sell: 1, stock: 2 }; if (P.kind === 'workshop') return COLL_OF[P.wk] ? { sell: 1, make: 2, coll: 3 } : { sell: 1, make: 2 }; return null; }
+function staffNorm(P, B) { const C = staffCaps(P); if (!C || !B || !B.staff) return; const cnt = {}; for (const s of B.staff) if (s.ro && C[s.ro]) cnt[s.ro] = (cnt[s.ro] || 0) + 1;
+  const ext = P.kind === 'workshop' && ['saw', 'mine', 'farm', 'wheat'].includes(P.wk), order = P.kind === 'shop' ? ['sell', 'stock'] : ext ? ['coll', 'make', 'sell'] : ['make', 'sell', 'coll'];
+  for (const s of B.staff) if (!s.ro || !C[s.ro]) { s.ro = order.find(k => (cnt[k] || 0) < C[k]) || order[0]; cnt[s.ro] = (cnt[s.ro] || 0) + 1; } }
 const MARGIN = [{ n: 'Barato', k: 1.25, p: 0.9 }, { n: 'Justo', k: 1.6, p: 0.7 }, { n: 'Caro', k: 2.1, p: 0.42 }];
 const BIZ_UP = {   // melhorias: custo por nível (até 3)
   shelf: { n: 'Prateleiras e depósito', d: '+80 de estoque por nível', cost: [250, 600, 1200], for: 'shop' },
