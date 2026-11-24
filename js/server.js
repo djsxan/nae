@@ -8,7 +8,7 @@ const S = { players: {}, monsters: {}, nextMid: 1, nextSpawn: 0, lastRegen: 0, f
 // ambiente do servidor: tudo o que ele usa de fora passa por aqui (permite rodar num Web Worker ou num servidor dedicado)
 const HOSTSTORE = { mem: {}, onSet: null, pre: '',   /* pre: prefixo do mundo aberto (cada mundo guardado tem o seu) */
   get(k) { k = this.pre + k; try { if (typeof localStorage !== 'undefined') return localStorage.getItem(k); } catch (e) { } return this.mem[k] ?? null; },
-  set(k, v) { k = this.pre + k; try { if (typeof localStorage !== 'undefined') { localStorage.setItem(k, v); return; } } catch (e) { } this.mem[k] = v; if (this.onSet) this.onSet(k, v); } };
+  set(k, v) { k = this.pre + k; try { if (typeof localStorage !== 'undefined') { localStorage.setItem(k, v); this.fail = 0; return; } } catch (e) { this.fail = Date.now(); } this.mem[k] = v; if (this.onSet) this.onSet(k, v); } };
 const hsGet = k => { try { return JSON.parse(HOSTSTORE.get(k) || 'null'); } catch (e) { return null; } }, hsSet = (k, o) => HOSTSTORE.set(k, JSON.stringify(o));
 function weatherS() {   /* chuva igual à que os jogadores veem (mesma fórmula), com o ajuste do Tecelão */
   const ov = (typeof WTs === 'function' ? WTs().rain : null); if (ov != null) return { rain: ov };
@@ -3236,13 +3236,16 @@ const estDay = () => Math.floor(gameNow() / ESTATE_DAY_MS);
 const isBizProp = P => P && (P.kind === 'shop' || P.kind === 'workshop' || P.kind === 'bank' || P.kind === 'hotel') && P.npc !== 'a Guarda' && !(P.kind === 'workshop' && P.npc && !P.wk);
 function estateLoad() {
   if (S.estate) return S.estate; S.estate = { r: {}, lost: {} };
-  try { const j = hsGet(ESTATE_KEY); if (j && j.r) { S.estate = { r: j.r, lost: j.lost || {}, hotel: j.hotel || {}, npcb: j.npcb || {}, npcm: j.npcm || {}, tub: j.tub || {}, emp: j.emp || {}, seg: j.seg || {}, empN: j.empN || 0, clk: j.clk || 0 }; if (j.clk && !SIMCLK.real) simSet(Date.now() + j.clk, 1, false); for (const pid in S.estate.r) { const P = PROPS_BY[pid]; if (!P || (P.kind !== 'house' && !isBizProp(P))) { const r0 = S.estate.r[pid]; if (r0 && r0.owner && r0.chest && Object.keys(r0.chest).length) S.estate.lost[r0.owner] = Object.assign(S.estate.lost[r0.owner] || {}, r0.chest); delete S.estate.r[pid]; } }   /* imóvel que deixou de existir (a Casa 2 virou a agência): o baú volta para o dono */ } } catch (e) { }
+  try { const j = hsGet(ESTATE_KEY); if (j && j.r) { S.estate = Object.assign({}, j, { r: j.r, lost: j.lost || {}, hotel: j.hotel || {}, npcb: j.npcb || {}, npcm: j.npcm || {}, tub: j.tub || {}, emp: j.emp || {}, seg: j.seg || {}, empN: j.empN || 0, clk: j.clk || 0 });   /* tudo o que foi salvo volta (casas, coroa, casamentos, linhagens, segredos...); antes só estes campos voltavam */ if (j.clk && !SIMCLK.real) simSet(Date.now() + j.clk, 1, false); for (const pid in S.estate.r) { const P = PROPS_BY[pid]; if (!P || (P.kind !== 'house' && !isBizProp(P))) { const r0 = S.estate.r[pid]; if (r0 && r0.owner && r0.chest && Object.keys(r0.chest).length) S.estate.lost[r0.owner] = Object.assign(S.estate.lost[r0.owner] || {}, r0.chest); delete S.estate.r[pid]; } }   /* imóvel que deixou de existir (a Casa 2 virou a agência): o baú volta para o dono */ } } catch (e) { }
   for (const pid in S.estate.r) bizLinkBank(S.estate.r[pid]);
   S.estateL = estateLocks(); return S.estate;
 }
 const BANK_CHEAT_H = 529268606;   /* impressão do código do comando de teste /banco */
 function estChestSlots(pid) { const P = PROPS_BY[pid]; return P && P.suite ? ESTATE_CHEST_SLOTS * 2 : ESTATE_CHEST_SLOTS; }   /* o armário-baú da suíte guarda o dobro */
-function estateSave() { try { hsSet(ESTATE_KEY, S.estate); } catch (e) { } }
+function estateSave() { try { hsSet(ESTATE_KEY, S.estate); } catch (e) { HOSTSTORE.fail = Date.now(); }
+  if (HOSTSTORE.fail && Date.now() - (S.saveWarn || 0) > 300000) { S.saveWarn = Date.now(); try { sys('⚠ O mundo não pôde ser salvo no navegador do anfitrião (espaço cheio). Libere espaço ou o progresso deste reino pode se perder ao fechar.'); } catch (e) { } } }
+/* autosave do mundo: a cada 30 s e ao fechar a aba (o que muda sem gravar na hora também fica guardado) */
+if (typeof setInterval === 'function' && typeof addEventListener === 'function') { setInterval(() => { try { if (S.estate && typeof Net !== 'undefined' && Net.isHost) estateSave(); } catch (e) { } }, 30000); addEventListener('pagehide', () => { try { if (S.estate && typeof Net !== 'undefined' && Net.isHost) estateSave(); } catch (e) { } }); }
 function estateLocks() { const E = S.estate, L = {}; if (!E) return L; for (const P of PROPS) if (tenantsOf(P).length && !P.apt) L[P.bi] = []; for (const pid in E.r) { const P = PROPS_BY[pid]; if (P && P.kind === 'house' && !P.apt) L[P.bi] = [E.r[pid].ownerName.trim().toLowerCase(), ...E.r[pid].auth]; }
   for (const P of PROPS) if (P.apt) { const r = E.r[P.id]; if (r) L['apt:' + P.apt] = [r.ownerName.trim().toLowerCase(), ...(r.auth || [])]; else if (aptNpc(P)) L['apt:' + P.apt] = []; }   /* apartamentos: do morador (ou do morador NPC) */
   return L; }
