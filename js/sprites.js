@@ -822,7 +822,7 @@ function poseKey(P) {
   return P.view + (P.walk >= 0 ? P.walk : '-') + (P.act ? P.act.k + P.act.f : '') + (P.idle ? P.idle.k + P.idle.f : '') + (P.sit ? 's' : '') + (P.carry ? 'c' : '');
 }
 const _lookCache = new Map();
-function lookFor(key, make) { let l = _lookCache.get(key); if (!l) { l = make(); _lookCache.set(key, l); } return l; }
+function lookFor(key, make) { let l = _lookCache.get(key); if (!l) { try { l = typeof make === 'function' ? make() : null; } catch (e) { l = null; } if (!l) l = NPC_LOOKS.v_segm ? NPC_LOOKS.v_segm() : heroLook('knight', 'iron', '#5a4030'); _lookCache.set(key, l); } return l; }   /* aparência que falta (ou que falha) vira um morador comum: um NPC com problema nunca apaga os outros da tela */
 function heroSprite(cls, skin, color, P) {
   const lk = cls + ':' + skin + ':' + color;
   const L = lookFor(lk, () => heroLook(cls, skin, color));

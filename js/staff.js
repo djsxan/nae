@@ -538,10 +538,12 @@ function segKillTick(n, r, q, now, dt) {
     if (fk === 'n') npcDie(f, null); else { if (f.downed) f.downed.faint = false; if (PERMADEATH && !f.dev && !f.devPowers) permaDeath(f, 'pelas mãos de ' + r.n + ', segurança de ' + (q ? q.name : 'alguém')); else respawnTemple(f); }
     const wit = segWitnesses(n, f.id); if (wit) segCrime(n, r, q, wit); else if (q) tell(q, r.n + ' acabou com ' + foeName(f, fk) + '. Ninguém viu.'); }, 900 + 850);
 }
-function segWitnesses(n, victimId, R = 9) {   /* alguém viu? (moradores, visitantes, sentinelas ou outros jogadores por perto) */
-  const fl = n.fl || 0;
-  for (const o of Object.values(S.npcs)) { if (o === n || o.dead || o.downed || o.seg || o.emp || o.sleeping || (o.fl || 0) !== fl) continue; if (dist(o.x, o.y, n.x, n.y) < R) return o.name.split(',')[0]; }
-  for (const o of Object.values(S.players)) { if (o.id === victimId || estOwner(o) === n.seg || o.downed || (o.fl || 0) !== fl) continue; if (dist(o.x, o.y, n.x, n.y) < R) return o.name; }
+/* onde alguém está: na rua (-1) ou dentro de um prédio (o índice dele); quem está dentro não vê a rua, e vice-versa */
+function segPlace(o) { if (o.fl) return o.fb != null ? o.fb : -2; const bi = WORLD.bld[tileAt(o.x, o.y)]; return bi >= 0 ? bi : -1; }
+function segWitnesses(n, victimId, R = 9) {   /* alguém viu? (moradores, visitantes, sentinelas ou outros jogadores no mesmo lugar: a vítima não conta) */
+  const fl = n.fl || 0, at = segPlace(n);
+  for (const o of Object.values(S.npcs)) { if (o === n || o.id === victimId || o.dead || o.downed || o.seg || o.emp || o.sleeping || (o.fl || 0) !== fl || segPlace(o) !== at) continue; if (dist(o.x, o.y, n.x, n.y) < R) return o.name.split(',')[0]; }
+  for (const o of Object.values(S.players)) { if (o.id === victimId || estOwner(o) === n.seg || o.downed || (o.fl || 0) !== fl || segPlace(o) !== at) continue; if (dist(o.x, o.y, n.x, n.y) < R) return o.name; }
   return null;
 }
 function segCrime(n, r, q, wit, what) {

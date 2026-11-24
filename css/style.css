@@ -851,3 +851,5 @@ body.touch #pplbtn { bottom: auto; top: 54px; right: calc(10px + env(safe-area-i
 
 /* Jornada: rotinas anotadas dos casarões */
 .cs-note { margin: 6px 0 10px; font-size: 13px; line-height: 1.4; } .cs-note ul { margin: 4px 0 0 18px; padding: 0; }
+/* a cidade só aparece ao entrar no reino: na abertura, só a tela de introdução (sem a cidade piscando antes da foto) */
+body.nae:not(.ingame) #game { visibility: hidden; }

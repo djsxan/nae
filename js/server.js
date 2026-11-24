@@ -1013,6 +1013,7 @@ function evoFx(p, m) { near(p.x, p.y, Object.assign({ t: 'evofx', id: p.id, x: p
 function mageEvo(p, nd, msg, now) {
   const a = isFinite(+msg.a) ? +msg.a : (p.fa || 0), shout = { s: nd.name + '!' }, fl = p.fl || 0;
   if (nd.id === 'w_gust') { const R = 4 + useBonus(p, 'el_wind') * 3; let n = 0;   /* Rajada: leque que empurra e derruba */
+    spellNpcs(p, n => { const dx = n.x - p.x, dy = n.y - p.y, d = Math.hypot(dx, dy); return d <= R && d >= 0.01 && Math.abs(angDiff(Math.atan2(dy, dx), a)) <= 0.62; }, 0.4, 'air');
     for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || (m.alt || 0) > 1) continue; const dx = m.x - p.x, dy = m.y - p.y, d = Math.hypot(dx, dy); if (d > R || d < 0.01 || Math.abs(angDiff(Math.atan2(dy, dx), a)) > 0.62) continue;
       const big = MON[m.type] && MON[m.type].big, push = (big ? 0.8 : 2.6) * (1 - d / R * 0.5), pa = Math.atan2(dy, dx); for (let s = 0; s < 12; s++) { const nx = m.x + Math.cos(pa) * push / 12, ny = m.y + Math.sin(pa) * push / 12; if (!monStand(nx, ny, m)) break; m.x = nx; m.y = ny; }
       if (!big) knockMon(m, p, now); hitMonster(p, m, 0.4, 150); n++; }
@@ -1020,12 +1021,14 @@ function mageEvo(p, nd, msg, now) {
   /* evoluções da Terra */
   if (nd.id === 'w_stone') { p.stoneSk = now + 8000; anim('p', p, 'castup', p.x, p.y, shout); evoFx(p, { k: 'stone', ms: 8000 }); useGain(p, 'el_earth', 2); return true; }
   if (nd.id === 'w_thorns') { const B = useBonus(p, 'el_earth'), L = 7 + B * 2, ca = Math.cos(a), sa = Math.sin(a); let n = 0;
+    spellNpcs(p, n => { const dx = n.x - p.x, dy = n.y - p.y, al = dx * ca + dy * sa; return al >= 0.3 && al <= L && Math.abs(-dx * sa + dy * ca) <= 0.8; }, 1.0, 'earth');
     for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || (m.alt || 0) > 1) continue; const dx = m.x - p.x, dy = m.y - p.y, al = dx * ca + dy * sa; if (al < 0.3 || al > L || Math.abs(-dx * sa + dy * ca) > 0.8 + (MON[m.type].rad || 0)) continue;
       n++; const id = m.id; setTimeout(() => { const q = S.monsters[id], pp = S.players[p.id]; if (!q || !pp || q.hp <= 0) return; const big = MON[q.type] && MON[q.type].big, ms = big ? 1200 : 2500, t2 = now_(); q.stunUntil = Math.max(q.stunUntil || 0, t2 + ms); q.atk = null; q.nextAtk = Math.max(q.nextAtk || 0, t2 + ms + 200);
         pp._el = 'earth'; hitMonster(pp, q, 1.0 * (1 + B), 0); pp._el = null; if (S.monsters[id]) near(q.x, q.y, { t: 'mroot', id, ms });
         for (let k = 1; k <= 3; k++) setTimeout(() => { const r = S.monsters[id], p2 = S.players[p.id]; if (!r || !p2 || r.hp <= 0) return; p2._el = 'earth'; hitMonster(p2, r, 0.15 * (1 + B), 0); p2._el = null; }, k * 900); }, Math.round(al * 85)); }
     anim('p', p, 'cast', p.x + ca, p.y + sa, shout); evoFx(p, { k: 'thorns', a, r: L, ms: Math.round(L * 85) + 1300 }); useGain(p, 'el_earth', 2 + Math.min(3, n)); return true; }
   if (nd.id === 'w_quake') { const B = useBonus(p, 'el_earth'), R = 4.5 + B * 1.5; let n = 0;
+    spellNpcs(p, n => dist(n.x, n.y, p.x, p.y) <= R, 1.8, 'earth');
     for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || (m.alt || 0) > 1) continue; const d = dist(m.x, m.y, p.x, p.y); if (d > R + (MON[m.type].rad || 0)) continue; const big = MON[m.type] && MON[m.type].big, ms = big ? 1000 : 2000;
       p._el = 'earth'; hitMonster(p, m, 1.8 * (1 + B) * (1 - Math.min(1, d / R) * 0.4), 0); p._el = null; if (!S.monsters[m.id]) continue; if (!big) knockMon(m, p, now); m.stunUntil = Math.max(m.stunUntil || 0, now + ms); m.atk = null; m.nextAtk = Math.max(m.nextAtk || 0, now + ms + 200); n++; }
     for (const q of Object.values(S.players)) { if (q === p || q.downed || q.dev || (q.fl || 0) !== (p.fl || 0) || dist(q.x, q.y, p.x, p.y) > R) continue; if (pvpOk(p, q)) { if (inSafe(q.x, q.y)) witnessCrime(p, p.x, p.y); damagePlayer(q, Math.round(p.lvl * 1.5 + 10), { x: p.x, y: p.y, name: p.name }, 0, 'legL'); sendStat(q); } }
@@ -1034,6 +1037,7 @@ function mageEvo(p, nd, msg, now) {
   if (nd.id === 'w_sparks') { const B = useBonus(p, 'el_fire'), R = 7 + B * 2, N = 5 + Math.round(B * 2), ends = []; let n = 0;
     for (let i = 0; i < N; i++) { const aa = a + (i / (N - 1) - 0.5) * 0.7, ca = Math.cos(aa), sa = Math.sin(aa); let tgt = null, best = 1e9;
       for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || (m.alt || 0) > 1) continue; const dx = m.x - p.x, dy = m.y - p.y, al = dx * ca + dy * sa; if (al < 0.3 || al > R || al >= best) continue; if (Math.abs(-dx * sa + dy * ca) > 0.45 + (MON[m.type].rad || 0)) continue; best = al; tgt = m; }
+      if (!tgt) spellNpcs(p, n => { const dx = n.x - p.x, dy = n.y - p.y, al = dx * ca + dy * sa; return al >= 0.3 && al <= R && Math.abs(-dx * sa + dy * ca) <= 0.5; }, 0.7, 'fire', null, 1);   /* sem monstro na linha: a faísca acerta o NPC mais perto */
       const ex = tgt ? tgt.x : p.x + ca * R, ey = tgt ? tgt.y : p.y + sa * R, dl = Math.round(dist(p.x, p.y, ex, ey) * 60); ends.push([+ex.toFixed(2), +ey.toFixed(2)]);
       if (tgt) { n++; const id = tgt.id; setTimeout(() => { const m = S.monsters[id], pp = S.players[p.id]; if (!m || !pp || m.hp <= 0) return; pp._el = 'fire'; hitMonster(pp, m, 0.7 * (1 + B), 0); pp._el = null; if (S.monsters[id] && !(m._burnT > now_())) { m._burnT = now_() + 3000; emberBurn(pp, m); } }, dl); }
       else if (Math.random() < 0.5) setTimeout(() => { const list = []; igniteTile(ex, ey, now_(), list, false); if (list.length) near(ex, ey, { t: 'fires', l: list }); }, dl); }
@@ -1047,6 +1051,7 @@ function mageEvo(p, nd, msg, now) {
   if (nd.id === 'w_mist') { S.mists = (S.mists || []).filter(w => w.until > now); const r = 3 + useBonus(p, 'el_water') * 1.5; S.mists.push({ x: p.x, y: p.y, fl, r, until: now + 10000, by: p.id }); for (const m of Object.values(S.monsters)) { if (m.aggro && S.players[m.aggro] && inMist(S.players[m.aggro], m)) { m.aggro = null; m.atk = null; m.lostAt = 0; } }
     anim('p', p, 'castup', p.x, p.y, shout); evoFx(p, { k: 'mist', r, ms: 10000 }); useGain(p, 'el_water', 2); return true; }
   if (nd.id === 'w_tide') { const L = 6 + useBonus(p, 'el_water') * 2, W = 1.3, ca = Math.cos(a), sa = Math.sin(a); let n = 0;
+    spellNpcs(p, n => { const dx = n.x - p.x, dy = n.y - p.y, al = dx * ca + dy * sa; return al >= 0.2 && al <= L && Math.abs(-dx * sa + dy * ca) <= W; }, 0.5, 'water');
     for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || (m.alt || 0) > 1) continue; const dx = m.x - p.x, dy = m.y - p.y, al = dx * ca + dy * sa, side = Math.abs(-dx * sa + dy * ca); if (al < 0.2 || al > L || side > W + (MON[m.type].rad || 0)) continue;
       const big = MON[m.type] && MON[m.type].big, push = big ? 0.9 : 3.2; for (let s = 0; s < 16; s++) { const nx = m.x + ca * push / 16, ny = m.y + sa * push / 16; if (!monStand(nx, ny, m)) break; m.x = nx; m.y = ny; }
       if (!big) knockMon(m, p, now); m.wetUntil = now + 8000; if (m._burnT > now) m._burnT = 0; p._el = 'water'; hitMonster(p, m, 0.5 * (1 + useBonus(p, 'el_water')), 200); p._el = null; n++; }
@@ -1054,6 +1059,7 @@ function mageEvo(p, nd, msg, now) {
     { const put = []; for (let d = 0.5; d <= L; d += 0.5) for (const o of [-1, 0, 1]) { const tx = Math.round(p.x + ca * d - sa * o), ty = Math.round(p.y + sa * d + ca * o); if (typeof douseTile === 'function') douseTile(tx, ty, put); } if (put.length) near(p.x, p.y, { t: 'fireout', l: put }); }
     anim('p', p, 'cast', p.x + ca, p.y + sa, shout); evoFx(p, { k: 'tide', a, r: L }); useGain(p, 'el_water', 2 + Math.min(3, n)); return true; }
   if (nd.id === 'w_frost') { let tx = +msg.tx, ty = +msg.ty; if (!isFinite(tx) || !isFinite(ty) || dist(p.x, p.y, tx, ty) > 7.5) { tx = p.x + Math.cos(a) * 4; ty = p.y + Math.sin(a) * 4; } const R = 2.5 + useBonus(p, 'el_water'); let n = 0;
+    spellNpcs(p, n => dist(n.x, n.y, tx, ty) <= R, 0.6, 'water', n => { n.stunUntil = now + 3000; });
     for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || dist(m.x, m.y, tx, ty) > R + (MON[m.type].rad || 0)) continue; const big = MON[m.type] && MON[m.type].big, ms = big ? 2000 : 4000; m.stunUntil = Math.max(m.stunUntil || 0, now + ms); m.frozenUntil = now + ms; m.atk = null; m.nextAtk = Math.max(m.nextAtk || 0, now + ms + 200); if (m._burnT > now) m._burnT = 0;
       p._el = 'water'; hitMonster(p, m, 0.6 * (1 + useBonus(p, 'el_water')) * (m.wetUntil > now ? 1.5 : 1), 0); p._el = null; if (S.monsters[m.id]) near(m.x, m.y, { t: 'mfrost', id: m.id, ms }); n++; }
     anim('p', p, 'cast', tx, ty, shout); evoFx(p, { k: 'frost', tx, ty, r: R, ms: 4200 }); useGain(p, 'el_water', 2 + Math.min(3, n)); return true; }
@@ -1214,8 +1220,8 @@ function autoTick(now) {
     if (p.cls === 'mage' && (p.mp || 0) < 2) { if (now > (p._autoMpT || 0)) { p._autoMpT = now + 8000; tell(p, 'Sem mana para o ataque automático: ele volta quando a mana encher.'); } continue; }
     const rng = Math.max(AUTO_R, CLASSES[p.cls].range + treeEff(p, 'range')); let q = null, best = 1e9;
     if (p.pplAuto && p.cls === 'archer') { const T = pplTarget(p, now); if (T && dist(p.x, p.y, T.q.x, T.q.y) <= rng + 1) { if (now < (p.nockReady || 0)) continue; const Q = T.q; p.dir = dirFromVecS(Q.x - p.x, Q.y - p.y); p.drawT = now - BOW.draw * 0.8; bowLoose(p, { a: Math.atan2(Q.y - p.y, Q.x - p.x), tx: Q.x, ty: Q.y, pow: 0.8 }); p.nextAtk = now + BOW.loose + BOW.nock + 200; continue; } }
-    for (const o of Object.values(S.monsters)) { if (o.hp <= 0 || (o.alt || 0) >= 1.2 || Math.abs((o.z || 0) - (p.z || 0)) >= 0.5) continue; const d0 = MON[o.type] || {}; if (d0.beh === 'flee' && o.aggro !== p.id) continue;   /* bichos mansos ficam em paz, a não ser que ataquem */
-      const d = dist(p.x, p.y, o.x, o.y); if (d > rng + (d0.rad || 0)) continue; const sc = d + (o.id === p.target ? -2 : 0) + (o.aggro === p.id ? -1.5 : 0); if (sc < best) { best = sc; q = o; } }
+    for (const o of Object.values(S.monsters)) { if (o.hp <= 0 || (o.alt || 0) >= 1.2 || Math.abs((o.z || 0) - (p.z || 0)) >= 0.5) continue; const d0 = MON[o.type] || {}, game = p.cls === 'archer' && !p.sheathed && o.type === 'deer'; if (d0.beh === 'flee' && o.aggro !== p.id && !game) continue;   /* bichos mansos ficam em paz, a não ser que ataquem; o arqueiro de arco sacado caça cervos */
+      const d = dist(p.x, p.y, o.x, o.y); if (d > rng + (d0.rad || 0)) continue; const sc = d + (o.id === p.target ? -2 : 0) + (o.aggro === p.id ? -1.5 : 0) + (game && o.aggro !== p.id ? 6 : 0); if (sc < best) { best = sc; q = o; } }
     if (!q) continue; p.target = q.id; p.dir = dirFromVecS(q.x - p.x, q.y - p.y);
     if (p.cls === 'archer' && autoArcherSkill(p, q, now)) continue;   /* habilidades na hora certa */
     if (p.cls === 'archer') { if (now < (p.nockReady || 0)) continue; const lead = Math.min(0.6, dist(p.x, p.y, q.x, q.y) / 14), tx = q.x + (q.vx || 0) * lead, ty = q.y + (q.vy || 0) * lead; p.drawT = now - BOW.draw * 0.8; bowLoose(p, { a: Math.atan2(ty - p.y, tx - p.x), tx, ty, pow: 0.8 }); p.nextAtk = now + BOW.loose + BOW.nock + 200; continue; }   /* a mesma flecha do tiro manual */
@@ -2384,6 +2390,13 @@ function initNpcs() {
   for (const n of NPCS) S.npcs[n.id] = { id: n.id, kind: n.kind, role: n.role, bi: n.bi, home: n.home, name: n.name, route: n.route, ri: 0, patrol: n.patrol, sitting: n.sitting ? true : undefined, kneel: n.kneel ? true : undefined, pairOf: n.pairOf, pairOff: n.pairOff, x: n.x, y: n.y, z: 0, postX: n.x, postY: n.y, hp: NPC_HP[n.kind] || 90, maxHp: NPC_HP[n.kind] || 90, downed: null, dead: false };
 }
 const npcAlive = id => { const n = S.npcs && S.npcs[id]; return !n || (!n.dead && !n.downed); };
+/* magias de área também atingem NPCs (antes só monstros). one: só o mais perto (faíscas). Devolve quantos acertou. */
+function spellNpcs(p, inArea, mult, el, extra, one) { if (!p || !S.npcs) return 0; let hit = 0, best = null, bd = 1e9;
+  for (const n of Object.values(S.npcs)) { if (n.dead || n.entOf || n.siege || (n.fl || 0) !== (p.fl || 0) || n.seg && n.seg === estOwner(p) || n.emp && n.emp === estOwner(p) || !inArea(n)) continue;
+    if (one) { const d = dist(n.x, n.y, p.x, p.y); if (d < bd) { bd = d; best = n; } continue; }
+    p._el = el; npcDamage(n, Math.max(1, roll(p, mult).dmg), p); p._el = null; if (extra) extra(n); hit++; }
+  if (one && best) { p._el = el; npcDamage(best, Math.max(1, roll(p, mult).dmg), p); p._el = null; if (extra) extra(best); hit = 1; }
+  return hit; }
 function npcDamage(n, dmg, p) {
   if (!n || n.dead) return; const now = now_();
   if (n.transient && n.wantedT > now) { n.hp -= dmg; sfx(n.x, n.y, '-' + dmg, '#ff8a6a'); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'hurt', ms: 300 }); if (n.hp <= 0) thiefCaught(n, p); return; }
@@ -2871,6 +2884,7 @@ const BOOM_R = 2.1;
 function fireballBoom(p, x, y, skipId) {
   if (!S.players[p.id]) return; const now = now_();
   aoe('boom', x, y, { big: 1 }); near(x, y, { t: 'shake', s: 6 }, 14);
+  spellNpcs(p, n => n.id !== skipId && dist(n.x, n.y, x, y) <= BOOM_R, 1.2, 'fire');
   for (const q of Object.values(S.monsters)) { if (q.id === skipId || q.dead) continue; const d = dist(q.x, q.y, x, y); if (d > BOOM_R + (MON[q.type].rad || 0.3) * 0.5) continue;
     const f = 1 - Math.min(1, d / BOOM_R) * 0.6; p._el = 'fire'; hitMonster(p, q, 1.5 * f, 0); p._el = null; if (S.monsters[q.id] && !MON[q.type].big) knockMon(q, { x, y }, now); }
   for (const q of Object.values(S.players)) { if (q.downed || q.dev || (q.fl || 0) !== (p.fl || 0) || Math.abs((q.z || 0) - (p.z || 0)) > 0.5) continue; const d = dist(q.x, q.y, x, y); if (d > BOOM_R) continue;
@@ -2882,6 +2896,7 @@ function fireballBoom(p, x, y, skipId) {
 function bigFireBoom(p, x, y, R) {
   if (!S.players[p.id]) return; const now = now_(), B = useBonus(p, 'el_fire');
   aoe('bigboom', x, y, {}); near(x, y, { t: 'shake', s: 10 }, 16);
+  spellNpcs(p, n => dist(n.x, n.y, x, y) <= R, 3.2 * 0.75, 'fire');
   for (const q of Object.values(S.monsters)) { if (q.dead || q.hp <= 0) continue; const d = dist(q.x, q.y, x, y); if (d > R + (MON[q.type].rad || 0.3) * 0.5) continue;
     const f = 1 - Math.min(1, d / R) * 0.5; p._el = 'fire'; hitMonster(p, q, 3.2 * f * (1 + B), 0); p._el = null; if (!S.monsters[q.id]) continue; if (!MON[q.type].big) knockMon(q, { x, y }, now); if (!(q._burnT > now)) { q._burnT = now + 3000; emberBurn(p, q); } }
   for (const q of Object.values(S.players)) { if (q.downed || q.dev || (q.fl || 0) !== (p.fl || 0) || Math.abs((q.z || 0) - (p.z || 0)) > 0.5) continue; const d = dist(q.x, q.y, x, y); if (d > R) continue;
@@ -2894,6 +2909,7 @@ function bigFireBoom(p, x, y, R) {
 function meteorHit(p, x, y, B) {
   if (!S.players[p.id]) return; const now = now_();
   aoe('boom', x, y, {}); near(x, y, { t: 'shake', s: 3 }, 12);
+  spellNpcs(p, n => dist(n.x, n.y, x, y) <= 1.5, 1.3, 'fire');
   for (const q of Object.values(S.monsters)) { if (q.dead || q.hp <= 0 || dist(q.x, q.y, x, y) > 1.5 + (MON[q.type].rad || 0.3) * 0.5) continue; p._el = 'fire'; hitMonster(p, q, 1.3 * (1 + B), 0); p._el = null; if (!S.monsters[q.id]) continue; if (!MON[q.type].big) knockMon(q, { x, y }, now); if (!(q._burnT > now)) { q._burnT = now + 3000; emberBurn(p, q); } }
   for (const q of Object.values(S.players)) { if (q.downed || q.dev || (q.fl || 0) !== (p.fl || 0) || dist(q.x, q.y, x, y) > 1.3) continue; if (q !== p && inSafe(q.x, q.y)) witnessCrime(p, p.x, p.y); damagePlayer(q, Math.round((p.lvl * 1.4 + 8) * (q === p ? 0.5 : 1)), { x, y, name: p.name }, 0, 'torso'); if (S.players[q.id] && !q.downed) ignitePlayer(q, now); sendStat(q); }
   const list = []; igniteTile(x, y, now, list, true); if (list.length) near(x, y, { t: 'fires', l: list });
@@ -2913,6 +2929,7 @@ function zoneTick(now) {
     if (now >= z.until || !p) { removeZone(z); continue; }
     if (now < z.t) continue;
     if (z.k === 'trap') { z.t = now + 100; const q = Object.values(S.monsters).find(o => (o.alt || 0) < 1 && dist(o.x, o.y, z.x, z.y) < 0.75 + (MON[o.type].rad || 0.3) * 0.5); if (q) { hitMonster(p, q, 1.5, 0); if (S.monsters[q.id]) { q.stunUntil = Math.max(q.stunUntil, now + 3000); q.atk = null; } removeZone(z); } continue; }
+    spellNpcs(p, n => { const ax = n.x - z.x, ay = n.y - z.y; return Math.abs(-ax * Math.sin(z.a) + ay * Math.cos(z.a)) < 2.6 && Math.abs(ax * Math.cos(z.a) + ay * Math.sin(z.a)) < 0.9; }, 0.6, 'fire');   /* NPCs também queimam */
     if (z.k === 'firewall') { z.t = now + 500; for (const q of Object.values(S.monsters)) { const ax = q.x - z.x, ay = q.y - z.y; if (Math.abs(-ax * Math.sin(z.a) + ay * Math.cos(z.a)) < 2.6 && Math.abs(ax * Math.cos(z.a) + ay * Math.sin(z.a)) < 0.9) { p._el = 'fire'; hitMonster(p, q, 0.6, 0); p._el = null; } } continue; }
     if (z.k === 'burn') { z.t = now + 600; for (const q of Object.values(S.monsters)) if (!q.dead && dist(q.x, q.y, z.x, z.y) < 1.4) { p._el = 'fire'; hitMonster(p, q, 0.25, 0); p._el = null; }
       for (const q of Object.values(S.players)) if (!q.downed && !q.dev && dist(q.x, q.y, z.x, z.y) < 1.1 && (q.fl || 0) === 0) { damagePlayer(q, Math.max(1, Math.round(p.lvl * 0.4 + 2)), { x: z.x, y: z.y, name: p.name }, 0, 'legL'); sendStat(q); } }
@@ -3261,7 +3278,7 @@ function recsOf(p) { const E = estateLoad(), k = estOwner(p); return Object.keys
 function rentalOf(p) { return recsOf(p).find(pid => PROPS_BY[pid].kind === 'house' && !tenantsOf(PROPS_BY[pid]).length) || null; }
 function bizOf(p) { return recsOf(p).filter(pid => PROPS_BY[pid].kind !== 'house' || tenantsOf(PROPS_BY[pid]).length); }
 function bizSummary(r, P) { if (!r.biz) return null; const B = r.biz, st = P.kind === 'shop' ? B.stock : B.store, n = Object.values(st).reduce((a, b) => a + b, 0); return { closed: !!B.closed, n: Math.floor(n), cap: P.kind === 'shop' ? shopCap(B) : WS_CAP, rev: Math.round(B.today.rev), week: B.hist.reduce((a, d) => a + d.rev + (d.xfer || 0) - d.cost, 0) + Math.round(B.today.rev + (B.today.xfer || 0) - B.today.cost), orders: (B.orders || []).reduce((a, o) => a + (o.raw ? 0 : o.q), 0) }; }
-function recInfo(pid) { const r = S.estate.r[pid], P = PROPS_BY[pid]; return { pid, sum: bizSummary(r, P), ten: tenantsOf(P), ev: ((S.estate.evict || {})[pid] || {}).day || 0, mode: r.mode || 'rent', paid: r.paid, day: estDay(), next: (r.paid + RENT_DAYS) * ESTATE_DAY_MS - Date.now(), due: (r.mode === 'own' ? 1 : P.rent) * RENT_DAYS, box: r.box || 0, evict: r.evict || 0, auth: r.auth, dep: r.dep, chest: P.kind === 'house' ? r.chest : undefined, cofre: r.biz ? Math.floor(r.biz.cofre) : undefined, sellv: r.biz ? bizSellValue(r, P) : undefined, upv: r.biz ? upInvest(r.biz) : undefined }; }
+function recInfo(pid) { const r = S.estate.r[pid], P = PROPS_BY[pid]; return { pid, sum: bizSummary(r, P), ten: tenantsOf(P), ev: ((S.estate.evict || {})[pid] || {}).day || 0, mode: r.mode || 'rent', paid: r.paid, day: estDay(), next: (r.paid + RENT_DAYS) * ESTATE_DAY_MS - gameNow()   /* o relógio do reino (não o do computador) */, due: (r.mode === 'own' ? 1 : P.rent) * RENT_DAYS, box: r.box || 0, evict: r.evict || 0, auth: r.auth, dep: r.dep, chest: P.kind === 'house' ? r.chest : undefined, cofre: r.biz ? Math.floor(r.biz.cofre) : undefined, sellv: r.biz ? bizSellValue(r, P) : undefined, upv: r.biz ? upInvest(r.biz) : undefined }; }
 function estateMine(p) { const h = rentalOf(p); return h ? recInfo(h) : null; }
 function estateSend(p) { Net.toOne(p.id, { t: 'estate', rs: Object.fromEntries(Object.entries(estateLoad().resale || {}).map(([k, v]) => [k, v.extra || 0])), st: estatePublic(), L: S.estateL || {}, ten: estTen(), mine: estateMine(p), biz: bizOf(p).map(recInfo), cour: courierJobs(estOwner(p)), bank: Math.floor(bankAcc(p).g) }); }
 function estateChanged() { S.estateL = estateLocks(); estateSave(); Net.toAll({ t: 'estate', st: estatePublic(), L: S.estateL, ten: estTen() }); for (const q of Object.values(S.players)) { if (q.estOpen) estateSend(q); if (q.bizOpen) bizSend(q); } }
@@ -3439,6 +3456,8 @@ function estateMsg(p, m) {
   const E = estateLoad(), P = PROPS_BY[m.pid];
   switch (m.a) {
     case 'open': p.estOpen = true; estateSend(p); return;
+    case 'payrent': { const r = E.r[m.pid]; if (!r || r.owner !== estOwner(p) || !P) return; const due = (r.mode === 'own' ? 1 : P.rent) * RENT_DAYS; let paid = 0; while (estDay() - r.paid >= RENT_DAYS) { if (!debit(r.owner, p, due, r.biz)) break; r.paid += RENT_DAYS; paid++; }
+      if (paid) { r.warned = 0; sendStat(p); tell(p, 'Pago: ' + (due * paid) + ' de ouro de ' + (r.mode === 'own' ? 'imposto' : 'aluguel') + ' de ' + P.name + '.'); estateSave(); } else tell(p, estDay() - r.paid >= RENT_DAYS ? 'Faltam ' + due + ' de ouro no banco ou na bolsa.' : 'Está tudo em dia.'); estateSend(p); return; }
     case 'close': p.estOpen = false; return;
     case 'rent': case 'buy': {
       if (!P) return; const mine = E.r[P.id] && E.r[P.id].owner === estOwner(p);

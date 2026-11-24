@@ -123,9 +123,9 @@ function estMineHtml() {
   const M = G.est.mine; let h = '';
   if (!M) h += '<div class="gp-note">Você ainda não tem casa. Procure as placas nas portas ou fale com Mestre Anselmo, na Imobiliária Chave de Bronze.</div>';
   else {
-    const P = PROPS_BY[M.pid], late = M.day > M.paid, own = M.mode === 'own';
+    const P = PROPS_BY[M.pid], late = M.day - M.paid >= RENT_DAYS, own = M.mode === 'own';   /* atrasado só depois de vencer a semana (antes dizia atrasado já no dia seguinte ao pagamento) */
     h += '<div class="est-det"><div class="est-dh"><b>🏠 ' + P.name + '</b><span>' + P.district + ' · ' + (own ? 'comprada · imposto 7 ouro/semana' : 'alugada · ' + P.week + ' ouro/semana · caução ' + (M.dep || 0)) + '</span></div>' +
-      '<div class="est-cost">' + (late ? '<b style="color:#ff8a7a">Pagamento atrasado!</b> Junte ' + M.due + ' de ouro.' : 'Em dia · próxima cobrança em <b class="est-next">' + estClock(M) + '</b>') + '</div>' +
+      '<div class="est-cost">' + (late ? '<b style="color:#ff8a7a">Pagamento atrasado!</b> Deixe ' + M.due + ' de ouro no banco (ou na bolsa). <button class="est-btn" data-payrent="' + M.pid + '">Pagar agora</button>' : 'Em dia · a cobrança sai sozinha do banco · próxima em <b class="est-next">' + estClock(M) + '</b>') + '</div>' +
       '<div class="gp-sub">Quem pode entrar</div><div class="est-auth">' + (M.auth.length ? M.auth.map(a => '<span>' + a + ' <button data-unauth="' + a + '" data-upid="' + M.pid + '">✕</button></span>').join('') : '<small>Só você.</small>') + '</div>' +
       '<div class="est-addauth"><input id="est-name" maxlength="16" placeholder="Nome do personagem"><button class="est-btn" id="est-add" data-apid="' + M.pid + '">Autorizar</button></div>' +
       (own ? '' : '<button class="est-btn" data-buy="' + M.pid + '">Comprar de vez por ' + (P.buy - (M.dep || 0)) + '</button>') + '<button class="est-btn ghost" data-leave="' + M.pid + '" data-own="' + (own ? 1 : 0) + '">' + (own ? 'Vender à Coroa (' + Math.floor(P.buy / 2) + ')' : 'Devolver a chave') + '</button></div>';
@@ -156,6 +156,7 @@ function estWire() {
   for (const b of root.querySelectorAll('[data-manage]')) b.onclick = ev => { ev.stopPropagation(); bizOpen(b.dataset.manage); };
   for (const b of root.querySelectorAll('[data-go]')) b.onclick = () => { G.est.sel = b.dataset.go; G.est.flash = performance.now(); estDrawMap(); };
   for (const b of root.querySelectorAll('[data-unauth]')) b.onclick = () => Net.send({ t: 'estate', a: 'unauth', name: b.dataset.unauth, pid: b.dataset.upid });
+  for (const b of root.querySelectorAll('[data-payrent]')) b.onclick = () => Net.send({ t: 'estate', a: 'payrent', pid: b.dataset.payrent });
   for (const b of root.querySelectorAll('[data-take]')) b.onclick = ev => Net.send({ t: 'estate', a: 'take', k: b.dataset.take, q: ev.shiftKey ? 999 : 1 });
   for (const b of root.querySelectorAll('[data-put]')) b.onclick = ev => Net.send({ t: 'estate', a: 'put', k: b.dataset.put, q: ev.shiftKey ? 999 : 1 });
   const add = root.querySelector('#est-add'); if (add) add.onclick = () => { const v = root.querySelector('#est-name').value.trim(); if (v) Net.send({ t: 'estate', a: 'auth', name: v, pid: add.dataset.apid }); };

@@ -1308,7 +1308,7 @@ function buildHotbar() {
 }
 function startGame() {
   if (G.started) return;
-  G.started = true;
+  G.started = true; document.body.classList.add('ingame');   /* a cidade só aparece ao entrar no reino (antes, só a tela de introdução) */
   $('lobby').classList.add('hidden');
   $('hud').classList.remove('hidden');
   buildHotbar(); updateHud(); updateQuests(); setupJoystick();

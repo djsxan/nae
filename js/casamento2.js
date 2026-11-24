@@ -10,7 +10,7 @@
 //  pode chantagear (pague ou ele conta ao cônjuge) ou contar pela Dama Ysolde. Cônjuge furioso trai:
 //  passa os seus segredos a uma casa rival ou arruma um amante (um segredo sobre ele, peso 4).
 // ============================================================
-const MR2 = { vowMs: 120000, ceremonyMax: 210000, arrive: { guard: 0, lord: 15000, spouse: 15000, heir: 35000, groom: 55000 }, grudgeDays: 30, heirKid: 0.03, heirKidDays: 3, heirReward: 200, heirFavor: 30, thugs: 3, thugChance: 0.1, rivalRel: -40, kidDay: 0.04, ransom: 500, hire: 800, hireCut: 0.8, kidDays: 2, hideThugs: 4, bmAmt: 300, betrayMood: 20, betray: 0.25, discover: 0.05, houseLearn: 0.25, revW: 4, sinW: 4, sinMood: 50, sinFavor: 25, ysBuy: 60, ysTell: 40, bmFavor: 15 };
+const MR2 = { vowMs: 120000, ceremonyMax: 210000, arrive: { guard: 0, lord: 20000, spouse: 20000, heir: 40000, groom: 80000 }, grudgeDays: 30, heirKid: 0.03, heirKidDays: 3, heirReward: 200, heirFavor: 30, thugs: 3, thugChance: 0.1, rivalRel: -40, kidDay: 0.04, ransom: 500, hire: 800, hireCut: 0.8, kidDays: 2, hideThugs: 4, bmAmt: 300, betrayMood: 20, betray: 0.25, discover: 0.05, houseLearn: 0.25, revW: 4, sinW: 4, sinMood: 50, sinFavor: 25, ysBuy: 60, ysTell: 40, bmFavor: 15 };
 SEC_W.spaff = 4; SEC_KN.spaff = 'traição no casamento';
 
 // ---------------- SERVIDOR ----------------
@@ -87,38 +87,48 @@ function mr2Ys(p, m) { const n = velStaffNear(p, 'vl_ysolde'); if (!n) return; c
 function mr2YsMenu(p) { const hk = estOwner(p); Net.toOne(p.id, { t: 'mr2ys', buy: MR2.ysBuy, tell: MR2.ysTell, gold: p.gold | 0, l: mr2Known(hk).map(r => { const s = mr2SinOf(r.o, r.id); return s && !s.rev ? { o: r.o, id: r.id, t: s.t } : null; }).filter(Boolean) }); }
 
 /* ---- a cerimônia com convidados ---- */
-function mr2Live(E) { const h = empHour(), now = now_(); return !!E && estDay() >= E.day && ((h >= MR.hour[0] && h < MR.hour[1]) || (E.st && now - E.st < MR2.ceremonyMax)); }
+function mr2Live(E) { const now = now_(); return !!(E && E.st && now - E.st < MR2.ceremonyMax); }   /* a cerimônia vale do pedido à Irmã Lúmina até os votos */
 function mr2WedOn() { const R = mrRec(), now = now_();
-  return Object.keys(R.eng).map(key => ({ key, E: R.eng[key] })).filter(o => o.E && o.E.kind === 'npc' && !o.E.who.id.startsWith('r:') && mr2Live(o.E)).map(o => { if (!o.E.g0) o.E.g0 = now; return Object.assign(o, { hid: mrHidOf(o.E.who.id) }); }); }
+  return Object.keys(R.eng).map(key => ({ key, E: R.eng[key] })).filter(o => o.E && o.E.kind === 'npc' && mr2Live(o.E)).map(o => { if (!o.E.g0) o.E.g0 = now; return Object.assign(o, { hid: mrHidOf(o.E.who.id) }); }); }
 /* casamentos entre jogadores em andamento (um registro por casal) */
 function mr2PWedOn() { const R = mrRec(); return Object.keys(R.eng).filter(k => { const E = R.eng[k]; return E && E.kind === 'player' && k < E.partner && R.eng[E.partner] && mr2Live(E); }).map(k => ({ key: k, E: R.eng[k], hid: null, pair: [k, R.eng[k].partner] })); }
 const mr2Due = (w, role) => now_() - (w.E.g0 || now_()) >= (MR2.arrive[role] || 0);   /* os convidados chegam aos poucos */
 function mr2Door() { const T = BUILDINGS[templeBi()], [dx, dy] = doorTile(T), v = DOOR_V[T.door || 'S']; return [dx - v[0] * 1.2 + 0.5 * !v[0], dy - v[1] * 1.2 + 0.5 * !v[1]]; }
+function mr2HN(hid) { if (hid === 'crown') return { n: 'família real', lord: sucKingName(), guard: 'k_guard', gn: 'Guarda Real' }; const h = HOUSE_BY[hid] || {}; return { n: h.n, lord: h.lord, guard: 'hh_guard_' + hid, gn: 'Guarda da ' + h.n }; }
+/* a família real no casamento: rei, rainha e o irmão do noivo, em cópias que chegam pela porta (os originais somem do castelo enquanto dura) */
+const MR2_ROYAL = [['k_king', 0], ['k_queen', 1], ['k_prince', 2], ['k_princess', 2]];
+function mr2RoyalFamily(w) { const U = sucRec(), out = []; for (const [id, pew] of MR2_ROYAL) { if (w.E.who.id === (id === 'k_prince' ? 'r:alaric' : id === 'k_princess' ? 'r:lyra' : '')) continue; const def = COURT.find(d => d.id === id) || (id === 'k_queen' && typeof RG_QUEEN !== 'undefined' ? RG_QUEEN : null); if (!def) continue;
+    if (id === 'k_prince' && (!U.alive.alaric || U.king === 'alaric')) continue; if (id === 'k_princess' && (!U.alive.lyra || U.king === 'lyra')) continue; if (id === 'k_king' && (U.stage && U.stage !== 'done')) continue;
+    out.push({ id, pew, kind: def.kind, name: id === 'k_king' ? sucKingName() : def.name, role: id === 'k_king' ? 'groom_wait' : 'r' }); } return out; }
 function mr2WedOf(hid) { return mr2WedOn().find(w => w.hid === hid) || null; }
 function mr2Altar() { const pr = S.npcs.priest, bi = templeBi(), T = BUILDINGS[bi]; if (!pr || !T) return null; const cx = T.x + T.w / 2, cy = T.y + T.h / 2, d = dist(pr.x, pr.y, cx, cy) || 1; return { x: pr.x + (cx - pr.x) / d * 1.4, y: pr.y + (cy - pr.y) / d * 1.4, ux: (cx - pr.x) / d, uy: (cy - pr.y) / d, bi }; }
 function mr2Pew(i) { const A = mr2Altar(); if (!A) return null; const px = -A.uy, py = A.ux, row = 2.2 + Math.floor(i / 2) * 1.3, side = i % 2 ? 1 : -1; return { x: A.x + A.ux * row + px * side * 1.1, y: A.y + A.uy * row + py * side * 1.1, fl: 0 }; }
 function mr2GroomRole(E) { const p = E.who.id.split(':'); return p[2] === 'heir' || p[2] === 'lord' ? p[2] : 'kid'; }
 /* a família vai para a Catedral durante a cerimônia */
-if (typeof hPost === 'function') { const _hpK2 = hPost; hPost = function (def, n) { try { if (S.estate && (n.hrole === 'lord' || n.hrole === 'spouse' || n.hrole === 'heir')) { const W = mr2WedOf(n.house); if (W) { const A = mr2Altar(), groom = mr2GroomRole(W.E) === n.hrole; if (mr2Due(W, groom ? 'groom' : n.hrole)) { if (A && groom) return { x: A.x, y: A.y, fl: 0, wed: 1 }; const P = mr2Pew({ lord: 0, spouse: 1, heir: 2 }[n.hrole]); if (P) return Object.assign(P, { wed: 1, sit: 1 }); } } } } catch (e) { } return _hpK2(def, n); }; }
+if (typeof hPost === 'function') { const _hpK2 = hPost; hPost = function (def, n) { try { if (S.estate && (n.hrole === 'lord' || n.hrole === 'spouse' || n.hrole === 'heir')) { const W = mr2WedOf(n.house); if (W) { const A = mr2Altar(), groom = mr2GroomRole(W.E) === n.hrole; if (mr2Due(W, groom ? 'groom' : n.hrole)) { if (A && groom) return { x: A.x, y: A.y, fl: 0, wed: 1 };   /* o noivo da casa entra por último pela porta e anda até o altar */ const P = mr2Pew({ lord: 0, spouse: 1, heir: 2 }[n.hrole]); if (P) return Object.assign(P, { wed: 1, sit: 1 }); } } } } catch (e) { } return _hpK2(def, n); }; }
 /* quem vai ao casamento aparece direto na Catedral (o casarão fica longe e as portas atrapalham) */
 if (typeof hMove === 'function') { const _hmvK2 = hMove; hMove = function (n, T, dt) { if (!(T && T.wed)) { if (n._wedSit) { n._wedSit = 0; n.sitting = false; } return _hmvK2(n, T, dt); } n.csSleep = 0; n.sleeping = false;
   if (WORLD.bld[tileAt(n.x, n.y)] !== templeBi() || (n.fl || 0)) { const D = mr2Door(); n.x = D[0]; n.y = D[1]; n.fl = 0; n.fb = -1; n.walk = false; n.sitting = false; return; }   /* chega pela porta da Catedral */
   const d = dist(n.x, n.y, T.x, T.y); if (d > 0.12) { const st = Math.min(d, 1.1 * dt); n.x += (T.x - n.x) / d * st; n.y += (T.y - n.y) / d * st; n.dir = dirFromVecS(T.x - n.x, T.y - n.y); n.walk = true; n.sitting = false; return; }
   n.walk = false; const A = mr2Altar(); if (A) n.dir = dirFromVecS(A.x - n.x, A.y - n.y); if (T.sit) { n.sitting = true; n._wedSit = 1; } }; }
 function mr2WedNpcs(dt, now) { const W = mr2WedOn(), want = {};
-  for (const w of W) { const h = HOUSE_BY[w.hid], A = mr2Altar(); if (!A || !h) continue;
-    const D = mr2Door(); for (let i = 0; i < 2; i++) { const id = 'wg_' + w.hid + '_g' + i, P = mr2Pew(4 + i); want[id] = 1; if (!S.npcs[id]) { const n = { id, kind: 'hh_guard_' + w.hid, name: 'Guarda da ' + h.n, transient: true, court: 'wedding', wed: w.key, house: w.hid, x: D[0] + i * 0.6, y: D[1], z: 0, fl: 0, fb: -1, hp: 300, maxHp: 300, downed: null, dead: false, dir: 0, home: [P.x, P.y] }; S.npcs[id] = n; Net.toAll({ t: 'vspawn', v: visPublic(n) }); } }
+  for (const w of W) { const h = mr2HN(w.hid), A = mr2Altar(); if (!A || !h.n) continue;
+    const D = mr2Door(); for (let i = 0; i < 2; i++) { const id = 'wg_' + w.hid + '_g' + i, P = mr2Pew(4 + i); want[id] = 1; if (!S.npcs[id]) { const n = { id, kind: h.guard, name: h.gn, transient: true, court: 'wedding', wed: w.key, house: w.hid, x: D[0] + i * 0.6, y: D[1], z: 0, fl: 0, fb: -1, hp: 300, maxHp: 300, downed: null, dead: false, dir: 0, home: [P.x, P.y] }; S.npcs[id] = n; Net.toAll({ t: 'vspawn', v: visPublic(n) }); } }
     if (mr2GroomRole(w.E) === 'kid' && mr2Due(w, 'groom')) { const id = 'wg_' + w.hid + '_groom'; want[id] = 1; if (!S.npcs[id]) { const n = { id, kind: w.E.who.kind, name: w.E.who.n, transient: true, court: 'wedding', wed: w.key, house: w.hid, groom: 1, x: D[0], y: D[1], z: 0, fl: 0, fb: -1, hp: 250, maxHp: 250, downed: null, dead: false, dir: 0, home: [A.x, A.y] }; S.npcs[id] = n; Net.toAll({ t: 'vspawn', v: visPublic(n) }); }
-      const kid = +w.E.who.id.split(':').pop(), o = S.npcs['hk_' + w.hid + '_' + kid]; if (o) visGone(o); } }
+      const kid = +w.E.who.id.split(':').pop(), o = S.npcs['hk_' + w.hid + '_' + kid]; if (o) visGone(o); const og = w.hid === 'crown' && S.npcs[w.E.who.id === 'r:alaric' ? 'k_prince' : w.E.who.id === 'r:lyra' ? 'k_princess' : 'rk_' + kid]; if (og && !og.wedCopy) visGone(og); }
+    if (w.hid === 'crown') { const og = S.npcs[w.E.who.id === 'r:alaric' ? 'k_prince' : w.E.who.id === 'r:lyra' ? 'k_princess' : 'rk_' + w.E.who.id.split(':').pop()]; if (og && !og.wedCopy) visGone(og); }   /* a noiva (ou o noivo) real sai do castelo quando a cerimônia começa e chega por último */
+    if (w.hid === 'crown') for (const R of mr2RoyalFamily(w)) { const id = 'wr_' + R.id; if (!mr2Due(w, R.pew === 0 ? 'lord' : R.pew === 1 ? 'spouse' : 'heir')) continue; want[id] = 1; const o = S.npcs[R.id]; if (o && !o.wedCopy) visGone(o);
+      if (!S.npcs[id]) { const P = mr2Pew(R.pew), n = { id, kind: R.kind, name: R.name, transient: true, court: 'wedding', wed: w.key, house: 'crown', royal: R.id, pew: 1, wedCopy: 1, x: D[0], y: D[1], z: 0, fl: 0, fb: -1, hp: 300, maxHp: 300, downed: null, dead: false, dir: 0, home: [P.x, P.y] }; S.npcs[id] = n; Net.toAll({ t: 'vspawn', v: visPublic(n) }); } } }
   for (const n of Object.values(S.npcs)) { if (n.court !== 'wedding' && n.court !== 'mr2thug') continue; if (n.court === 'wedding' && !want[n.id] && !n.dead) { visGone(n); continue; } if (n.dead) continue;
     if (n.downed) { if (now > n.downed.until) { n.downed = null; n.hp = Math.round(n.maxHp * 0.3); } continue; }
     if (n.court === 'mr2thug') { mr2ThugTick(n, now, dt); continue; }
     if (n.fight && S.players[n.fight.id]) { if (!npcFightTick(n, now, dt)) n.fight = null; continue; }
     const th = !n.groom && Object.values(S.npcs).find(t => t.court === 'mr2thug' && !t.dead && !t.downed && t.wedHid === n.house && dist(t.x, t.y, n.x, n.y) < 12);   /* os guardas defendem a família */
     if (th) { const d = dist(n.x, n.y, th.x, th.y); if (d > 1.3) npcWalk(n, th.x, th.y, 2, dt); else if (now >= (n.nextAtk || 0)) { n.nextAtk = now + 1300; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'atk_slashR', ms: 900, tx: th.x, ty: th.y }); npcDamage(th, rint(25, 40), null); } continue; }
-    if (n.home && dist(n.x, n.y, n.home[0], n.home[1]) > 0.3) npcWalk(n, n.home[0], n.home[1], 1.3, dt); else n.walk = false; }
+    if (n.home && dist(n.x, n.y, n.home[0], n.home[1]) > 0.3) { npcWalk(n, n.home[0], n.home[1], 1.3, dt); n.sitting = false; } else { n.walk = false; if (n.pew) n.sitting = true; } }
   /* casas no chão voltam a si (ninguém mais cuida delas na Catedral) */
   for (const n of Object.values(S.npcs)) if (n.court === 'house' && n.downed && now > n.downed.until) { n.downed = null; n.hp = Math.round(n.maxHp * 0.3); } }
+if (typeof courtSpawn === 'function') { const _csK2 = courtSpawn; courtSpawn = function (def) { try { const W = S.estate && def && MR2_ROYAL.some(r => r[0] === def.id) && mr2WedOf('crown'); if (W && (S.npcs['wr_' + def.id] || (def.id === 'k_prince' && W.E.who.id === 'r:alaric') || (def.id === 'k_princess' && W.E.who.id === 'r:lyra'))) return null; } catch (e) { } return _csK2(def); }; }
 /* capangas: de uma casa rival no casamento, ou guardando o cônjuge sequestrado */
 function mr2SpawnThug(id, x, y, extra) { const n = Object.assign({ id, kind: 'v_thug1', name: 'Capanga', transient: true, court: 'mr2thug', wantedT: 9e15, x, y, z: 0, fl: 0, fb: -1, hp: 160, maxHp: 160, downed: null, dead: false, dir: 0 }, extra); S.npcs[id] = n; Net.toAll({ t: 'vspawn', v: visPublic(n) }); return n; }
 function mr2ThugTick(n, now, dt) { let tg = null;
@@ -130,8 +140,9 @@ function mr2ThugTick(n, now, dt) { let tg = null;
   if (now >= (n.nextAtk || 0)) { n.nextAtk = now + 1400; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'atk_slashR', ms: 900, tx: tg.x, ty: tg.y }); npcDamage(tg, rint(30, 45), null); } }
 if (typeof thiefCaught === 'function') { const _tcK2 = thiefCaught; thiefCaught = function (n, by) { if (n && n.court === 'mr2thug') { n.dead = true; visGone(n, (by ? by.name : 'Alguém') + ' derrubou um capanga.'); return; } return _tcK2(n, by); }; }
 /* a cerimônia leva um tempo: os votos saem depois de MR2.vowMs com o noivo na Catedral */
-if (typeof mrInTemple === 'function') { const _mitK2 = mrInTemple; mrInTemple = function (p) { const ok = _mitK2(p), now = now_(), E = mrRec().eng[estOwner(p)]; if (!ok || !E) return false; if (!E.st) E.st = now; return now - E.st >= MR2.vowMs; }; }
-function mr2WedTick(now) { const R = mrRec(); for (const w of mr2WedOn()) { const p = mr2P(w.key), E = w.E; if (!w.hid || !p || !E.st) continue; if (E.toldT !== E.st) { E.toldT = E.st; tell(p, 'A cerimônia começou: os convidados chegam e tomam os seus lugares; em 2 minutos, diante da Irmã Lúmina, vocês fazem os votos. Fique na Catedral.'); }
+if (typeof mrInTemple === 'function') { const _mitK2 = mrInTemple; mrInTemple = function (p) { const ok = _mitK2(p), now = now_(), E = mrRec().eng[estOwner(p)]; if (!ok || !E || !E.st) return false; const gr = E.kind === 'npc' ? Object.values(S.npcs).find(n => (n.court === 'wedding' && n.groom && n.wed === estOwner(p)) || (n.court === 'house' && n.house === mrHidOf(E.who.id) && mr2GroomRole(E) === n.hrole)) : null, A = mr2Altar();   /* os votos saem quando o noivo NPC chegou ao altar */
+  if (E.kind === 'npc' && gr && A && dist(gr.x, gr.y, A.x, A.y) > 1.6) return false; return now - E.st >= MR2.vowMs; }; }
+function mr2WedTick(now) { const R = mrRec(); for (const w of mr2WedOn()) { const p = mr2P(w.key), E = w.E; if (!w.hid || !p || !E.st) continue;
     if (E.thugT === E.st || now - Math.max(E.st, E.g0 || 0) < MR2.arrive.groom + 8000) continue; E.thugT = E.st;   /* sabotagem: só por rancor, quando todos já estão sentados */
     const rv = mr2Grudgers(w.key, w.hid); if (!rv.length || Math.random() >= MR2.thugChance) continue; const by = HOUSE_BY[rv[0].h], why = rv[0].why, T = BUILDINGS[templeBi()], [dx, dy] = doorTile(T), v = DOOR_V[T.door || 'S'];
     for (let i = 0; i < MR2.thugs; i++) mr2SpawnThug('mt_w_' + w.hid + '_' + i, dx - v[0] * 1.2 + (i - 1) * 0.7, dy - v[1] * 1.2, { wedHid: w.hid, aggro: p.id, name: 'Capanga da ' + by.n });
@@ -142,7 +153,7 @@ function _mitK2q(q) { const bi = templeBi(); return bi >= 0 && WORLD.bld[tileAt(
 function mr2Revealables(q, w) { const hk = estOwner(q), out = [];
   if (w.hid) secList(q).forEach((s, i) => { if (s.h === w.hid && secWeight(s) >= MR2.revW) out.push({ src: 'h', i, t: s.t }); });
   const who = w.pair || [w.key]; mr2Known(hk).forEach(r => { const s = who.includes(r.o) && mr2SinOf(r.o, r.id); if (s && !s.rev && MR2.sinW >= MR2.revW) out.push({ src: 'p', o: r.o, id: s.id, t: s.t }); }); return out; }
-function mr2DoReveal(q, m) { const w = mr2WedOn().concat(mr2PWedOn()).find(x => x.key === m.key); if (!w || !_mitK2q(q)) return; const L = mr2Revealables(q, w), it = L.find(x => (m.src === 'h' && x.src === 'h' && x.i === (m.i | 0)) || (m.src === 'p' && x.src === 'p' && x.id === m.id)); if (!it) return; const h = HOUSE_BY[w.hid];
+function mr2DoReveal(q, m) { const w = mr2WedOn().concat(mr2PWedOn()).find(x => x.key === m.key); if (!w || !_mitK2q(q)) return; const L = mr2Revealables(q, w), it = L.find(x => (m.src === 'h' && x.src === 'h' && x.i === (m.i | 0)) || (m.src === 'p' && x.src === 'p' && x.id === m.id)); if (!it) return; const h = mr2HN(w.hid);
   if (w.pair) { const s = mr2SinOf(it.o, it.id); s.rev = estDay(); const K = mr2Known(estOwner(q)); K.splice(K.findIndex(r => r.o === it.o && r.id === it.id), 1); mr2SendKnown(estOwner(q)); const R = mrRec(); for (const k of w.pair) { delete R.eng[k]; const o = mr2P(k); if (o) tell(o, 'O casamento foi cancelado.'); }
     const why = q.name + ' se levantou na Catedral e disse diante de todos: “' + it.t + '” O casamento de ' + mr2Name(w.pair[0]) + ' e ' + mr2Name(w.pair[1]) + ' foi cancelado.'; sys('💔 ' + why); hNews(why); estateSave(); return; }
   if (it.src === 'h') { const s = secList(q).splice(it.i, 1)[0], st = hRec().st[w.hid]; st.prestige = clampH(st.prestige - secWeight(s), 0, 100); if (typeof infAdd === 'function') for (const pl of INF_PLACES) infAdd(w.hid, pl.id, -secWeight(s)); }
@@ -157,7 +168,7 @@ function mr2Cancel(w, money, why) { const R = mrRec(), E = R.eng[w.key]; if (!E)
 function mr2Assault(n, p) { const hid = n.house; if (!hid || !p || p.dev) return; const W = mr2WedOf(hid); if (!W) return; const k = estOwner(p), H = mr2Rec().hostile;
   for (const g of Object.values(S.npcs)) if (g.court === 'wedding' && g.house === hid && !g.groom && !g.dead && !g.downed) { g.fight = { id: p.id, until: now_() + 60000 }; g.flee = null; }
   if (H[k] && H[k][hid] === estDay() && p.murderer) return; (H[k] = H[k] || {})[hid] = estDay(); p.murderer = true; secCrime(p, 'wedkill', 'assassinato no casamento', 360000);
-  const F = hRec().favor[k] = hRec().favor[k] || {}; F[hid] = 0; if (hRec().vow[k] === hid) delete hRec().vow[k]; tell(p, 'Você atacou a família da ' + HOUSE_BY[hid].n + ' na Catedral: procurado por assassinato, e a casa agora é sua inimiga.');
+  if (hid === 'crown') { crownRec().favor[k] = 0; if (crownRec().vow[k]) delete crownRec().vow[k]; } else { const F = hRec().favor[k] = hRec().favor[k] || {}; F[hid] = 0; if (hRec().vow[k] === hid) delete hRec().vow[k]; } tell(p, 'Você atacou a ' + mr2HN(hid).n + ' na Catedral: procurado por assassinato, e a casa agora é sua inimiga.');
   if (W.key === k) mr2Cancel(W, 'none', p.name + ' atacou a família do noivo no próprio casamento!'); estateSave(); }
 if (typeof npcDamage === 'function') { const _ndK2 = npcDamage; npcDamage = function (n, dmg, p) { const wed = n && !n.dead && p && ((n.court === 'house' && ['lord', 'spouse', 'heir'].includes(n.hrole)) || n.court === 'wedding') && S.estate && mr2WedOf(n.house); _ndK2(n, dmg, p); if (wed) { mr2Assault(n, p); if (n.court === 'wedding') n.flee = null; } }; }
 /* mortes de verdade */
@@ -168,7 +179,9 @@ function mr2FamDead(h, role, cause) { if (role === 'spouse') { const nm = h.spou
     hNews(old + ' morreu (' + cause + '). ' + h.heir + ' é o novo herdeiro da ' + h.n + '.'); sys('Notícia: ' + old + ' morreu (' + cause + ').'); } }
 if (typeof npcDie === 'function') { const _ndieK2 = npcDie; npcDie = function (n, p) { const hid = n && n.house, W = hid && S.estate && mr2WedOf(hid); _ndieK2(n, p); try { if (p && S.estate && n.court === 'house' && ['lord', 'spouse', 'heir'].includes(n.hrole)) mr2Grudge(hid, 'p:' + estOwner(p), 'vingança de sangue: ' + p.name + ' matou ' + n.name.split(',')[0]); } catch (e) { } if (!W) return; try {
   const cause = p ? 'morto por ' + p.name + ' no casamento' : 'morto por capangas no casamento', h = HOUSE_BY[hid];
-  const fam = n.court === 'house' && ['lord', 'spouse', 'heir'].includes(n.hrole); if (n.court === 'house' && (n.hrole === 'spouse' || n.hrole === 'heir')) mr2FamDead(h, n.hrole, cause);
+  if (n.royal) { if (n.royal === 'k_king') trKill('king', cause); else if (n.royal === 'k_prince') trKill('alaric', cause); else if (n.royal === 'k_princess') { sucRec().alive.lyra = 0; hNews('A Princesa Lyra morreu (' + cause + ').'); } else if (n.royal === 'k_queen' && typeof lnRec === 'function') { lnRec().queen = 0; hNews('A Rainha Isolda morreu (' + cause + ').'); } }
+  if (n.court === 'wedding' && n.groom && hid === 'crown') { if (W.E.who.id === 'r:alaric') trKill('alaric', cause); else if (W.E.who.id === 'r:lyra') { sucRec().alive.lyra = 0; hNews('A Princesa Lyra morreu (' + cause + ').'); } }
+  const fam = (n.court === 'house' && ['lord', 'spouse', 'heir'].includes(n.hrole)) || !!n.royal; if (n.court === 'house' && (n.hrole === 'spouse' || n.hrole === 'heir')) mr2FamDead(h, n.hrole, cause);
   if (n.court === 'wedding' && n.groom && typeof lnRec === 'function') { const kid = +W.E.who.id.split(':').pop(), list = lnRec().kids[hid] || [], i = list.findIndex(x => x.id === kid); if (i >= 0) list.splice(i, 1); visGone(n); }
   if (fam || n.groom) { const self = p && estOwner(p) === W.key; mr2Cancel(W, self ? 'none' : 'all', 'O casamento na Catedral virou um massacre: ' + n.name + ' morreu.'); } estateSave(); } catch (e) { console.warn('casamento2', e); } }; }
 

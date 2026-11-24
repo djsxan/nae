@@ -19,6 +19,7 @@ function kcThrone(h) { return KC.thr.some(w => kcIn(h, w)); }
 /* ---- 74: acesso por zonas ---- */
 if (typeof rgCastleAllowed === 'function') { rgCastleAllowed = function (q) { const C = crownRec(), fl = q.fl || 0, h = empHour(), night = h >= 21 || h < 6, k = crownKey(q);
   if (q.dev || q.kjail || q.downed || (C.siege && C.siege.on) || (typeof rkIsKing === 'function' && rkIsKing(q)) || q.rgWorker) return true;
+  { const M = typeof mrOf === 'function' ? mrOf(estOwner(q)) : null; if (M && M.kind === 'npc' && M.who && String(M.who.id).startsWith('r:') && !M.dead) return true; }   /* casado com a família real: mora no castelo, entra e sai a qualquer hora, subsolo incluído */
   const role = typeof cgRoleOf === 'function' ? cgRoleOf(k) : null; if (role) return fl >= 0 || role === 'cmd';
   const J = kcJob(q); if (J) { const D = KC.jobs[J.j]; if (D.fl.includes(Math.max(-2, Math.min(4, fl))) && (!night || D.night || J.j === 'serv')) return true; }
   if (night) return false; if (fl === 0) return true;
