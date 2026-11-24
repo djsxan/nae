@@ -853,3 +853,13 @@ body.touch #pplbtn { bottom: auto; top: 54px; right: calc(10px + env(safe-area-i
 .cs-note { margin: 6px 0 10px; font-size: 13px; line-height: 1.4; } .cs-note ul { margin: 4px 0 0 18px; padding: 0; }
 /* a cidade só aparece ao entrar no reino: na abertura, só a tela de introdução (sem a cidade piscando antes da foto) */
 body.nae:not(.ingame) #game { visibility: hidden; }
+/* grimório cabe na tela sem rolagem: o pentagrama segue a altura disponível e a página da direita fica compacta */
+#tree.grim-on .grim-book { height: min(calc(100vh - 236px), 590px); min-height: 380px; }
+#tree.grim-on .grim-l { overflow: hidden; }
+#tree.grim-on .grim-svg { height: 100%; max-height: 100%; width: auto; max-width: 100%; }
+#tree.grim-on .grim-page { padding: 8px 12px; display: flex; flex-direction: column; overflow: hidden; }
+#tree.grim-on .grim-h { font-size: 28px; }
+#tree.grim-on .grim-det { min-height: 0; flex: 0 1 auto; overflow: hidden; }
+#tree.grim-on .grim-keys li { padding: 1px 0; }
+#tree.grim-on .grim-foot { font-size: 11.5px; }
+@media (max-height: 820px) { #tree.grim-on .grim-foot { display: none; } #tree.grim-on .grim-keyhint { display: none; } }

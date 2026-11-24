@@ -1260,7 +1260,7 @@ function meditTick(now) {
     if (now - (M.boT || 0) > 10000) { M.boT = now; M.bo = meditBoost(p, M.el); }
     let grp = 0; for (const q of Object.values(S.players)) if (q !== p && q.medit && (q.fl || 0) === (p.fl || 0) && dist(q.x, q.y, p.x, p.y) <= 4) grp++;   /* magos meditando juntos se ajudam */
     if (grp && !M.grpT) { M.grpT = 1; tell(p, 'Meditação em grupo: ' + (grp + 1) + ' magos juntos, o progresso sobe mais rápido.'); } if (!grp) M.grpT = 0; p.buffs.medgroup = grp ? now + 1500 : 0;
-    const deep = Math.min(1, (now - M.t0) / 20000), tr = now - M.t0 >= 60000, g = (0.22 + 0.18 * deep) * (M.bo ? 1.6 : 1) * (tr ? 1.5 : 1) * (1 + Math.min(3, grp) * 0.25);   /* quanto mais tempo, mais fundo; depois de 1 minuto, o transe profundo */
+    const deep = Math.min(1, (now - M.t0) / 20000), tr = now - M.t0 >= 60000, g = (0.22 + 0.18 * deep) * (M.bo ? 1.6 : 1) * (tr ? 1.5 : 1) * (1 + Math.min(6, grp) * 0.25);   /* quanto mais tempo, mais fundo; depois de 1 minuto, o transe profundo */
     if (tr && !M.trance) { M.trance = 1; tell(p, 'Transe profundo: a aura dobra, a perícia sobe 50% mais rápido e o corpo se recupera mais.'); }
     useGain(p, 'el_' + M.el, g); M.gain += g;
     { const rk = tr ? 1.5 : 1; p.hp = Math.min(p.maxHp, p.hp + Math.max(1, Math.round(p.maxHp * 0.025 * rk))); p.mp = Math.min(p.maxMp, (p.mp || 0) + Math.max(1, p.maxMp * 0.05 * rk)); p.cst = Math.min(cstMaxOf(p), (p.cst ?? 0) + 12 * rk); }
@@ -3394,15 +3394,15 @@ function collectorSync(now) {
 function collFind(n, P, tool) {
   const [dx, dy] = bizDoorOut(P), R = 24; let best = null, bd = 1e9; S.collRes = S.collRes || {};
   for (let y = Math.round(dy) - R; y <= Math.round(dy) + R; y++) for (let x = Math.round(dx) - R; x <= Math.round(dx) + R; x++) {
-    if (!inBounds(x, y)) continue; const i = y * MAP_W + x, G0 = gatherOf(WORLD.obj[i]); if (!G0 || G0.tool !== tool || WORLD.bld[i] >= 0 || (S.collRes[i] && S.collRes[i] !== n.id) || (P.wk === 'wheat') !== (WORLD.obj[i] === O.WHEAT)) continue;
-    const d = dist(x, y, dx, dy); if (d >= bd) continue;
+    if (!inBounds(x, y)) continue; const i = y * MAP_W + x, herb = P.wk === 'farm' && WORLD.obj[i] === O.HERB, G0 = herb ? { tool } : gatherOf(WORLD.obj[i]); if (!G0 || G0.tool !== tool || WORLD.bld[i] >= 0 || (S.collRes[i] && S.collRes[i] !== n.id) || (P.wk === 'wheat') !== (WORLD.obj[i] === O.WHEAT)) continue;
+    const d = dist(x, y, dx, dy) + (P.wk === 'farm' && !herb ? 12 : 0); if (d >= bd) continue;   /* a horta colhe primeiro as ervas em volta do prédio */
     for (const [ax, ay] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (walkableTile(x + ax, y + ay, 0)) { bd = d; best = { i, sp: [x + ax * 0.95, y + ay * 0.95] }; break; } }
   return best;
 }
 function collHit(n, P) {   // um golpe no recurso: devolve o que rendeu
   const i = n.ci, o = WORLD.obj[i], x = i % MAP_W, y = (i - x) / MAP_W, now = now_(); let g = null, q = 2;
   if (P.wk === 'wheat') { setObj(i, O.WHEATSPROUT); (S.objBack = S.objBack || []).push({ i, o, at: now + 150000 }); g = Math.random() < 0.15 ? 'fruit' : 'wheat'; }
-  else if (P.wk === 'farm') { setObj(i, O.NONE); (S.objBack = S.objBack || []).push({ i, o, at: now + 120000 }); g = Math.random() < 0.66 ? 'herb' : 'flax'; }
+  else if (P.wk === 'farm') { setObj(i, O.NONE); (S.objBack = S.objBack || []).push({ i, o, at: now + (o === O.HERB ? 180000 : 120000) }); g = o === O.HERB ? 'herb' : Math.random() < 0.66 ? 'herb' : 'flax'; }
   else { S.nodeHits = S.nodeHits || {}; const hits = (S.nodeHits[i] || 0) + 1, max = o === O.OAK || o === O.BOULDER ? 4 : 3, tree = P.wk === 'saw';
     if (hits >= max) { delete S.nodeHits[i]; near(x, y, { t: tree ? 'tfall' : 'crumble', i, o, a: Math.atan2(y - n.y, x - n.x) }); setObj(i, tree ? O.STUMP : O.NONE); (S.objBack = S.objBack || []).push({ i, o, at: now + (tree ? 300000 : 240000) }); } else S.nodeHits[i] = hits;
     if (tree) { g = 'wood'; if (o === O.OAK) q = 3; } else { const Bt = S.estate && S.estate.r[P.id] && S.estate.r[P.id].biz; g = Math.random() < 0.25 + 0.05 * ((Bt && Bt.up.tools) || 0) ? 'crystal' : 'ore'; } }   // cristal: 25% (+5% por nível de ferramentas)
@@ -3418,12 +3418,12 @@ function collectorTick(n, now, dt) {
       near(n.x, n.y, { t: 'tfx', k: 'ok', id: n.id }); n.load = {}; n.carry = 0; n.cst = null; n.job = null; n.wt = now + 2500;
     } return; }
   if (n.cst === 'work') {
-    const G0 = gatherOf(WORLD.obj[n.ci]); if (!G0 || G0.tool !== tool) { release(); n.cst = n.carry > 0 ? 'back' : null; if (n.cst) n.job = { st: 'levando' }; return; }
+    const G0 = (P.wk === 'farm' && WORLD.obj[n.ci] === O.HERB) ? { tool } : gatherOf(WORLD.obj[n.ci]); if (!G0 || G0.tool !== tool) { release(); n.cst = n.carry > 0 ? 'back' : null; if (n.cst) n.job = { st: 'levando' }; return; }
     n.dir = dirFromVecS((n.ci % MAP_W) - n.x, Math.floor(n.ci / MAP_W) - n.y);
     if (now > (n.animT || 0)) { n.animT = now + 760; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: COLL_ANIM[tool], ms: 750, tool, i: n.ci }); }
     if (now >= n.hitAt) { collHit(n, P); n.hitAt = now + 4200 / (1 + 0.5 * ((B && B.up.tools) || 0)); if (n.carry >= 8 || !gatherOf(WORLD.obj[n.ci])) { release(); n.cst = n.carry >= 8 ? 'back' : null; if (n.cst) n.job = { st: 'levando' }; } }
     return; }
-  if (n.cst === 'walk') { const G0 = gatherOf(WORLD.obj[n.ci]); if (!G0) { release(); n.cst = null; return; }
+  if (n.cst === 'walk') { const G0 = (P.wk === 'farm' && WORLD.obj[n.ci] === O.HERB) || gatherOf(WORLD.obj[n.ci]); if (!G0) { release(); n.cst = null; return; }
     if (npcWalk(n, n.sp[0], n.sp[1], 0.95, dt) || dist(n.x, n.y, n.sp[0], n.sp[1]) < 0.5) { n.cst = 'work'; n.hitAt = now + 4200; } return; }
   if (now < (n.wt || 0)) return;
   const t = collFind(n, P, tool); if (!t) { if (n.carry > 0) { n.cst = 'back'; n.job = { st: 'levando' }; } else n.wt = now + 8000; return; }

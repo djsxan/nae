@@ -90,7 +90,7 @@ function empMsg(p, m) {
     else if (m.o === 'home') { const was = r.forageOn; r.mode = 'home'; r.forageOn = 0; if (n.forage) { n.forage = null; n.goal = empTgt(H); } else n.goal = null; empSay(n, was ? 'Paro de buscar comida e fico cuidando da casa.' : 'Vou cuidar da casa.'); estateSave(); }
     else if (m.o === 'forage') { r.mode = 'home'; r.forageOn = 1; r.forageT = 0; n.goal = null; n.task = null; const hr = empHour(); estateSave();   /* modo contínuo: sai de dia até mandarem ficar em casa */
       if (dayInfoS().night || hr < 6 || hr >= 16) empSay(n, 'Combinado. Amanhã cedo saio para buscar comida, e todo dia até você mandar parar.'); else if (empFoodNeed(r) <= 0) empSay(n, 'O baú está cheio. Assim que abrir espaço, saio para buscar mais.'); else { n.forage = { t0: now_() }; r.forageT = now_() + 30000; empSay(n, 'Vou buscar comida. Volto antes de escurecer e saio de novo até você mandar parar.'); } }
-    else if (m.o === 'shop') { const list = (Array.isArray(m.list) ? m.list : []).map(x => [String(x[0]), String(x[1]), Math.max(1, Math.min(20, x[2] | 0))]).filter(x => S.npcs[x[0]] && tradeCat(S.npcs[x[0]]) && LOOT[x[1]]).slice(0, 12); if (!list.length) { tell(p, 'A lista está vazia.'); return; }
+    else if (m.o === 'shop') { const list = (Array.isArray(m.list) ? m.list : []).map(x => [String(x[0]), String(x[1]), Math.max(1, Math.min(20, x[2] | 0))]).filter(x => S.npcs[x[0]] && tradeCat(S.npcs[x[0]]) && (LOOT[x[1]] || EMP_POTS[x[1]])).slice(0, 12); if (!list.length) { tell(p, 'A lista está vazia.'); return; }
       const est = list.reduce((a, x) => a + shopPrice(S.npcs[x[0]], p, x[1]) * x[2], 0), money = Math.min(p.gold || 0, Math.max(0, Math.floor(+m.money || est))); if (money <= 0) { tell(p, 'Entregue o dinheiro das compras (você não tem ouro na bolsa).'); return; }
       p.gold -= money; sendStat(p); r.forageOn = 0; n.forage = null; n.goal = null; n.task = null; r.shop = { list, i: 0, purse: money, got: {} }; r.mode = 'shop'; empSay(n, 'Vou às compras com ' + money + ' de ouro. Guardo tudo no baú e trago o troco.'); }   /* lista de compras */
     else if (m.o === 'deliver') { if (!Object.keys(r.inv).length) { tell(p, nm + ' não está carregando nada.'); return; } r.mode = 'deliver'; n.goal = null; empSay(n, 'Levo tudo para casa e guardo no baú.'); }
@@ -294,8 +294,13 @@ function sakeReturnTick(n, r, H) {   /* banho acabou: leva a bandeja de volta pa
 }
 // ---------- compras da doméstica ----------
 function shopPrice(t, p, k) { try { return tSellPrice(t, p || {}, k); } catch (e) { return Math.max(1, Math.ceil(tBase(k) * 1.2)); } }
+/* poções e bandagens: a doméstica compra e entrega direto ao patrão (vão para o cinto de poções, não para o baú) */
+const EMP_POTS = { pot_hp: 'hp', pot_mp: 'mp', pot_band: 'band' };
+function empPotsGive(key, r, q) { const got = []; for (const k of Object.keys(EMP_POTS)) { const v = r.inv[k] | 0; if (!v) continue; delete r.inv[k]; if (q) { q.pots[EMP_POTS[k]] = (q.pots[EMP_POTS[k]] || 0) + v; got.push(v + 'x ' + tName(k)); } else { r.potsOwed = r.potsOwed || {}; r.potsOwed[k] = (r.potsOwed[k] || 0) + v; } }
+  if (q && got.length) { sendStat(q); tell(q, r.n + ' entregou ' + got.join(', ') + ' (direto no seu cinto de poções).'); } }
+function empPotsOwed(key, r, q) { if (!q || !r.potsOwed) return; for (const k of Object.keys(r.potsOwed)) q.pots[EMP_POTS[k]] = (q.pots[EMP_POTS[k]] || 0) + r.potsOwed[k]; const t = Object.entries(r.potsOwed).map(([k, v]) => v + 'x ' + tName(k)).join(', '); r.potsOwed = null; sendStat(q); tell(q, r.n + ' guardou para você: ' + t + ' (no seu cinto de poções).'); }
 function shopCatalog(p) {   /* lojas com vendedor e o que vendem agora */
-  const out = []; for (const t of Object.values(S.npcs || {})) { if (t.dead || t.transient || t.trader || !tradeCat(t)) continue; const T = tradeStock(t), items = Object.entries(T.stock).filter(([k, q]) => q > 0 && LOOT[k] && !k.startsWith('pot_') && tBase(k)).map(([k, q]) => [k, tName(k), shopPrice(t, p, k), q]); if (items.length) out.push({ id: t.id, n: t.name.split(',')[0], items }); }
+  const out = []; for (const t of Object.values(S.npcs || {})) { if (t.dead || t.transient || t.trader || !tradeCat(t)) continue; const T = tradeStock(t), items = Object.entries(T.stock).filter(([k, q]) => q > 0 && (EMP_POTS[k] || (LOOT[k] && !k.startsWith('pot_') && tBase(k)))).map(([k, q]) => [k, tName(k), shopPrice(t, p, k), q]); if (items.length) out.push({ id: t.id, n: t.name.split(',')[0], items }); }
   return out;
 }
 function shopTick(n, r, H, q, now, dt, spd) {
@@ -308,7 +313,7 @@ function shopTick(n, r, H, q, now, dt, spd) {
       empAnim(n, 'gather', 900, t.x, t.y); n.task = { until: now + 1000, done: () => { S2.i++; } }; }
     return; }
   if (!empGo(n, empTgt(H), spd, dt)) return;   /* volta para casa, guarda e devolve o troco */
-  empDeposit(n.emp, r, q); const ch = S2.purse, got = Object.entries(S2.got).map(([k, v]) => v + 'x ' + tName(k)).join(', ') || 'nada';
+  empPotsGive(n.emp, r, q); empDeposit(n.emp, r, q); const ch = S2.purse, got = Object.entries(S2.got).map(([k, v]) => v + 'x ' + tName(k)).join(', ') || 'nada';
   if (ch > 0) { if (q) { q.gold = (q.gold || 0) + ch; sendStat(q); } else { const B = bankLoad(), A = B.acc[n.emp] || (B.acc[n.emp] = { g: 0, loan: 0, due: 0, wk: estDay() }); A.g += ch; bankSave(); } }
   if (q) tell(q, r.n + ' voltou das compras: ' + got + ' no baú.' + (ch > 0 ? ' Troco: ' + ch + ' de ouro' + (q ? '.' : ' (no banco).') : ''));
   empSay(n, 'Tudo guardado no baú.'); r.shop = null; r.mode = 'home'; estateSave(); empSend(r, n.emp);
@@ -339,6 +344,7 @@ function empTick(now) {   /* uma vez por segundo: garante o NPC no mundo e cobra
   if (now - (S.empT || 0) < 1000) return; S.empT = now; const E = S.estate; if (!E) return; segTick(now); if (!E.emp) return; const day = estDay();
   for (const key of Object.keys(E.emp)) { const r = E.emp[key], rec = E.r[r.home];
     if (!rec || rec.owner !== key) { empQuit(key, r, r.n + ' foi embora: você não tem mais a casa.'); continue; }
+    if (r.potsOwed) empPotsOwed(key, r, empOwnerP(key));   /* poções compradas enquanto o patrão estava fora */
     if (r.n === 'Celina' && !r.w) { r.n = 'Miko'; r.look = 'v_maiko'; const o = S.npcs[empNid(r)]; if (o) visGone(o); empSend(r, key); estateSave(); }   /* Celina virou a maiko Miko (renasce com o visual novo) */
     if (!S.npcs[empNid(r)]) empSpawn(key, r);
     if (r.pendMessy) { const q = empOwnerP(key); if (!q || q.sleep == null) { r.pendMessy = 0; r.messy = true; const H = empHome(r), bi = H ? empBedIdx(H) : -1; if (bi >= 0) Net.toAll({ t: 'bedmess', bed: bi, on: 1 }); estateSave(); empSend(r, key); } }
