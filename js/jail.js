@@ -9,7 +9,7 @@ function guilState() {
 }
 function onExec(m, now) {
   G.execS = { t0: now, T: m.T, id: m.id };
-  const v = G.players[m.id]; if (v) v.exec = { t0: now, T: m.T };
+  const v = G.players[m.id] || G.npcs[m.id]; if (v) v.exec = { t0: now, T: m.T };   /* também o rei deposto (NPC) */
   G.shake = Math.max(G.shake, 2);
   const ex = G.npcs.executioner; if (ex) { later(m.T.announce, () => { ex.bubble = { t: '⚖', until: performance.now() + 3500 }; ex.dir = dirFromVec(STAGE.x - 0.6 - ex.rx, STAGE.y - ex.ry, ex.dir); }); }
   // multidão: quem está perto vira para olhar e reage quando a lâmina cai
