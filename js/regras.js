@@ -83,17 +83,23 @@ function rgCastleWatch(now) { const bi = castleBi(); for (const q of Object.valu
 /* ---- 58: todos os nobres envelhecem ---- */
 const rgR = (a) => a[0] + Math.floor(Math.random() * (a[1] - a[0] + 1));
 function rgAges() { const R = rgRec(), born = typeof cpRec === 'function' ? cpRec().born : 0; if (!R.ages || R.agesBorn !== born) { R.ages = {}; R.agesBorn = born; for (const h of HOUSES) R.ages[h.id] = { lord: rgR(RG.ages.lord), spouse: rgR(RG.ages.spouse), heir: rgR(RG.ages.heir) }; R.sick = {}; R.widow = {}; } return R.ages; }
-function rgAge(a0) { return a0 + (typeof sucRealmDay === 'function' ? sucRealmDay() - 1 : 0); }
+/* idade: adultos envelhecem 1 ano a cada 3 dias do jogo; crianças 1 ano por dia até os 20. Um número é a idade no 1º dia do reino; {a, d} é a idade a no dia d */
+const AGE_ADULT_DAYS = 3, AGE_ADULT = 20;
+function ageOf(v, rd) { rd = rd == null ? (typeof sucRealmDay === 'function' ? sucRealmDay() : 1) : rd; const a = typeof v === 'number' ? v : (v && v.a) || 0, d0 = typeof v === 'number' ? 1 : (v && v.d) || 1, dd = Math.max(0, rd - d0);
+  if (a < AGE_ADULT) { const k = Math.min(dd, AGE_ADULT - a); return a + k + Math.floor((dd - k) / AGE_ADULT_DAYS); } return a + Math.floor(dd / AGE_ADULT_DAYS); }
+const ageNow = a => ({ a, d: typeof sucRealmDay === 'function' ? sucRealmDay() : 1 });
+function rgAge(a0) { return ageOf(a0); }
 function rgDaily() { const A = rgAges(), R = rgRec(), day = estDay(), rd = sucRealmDay();
   for (const h of HOUSES) { const a = A[h.id]; if (!a) continue; if (sucRec().king === 'h:' + h.id) continue;   /* o rei da casa já envelhece pela sucessão */
     for (const role of ['lord', 'spouse', 'heir']) { const key = h.id + ':' + role, sk = R.sick[key]; if (role === 'spouse' && R.widow[h.id]) continue;
       if (sk) { if (day >= sk) { delete R.sick[key]; rgDie(h, role); } continue; }
       if (rd >= RG.sickDay && rgAge(a[role]) >= RG.old && Math.random() < RG.sick) { R.sick[key] = day + RG.warnDays; const nm = role === 'lord' ? h.lord : role === 'spouse' ? h.spouse : h.heir; hNews(nm + ' (' + rgAge(a[role]) + ' anos) adoeceu: o meistre da casa diz que não passa de dois dias.'); } } } estateSave(); }
 function rgDie(h, role) { const A = rgAges()[h.id], R = rgRec();
-  if (role === 'lord') { const heirAge = A.heir; trLordDead(h.id, 'a idade e a doença'); A.lord = heirAge; A.heir = rgR(RG.ages.heir) - (sucRealmDay() - 1); return; }
+  if (role === 'lord') { const heirAge = A.heir; trLordDead(h.id, 'a idade e a doença'); if (typeof lnTakeHeir !== 'function') { A.lord = heirAge; A.heir = ageNow(rgR(RG.ages.heir)); } return; }   /* com as linhagens, o trLordDead já cuida das idades e do herdeiro */
   if (role === 'spouse') { const nm = h.spouse; R.widow[h.id] = 1; for (const n of Object.values(S.npcs)) if (n.court === 'house' && n.house === h.id && n.hrole === 'spouse') visGone(n); hNews(nm + ' morreu de velhice. ' + h.lord + ' está viúvo.'); sys('Notícia: ' + nm + ' morreu.'); return; }
+  if (typeof lnTakeHeir === 'function') { const old0 = h.heir; if (lnTakeHeir(h)) { hNews(old0 + ' morreu de doença. ' + h.heir + ' é o novo herdeiro da ' + h.n + '.'); sys('Notícia: ' + old0 + ' morreu.'); return; } }
   const old = h.heir, L = (typeof TR_HEIR2 !== 'undefined' && TR_HEIR2[h.id]) || [], used = trRec().names[h.id] ? (trRec().names[h.id].gen || 0) : 0, nn = L[Math.min(L.length - 1, used + 1)] || ('Herdeiro da ' + h.n);
-  h.heir = nn.replace(/^Lorde |^Lady /, ''); A.heir = rgR(RG.ages.heir) - (sucRealmDay() - 1); for (const n of Object.values(S.npcs)) if (n.court === 'house' && n.house === h.id && n.hrole === 'heir') visGone(n);
+  h.heir = nn.replace(/^Lorde |^Lady /, ''); A.heir = ageNow(rgR(RG.ages.heir)); for (const n of Object.values(S.npcs)) if (n.court === 'house' && n.house === h.id && n.hrole === 'heir') visGone(n);
   hNews(old + ' morreu de doença. ' + h.heir + ' é o novo herdeiro da ' + h.n + '.'); sys('Notícia: ' + old + ' morreu.'); }
 if (typeof hPost === 'function') { const _hpG = hPost; hPost = function (def, n) { try { if (n.hrole === 'spouse' && S.estate && rgRec().widow[n.house]) return null; } catch (e) { } return _hpG(def, n); }; }
 if (typeof housePublic === 'function') { const _hpuG = housePublic; housePublic = function (p) { const o = _hpuG(p); try { const A = rgAges(); for (const h of o.l) { const a = A[h.id]; if (a && !h.player) h.lord = h.lord + ' · ' + rgAge(a.lord) + ' anos' + (rgRec().widow[h.id] ? ' · viúvo' : ''); } } catch (e) { } return o; }; }

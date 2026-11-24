@@ -449,6 +449,7 @@ function hostOnClient(from, m) {
     case 'funda': if (typeof phMsg === 'function') phMsg(p, m); break;
     case 'rei': if (typeof reiMsg === 'function') reiMsg(p, m); break;
     case 'regras': if (typeof rgMsg === 'function') rgMsg(p, m); break;
+    case 'linha': if (typeof lnMsg === 'function') lnMsg(p, m); break;
     case 'duel': duelMsg(p, m); break;
     case 'hipthrow': hipThrow(p); break;
     case 'train': trainMsg(p, m); break;

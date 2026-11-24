@@ -11,7 +11,7 @@ const SUC_COURT_SPOTS = [[7.5, 6], [11.5, 6], [7.5, 8.5], [11.5, 8.5], [7.5, 11]
 
 // ---------------- SERVIDOR ----------------
 function sucRec() { const C = crownRec(); if (!C.suc) C.suc = { king: 'edric', alive: { alaric: 1, corwyn: 1 }, stage: null, buy: 0 }; return C.suc; }
-function sucAge() { const U = sucRec(); if (U.king === 'edric') return SUC_AGE.edric + sucRealmDay() - 1; return (U.kage0 || SUC_AGE.house) + (estDay() - (U.since || estDay())); }
+function sucAge() { const U = sucRec(), per = typeof AGE_ADULT_DAYS !== 'undefined' ? AGE_ADULT_DAYS : 1; if (U.king === 'edric') return SUC_AGE.edric + Math.floor((sucRealmDay() - 1) / per); return (U.kage0 || SUC_AGE.house) + Math.floor((estDay() - (U.since || estDay())) / per); }   /* adultos: 1 ano a cada 3 dias */
 function sucCanSicken() { const U = sucRec(); return U.king === 'edric' ? sucRealmDay() >= SUC.sickDay : sucAge() >= SUC_OLD; }
 function sucRealmDay() { return typeof cpRec === 'function' ? estDay() - cpRec().born + 1 : 1; }
 /* a linha de sangue: herdeiro, irmão do rei e as cinco casas na ordem sorteada do reino */
@@ -26,7 +26,7 @@ if (typeof infSuccessor === 'function') { const _isS = infSuccessor; infSuccesso
 /* o rei que está no trono hoje não adoece: só o velho Edric piora */
 function sucCourtFix() { const U = sucRec(), C = crownRec(); if (U.king !== 'edric' && sucAge() < SUC_OLD) { C.hp = 100; if (!U.stage || U.stage === 'done') C.bad = 0; } if (U.stage && U.stage !== 'done' && U.stage !== 'dying') C.bad = 1; }
 /* o rei morto sai do trono; o novo rei assume o lugar dele na corte */
-function sucApplyKing(k) { const U = sucRec(), C = crownRec(), prev = U.king; U.king = k; U.since = estDay(); U.kage0 = k.startsWith('h:') ? SUC_AGE.house : (SUC_AGE[k] || SUC_AGE.house) + (k === 'corwyn' ? Math.max(0, sucRealmDay() - 1) : 0); const def = COURT.find(d => d.id === 'k_king');
+function sucApplyKing(k) { const U = sucRec(), C = crownRec(), prev = U.king; U.king = k; U.since = estDay(); U.kage0 = k.startsWith('h:') ? SUC_AGE.house : (SUC_AGE[k] || SUC_AGE.house) + (k === 'corwyn' ? Math.floor(Math.max(0, sucRealmDay() - 1) / (typeof AGE_ADULT_DAYS !== 'undefined' ? AGE_ADULT_DAYS : 1)) : 0); const def = COURT.find(d => d.id === 'k_king');
   if (def) { def.name = sucKingName(); def.kind = k === 'alaric' ? 'k_prince' : k === 'corwyn' ? 'k_corwyn' : def.kind; }
   if (k === 'alaric') { const i = COURT.findIndex(d => d.id === 'k_prince'); if (i >= 0) COURT.splice(i, 1); const pn = S.npcs.k_prince; if (pn) visGone(pn); }
   if (k === 'corwyn') { const cn = S.npcs.k_corwyn; if (cn) visGone(cn); U.corwynIn = 0; }
