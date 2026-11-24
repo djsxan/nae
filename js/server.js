@@ -450,6 +450,7 @@ function hostOnClient(from, m) {
     case 'rei': if (typeof reiMsg === 'function') reiMsg(p, m); break;
     case 'regras': if (typeof rgMsg === 'function') rgMsg(p, m); break;
     case 'linha': if (typeof lnMsg === 'function') lnMsg(p, m); break;
+    case 'casar': if (typeof mrMsg === 'function') mrMsg(p, m); break;
     case 'duel': duelMsg(p, m); break;
     case 'hipthrow': hipThrow(p); break;
     case 'train': trainMsg(p, m); break;
