@@ -17,8 +17,10 @@ function titlePhoto() {
   const grade = g => { const w = Math.min(2400, im.naturalWidth), h = Math.round(im.naturalHeight * w / im.naturalWidth), c = document.createElement('canvas'); c.width = w; c.height = h; const x = c.getContext('2d'); x.drawImage(im, 0, 0, w, h);
     try { const d = x.getImageData(0, 0, w, h), a = d.data; for (let i = 0; i < a.length; i += 4) { a[i] = Math.min(255, a[i] * g.mul[0] * g.b + g.add[0]); a[i + 1] = Math.min(255, a[i + 1] * g.mul[1] * g.b + g.add[1]); a[i + 2] = Math.min(255, a[i + 2] * g.mul[2] * g.b + g.add[2]); } x.putImageData(d, 0, 0); } catch (e) { }   // arquivo local: sem permissão de ler os pixels, fica a cor original
     return c; };
+  let lastF = 0, vgK = '', vgC = null, lgC = null;
   const frame = now => {
     if (!TITLE.on) { cv.remove(); return; } requestAnimationFrame(frame);
+    if (now - lastF < 33) return; lastF = now;   /* 30 quadros por segundo bastam para a introdução */
     const W = cv.width, H = cv.height, t = now - t0, tk = todNow(), G = GR[tk];
     if (!im.complete || !im.naturalWidth) { ctx.fillStyle = '#1a1622'; ctx.fillRect(0, 0, W, H); return; }
     if (gk !== tk) { graded = grade(G); gk = tk; }
@@ -26,7 +28,7 @@ function titlePhoto() {
     const px = (W - dw) / 2 + W * 0.06 + Math.sin(t / 31000) * W * 0.02, py = (H - dh) / 2 + Math.cos(t / 37000) * H * 0.012;   // castelo um pouco à direita (o menu fica à esquerda)
     ctx.drawImage(graded, px, py, dw, dh);
     const X = u => px + u * dw, Y = v => py + v * dh, wy = Y(P0.water);
-    for (let y = Math.max(0, wy); y < H; y += 3) { const k = (y - wy) / (H - wy + 1), sh = Math.sin(y * 0.09 / dpr + t / 420) * (1.5 + k * 4) * dpr; ctx.drawImage(cv, 0, y, W, 3, sh, y, W, 3); }
+    for (let y = Math.max(0, wy); y < H; y += 4) { const k = (y - wy) / (H - wy + 1), sh = Math.sin(y * 0.09 / dpr + t / 420) * (1.5 + k * 4) * dpr; ctx.drawImage(graded, -px / z, (y - py) / z, W / z, 4 / z, sh, y, W, 4); }   /* água ondulando: faixas tiradas da foto, sem ler a própria tela */
     ctx.save(); ctx.globalCompositeOperation = 'screen';
     for (let k = 0; k < 70; k++) { const yy = wy + (H - wy) * rnd(k) ** 1.4, x = (rnd(k + 5) * W + t * (0.006 + rnd(k + 9) * 0.01) * W / 100) % W, l = W * (0.02 + rnd(k + 2) * 0.06) * (0.4 + (yy - wy) / (H - wy)), a = (0.08 + 0.1 * Math.sin(t / 300 + k * 1.7)) * (G.night ? 0.6 : 1); ctx.fillStyle = G.glow + Math.max(0, a) + ')'; ctx.fillRect(x, yy, l, (1.4 + (yy - wy) / (H - wy) * 1.5) * dpr); }
     ctx.restore();
@@ -44,8 +46,8 @@ function titlePhoto() {
     const nb = G.night ? 5 : 14; for (let k = 0; k < nb; k++) { const per = 26000 + rnd(k) * 20000, ph = ((t + rnd(k + 3) * per) % per) / per, x = W * (1.1 - ph * 1.25), y = H * (0.18 + rnd(k + 8) * 0.25) + Math.sin(t / 900 + k) * H * 0.015 + (k % 3) * H * 0.012, s = H * (0.008 + rnd(k + 11) * 0.006), f = Math.sin(t / (G.night ? 70 : 130) + k * 2) * s * 0.9;
       ctx.strokeStyle = 'rgba(20,16,18,.75)'; ctx.lineWidth = Math.max(1, s * 0.22); ctx.beginPath(); ctx.moveTo(x - s, y - f); ctx.quadraticCurveTo(x - s * 0.4, y - s * 0.3, x, y); ctx.quadraticCurveTo(x + s * 0.4, y - s * 0.3, x + s, y - f); ctx.stroke(); }
     for (let k = 0; k < 26; k++) { const x = (rnd(k + 900) * W + t * (0.01 + rnd(k) * 0.02) * W / 100 + Math.sin(t / 1300 + k) * 20) % W, y = (rnd(k + 950) * H + t * 0.004 * H / 100) % H, a = 0.25 + 0.25 * Math.sin(t / 500 + k); ctx.fillStyle = G.night ? 'rgba(200,255,170,' + a + ')' : 'rgba(255,245,215,' + a * 0.7 + ')'; ctx.beginPath(); ctx.arc(x, y, (G.night ? 1.6 : 1.2) * dpr, 0, 7); ctx.fill(); }
-    const vg = ctx.createRadialGradient(W * 0.55, H * 0.5, H * 0.35, W * 0.55, H * 0.5, W * 0.75); vg.addColorStop(0, 'rgba(0,0,0,0)'); vg.addColorStop(1, 'rgba(0,0,0,0.6)'); ctx.fillStyle = vg; ctx.fillRect(0, 0, W, H);
-    const lg = ctx.createLinearGradient(0, 0, W * 0.5, 0); lg.addColorStop(0, 'rgba(0,0,0,0.6)'); lg.addColorStop(1, 'rgba(0,0,0,0)'); ctx.fillStyle = lg; ctx.fillRect(0, 0, W * 0.5, H);
+    if (vgK !== W + 'x' + H) { vgK = W + 'x' + H; vgC = ctx.createRadialGradient(W * 0.55, H * 0.5, H * 0.35, W * 0.55, H * 0.5, W * 0.75); vgC.addColorStop(0, 'rgba(0,0,0,0)'); vgC.addColorStop(1, 'rgba(0,0,0,0.6)'); lgC = ctx.createLinearGradient(0, 0, W * 0.5, 0); lgC.addColorStop(0, 'rgba(0,0,0,0.6)'); lgC.addColorStop(1, 'rgba(0,0,0,0)'); }
+    ctx.fillStyle = vgC; ctx.fillRect(0, 0, W, H); ctx.fillStyle = lgC; ctx.fillRect(0, 0, W * 0.5, H);
   };
   TITLE.on = true; requestAnimationFrame(frame);
 }

@@ -67,9 +67,22 @@ if (typeof velMsg === 'function') { const _vmT = velMsg; velMsg = function (p, m
   if (m.a === 'bm' && S.estate) { const s = secList(p)[m.i | 0]; if (s && s.h === 'crown') return; } return _vmT(p, m); }; }
 /* o contrabandista da viela, só à noite */
 function trSmugSpot() { const tb = BUILDINGS.find(b => b.kind === 'tavern'); if (!tb) return [CENTER - 18, CENTER + 12]; let best = null, bd = 1e9; for (let y = tb.y - 2; y <= tb.y + tb.h + 1; y++) for (let x = tb.x - 3; x < tb.x; x++) { if (WORLD.bld[tileAt(x, y)] >= 0 || !canStand(x, y, 0, 0.3)) continue; const d = dist(x, y, tb.x - 1.5, tb.y + tb.h / 2); if (d < bd) { bd = d; best = [x, y]; } } return best || [tb.x - 2, tb.y + 3]; }
-function trSmug() { const h = empHour(), on = h >= TR.smugH[0] || h < TR.smugH[1], n = S.npcs.tr_smug;
-  if (on && !n) { const [x, y] = trSmugSpot(), v = { id: 'tr_smug', kind: 'k_smug', name: 'Vesper, o Contrabandista', transient: true, court: 'smug', x, y, z: 0, fl: 0, fb: -1, hp: 200, maxHp: 200, downed: null, dead: false, dir: 0 }; S.npcs[v.id] = v; Net.toAll({ t: 'vspawn', v: visPublic(v) }); }
-  else if (!on && n) visGone(n); }
+/* lista 4, item 4: o Vesper fica numa mesa do mezanino (2º andar) da taverna, com dois capangas de pé ao lado */
+function trSmugTable() { const bi = BUILDINGS.findIndex(b => b.kind === 'tavern'), b = BUILDINGS[bi]; if (!b || floorsOf(b) < 2) return null;
+  const F = interiorLayout(b, 1).F, occ = new Set(); for (const q of F) for (let a = 0; a < (q.w || 1); a++) for (let c = 0; c < (q.h || 1); c++) occ.add((q.i + a) + ',' + (q.j + c));
+  const pew = F.find(q => q.t === 'pew' && q.seat) || null, tab = pew && F.find(q => q.t === 'table' && q.j === pew.j - 1 && Math.abs(q.i - pew.i) <= 1); if (!pew) return null;
+  const [x, y] = bLocal(b, pew.i, pew.j), [tx, ty] = tab ? bLocal(b, tab.i, tab.j) : [x, y - 1], [w, h] = bDims(b), free = [];
+  for (const [a, c] of [[pew.i + (pew.w || 1), pew.j], [pew.i - 1, pew.j], [pew.i + (pew.w || 1), pew.j - 1], [pew.i - 1, pew.j - 1], [pew.i, pew.j + 1], [pew.i + 1, pew.j + 1]]) if (a >= 0 && c >= 0 && a < w && c < h && !occ.has(a + ',' + c)) free.push(bLocal(b, a, c));
+  return { bi, x, y, dir: dirFromVecS(tx - x, ty - y), thugs: free.slice(0, 2) }; }
+function trSmug() { const h = empHour(), on = h >= TR.smugH[0] || h < TR.smugH[1], n = S.npcs.tr_smug, T = trSmugTable();
+  if (on && !n) { let v; if (T) v = { id: 'tr_smug', kind: 'k_smug', name: 'Vesper, o Contrabandista', transient: true, court: 'smug', x: T.x, y: T.y, z: 0, fl: 1, fb: T.bi, hp: 200, maxHp: 200, downed: null, dead: false, dir: T.dir, sitting: true };
+    else { const [x, y] = trSmugSpot(); v = { id: 'tr_smug', kind: 'k_smug', name: 'Vesper, o Contrabandista', transient: true, court: 'smug', x, y, z: 0, fl: 0, fb: -1, hp: 200, maxHp: 200, downed: null, dead: false, dir: 0 }; }
+    S.npcs[v.id] = v; Net.toAll({ t: 'vspawn', v: visPublic(v) });
+    if (T) T.thugs.forEach(([x, y], i) => { const id = 'tr_thug' + (i + 1); if (S.npcs[id]) return; const g = { id, kind: 'v_thug1', name: ['Bruto Calhau', 'Faca Lisa'][i] + ', capanga do Vesper', transient: true, court: 'smug', smugGuard: 1, x, y, z: 0, fl: 1, fb: T.bi, postX: x, postY: y, hp: 160, maxHp: 160, downed: null, dead: false, dir: T.dir }; S.npcs[id] = g; Net.toAll({ t: 'vspawn', v: visPublic(g) }); }); }
+  else if (!on && n) { visGone(n); for (const id of ['tr_thug1', 'tr_thug2']) if (S.npcs[id]) visGone(S.npcs[id]); } }
+/* quem bate no Vesper ou num capanga apanha dos dois */
+if (typeof BRAVE !== 'undefined') { BRAVE.add('tr_thug1'); BRAVE.add('tr_thug2'); }
+if (typeof npcDamage === 'function') { const _ndV = npcDamage; npcDamage = function (n, dmg, p) { const r = _ndV(n, dmg, p); try { if (p && n && (n.id === 'tr_smug' || n.smugGuard)) for (const id of ['tr_thug1', 'tr_thug2']) { const g = S.npcs[id]; if (g && !g.dead && !g.downed) { if (!g.fight) near(g.x, g.y, { t: 'anim', w: 'n', id: g.id, a: 'shout', txt: 'Ninguém encosta no chefe!', ms: 1 }); g.fight = { id: p.id, until: now_() + 20000 }; g.flee = null; } } } catch (e) { } return r; }; }
 function trMenu(p) { Net.toOne(p.id, { t: 'tramenu', targets: trTargets(), poison: TR.poison, hire: TR.hire.map(x => [x[0], Math.round(x[1] * 100)]), gold: p.gold | 0, has: p.inv.poison | 0 }); }
 function trSeenCup(p) { return Object.values(S.npcs).some(n => !n.dead && !n.downed && !n.sleeping && (n.fl || 0) === (p.fl || 0) && dist(n.x, n.y, p.x, p.y) < 6 && (n.kind === 'guard' || n.kind === 'captain' || n.kind === 'k_guard' || (n.court === 'house' && n.hrole === 'guard'))); }
 function trCastleKitchenEmpty() { const ck = S.npcs.k_cook, b = castleB(); if (!ck || ck.dead || !b) return true; if ((ck.fl || 0) !== 1) return true; const [u, v] = worldToLocal(b, ck.x, ck.y); return !(u >= 0 && u < 4 && v >= 0 && v < 8); }

@@ -32,8 +32,8 @@ function hDaily() {   /* cada casa avança o seu plano */
   const top = HOUSES.slice().sort((a, b) => H.st[b.id].prestige - H.st[a.id].prestige)[0]; sys('Notícias das Casas: ' + H.news[0][1] + ' (a mais prestigiada agora é a ' + top.n + ')'); estateSave(); }
 function hFavor(p, id, n, why) { const H = hRec(), k = estOwner(p); H.favor[k] = H.favor[k] || {}; H.favor[k][id] = Math.max(0, (H.favor[k][id] || 0) + n); if (n && why) tell(p, (n > 0 ? '+' : '') + n + ' de favor com a ' + HOUSE_BY[id].n + ' (' + why + ').'); estateSave(); }
 function hPost(def, n) {   /* posição do morador agora */
-  if (typeof thNoblePost === 'function') { const T = thNoblePost(n); if (T) return T; }   /* hora do banho nas Termas */
-  const b = hSeatB(n.house); if (!b) return null; const h = empHour(), P = h >= 7 && h < 21 ? def[1] : def[2];
+  if (!(n.hrole === 'serv' && (n.callDoor || 0) > now_()) && typeof thNoblePost === 'function') { const T = thNoblePost(n); if (T) return T; }   /* hora do banho nas Termas (menos o criado chamado à porta) */
+  const b = hSeatB(n.house); if (!b) return null; const h = empHour(); let P = h >= 7 && h < 21 ? def[1] : def[2]; if (n.hrole === 'serv' && (n.callDoor || 0) > now_()) P = ['door', 0];   /* chamado pelo guarda: espera na porta */
   if (P[0] === 'door') { const d = doorOf(b), [dx, dy] = doorTile(b), v = DOOR_V[b.door || 'S'], ox = v[0] ? 0 : P[1] * 1.2, oy = v[1] ? 0 : P[1] * 1.2; return { x: dx + v[0] * 1.6 + ox + 0.5, y: dy + v[1] * 1.6 + oy + 0.5, fl: 0, out: 1 }; }
   if (P[0] === 'plaza') { const k = HOUSES.findIndex(x => x.id === n.house); return { x: CASTLE.x1 + 8 + (k % 3) * 2.2, y: CENTER - 1.5 + Math.floor(k / 3) * 3.5, fl: 0, out: 1 }; }
   const fl = Math.min(P[0], floorsOf(b) - 1), [x, y] = b.deco === 'seat' ? seatPt(b, fl, P[1], P[2]) : localToWorld(b, P[1], P[2]); return { x, y, fl }; }
@@ -60,7 +60,8 @@ function houseMsg(p, m) {
   const n = S.npcs[m.id]; if (!n || n.court !== 'house') return; if (dist(n.x, n.y, p.x, p.y) > 3 || (n.fl || 0) !== (p.fl || 0)) { tell(p, 'Chegue mais perto.'); return; }
   const h = HOUSE_BY[n.house], send = () => Net.toOne(p.id, Object.assign({ t: 'housemenu', id: n.id, role: n.hrole, name: n.name, house: h.id, offer: hTaskOffer(p, h.id) }, housePublic(p)));
   if (m.a === 'open') { send(); return; }
-  if (n.hrole !== 'lord') { send(); return; }
+  if (n.hrole === 'guard' && m.a === 'callserv') { const sv = S.npcs['h_' + h.id + '_3']; if (!sv || sv.dead || sv.downed) { empSay(n, 'O criado não pode vir agora.'); return; } if (H.vow[k] === h.id) { empSay(n, 'Você já é da casa. Pode entrar.'); return; } sv.callDoor = now_() + 120000; empSay(n, 'Espere aqui. Vou chamar o ' + String(sv.name).split(',')[0] + '.'); tell(p, 'O guarda foi chamar o criado da ' + h.n + '. Ele vem até a porta: fale com ele para jurar lealdade.'); return; }
+  if (n.hrole !== 'lord' && !(n.hrole === 'serv' && m.a === 'vow')) { send(); return; }   /* o criado aceita o juramento em nome do lorde */
   if (m.a === 'vow') { if (H.vow[k] === h.id) return; const prev = H.vow[k]; H.vow[k] = h.id; if (typeof crownRec === 'function' && crownRec().vow[k]) { delete crownRec().vow[k]; crownFavor(p, -10, 'trocou a lealdade da coroa por uma casa'); } if (prev) hFavor(p, prev, -20, 'você abandonou a casa'); hFavor(p, h.id, 5, 'jurou lealdade'); H.st[h.id].prestige = clampH(H.st[h.id].prestige + 1, 0, 100); hNews(p.name + ' jurou lealdade à ' + h.n + '.'); sys(p.name + ' jurou lealdade à ' + h.n + '.'); empSay(n, h.motto + '. Bem-vindo à nossa casa.'); }
   else if (m.a === 'task') { if (H.task[k] && H.task[k].got < H.task[k].n) { tell(p, 'Termine a tarefa que já tem.'); return; } H.task[k] = Object.assign({ h: h.id, got: 0 }, hTaskOffer(p, h.id)); estateSave(); empSay(n, 'Faça isso pela casa e será lembrado.'); }
   else if (m.a === 'turnin') { const t = H.task[k]; if (!t || t.h !== h.id || t.got < t.n) return; delete H.task[k]; p.gold = (p.gold || 0) + t.g; sendStat(p); hFavor(p, h.id, t.f, 'tarefa cumprida'); H.st[h.id].prestige = clampH(H.st[h.id].prestige + 1, 0, 100); estateSave(); empSay(n, 'Bom trabalho. ' + t.g + ' de ouro, como combinado.'); }
@@ -97,7 +98,9 @@ function houseMenu(m) {
       (m.vow === h.id ? '' : opt('vow', '🤝', 'Jurar lealdade à ' + h.n, (m.vow ? 'Você deixa a sua lealdade atual (perde favor com ela).' : 'Você vira vassalo desta casa.'))) +
       (t && t.h === h.id ? (t.got >= t.n ? opt('turnin', '💰', 'Entregar a tarefa', t.n + ' ' + nm(t.mon) + ' · ' + t.g + ' ouro e ' + t.f + ' de favor') : opt('x', '⏳', 'Tarefa em andamento', t.got + '/' + t.n + ' ' + nm(t.mon), ' disabled')) : opt('task', '⚔', 'Pedir uma tarefa: ' + m.offer.n + ' ' + nm(m.offer.mon), m.offer.g + ' ouro e ' + m.offer.f + ' de favor')) +
       opt('don0', '🪙', 'Doar 50 de ouro', '+2 de favor') + opt('don1', '🪙', 'Doar 200 de ouro', '+8 de favor') + '</div>'; }
-  else { const L = HLINES[m.role] || ['...']; body += '<div style="padding:10px 14px">“' + L[Math.floor(Math.random() * L.length)] + '”</div>'; }
+  else { const L = HLINES[m.role] || ['...']; body += '<div style="padding:10px 14px">“' + L[Math.floor(Math.random() * L.length)] + '”</div>';
+    if (m.role === 'guard' && m.vow !== h.id) body += '<div class="lift-list">' + opt('callserv', '🤝', 'Quero jurar lealdade à ' + h.n, 'O guarda chama o criado até a porta; o juramento é feito com ele.') + '</div>';
+    if (m.role === 'serv' && m.vow !== h.id) body += '<div class="lift-list">' + opt('vow', '🤝', 'Jurar lealdade à ' + h.n, 'O criado recebe o juramento em nome do ' + h.lord + '. ' + (m.vow ? 'Você deixa a sua lealdade atual (perde favor com ela).' : 'Você vira vassalo desta casa.')) + '</div>'; }
   const d = staffPanel('housemenu', m.name, body);
   d.querySelectorAll('[data-o]').forEach(b => b.onclick = () => { const o = b.dataset.o; if (o === 'x') return; if (o.startsWith('don')) Net.send({ t: 'house', a: 'donate', id: m.id, i: +o.slice(3) }); else Net.send({ t: 'house', a: o, id: m.id }); });
 }

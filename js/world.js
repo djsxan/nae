@@ -130,7 +130,7 @@ const BUILDINGS = TEST3D ? [] : [
   { x: C - 22, y: C + 10, ...BH('shop', 5, 4, 3.2, 2.0, 'Alfaiataria Real', { v: 3, door: 'N', floors: 1, deco: 'tailor', gen: { x: C - 22, y: C + 10, w: 5, h: 5, door: 'N' } }) },   // uma linha mais curta: corredor até a loja de elixir   // roxo-ameixa e dourado
   { x: C - 30, y: C - 6, ...BH('shop', 5, 4, 3.6, 2.6, 'Pergaminhos & Mapas', { v: 4, door: 'E' }) },   // 5×4: desceu 2 casas para o Dojô do Punho de Ferro crescer
   { x: C - 10, y: C - 28, ...BH('castle', 20, 17, 16, 7, 'Castelo de Nae', { floors: 5, stairs: { 0: 'grand', 1: 'grand', 2: 'grand', 3: 'grand' }, gen: { x: C - 7, y: C - 20, w: 16, h: 9, door: 'S' } }) },   // torre de menagem: salão do trono no meio, corredor oeste (subsolos) e escadaria em vaivém a leste
-  { x: C - 27, y: C - 30, ...BH('bank', 8, 12, 5.6, 2.4, 'Banco de Nae', { floors: 1, door: 'S', gen: { x: C - 31, y: C - 23, w: 6, h: 12, door: 'S' } }) },   // no fim da rua oeste, porta para o sul
+  { x: C - 27, y: C - 30, ...BH('bank', 8, 12, 5.6, 2.4, 'Banco de Nae', { floors: 2, door: 'S', gen: { x: C - 31, y: C - 23, w: 6, h: 12, door: 'S' } }) },   // no fim da rua oeste, porta para o sul
   { x: C + 22, y: C + 20, ...BH('jail', 6, 8, 3.2, 2.4, 'Cadeia de Nae', { floors: 1, door: 'W' }) },
   { x: C - 16, y: C, ...BH('boutique', 5, 4, 4.2, 3.0, 'Ateliê Real de Nae', { floors: 1, door: 'S' }) },
   { x: C - 29, y: C + 17, ...BH('fruithouse', 5, 4, 2.9, 2.6, '', { floors: 1, door: 'S', gen: { x: C - 13, y: C + 18, w: 5, h: 4, door: 'E' } }) },   // atrás do Boticário, porta para a rua de baixo
@@ -292,7 +292,24 @@ function worldToLocal(b, x, y) { const s = b.door || 'S', X0 = b.x - 0.5, Y0 = b
 function door2Of(b) { if (!b.door2L) return null; if (!b._d2) { const [i, j, s] = b.door2L, [x, y] = bLocal(b, i, j); b._d2 = { x, y, s }; } return b._d2; }   // segunda porta (corredor do elevador)
 function floorsOf(b) { return b.kind === 'stairtower' ? 1 : (b.floors || 1); }
 function minFl(b) { return b && b.kind === 'castle' ? -2 : b && b.cellar ? -1 : 0; }   // prédio com porão: andar -1
+/* 3.5: camas a mais por prédio (índice do prédio → andar → catres), para quem passa a morar ali */
+const DORM_EXTRA = { 1: { 1: 1 }, 3: { 1: 2 }, 4: { 0: ['bunk'], 1: ['bunk'] }, 11: { 1: 1 }, 12: { 0: ['bunk'] }, 35: { 0: 1 }, 36: { 0: 1 }, 40: { 0: 1 }, 41: { 0: 1 }, 22: { 0: 1 }, 25: { 0: 1 }, 26: { 0: ['bunk'] }, 27: { 0: ['bunk'] }, 30: { 0: ['bunk'] }, 31: { 0: 1 }, 15: { 0: 1 }, 17: { 0: 1, 1: 4 } };   /* número = catres; lista = tipos (beliche = 2 camas) */
+function dormBi(b) { if (typeof BUILDINGS === 'undefined' || !b) return -1; if (BUILDINGS.length && BUILDINGS[BUILDINGS.length - 1].dbi !== BUILDINGS.length - 1) BUILDINGS.forEach((q, i) => { q.dbi = i; }); const i = BUILDINGS.indexOf(b); return i >= 0 ? i : (b.dbi != null ? b.dbi : -1); }   /* o desenho usa cópias do prédio: a cópia leva o dbi */
+const dormExtraKey = (b, fl) => { const bi = dormBi(b), D = DORM_EXTRA[bi]; return D && D[fl] ? 'd' + bi : ''; };
 function interiorLayout0(b, fl = 0) {
+  const L = interiorLayoutBase(b, fl), bi = dormBi(b), D = DORM_EXTRA[bi], n = D && D[fl]; if (!n) return L;
+  const [w, h] = bDims(b), occ = new Set(), K = (i, j) => i + ',' + j, dc = doorCol(b);
+  for (const q of L.F) for (let a = 0; a < (q.w || 1); a++) for (let c = 0; c < (q.h || 1); c++) occ.add(K(q.i + a, q.j + c));
+  if (L.npc) occ.add(K(L.npc.i, L.npc.j));
+  const nF = floorsOf(b); for (const sf of [fl, fl - 1]) { if (sf < minFl(b) || sf >= nF - 1) continue; const sp = stairSpec(b, sf); for (const k0 of ['L', 'U', 'entry', 'arrive', 'trig']) if (sp[k0]) { occ.add(K(sp[k0][0], sp[k0][1])); for (const [a, c] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) occ.add(K(sp[k0][0] + a, sp[k0][1] + c)); } }
+  if (fl === 0) for (let j = h - 3; j < h; j++) for (let i = dc - 1; i <= dc + 1; i++) occ.add(K(i, j));   /* a entrada fica livre */
+  const free = (i, j) => i >= 0 && j >= 0 && i < w && j < h && !occ.has(K(i, j)), F = L.F.slice(), types = Array.isArray(n) ? n.slice() : Array(n).fill('cot'); let left = types.length;
+  const cand = []; for (let j = 0; j < h - 1; j++) for (let i = 0; i < w; i++) cand.push([i, j, (j === 0 ? 0 : 2) + (i === 0 || i === w - 1 ? 0 : 1)]);   /* encostado na parede primeiro */
+  cand.sort((a, b2) => a[2] - b2[2]);
+  for (const [i, j] of cand) { if (!left) break; if (!free(i, j) || !free(i, j + 1)) continue; F.push({ t: types[types.length - left], i, j, w: 1, h: 2, block: true, dorm: 1 }); occ.add(K(i, j)); occ.add(K(i, j + 1)); left--; }
+  return { F, npc: L.npc };
+}
+function interiorLayoutBase(b, fl = 0) {
   const [w, h] = bDims(b), F = [], taken = new Set(), key = (i, j) => i + ',' + j, dc = doorCol(b);
   const corridor = (i, j) => (fl === 0 && i === dc && j >= h - 2);
   const nF = floorsOf(b);
@@ -376,6 +393,7 @@ function interiorLayout0(b, fl = 0) {
     return { F, npc: null };
   }
   if (fl > 0 && k === 'shop' && b.v === 6) {   // observatório da alquimista: telescópio, mapa celeste, orbe e livros
+    if (!put('cot', w - 1, 0, { h: 2 })) if (!put('cot', w - 2, 0, { h: 2 })) put('cot', w - 1, 1, { h: 2 });   /* a cama da Morgana, num canto do observatório */
     put('orb', 0, 0); put('spellbooks', 1, 0); for (const i of [2, 3]) put('shelf', i, 0, { v: 7 }); put('telescope', w - 3, 2); put('starrug', 1, 1, { w: 3, h: 2, block: false }); put('still', 0, h - 1); put('cauldron', 0, 2);
     return { F, npc: null };
   }
@@ -390,6 +408,7 @@ function interiorLayout0(b, fl = 0) {
       else { put('crate', 0, 3); put('barrel', 0, 4); } }
     else if (k === 'tavern') { for (const i of [1, 3, 5]) if (i < w - 1) { put('bed', i, 0, { h: 2 }); } put('chest', 2, 0); put('chest', 4, 0); if (put('table', 2, h - 2)) put('chair', 3, h - 2); put('barrel', w - 1, h - 1); put('rug', 2, 3, { w: 3, block: false }); }
     else if (k === 'barracks') { for (const i of [1, 2, w - 2]) put('bunk', i, 0, { h: 2 }); put('rack', 3, 0); put('chest', 1, h - 1); put('chest', w - 2, h - 1); }
+    else if (k === 'bank') { for (let i = 0; i < Math.min(7, w); i++) put('cot', i, 0, { h: 2 }); put('chest', 0, 3); put('chest', w - 1, 3); if (put('table', 2, h - 3, { w: 2 })) { put('chair', 1, h - 3); put('chair', 4, h - 3); } put('shelf', w - 1, h - 1); put('rug', 2, 3, { w: Math.max(1, w - 4), block: false }); }   /* dormitório dos funcionários do banco */
     else if (k === 'shop') { for (let i = 1; i < w - 1; i++) put(i % 2 ? 'crate' : 'barrel', i, 0); put('shelf', 0, h - 2); put('shelf', w - 1, h - 2); put('crate', 1, h - 1); put('barrel', w - 2, h - 1); }
     else if (fl === 1) { put('bed', 1, 0, { h: 2 }); put('chest', 2, 0); put('shelf', 0, h - 1); if (put('table', w - 2, h - 2)) put('chair', w - 3, h - 2); put('rug', 2, 2, { w: Math.max(1, w - 4), block: false }); }
     else { put('crate', 1, 0); put('barrel', 2, 0); put('bed', 0, h - 2, { h: 2 }); put('crate', w - 1, h - 1); put('rug', 2, 2, { w: Math.max(1, w - 4), block: false }); }
@@ -627,7 +646,7 @@ const LAYOUT_MEMO = new Map();
 // O resto (mesas, cadeiras, bancos, barris, caixotes, tapetes, decoração) não bloqueia a passagem.
 const FURN_SOLID = new Set(['strongbox', 'tatchair', 'inktable', 'tcascade', 'labrum', 'tmassage', 'winetable', 'hpillar', 'brazier', 'drawers', 'apothcounter', 'distill', 'blk', 'hpart', 'counter', 'bar', 'bankdesk', 'wandcounter', 'vault', 'bars', 'celldoor', 'fireplace', 'hearth', 'stove', 'forge', 'shelf', 'wandwall', 'fabricwall', 'taps', 'bottles', 'filing', 'jamshelf', 'pillar', 'throne', 'altar', 'still', 'bed', 'bunk', 'cot']);
 function interiorLayout(b, fl = 0) {
-  const [w, h] = bDims(b), mk = [b.kind, w, h, b.v || 0, floorsOf(b), fl, b.office || '', JSON.stringify(b.stairs || 0), b.extSide || '', b.cellar ? b.cellar.join(',') : '', b.deco || ''].join('|');
+  const [w, h] = bDims(b), mk = [b.kind, w, h, b.v || 0, floorsOf(b), fl, dormExtraKey(b, fl), b.office || '', JSON.stringify(b.stairs || 0), b.extSide || '', b.cellar ? b.cellar.join(',') : '', b.deco || ''].join('|');
   let L = LAYOUT_MEMO.get(mk); if (L) return L;
   L = interiorLayout0(b, fl);
   const blk = new Uint8Array(w * h), id = (i, j) => j * w + i;
@@ -1664,6 +1683,7 @@ if (!TEST3D) {
   const staffAt = id => { const n = NPCS.find(q => q.id === id); return n ? [n.x, n.y] : [C, C]; };
   for (const ids of [['st_saw', 'st_mine'], ['st_farm', 'courier2'], ['st_carp', 'courier1'], ['st_alch', 'courier3']]) { const [x, y] = staffAt(ids[0]); take(ids, nearestTo(x, y, vila)); }
   for (const id of ['st_apoth', 'st_arcane', 'st_tailor', 'st_scroll']) { const [x, y] = staffAt(id); take([id], nearestTo(x, y, city)); }
+  for (const [id, bi] of [['courier4', 27], ['courier5', 30], ['courier6', 26]]) { const P = PROPS.find(q => q.bi === bi); if (P) { RES_HOME[id] = bi; P.tenants = (P.tenants || []).concat(id); } }   /* 3.5: os mensageiros novos moram com o parceiro de rota */
   for (const n of NPCS) if (RES_HOME[n.id] != null) n.home = RES_HOME[n.id];
 }
 // porta trancada: L = { bi: [nomes em minúsculas que podem entrar] }; só bloqueia ENTRAR (quem já está dentro sai)

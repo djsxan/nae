@@ -923,6 +923,7 @@ function flameTick(now) {
     const st = flameStats(p), ca = Math.cos(F.a), sa = Math.sin(F.a);
     if (now - F.fx > 260) { F.fx = now; near(p.x, p.y, { t: 'flamefx', id: p.id, on: 1, a: +F.a.toFixed(3), r: +st.R.toFixed(2), fs: Math.round(elemStrength(p, 'fire')) }); }   /* força do Fogo: a cor passa do azul ao verde e ao roxo */
     if (now - F.hit >= 450) { F.hit = now; if (typeof entFlameHit === 'function') entFlameHit(p, F, st, now);
+      spellNpcs(p, n => { const dx = n.x - p.x, dy = n.y - p.y, along = dx * ca + dy * sa; return along >= 0.2 && along <= st.R && Math.abs(-dx * sa + dy * ca) <= 0.35 + along * 0.18; }, 0.12 * st.F * (1 + treeEff(p, 'fire')), 'fire');   /* moradores no cone também queimam */
       for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || (m.alt || 0) > 1) continue; const d0 = MON[m.type] || {}, dx = m.x - p.x, dy = m.y - p.y, along = dx * ca + dy * sa; if (along < 0.2 || along > st.R + (d0.rad || 0)) continue; if (Math.abs(-dx * sa + dy * ca) > 0.35 + along * 0.18 + (d0.rad || 0) * 0.5) continue;
         p._el = 'fire'; hitMonster(p, m, 0.12 * st.F * (1 + treeEff(p, 'fire')), 0); p._el = null; useGain(p, 'el_fire', 0.25);
         if (!(m._burnT > now) && S.monsters[m.id]) { m._burnT = now + 3000; emberBurn(p, m); }   /* fica ardendo */
@@ -966,6 +967,7 @@ function comboSkill(p, msg) {
     case 'c_hwater': { const R = 4 + B, hb = 1 + treeEff(p, 'holy') + useBonus(p, 'el_holy');
       for (const q of Object.values(S.players)) { if ((q.fl || 0) !== fl || dist(q.x, q.y, p.x, p.y) > R || q.downed) continue; const had = q.infect || BODY_PARTS.some(k => q.bleed && q.bleed[k] > 0); q.infect = 0; q.infT = 0; if (q.bleed) for (const k in q.bleed) q.bleed[k] = 0; if (q.burnUntil > now) extinguish(q, 'A Água Benta apagou o fogo da sua roupa.');
         const h = Math.round(q.maxHp * 0.15 * hb); q.hp = Math.min(q.maxHp, q.hp + h); sfx(q.x, q.y, '+' + h, '#bfe6ff', 150); if (had) tell(q, 'A Água Benta limpou as suas feridas.'); sendStat(q); }
+      for (const n of Object.values(S.npcs || {})) if (npcAllyOf(p, n) && dist(n.x, n.y, p.x, p.y) <= R) npcHeal(p, n, 0.15 * hb, false);   /* moradores aliados também */
       for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || !isUndead(m) || dist(m.x, m.y, p.x, p.y) > R + (MON[m.type].rad || 0)) continue; p._el = 'holy'; hitMonster(p, m, 1.5 * (1 + B), 150); p._el = null; }
       douse(p.x, p.y, R); anim('p', p, 'castup', p.x, p.y, shout); evoFx(p, { k: C.id, r: R, ms: 1600 }); break; }
     case 'c_sand': F({ fol: 1, x: p.x, y: p.y, r: 4 + B, ms: 8000 }); anim('p', p, 'castup', p.x, p.y, shout); evoFx(p, { k: C.id, r: 4 + B, ms: 8000 }); break;
@@ -987,16 +989,17 @@ function comboTick(now) {
     if (f.k === 'c_dome') for (const m of mons(f.r - 0.3)) { if (MON[m.type].big || now < (m._domeT || 0)) continue; m._domeT = now + 900; const d = dist(m.x, m.y, f.x, f.y) || 0.01, ux = (m.x - f.x) / d, uy = (m.y - f.y) / d, push = f.r + 0.8 - d; for (let s = 0; s < 12; s++) { const nx = m.x + ux * push / 12, ny = m.y + uy * push / 12; if (!monStand(nx, ny, m)) break; m.x = nx; m.y = ny; } knockMon(m, { x: f.x, y: f.y }, now); m.atk = null; }
     if (now < f.t) continue;
     switch (f.k) {
-      case 'c_tornado': f.t = now + 500; for (const m of mons(1.3)) { if (hit(m, 0.5, 'fire')) burn(m); } if (Math.random() < 0.5) { const list = []; igniteTile(f.x, f.y, now, list, false); if (list.length) near(f.x, f.y, { t: 'fires', l: list }); } break;
-      case 'c_steam': f.t = now + 1000; for (const m of mons()) { if (hit(m, 0.35, 'fire')) m.wetUntil = now + 8000; } break;
-      case 'c_embers': f.t = now + 1000; for (const m of mons()) { m.fslowUntil = now + 1300; m.fslowK = 0.6; if (hit(m, 0.3, 'fire')) burn(m); } break;
+      case 'c_tornado': f.t = now + 500; spellNpcs(p, n => (n.fl || 0) === f.fl && dist(n.x, n.y, f.x, f.y) <= 1.3, 0.5 * (1 + f.B), 'fire'); for (const m of mons(1.3)) { if (hit(m, 0.5, 'fire')) burn(m); } if (Math.random() < 0.5) { const list = []; igniteTile(f.x, f.y, now, list, false); if (list.length) near(f.x, f.y, { t: 'fires', l: list }); } break;
+      case 'c_steam': f.t = now + 1000; spellNpcs(p, n => (n.fl || 0) === f.fl && dist(n.x, n.y, f.x, f.y) <= f.r, 0.35 * (1 + f.B), 'fire'); for (const m of mons()) { if (hit(m, 0.35, 'fire')) m.wetUntil = now + 8000; } break;
+      case 'c_embers': f.t = now + 1000; spellNpcs(p, n => (n.fl || 0) === f.fl && dist(n.x, n.y, f.x, f.y) <= f.r, 0.3 * (1 + f.B), 'fire'); for (const m of mons()) { m.fslowUntil = now + 1300; m.fslowK = 0.6; if (hit(m, 0.3, 'fire')) burn(m); } break;
       case 'c_sflame': { f.t = now + 1000; const hb = 1 + treeEff(p, 'holy') + useBonus(p, 'el_holy');
+        for (const n of Object.values(S.npcs || {})) if (npcAllyOf(p, n) && (n.fl || 0) === f.fl && dist(n.x, n.y, f.x, f.y) <= f.r) npcHeal(p, n, 0.04 * hb, false);
         for (const q of allies()) { const h = Math.round(q.maxHp * 0.04 * hb); if (q.hp < q.maxHp) { q.hp = Math.min(q.maxHp, q.hp + h); sfx(q.x, q.y, '+' + h, '#f0d878', 0); } q.cold = Math.max(0, (q.cold || 0) - 15); sendStat(q); }
-        for (const m of mons()) hit(m, isUndead(m) ? 0.8 : 0.4, 'holy'); break; }
+        for (const m of mons()) hit(m, isUndead(m) ? 0.8 : 0.4, 'holy'); spellNpcs(p, n => (n.fl || 0) === f.fl && dist(n.x, n.y, f.x, f.y) <= f.r, 0.4 * (1 + f.B), 'holy'); break; }
       case 'c_mud': f.t = now + 400; for (const m of mons()) { const big = MON[m.type].big; if (!f.seen[m.id]) { f.seen[m.id] = 1; if (!big) { m.stunUntil = Math.max(m.stunUntil || 0, now + 3000); m.atk = null; m.nextAtk = Math.max(m.nextAtk || 0, now + 3200); near(m.x, m.y, { t: 'mmud', id: m.id, ms: 3000 }); } }
           m.fslowUntil = now + 900; m.fslowK = 0.4; m.wetUntil = now + 8000; if (m._burnT > now) m._burnT = 0; }
         for (const q of allies()) if (q.burnUntil > now) extinguish(q, 'A lama apagou o fogo da sua roupa.'); break;
-      case 'c_storm': { f.t = now + 1000; const ms = mons();
+      case 'c_storm': { f.t = now + 1000; const ms = mons(); if (!ms.length) spellNpcs(p, n => (n.fl || 0) === f.fl && dist(n.x, n.y, f.x, f.y) <= f.r, 1.2 * (1 + f.B), 'water', null, true);   /* sem monstro: o raio cai num morador */
         if (ms.length) { const m = ms[Math.floor(Math.random() * ms.length)], wet = m.wetUntil > now; near(m.x, m.y, { t: 'evofx', id: p.id, x: m.x, y: m.y, k: 'bolt', ms: 450 }, VIEW_RADIUS + 4); if (hit(m, 1.2 * (wet ? 1.5 : 1), 'water')) { m.stunUntil = Math.max(m.stunUntil || 0, now + 1000); m.atk = null; m.nextAtk = Math.max(m.nextAtk || 0, now + 1200); } }
         else if (Math.random() < 0.5) { const an = Math.random() * 6.283, rr = Math.random() * f.r; near(f.x, f.y, { t: 'evofx', id: p.id, x: f.x + Math.cos(an) * rr, y: f.y + Math.sin(an) * rr, k: 'bolt', ms: 450 }, VIEW_RADIUS + 4); }
         for (const m of ms) { if (S.monsters[m.id]) { m.wetUntil = now + 8000; if (m._burnT > now) m._burnT = 0; } } for (const q of allies()) if (q.burnUntil > now) extinguish(q, 'A chuva apagou o fogo da sua roupa.'); break; }
@@ -1067,6 +1070,8 @@ function mageEvo(p, nd, msg, now) {
   if (nd.id === 'w_glide') { p.dodgeUntil = now + 1150; p.dodgeAllow = now + 1500; p.parry = null; if (p.atk && !p.atk.done) p.atk = null; near(p.x, p.y, { t: 'anim', w: 'p', id: p.id, a: 'glide', ms: 1100 }); evoFx(p, { k: 'glide', a, ms: 1100 }); useGain(p, 'el_wind', 2); if (p.burnUntil > now) extinguish(p, 'O vento do voo apagou o fogo da sua roupa.'); return true; }
   if (nd.id === 'w_handlight') { let tx = +msg.tx, ty = +msg.ty; if (!isFinite(tx) || !isFinite(ty) || dist(p.x, p.y, tx, ty) > 7.5) { tx = p.x + Math.cos(a) * 4; ty = p.y + Math.sin(a) * 4; }   /* Mão de Luz: raio do céu */
     let ally = null, bd = 1.8; for (const q of Object.values(S.players)) { if (q === p || (q.fl || 0) !== fl) continue; const d = dist(q.x, q.y, tx, ty); if (d < bd) { bd = d; ally = q; } }
+    if (!ally) { let nb = 1.8, nq = null; for (const n of Object.values(S.npcs || {})) { if (!npcAllyOf(p, n)) continue; const d = dist(n.x, n.y, tx, ty) - (n.downed ? 0.6 : 0); if (d < nb && (n.downed || n.hp < n.maxHp)) { nb = d; nq = n; } }
+      if (nq) { tx = nq.x; ty = nq.y; const hb = 1 + treeEff(p, 'holy') + useBonus(p, 'el_holy'), r = npcHeal(p, nq, 0.2 * hb, true); if (r === 'up') tell(p, 'A Mão de Luz levantou ' + String(nq.name).split(',')[0] + '.'); } }   /* morador aliado: cura ou levanta na hora */
     if (ally) { tx = ally.x; ty = ally.y; if (ally.downed) revivePlayer(ally, 0.3, p.name); else { const h = Math.round(ally.maxHp * 0.2 * (1 + treeEff(p, 'holy') + useBonus(p, 'el_holy'))); ally.hp = Math.min(ally.maxHp, ally.hp + h); sfx(ally.x, ally.y, '+' + h, '#f0d878', 150); sendStat(ally); } tell(ally, p.name + ' tocou você com a Mão de Luz.'); }
     for (const m of Object.values(S.monsters)) { if (m.hp <= 0 || dist(m.x, m.y, tx, ty) > 2.2) continue; m.stunUntil = Math.max(m.stunUntil || 0, now + 2500); m.atk = null; m.nextAtk = Math.max(m.nextAtk || 0, now + 2600); m.blindUntil = now + 2500; near(m.x, m.y, { t: 'knock', k: 'm', id: m.id, ax: tx, ay: ty - 0.01, ms: 600 }); }
     anim('p', p, 'cast', tx, ty, shout); evoFx(p, { k: 'hand', tx, ty }); useGain(p, 'el_holy', 2); return true; }
@@ -1077,7 +1082,8 @@ function mageEvo(p, nd, msg, now) {
 }
 function lightWellTick(now) {   /* Poço de Luz: cura quem está dentro, a cada segundo */
   const L = S.lightWells; if (!L || !L.length || now - (S.lwT || 0) < 1000) return; S.lwT = now;
-  for (const w of L) { if (w.until < now) continue; for (const q of Object.values(S.players)) { if (q.downed || (q.fl || 0) !== w.fl || dist(q.x, q.y, w.x, w.y) > 3 || q.hp >= q.maxHp) continue; const h = Math.max(1, Math.round(q.maxHp * 0.035 * w.k)); q.hp = Math.min(q.maxHp, q.hp + h); sfx(q.x, q.y, '+' + h, '#f0d878', 0); sendStat(q); } }
+  for (const w of L) { if (w.until < now) continue; const wp = S.players[w.by]; if (wp) for (const n of Object.values(S.npcs || {})) if (npcAllyOf(wp, n) && (n.fl || 0) === w.fl && dist(n.x, n.y, w.x, w.y) <= 3) npcHeal(wp, n, 0.035 * w.k, false);
+    for (const q of Object.values(S.players)) { if (q.downed || (q.fl || 0) !== w.fl || dist(q.x, q.y, w.x, w.y) > 3 || q.hp >= q.maxHp) continue; const h = Math.max(1, Math.round(q.maxHp * 0.035 * w.k)); q.hp = Math.min(q.maxHp, q.hp + h); sfx(q.x, q.y, '+' + h, '#f0d878', 0); sendStat(q); } }
   S.lightWells = L.filter(w => w.until > now); }
 function mageSpell(p, sk, msg, now) {
   const shout = { s: sk.name + '!' };
@@ -2148,7 +2154,7 @@ function flingPlayer(p, fx, fy, D) {
 
 // ---------------- arco (estilo caçada): puxar, soltar, flecha com voo real, fincar no corpo ----------------
 const MON_HT = { rat: 0.4, slime: 0.6, toad: 0.5, spider: 0.7, wolf: 0.95, boar: 0.9, deer: 1.5, goblin: 1.15, skeleton: 1.8, bandit: 1.8, deserter: 1.85, deserterchief: 1.95, orc: 2.05, orcchief: 2.4, troll: 3.0, cryptlord: 2.1, wisp: 1.2, elderslime: 1.3, dragon: 5 };
-const OBST_H = o => [O.TREE, O.PINE, O.OAK, O.BIRCH, O.WILLOW, O.DEADTREE].includes(o) ? 6 : [O.WALL, O.TOWER, O.GATE, O.RUINTOWER].includes(o) ? 7 : [O.ROCK, O.BOULDER, O.BARREL, O.CRATE, O.HAY, O.STUMP, O.LOG, O.BUSH, O.BERRY].includes(o) ? 1.1 : 2.2;
+const OBST_H = o => [O.TREE, O.PINE, O.OAK, O.BIRCH, O.WILLOW, O.DEADTREE].includes(o) ? 6 : [O.WALL, O.TOWER, O.GATE, O.RUINTOWER].includes(o) ? 7 : [O.ROCK, O.BOULDER, O.BARREL, O.CRATE, O.HAY, O.STUMP, O.LOG, O.BUSH, O.BERRY, O.PART].includes(o) ? 1.1 : 2.2;   /* móveis de dentro (balcão, mesa) também: a flecha passa por cima */
 const groundH = (x, y) => { const t = tileAt(x, y); return WORLD.ground[t] === T.CLIFF && WORLD.fl1[t] > 0 ? 3.5 : 0; };
 let _arrowId = 1;
 function bowDraw(p, on) {
@@ -2170,10 +2176,11 @@ function bowLoose(p, m) {
   let aimH = 0.05, bd = 1.3;
   for (const q of Object.values(S.monsters)) { const d = dist(q.x, q.y, tx, ty); if (d < bd && (q.alt || 0) < 1.2) { bd = d; aimH = (MON_HT[q.type] || 1.6) * 0.62; } }
   for (const q of Object.values(S.players)) { if (q === p) continue; const d = dist(q.x, q.y, tx, ty); if (d < bd) { bd = d; aimH = q.downed ? 0.3 : 1.15; } }
+  for (const q of Object.values(S.npcs || {})) { if (q.dead || (q.fl || 0) !== (p.fl || 0)) continue; const d = dist(q.x, q.y, tx, ty); if (d < bd) { bd = d; aimH = q.downed ? 0.3 : 1.15; } }   /* mirar em morador também */
   const z0 = (p.z >= 0.5 ? 3.5 : 0), h0 = z0 + 1.45, dh = (groundH(tx, ty) + aimH) - h0;
   const disc = v ** 4 - g * (g * D * D + 2 * dh * v * v);
   const th = isFinite(+m.th) ? clamp(+m.th, -0.7, 1.25) : disc >= 0 ? Math.atan((v * v - Math.sqrt(disc)) / (g * D)) : Math.PI / 4;
-  const A = { id: _arrowId++, by: p.id, x: p.x + Math.cos(a) * 0.45, y: p.y + Math.sin(a) * 0.45, h: h0, vx: Math.cos(a) * v * Math.cos(th) / 2, vy: Math.sin(a) * v * Math.cos(th) / 2, vz: v * Math.sin(th), t0: now, pow, a };
+  const A = { id: _arrowId++, by: p.id, x: p.x + Math.cos(a) * 0.45, y: p.y + Math.sin(a) * 0.45, h: h0, vx: Math.cos(a) * v * Math.cos(th) / 2, vy: Math.sin(a) * v * Math.cos(th) / 2, vz: v * Math.sin(th), t0: now, pow, a, bi0: WORLD.bld[tileAt(p.x, p.y)], fl: p.fl || 0, fb: p.fl ? p.fb : -1 };   /* de onde saiu: dentro de um prédio a flecha voa até a parede */
   (S.arrows = S.arrows || []).push(A);
   anim('p', p, 'loose', p.x + Math.cos(a), p.y + Math.sin(a));
   near(p.x, p.y, { t: 'arrow', id: A.id, x: A.x, y: A.y, h: A.h, vx: A.vx, vy: A.vy, vz: A.vz, g }, VIEW_RADIUS + 10);
@@ -2197,9 +2204,10 @@ function arrowTick(now, dt) {
       if (!inBounds(Math.round(A.x), Math.round(A.y)) || now - A.t0 > 5000) { done = true; break; }
       // corpos: jogadores (inclusive aliados) e monstros
       const tgts = [];
-      for (const q of Object.values(S.players)) { if (q.dev || (q.id === A.by && now - A.t0 < 250) || (q.fl || 0) !== 0) continue; tgts.push({ q, k: 'p', r: 0.32, H: q.downed ? 0.45 : 1.8, base: q.z >= 0.5 ? 3.5 : 0 }); }
-      for (const q of Object.values(S.npcs || {})) { if (q.dead || q.onBack) continue; tgts.push({ q, k: 'n', r: 0.32, H: q.downed ? 0.45 : 1.8, base: 0 }); }
-      for (const q of Object.values(S.monsters)) { if ((q.alt || 0) > 1.2) continue; tgts.push({ q, k: 'm', r: Math.max(0.3, Math.min(1.6, MON[q.type].rad || 0.35)), H: MON_HT[q.type] || 1.6, base: (q.z || 0) >= 0.5 ? 3.5 : 0 }); }
+      const sameFl = q => (q.fl || 0) === (A.fl || 0) && (!(A.fl || 0) || q.fb === A.fb);
+      for (const q of Object.values(S.players)) { if (q.dev || (q.id === A.by && now - A.t0 < 250) || !sameFl(q)) continue; tgts.push({ q, k: 'p', r: 0.32, H: q.downed ? 0.45 : 1.8, base: q.z >= 0.5 ? 3.5 : 0 }); }
+      for (const q of Object.values(S.npcs || {})) { if (q.dead || q.onBack || !sameFl(q)) continue; tgts.push({ q, k: 'n', r: 0.32, H: q.downed ? 0.45 : 1.8, base: 0 }); }
+      for (const q of Object.values(S.monsters)) { if ((q.alt || 0) > 1.2 || (A.fl || 0)) continue; tgts.push({ q, k: 'm', r: Math.max(0.3, Math.min(1.6, MON[q.type].rad || 0.35)), H: MON_HT[q.type] || 1.6, base: (q.z || 0) >= 0.5 ? 3.5 : 0 }); }
       for (const T0 of tgts) {
         const q = T0.q, dx = A.x - q.x, dy = A.y - q.y; if (dx * dx + dy * dy > T0.r * T0.r) continue;
         const rel = (A.h - T0.base) / T0.H; if (rel < 0 || rel > 1.05) continue;
@@ -2209,7 +2217,7 @@ function arrowTick(now, dt) {
       if (done) break;
       // obstáculos, paredes e chão
       const t = tileAt(A.x, A.y), o = WORLD.obj[t], gh = groundH(A.x, A.y);
-      const wall = WORLD.bld[t] >= 0 && A.h < gh + 5.5, obst = BLOCKING.has(o) && A.h < gh + OBST_H(o);
+      const bt = WORLD.bld[t], wall = bt !== A.bi0 && (bt >= 0 || A.bi0 >= 0) && A.h < gh + 5.5,   /* parede: só ao passar da rua para um prédio (ou o contrário) */ obst = BLOCKING.has(o) && A.h < gh + OBST_H(o);
       if (wall || obst || A.h <= gh) {
         const h = Math.max(gh + 0.05, Math.min(A.h, gh + 3));
         near(A.x, A.y, { t: 'astick', id: A.id, x: A.x, y: A.y, h, a: fa, pitch: Math.atan2(A.vz, Math.hypot(A.vx, A.vy) * 2), ms: 60000 }, VIEW_RADIUS + 10);
@@ -2391,6 +2399,11 @@ function initNpcs() {
 }
 const npcAlive = id => { const n = S.npcs && S.npcs[id]; return !n || (!n.dead && !n.downed); };
 /* magias de área também atingem NPCs (antes só monstros). one: só o mais perto (faíscas). Devolve quantos acertou. */
+function npcAllyOf(p, n) { if (!p || !n || n.dead || n.entOf || (n.fl || 0) !== (p.fl || 0)) return false; if ((n.fight && n.fight.id === p.id) || n.aggro === p.id || n.threat === p.id || n.chaseNpc === p.id) return false;
+  if (n.siege && typeof sgSide === 'function') { const s0 = sgSide(p); if (s0 && s0 !== 'out' && n.side && n.side !== s0) return false; } return true; }
+function npcHeal(p, n, frac, canRaise) {   /* cura um morador; caído, levanta na hora (com mais vida quanto maior o poder) */
+  if (n.downed) { if (!canRaise) return null; n.downed = null; n.hp = Math.max(1, Math.round(n.maxHp * Math.min(0.8, frac + 0.1))); n.goHome = false; sfx(n.x, n.y, '+' + n.hp, '#f0d878', 150); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: ['Obrigado!', 'Que luz é essa?', 'Estou de pé!'][Math.floor(Math.random() * 3)], ms: 1 }); return 'up'; }
+  if (n.hp >= n.maxHp) return null; const h = Math.max(1, Math.round(n.maxHp * frac)); n.hp = Math.min(n.maxHp, n.hp + h); sfx(n.x, n.y, '+' + h, '#f0d878', 150); return 'heal'; }
 function spellNpcs(p, inArea, mult, el, extra, one) { if (!p || !S.npcs) return 0; let hit = 0, best = null, bd = 1e9;
   for (const n of Object.values(S.npcs)) { if (n.dead || n.entOf || n.siege || (n.fl || 0) !== (p.fl || 0) || n.seg && n.seg === estOwner(p) || n.emp && n.emp === estOwner(p) || !inArea(n)) continue;
     if (one) { const d = dist(n.x, n.y, p.x, p.y); if (d < bd) { bd = d; best = n; } continue; }
@@ -2577,6 +2590,7 @@ function npcTick(now, dt) {
     if (n.dead || n.entOf || n.court) continue;   /* a guardiã anda no entTick; a corte do castelo no courtTick */
     if (n.downed && n.seg && typeof segDownTick === 'function') { segDownTick(n, now, dt); continue; }
     if (n.downed) { npcCrawl(n, now, dt); if (now > n.downed.until && !n.dragBy) { n.downed = null; n.hp = Math.round(n.maxHp * 0.3); n.goHome = n.id !== 'fruit'; sys(n.name + ' se levantou, ferido.'); } continue; }
+    if (!n.dead && ((n.stunUntil || 0) > now_() || (n.frozenUntil || 0) > now_())) { n.walk = false; continue; }   /* atordoado ou preso no gelo por uma magia: fica parado */
     if (n.fight && npcFightTick(n, now, dt)) continue;
     if (n.flee && npcFleeTick(n, now, dt)) continue;
     if (weaverFollow(n, now, dt)) continue;
@@ -2587,6 +2601,7 @@ function npcTick(now, dt) {
     if (n.emp && typeof empNpcTick === 'function') { empNpcTick(n, now, dt); continue; }
     if (n.seg && typeof segNpcTick === 'function') { segNpcTick(n, now, dt); if (typeof segSeparate === 'function') segSeparate(n, dt); continue; }   /* segurança contratado */   /* empregado doméstico */
     if (n.transient) { visitorTick(n, now, dt); continue; }
+    if (typeof dormTick === 'function' && dormTick(n, now, dt)) continue;   /* 3.5: à noite, na cama */
     if (n.goHome && !n.dragBy && !n.gripBy) { if (npcWalk(n, n.postX, n.postY, 1.3, dt)) { n.goHome = false; n.x = n.postX; n.y = n.postY; } continue; }
     if (n.route && !n.dragBy && !n.gripBy) { if (now >= (n.pauseT || 0)) { const wp = n.route[n.ri % n.route.length]; if (npcWalk(n, wp[0], wp[1], 0.9, dt)) { n.ri++; n.pauseT = now + 3000 + Math.random() * 5000; } } continue; }
     if (n.walkTo && !n.dragBy) { if (npcWalk(n, n.walkTo[0], n.walkTo[1], 1.1, dt)) { n.x = n.walkTo[0]; n.y = n.walkTo[1]; n.walkTo = null; } }
@@ -2860,7 +2875,8 @@ function treeSkill(p, b, msg) {
       break;
     case 'firewall': { const cx = p.x + Math.cos(a) * 3, cy = p.y + Math.sin(a) * 3; anim('p', p, 'fireball', cx, cy, shout); addZone(p, 'firewall', cx, cy, a, 5000); break; }
     case 'icejail': {
-      const q = pickTgt(CLASSES[p.cls].range + 1); if (!q) { tell(p, 'Nenhum alvo na mira.'); return; }
+      const q = pickTgt(CLASSES[p.cls].range + 1); if (!q) { let nq = null, nb = CLASSES[p.cls].range + 1; for (const n of Object.values(S.npcs || {})) { if (n.dead || (n.fl || 0) !== (p.fl || 0) || (n.seg && n.seg === estOwner(p)) || (n.emp && n.emp === estOwner(p))) continue; const d = dist(n.x, n.y, p.x, p.y); if (d < nb) { nb = d; nq = n; } }
+        if (!nq) { tell(p, 'Nenhum alvo na mira.'); return; } anim('p', p, 'bolt', nq.x, nq.y, shout); spellNpcs(p, n => n === nq, 1.5, 'ice'); if (!nq.dead) { nq.frozenUntil = now + 3000; nq.walk = false; near(nq.x, nq.y, { t: 'icejail', id: nq.id, ms: 3000 }); } break; }   /* sem monstro: um morador */
       anim('p', p, 'bolt', q.x, q.y, shout); p._el = 'ice'; hitMonster(p, q, 1.5, 250); p._el = null;
       if (S.monsters[q.id]) { q.stunUntil = Math.max(q.stunUntil, now + 3000); q.atk = null; } near(q.x, q.y, { t: 'icejail', id: q.id, ms: 3000 }); break;
     }
@@ -3268,11 +3284,11 @@ function estateLocks() { const E = S.estate, L = {}; if (!E) return L; for (cons
   return L; }
 // morador NPC dos apartamentos vagos (a suíte fica vaga); paga o aluguel ao dono do dojô e se muda quando um jogador aluga
 const APT_NPC_NAMES = ['Seu Hideo, o relojoeiro', 'Dona Yumi, a costureira', 'Seu Kenji, o escriba', 'Dona Aiko, a florista'];
-function aptNpc(P) { if (!P || !P.apt || P.suite) return null; const E = estateLoad(); if (E.r[P.id]) return null; const k = APTS.findIndex(a => a.key === P.apt); return APT_NPC_NAMES[k % APT_NPC_NAMES.length]; }
+function aptNpc(P) { if (!P || !P.apt || P.suite) return null; const E = estateLoad(); if (E.r[P.id]) return null; if (P.apt === '201') return 'Mestre Tetsuo, o Sensei';   /* o mestre do dojô mora no Apto 201 */ const k = APTS.findIndex(a => a.key === P.apt); return APT_NPC_NAMES[k % APT_NPC_NAMES.length]; }
 function aptPayOwner(v, why) { const D = dojoRec(); if (!D || !D.r || !v) return; const BK = bankLoad(), A = BK.acc[D.r.owner] || (BK.acc[D.r.owner] = { g: 0, loan: 0, due: 0, wk: estDay() }); A.g += v; bankSave(); if (D.B && why) bizLog(D.B, why); }
-function aptNpcDay() { for (const P of PROPS) { const nm = P.apt && aptNpc(P); if (nm) aptPayOwner(P.rent, nm.split(',')[0] + ' pagou ' + P.rent + ' de aluguel do ' + P.name.split(' ·')[0] + '.'); } }
+function aptNpcDay() { for (const P of PROPS) { const nm = P.apt && P.apt !== '201' && aptNpc(P);   /* Tetsuo é dono do 201: não paga aluguel */ if (nm) aptPayOwner(P.rent, nm.split(',')[0] + ' pagou ' + P.rent + ' de aluguel do ' + P.name.split(' ·')[0] + '.'); } }
 function tenantsOf(P) { const E = S.estate; if (!P || !P.tenants || !P.tenants.length) return []; if (E && E.gone && E.gone[P.id]) return []; return P.tenants; }
-function estatePublic() { const E = estateLoad(), st = {}; for (const pid in E.r) st[pid] = (E.r[pid].mode === 'own' ? '★' : '') + E.r[pid].ownerName; return st; }
+function estatePublic() { const E = estateLoad(), st = {}; for (const pid in E.r) st[pid] = (E.r[pid].mode === 'own' ? '★' : '') + E.r[pid].ownerName; const T = PROPS.find(x => x.apt === '201'); if (T && !st[T.id]) st[T.id] = '★Mestre Tetsuo'; return st; }   /* o Apto 201 aparece como do Tetsuo */
 const estTen = () => { const E = estateLoad(); return { gone: E.gone || {}, evict: E.evict || {} }; };
 function recsOf(p) { const E = estateLoad(), k = estOwner(p); return Object.keys(E.r).filter(pid => E.r[pid].owner === k); }
 function rentalOf(p) { return recsOf(p).find(pid => PROPS_BY[pid].kind === 'house' && !tenantsOf(PROPS_BY[pid]).length) || null; }
@@ -3460,7 +3476,7 @@ function estateMsg(p, m) {
       if (paid) { r.warned = 0; sendStat(p); tell(p, 'Pago: ' + (due * paid) + ' de ouro de ' + (r.mode === 'own' ? 'imposto' : 'aluguel') + ' de ' + P.name + '.'); estateSave(); } else tell(p, estDay() - r.paid >= RENT_DAYS ? 'Faltam ' + due + ' de ouro no banco ou na bolsa.' : 'Está tudo em dia.'); estateSend(p); return; }
     case 'close': p.estOpen = false; return;
     case 'rent': case 'buy': {
-      if (!P) return; const mine = E.r[P.id] && E.r[P.id].owner === estOwner(p);
+      if (!P) return; if (P.apt === '201') { tell(p, 'O Apto 201 é do Mestre Tetsuo, o sensei: ele mora lá e não vende nem aluga.'); return; }   /* apartamento do mestre do dojô */ const mine = E.r[P.id] && E.r[P.id].owner === estOwner(p);
       if (E.r[P.id] && !(mine && m.a === 'buy' && E.r[P.id].mode !== 'own')) { tell(p, 'Esse imóvel já tem dono.'); return; }
       // compra e aluguel valem de qualquer lugar (painel da imobiliária, menu de negócios ou o Mestre Anselmo)
       if (!mine) { const why = canAcquire(p, P, m.a); if (why) { tell(p, why); return; } }

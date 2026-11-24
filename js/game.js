@@ -1232,6 +1232,8 @@ function frame() {
     lobbyCam.x = CENTER + Math.cos(t) * 7; lobbyCam.y = CENTER + Math.sin(t) * 7;
     for (const id in G.npcs) updateIdle(G.npcs[id], now);
   }
+  if (!G.started && typeof TITLE !== 'undefined' && TITLE.on && now - (G.lobbyR || 0) < 250) { requestAnimationFrame(frame); return; }   /* introdução na tela: o mundo escondido só 4 vezes por segundo (continua aquecendo) */
+  G.lobbyR = now;
   const labels = renderWorld(ctx, now, cam, W, H, DPR);
   ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   if (G.started) {
