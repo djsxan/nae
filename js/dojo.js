@@ -6,10 +6,10 @@
 // em cima do elevador (o tile do poço) de um prédio com elevador?
 function liftNear() {
   const me = G.me; if (!me || me.downed || G.climbing || (me.z || 0) >= 0.5) return null;
-  const fl = me.fl || 0, bi = fl !== 0 ? me.fb : bldAt(me.x, me.y), b = BUILDINGS[bi]; if (!b || stairKind(b, 0) !== 'lift') return null;
-  const [cx, cy] = localToWorld(b, 7, 1); return Math.hypot(me.x - cx, me.y - cy) < 1.05 ? { bi, b, fl } : null;   /* dentro da cabine 2×2 */
+  const fl = me.fl || 0, bi = fl !== 0 ? me.fb : bldAt(me.x, me.y), b = BUILDINGS[bi]; if (!b || !isLiftK(stairKind(b, 0))) return null;
+  const L0 = stairSpec(b, 0).L, [cx, cy] = localToWorld(b, L0[0] + 1, L0[1] + 1); return Math.hypot(me.x - cx, me.y - cy) < 1.05 ? { bi, b, fl } : null;   /* dentro da cabine 2×2 (Dojô no corredor; Torre do Inventor no meio) */
 }
-function liftFloorName(b, f) { const top = floorsOf(b) - 1; return f === 0 ? 'Térreo — Dojô e saída' : f === top ? f + 'º andar — Suíte de luxo' : f + 'º andar — apartamentos ' + (f * 100 + 1) + ' e ' + (f * 100 + 2); }
+function liftFloorName(b, f) { const top = floorsOf(b) - 1; if (b.tower) return (f === 0 ? 'Térreo — ' : f === top ? 'Telhado — ' : f + 'º — ') + TOWER_FLOORS[f]; return f === 0 ? 'Térreo — Dojô e saída' : f === top ? f + 'º andar — Suíte de luxo' : f + 'º andar — apartamentos ' + (f * 100 + 1) + ' e ' + (f * 100 + 2); }
 // menu do elevador: o ascensorista leva a cabine ao andar escolhido (por enquanto sem som)
 function liftMenu() {
   const L = liftNear(); if (!L) return; let d = document.getElementById('liftmenu'); if (d) d.remove();

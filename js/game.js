@@ -446,8 +446,8 @@ function updateLocal(now, dt) {
     const fl = me.fl || 0, bi = fl !== 0 ? me.fb : bldAt(me.x, me.y), b = BUILDINGS[bi];
     if (b && b.kind !== 'stairtower') {
       const nF = floorsOf(b);
-      if (fl < nF - 1) { const s = stairWorld(b, fl); if (s.kind !== 'ext' && s.kind !== 'lift' && Math.hypot(me.x - s.L[0], me.y - s.L[1]) < 0.42) { const [pts, md] = climbPts(s, true, me); startClimb(now, bi, fl, fl + 1, pts, s.arrive, false, md); } }
-      if (!G.climbing && fl > minFl(b)) { const s = stairWorld(b, fl - 1); if (s.kind !== 'lift' && Math.hypot(me.x - s.trig[0], me.y - s.trig[1]) < 0.42) { const [pts, md] = climbPts(s, false, me); startClimb(now, bi, fl, fl - 1, pts, s.entry, true, md); } }
+      if (fl < nF - 1) { const s = stairWorld(b, fl); if (s.kind !== 'ext' && !s.lift && Math.hypot(me.x - s.L[0], me.y - s.L[1]) < 0.42) { const [pts, md] = climbPts(s, true, me); startClimb(now, bi, fl, fl + 1, pts, s.arrive, false, md); } }
+      if (!G.climbing && fl > minFl(b)) { const s = stairWorld(b, fl - 1); if (!s.lift && Math.hypot(me.x - s.trig[0], me.y - s.trig[1]) < 0.42) { const [pts, md] = climbPts(s, false, me); startClimb(now, bi, fl, fl - 1, pts, s.entry, true, md); } }
     }
     // escada externa: pisa no primeiro degrau, do lado de fora do prédio
     if (!G.climbing && fl === 0) for (const [ebi, s] of extStairs()) if (Math.hypot(me.x - s.L[0], me.y - s.L[1]) < 0.42) { const [pts, md] = climbPts(s, true, me); startClimb(now, ebi, 0, 1, pts, s.arrive, false, md); break; }
@@ -693,7 +693,7 @@ function updateInv() {
   if (me.pots && me.pots.hp) list.push({ k: 'hp', n: me.pots.hp, name: ITEMS.hp.name, icon: '🧪', color: '#e85a5a', desc: ITEMS.hp.desc + ' Clique para beber (Q).', use: () => drinkPot('hp') });
   list.push({ k: 'water', n: '∞', name: 'Cantil', icon: '💧', color: '#6ab8ff', desc: 'Um cantil que nunca seca. Você bebe sozinho quando a sede aperta; ou aperte 0 (ou clique) para beber.', use: () => Net.send({ t: 'use', k: 'water' }) });
   if (me.pots && me.pots.mp) list.push({ k: 'mp', n: me.pots.mp, name: ITEMS.mp.name, icon: '🧪', color: '#5a8ae8', desc: ITEMS.mp.desc + ' Clique para beber (E).', use: () => drinkPot('mp') });
-  for (const k in (me.inv || {})) { const it = LOOT[k]; if (it && me.inv[k] > 0) list.push({ k, n: me.inv[k], name: it.name, icon: it.icon, color: it.color, desc: it.desc + (WANDS[k] && me.wi && me.wi.k === k ? ' A sua: ' + me.wi.w + ', ' + me.wi.c + ', ' + me.wi.len + ' cm, ' + me.wi.feel + ' (dano ' + (me.wi.dmg >= 0 ? '+' : '') + Math.round(me.wi.dmg * 100) + '%, mana ' + (me.wi.mp >= 0 ? '+' : '') + me.wi.mp + ').' : '') + (CLOAK_BY_ITEM[k] && me.ck === CLOAK_BY_ITEM[k] ? ' (vestida)' : '') + ' Vale ' + it.price + ' de ouro cada no Empório.', use: FOOD[k] || k === 'ale' || k === 'firemead' || k === 'salve' || CLOAK_BY_ITEM[k] || k === 'ointment' || k === 'firewood' || k === 'herb' ? () => Net.send({ t: 'use', k }) : null }); }
+  for (const k in (me.inv || {})) { const it = LOOT[k]; if (it && me.inv[k] > 0) list.push({ k, n: me.inv[k], name: it.name, icon: it.icon, color: it.color, desc: it.desc + (WANDS[k] && me.wi && me.wi.k === k ? ' A sua: ' + me.wi.w + ', ' + me.wi.c + ', ' + me.wi.len + ' cm, ' + me.wi.feel + ' (dano ' + (me.wi.dmg >= 0 ? '+' : '') + Math.round(me.wi.dmg * 100) + '%, mana ' + (me.wi.mp >= 0 ? '+' : '') + me.wi.mp + ').' : '') + (CLOAK_BY_ITEM[k] && me.ck === CLOAK_BY_ITEM[k] ? ' (vestida)' : '') + ' Vale ' + it.price + ' de ouro cada no Empório.', use: FOOD[k] || k === 'ale' || k === 'firemead' || k === 'salve' || CLOAK_BY_ITEM[k] || k === 'ointment' || k === 'firewood' || k === 'herb' || (typeof INV_TOYS !== 'undefined' && INV_TOYS[k]) ? () => Net.send({ t: 'use', k }) : null }); }
   grid.innerHTML = '';
   for (let i = 0; i < INV_SLOTS; i++) {
     const s = document.createElement('div'), it = list[i]; s.className = 'inv-slot';

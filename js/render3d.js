@@ -162,6 +162,7 @@ function buildHumanoid(L, opts = {}) {
     let slv = null; if (L.furisode) { slv = new THREE.Group(); slv.position.set(side * 0.055 * S, -0.06 * S, -0.01 * S); el.add(slv); slv.add(furisodeSleeve(L, S, side, hx)); }   /* manga longa do furisode: tecido curvo estampado, com forro */
     const hand = joint(el, 0, -0.27 * S, 0);
     hand.add(mesh(sphG(0.045 * S), L.armor === 'plate' ? bodyM : skinM, 0, 0, 0));
+    if (L.mglove && side > 0) { const gm = mat('#c9a24a', 'metal'); hand.add(mesh(sphG(0.056 * S), gm, 0, 0, 0)); const cf = mesh(torG(0.05 * S, 0.012 * S), mat('#8a6a2a', 'metal'), 0, 0.05 * S, 0); cf.rotation.x = Math.PI / 2; hand.add(cf); for (let q = 0; q < 3; q++) hand.add(mesh(boxG(0.012 * S, 0.05 * S, 0.012 * S), gm, (q - 1) * 0.022 * S, -0.05 * S, 0.02 * S)); }   /* luva mecânica de latão (Sxan) */
     return { sh, el, hand, slv };
   };
   R.A = arm(-1); R.B = arm(1);
@@ -245,6 +246,7 @@ function buildHead(head, L, S, skinM, accM, trimM) {
   if (L.scarf) {   /* lenço amarrado na cabeça, com o nó atrás */
     const scm = mat(hx(L.scarf), 'cloth'); const sc = mesh(sphG(0.118 * S), scm, 0, 0.025 * S, -0.01 * S); sc.geometry = geo('scarf' + S, () => new THREE.SphereGeometry(0.118 * S, 18, 12, 0, Math.PI * 2, 0, Math.PI * 0.5)); sc.rotation.x = -0.5; head.add(sc);
     const kn = mesh(sphG(0.035 * S), scm, 0, -0.03 * S, -0.115 * S); head.add(kn); for (const s of [-1, 1]) { const tl = mesh(boxG(0.03 * S, 0.09 * S, 0.01 * S), scm, s * 0.025 * S, -0.08 * S, -0.115 * S); tl.rotation.z = s * 0.3; head.add(tl); } }
+  if (L.goggles) { const gm = mat('#c9a24a', 'metal'), lm = mat('#3a5a4a', 'metal'), st = mat('#3a2a1a', 'leather'); for (const s of [-1, 1]) { const ring = mesh(cylG(0.042 * S, 0.042 * S, 0.05 * S, 12), gm, s * 0.046 * S, 0.095 * S, 0.088 * S); ring.rotation.x = Math.PI / 2 - 0.55; head.add(ring); const ln = mesh(cylG(0.033 * S, 0.033 * S, 0.052 * S, 12), lm, s * 0.046 * S, 0.095 * S, 0.091 * S); ln.rotation.x = Math.PI / 2 - 0.55; head.add(ln); } head.add(mesh(boxG(0.03 * S, 0.012 * S, 0.012 * S), gm, 0, 0.098 * S, 0.112 * S)); const band = mesh(torG(0.116 * S, 0.012 * S), st, 0, 0.08 * S, 0); band.rotation.x = Math.PI / 2 - 0.3; head.add(band); }   /* óculos de solda na testa (Sxan) */
   if (L.eyepatch) { const pm = mat('#1a1614', 'leather'); head.add(mesh(boxG(0.04 * S, 0.035 * S, 0.012 * S), pm, L.eyepatch * 0.035 * S, 0.015 * S, 0.1 * S)); const bd2 = mesh(torG(0.1 * S, 0.006 * S), pm, 0, 0.03 * S, 0); bd2.rotation.x = Math.PI / 2; bd2.rotation.y = L.eyepatch * 0.25; head.add(bd2); }   /* tapa-olho */
   if (L.beard && L.beardStyle === 'mustache') { const bm2 = mat(hx(L.beard), 'hair'); for (const sd of [-1, 1]) { const mu = mesh(capG(0.012 * S, 0.035 * S), bm2, sd * 0.022 * S, -0.04 * S, 0.1 * S); mu.rotation.z = sd * 1.25; head.add(mu); } }   /* bigode */
   else if (L.beard && L.beardStyle === 'goatee') { const gt = mesh(coneG(0.03 * S, 0.09 * S, 8), mat(hx(L.beard), 'hair'), 0, -0.115 * S, 0.075 * S); gt.rotation.x = Math.PI; head.add(gt); head.add(mesh(boxG(0.05 * S, 0.012 * S, 0.012 * S), mat(hx(L.beard), 'hair'), 0, -0.04 * S, 0.1 * S)); }   /* cavanhaque */

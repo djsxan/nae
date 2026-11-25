@@ -175,7 +175,7 @@ function empGo(n, tgt, spd, dt) {
 }
 function empFollow(n, r, q, dt) {
   const qfl = q.fl || 0, qfb = qfl ? q.fb : -1, same = (n.fl || 0) === qfl && (qfl === 0 || n.fb === qfb), d = same ? dist(n.x, n.y, q.x, q.y) : 99;
-  if (qfl > 0 && !(BUILDINGS[qfb] && stairKind(BUILDINGS[qfb], 0) === 'lift') && (n.fl || 0) === 0) { n.walk = false; return; }   /* subiu a escada de outro prédio: espera embaixo */
+  if (qfl > 0 && !(BUILDINGS[qfb] && isLiftK(stairKind(BUILDINGS[qfb], 0))) && (n.fl || 0) === 0) { n.walk = false; return; }   /* subiu a escada de outro prédio: espera embaixo */
   if (same && qfl === 0 && d > 28) { n.x = q.x - 1; n.y = q.y; n.legs = null; n.path = null; n.walkKey = null; return; }
   if (d < 1.7) { n.walk = false; n.dir = dirFromVecS(q.x - n.x, q.y - n.y); return; }
   const a = Math.atan2(n.y - q.y, n.x - q.x), tx = q.x + Math.cos(a) * 1.1, ty = q.y + Math.sin(a) * 1.1;
@@ -720,7 +720,7 @@ function segNpcTick(n, now, dt) {
     if (HP && HP.apt) { const A = APTS.find(a => a.key === HP.apt && a.bi === HP.bi), b = BUILDINGS[HP.bi], k = L.indexOf(r), vv = k ? 4.5 : 3.7, [wx, wy] = localToWorld(b, 7.55, vv), [fx, fy] = localToWorld(b, 6.55, vv); if (A && empGo(n, { x: wx, y: wy, fl: A.fl, fb: HP.bi }, 1.4, dt)) segWatch(n, dirFromVecS(fx - wx, fy - wy), now); return; }   /* apartamento: guarda o corredor do andar */
     const D = home ? doorTiles()[PROPS_BY[home].bi] : null; if (D) { const sp = segDoorSpot(D.x, D.y, (D.ox - D.x) / 1.3, (D.oy - D.y) / 1.3, L.indexOf(r)); if (npcWalk(n, sp.x, sp.y, 1.2, dt) || dist(n.x, n.y, sp.x, sp.y) < 0.4) segWatch(n, sp.dir, now); } return; }
   const qfl = q.fl || 0, qb = qfl ? q.fb : WORLD.bld[tileAt(q.x, q.y)];
-  if (qfl > 0 && BUILDINGS[qb] && stairKind(BUILDINGS[qb], 0) === 'lift') {   /* subiu de elevador: vai junto; com o patrão num apartamento, espera no corredor do elevador daquele andar */
+  if (qfl > 0 && BUILDINGS[qb] && isLiftK(stairKind(BUILDINGS[qb], 0))) {   /* subiu de elevador: vai junto; com o patrão num apartamento, espera no corredor do elevador daquele andar */
     const b = BUILDINGS[qb], k = L.indexOf(r), A = aptAt(qb, qfl, q.x, q.y); let tgt;
     if (A) { const vv = k ? 4.5 : 3.7, [wx, wy] = localToWorld(b, 7.55, vv), [fx, fy] = localToWorld(b, 6.55, vv); tgt = { x: wx, y: wy, fl: qfl, fb: qb, dir: dirFromVecS(fx - wx, fy - wy) }; }
     else { const d2 = (n.fl || 0) === qfl && n.fb === qb ? dist(n.x, n.y, q.x, q.y) : 99; if (d2 < 1.8) { n.walk = false; return; } const a = Math.atan2(n.y - q.y, n.x - q.x) + (k ? 0.6 : -0.6); tgt = { x: q.x + Math.cos(a) * 1.2, y: q.y + Math.sin(a) * 1.2, fl: qfl, fb: qb }; }

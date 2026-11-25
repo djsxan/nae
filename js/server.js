@@ -325,9 +325,10 @@ function hostOnClient(from, m) {
       break;
     }
     case 'floor': {
-      const b = BUILDINGS[m.b | 0], to = m.to | 0, fl = p.fl || 0, lift = b && stairKind(b, 0) === 'lift'; if (!b || p.downed || p.carriedBy || p.kjail || (lift ? to === fl : Math.abs(to - fl) !== 1) || to < minFl(b) || to >= floorsOf(b)) break;   /* elevador: qualquer andar */
+      const b = BUILDINGS[m.b | 0], to = m.to | 0, fl = p.fl || 0, lift = b && isLiftK(stairKind(b, 0)); if (!b || p.downed || p.carriedBy || p.kjail || (lift ? to === fl : Math.abs(to - fl) !== 1) || to < minFl(b) || to >= floorsOf(b)) break;   /* elevador: qualquer andar */
       if (lift && fl === 0 && WORLD.bld[tileAt(p.x, p.y)] !== (m.b | 0)) break;
       const sw = stairWorld(b, lift ? 0 : Math.min(fl, to)); if (dist(p.x, p.y, (sw.L[0] + sw.U[0]) / 2, (sw.L[1] + sw.U[1]) / 2) > 2.2) break;
+      if (typeof towerFloorDenied === 'function' && towerFloorDenied(p, b, to)) break;   /* apartamento da torre alugado por outro: o elevador não para lá */
       const [ax, ay] = to > fl ? sw.arrive : sw.entry; p.x = ax; p.y = ay; p.fl = to; p.fb = to !== 0 ? (m.b | 0) : -1; p.lastMv = now_(); p.sit = null;
       if (p.carrying) { const t = S.players[p.carrying]; if (t) { t.x = p.x; t.y = p.y; t.fl = p.fl; t.fb = p.fb; } }
       Net.toOne(p.id, { t: 'tp', x: p.x, y: p.y, z: 0, fl: p.fl, fb: p.fb });
@@ -3632,7 +3633,7 @@ function counterMsg(p, m, E, pid) {
   Net.toOne(p.id, { t: 'counter', pid, name: P.name, owner: r.ownerName, own, closed: !!B.closed, items: Object.keys(B.stock).filter(g => B.stock[g] >= 1).map(g => ({ g, q: Math.floor(B.stock[g]), price: own ? Math.ceil(GOODS[g].p) : counterPrice(B, g, mul) })), mul });
 }
 // ---------- mensageiros: levam a produção das oficinas para as lojas (ou outra oficina) do mesmo dono ----------
-const COURIER_WP = () => { const x0 = CENTER - 32; return { sq: [x0 - 37, CENTER + 4], road: [x0 - 37, CENTER + 0.5], bridge: [x0 - 18, CENTER + 0.5], ring: [x0 - 7, CENTER + 5.5], gate: [x0 + 3, CENTER + 5.5] }; };
+const COURIER_WP = () => { const x0 = CENTER - 32, w0 = CASTLE.x0; return { sq: [x0 - 37, CENTER + 4], road: [x0 - 37, CENTER + 0.5], bridge: [x0 - 18, CENTER + 0.5], ring: [w0 - 7, CENTER + 5.5], gate: [w0 + 3, CENTER + 5.5] }; };   /* a vila fica no lugar antigo; o anel e o portão seguem a muralha */
 function bizDoorOut(P) { const b = BUILDINGS[P.bi], [dx, dy] = doorTile(b), v = DOOR_V[b.door || 'S']; return [dx + v[0] * 1.2, dy + v[1] * 1.2]; }
 const inVillage = P => BUILDINGS[P.bi].x < CENTER - 52;
 function routeBetween(A, B) {   // pontos de passagem curtos (o pathfinding não precisa varrer o mapa todo)
@@ -4156,7 +4157,7 @@ function dayInfoS() { const ph = (gameNow() % ESTATE_DAY_MS) / ESTATE_DAY_MS, su
 const VIS_NAMES = { f: ['Ana', 'Beatriz', 'Celeste', 'Dália', 'Eva', 'Flora', 'Glória', 'Helena', 'Inês', 'Joana', 'Lúcia', 'Marina', 'Nádia', 'Olga', 'Rita', 'Sara', 'Teresa', 'Vera'], m: ['Abel', 'Bento', 'Caio', 'Davi', 'Edgar', 'Fábio', 'Gil', 'Hugo', 'Ivo', 'Júlio', 'Lauro', 'Mauro', 'Nico', 'Otávio', 'Paulo', 'Rui', 'Saulo', 'Tito', 'Vasco'] };
 const VIS_TYPES = { gym: { n: 'praticante', looksF: ['v_gymf'], looksM: ['v_gymm'], g: 'x' }, offg: { n: 'sentinela de folga', looks: ['v_offguard'], g: 'm' }, house: { n: 'dona de casa', looks: ['v_house1', 'v_house2', 'v_house3', 'v_house4'], g: 'f' }, trav: { n: 'viajante', looks: ['v_trav1', 'v_trav2', 'v_trav3', 'v_monk'], g: 'm' }, vis: { n: 'visitante', looksF: ['v_vis2', 'v_noblef', 'v_peasf', 'v_elderf'], looksM: ['v_vis1', 'v_noblem', 'v_peasm', 'v_elderm'], g: 'x' }, thug: { n: 'marginal', looks: ['v_thug1', 'v_thug2'], g: 'm' } };
 const VIS_TITLE = { v_monk: 'peregrino', v_noblef: 'dama da corte', v_noblem: 'nobre de passagem', v_peasm: 'camponês', v_peasf: 'camponesa', v_elderm: 'ancião', v_elderf: 'anciã', v_trav3: 'menestrel' };
-const visGates = () => { const x0 = CENTER - 32; return [[CENTER + 0.5, CENTER + 30.5], [x0 + 3, CENTER + 5.5], [CENTER + 0.5, CENTER - 30.5], [CITY_X1 - 2.5, CENTER + 0.5]]; };
+const visGates = () => { const x0 = CASTLE.x0; return [[CENTER + 0.5, CASTLE.y1 - 2.5], [x0 + 3, CENTER + 5.5], [CENTER + 0.5, CASTLE.y0 + 2.5], [CITY_X1 - 2.5, CENTER + 0.5]]; };
 const VIS_HUB = [CENTER + 0.5, CENTER + 12];
 function visPublic(n) { return { id: n.id, kind: n.kind, name: n.name, x: n.x, y: n.y, trader: n.trader ? 1 : 0, bard: n.bard ? 1 : 0 }; }
 function visSpawn(now, force) {
