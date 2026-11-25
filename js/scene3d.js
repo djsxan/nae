@@ -2327,7 +2327,7 @@ function machiyaInterior(o, b, fl, { w, h, hw, t, nF, knee }) {
 /* materiais escolhidos no editor de interiores (piso e paredes por andar) */
 const INT_MATS = { floor: { wood: ['wood', '#9a7048', 1.2], dwood: ['wood', '#5a3a22', 1], plank: ['oldplank', '#8a6a44', 1.2], stone: ['stoneblock', '#9a948a', 1], dstone: ['stoneblock', '#5e584e', 1.4], marble: ['marblechk', '#ffffff', 0.4], tatami: ['tatami', '#ffffff', 0.6], dirt: [null, '#8a7050', 0] },
   wall: { plaster: ['plaster', '#e2d6bc', 0.7], brick: ['brick', '#a2563a', 1.2], dbrick: ['brick', '#6a3a2a', 1.2], stone: ['brick', '#a29c90', 1.2], wood: ['oldplank', '#6a4a2c', 1.2], paper: ['wallpaper', '#c89ac0', 0.5], marble: ['thmarble', '#ffffff', 0.3], shoji: ['shoji', '#ffffff', 0.4] } };
-function intMat(b, fl, k) { const E = typeof intEdit === 'function' && intEdit(b, fl), v = E && E.mat && E.mat[k], m = v && INT_MATS[k][v]; return m ? smat(m[0], m[1], { bump: m[2], rough: m[0] ? undefined : 0.95 }) : null; }
+function intMat(b, fl, k) { const E = typeof intEdit === 'function' && intEdit(b, fl), v = (typeof decoMat === 'function' && decoMat(b, fl, k)) || (E && E.mat && E.mat[k]), m = v && INT_MATS[k][v];   /* pintura do dono vale por cima da planta do editor */ return m ? smat(m[0], m[1], { bump: m[2], rough: m[0] ? undefined : 0.95 }) : null; }
 function mInterior(b, fl = 0) {
   const [w, h] = bDims(b), { H } = bldDims(b), o = grp(), L = interiorLayout(b, fl), R = rng(b.x * 13 + b.y), nF = floorsOf(b);
   const stoneK = b.kind === 'bank' || b.kind === 'temple' || b.kind === 'castle' || b.kind === 'smith' || b.kind === 'barracks' || b.kind === 'jail' || b.kind === 'boutique' || b.kind === 'manor';
@@ -3080,7 +3080,7 @@ function mInterior(b, fl = 0) {
   return o;
 }
 function interiorSprite(b, fl = 0) {
-  const key = 'in|' + archKey(b) + '|' + (b.door || 'S') + '|' + fl + (b.lot ? '|lot' : '') + (b.mstyle ? '|' + b.mstyle : '') + (b.kind === 'castle' ? ((typeof G !== 'undefined' && G.rkHd) ? '|K' + G.rkHd : '') : '') + (typeof intEditB === 'function' && intEditB(b) ? '|E' + b.dbi : '');   /* prédio editado não divide o desenho com outro igual */
+  const key = 'in|' + archKey(b) + '|' + (b.door || 'S') + '|' + fl + (b.lot ? '|lot' : '') + (b.mstyle ? '|' + b.mstyle : '') + (b.kind === 'castle' ? ((typeof G !== 'undefined' && G.rkHd) ? '|K' + G.rkHd : '') : '') + (typeof intEditB === 'function' && intEditB(b) ? '|E' + b.dbi : '') + (typeof decoKey === 'function' ? decoKey(b, fl) : '');   /* prédio editado ou decorado não divide o desenho com outro igual */
   return scen3(key, () => b.kind === 'stairtower' ? placeRot(b, mStairTower({ ...localB(b), realDoor: b.door || 'S' }, true)) : placeRot(b, mInterior({ ...localB(b), realDoor: b.door || 'S' }, fl)));
 }
 // ============================================================

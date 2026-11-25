@@ -678,9 +678,10 @@ const LAYOUT_MEMO = new Map();
 // O resto (mesas, cadeiras, bancos, barris, caixotes, tapetes, decoração) não bloqueia a passagem.
 const FURN_SOLID = new Set(['iwall', 'strongbox', 'tatchair', 'inktable', 'tcascade', 'labrum', 'tmassage', 'winetable', 'hpillar', 'brazier', 'drawers', 'apothcounter', 'distill', 'blk', 'hpart', 'counter', 'bar', 'bankdesk', 'wandcounter', 'vault', 'bars', 'celldoor', 'fireplace', 'hearth', 'stove', 'forge', 'shelf', 'wandwall', 'fabricwall', 'taps', 'bottles', 'filing', 'jamshelf', 'pillar', 'throne', 'altar', 'still', 'bed', 'bunk', 'cot']);
 function interiorLayout(b, fl = 0) {
-  const [w, h] = bDims(b), mk = [b.kind, w, h, b.v || 0, floorsOf(b), fl, dormExtraKey(b, fl), b.office || '', JSON.stringify(b.stairs || 0), b.extSide || '', b.cellar ? b.cellar.join(',') : '', b.deco || '', intEdit(b, fl) ? 'E' + dormBi(b) : ''].join('|');
+  const [w, h] = bDims(b), mk = [b.kind, w, h, b.v || 0, floorsOf(b), fl, dormExtraKey(b, fl), b.office || '', JSON.stringify(b.stairs || 0), b.extSide || '', b.cellar ? b.cellar.join(',') : '', b.deco || '', intEdit(b, fl) ? 'E' + dormBi(b) : '', typeof decoKey === 'function' ? decoKey(b, fl) : ''].join('|');
   let L = LAYOUT_MEMO.get(mk); if (L) return L;
   L = interiorLayout0(b, fl);
+  if (typeof decoApply === 'function') L = decoApply(b, fl, L);   /* casa decorada pelo dono (js/decor.js) */
   const blk = new Uint8Array(w * h), id = (i, j) => j * w + i;
   if (L.npc) blk[id(L.npc.i, L.npc.j)] = 1;
   const s0 = fl === 0 ? [doorCol(b), h - 1] : fl < 0 ? stairSpec(b, fl).entry : stairSpec(b, fl - 1).arrive;
