@@ -20,5 +20,5 @@ function clkTick() { try { if (typeof G === 'undefined' || !G.started) return; c
   const h = clkHour(), hh = Math.floor(h), mm = Math.floor((h - hh) * 60), a12 = ((h % 12) / 12) * 360, am = (mm / 60) * 360, day = h >= 6 && h < 19;
   d.querySelector('.clk-h').setAttribute('transform', 'rotate(' + a12.toFixed(1) + ' 32 32)'); d.querySelector('.clk-m').setAttribute('transform', 'rotate(' + am.toFixed(1) + ' 32 32)');
   d.querySelector('.clk-sun').style.display = day ? '' : 'none'; d.querySelector('.clk-moon').style.display = day ? 'none' : '';
-  d.querySelector('.clk-t').textContent = String(hh).padStart(2, '0') + ':' + String(Math.floor(mm / 10) * 10).padStart(2, '0'); d.title = 'Hora do dia: ' + String(hh).padStart(2, '0') + 'h' + String(mm).padStart(2, '0'); } catch (e) { } }
+  d.querySelector('.clk-t').textContent = String(hh).padStart(2, '0') + ':' + String(Math.floor(mm / 10) * 10).padStart(2, '0'); d.title = 'Hora do dia: ' + String(hh).padStart(2, '0') + 'h' + String(mm).padStart(2, '0') + (typeof luzMoonName === 'function' ? ' · ' + luzMoonName() : ''); } catch (e) { } }
 if (typeof window !== 'undefined' && typeof G !== 'undefined') setInterval(clkTick, 500);

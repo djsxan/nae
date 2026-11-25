@@ -33,7 +33,7 @@ function trHouseCourt(hid) { const h = HOUSE_BY[hid]; if (!h) return; for (const
   const def = COURT.find(d => d.id === 'k_king'); if (def) { def.kind = 'hh_lord_' + hid; def.name = sucKingName(); }
   for (const r of [0, 1, 2]) { const n = S.npcs['h_' + hid + '_' + r]; if (n) visGone(n); } }
 if (typeof hPost === 'function') { const _hpT = hPost; hPost = function (def, n) { const U = S.estate && sucRec(); if (U && U.king === 'h:' + n.house && (n.hrole === 'lord' || n.hrole === 'spouse' || n.hrole === 'heir')) return null; return _hpT(def, n); }; }
-if (typeof sucKingName === 'function') { const _skT = sucKingName; sucKingName = function () { const U = sucRec(); if (U.king && U.king.startsWith('h:')) { const l = HOUSE_BY[U.king.slice(2)].lord; return (/^Lady /.test(l) ? 'Rainha ' : 'Rei ') + l.replace(/^(Lorde|Lady) /, ''); } return _skT(); }; }
+if (typeof sucKingName === 'function') { const _skT = sucKingName; sucKingName = function () { const U = sucRec(); if (U.king && U.king.startsWith('h:') && HOUSE_BY[U.king.slice(2)]) { const l = HOUSE_BY[U.king.slice(2)].lord; return (/^Lady /.test(l) ? 'Rainha ' : 'Rei ') + l.replace(/^(Lorde|Lady) /, ''); } return _skT(); }; }
 if (typeof sucApplyKing === 'function') { const _saT = sucApplyKing; sucApplyKing = function (k) { _saT(k); if (k.startsWith('h:')) { trHouseCourt(k.slice(2)); hNews('A ' + HOUSE_BY[k.slice(2)].n + ' chega ao trono: a família inteira muda para o castelo.'); } }; }
 if (typeof sucInitCourt === 'function') { const _siT = sucInitCourt; sucInitCourt = function () { trApplyNames(); _siT(); const U = sucRec(); if (U.king && U.king.startsWith('h:')) trHouseCourt(U.king.slice(2)); }; }
 /* morte em combate (lâmina): o jogo já trata as testemunhas; aqui só a linha de sucessão */

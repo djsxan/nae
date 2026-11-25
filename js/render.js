@@ -814,7 +814,7 @@ function drawAtmosphere(ctx, W, H, now, day, cam) {
     for (let l = 0; l < 2; l++) {
       const sp = l ? 9 : 5, sc = l ? 1.6 : 2.4;
       ctx.setTransform(sc, 0, 0, sc * 0.7, -((c.sx * SCALE * (l ? 0.9 : 0.75) + t * sp * 6) % (256 * sc)), -((c.sy * SCALE * (l ? 0.9 : 0.75) + t * sp) % (256 * sc * 0.7)));
-      ctx.globalAlpha = ATM.fog * (l ? 0.7 : 0.9);
+      ctx.globalAlpha = ATM.fog * (l ? 0.7 : 0.9) * (typeof LUZ !== 'undefined' && LUZ.v >= 4 && day.dark > 0.3 ? 0.45 : 1);   /* no mapa de luz a névoa da noite fica leve (senão vira manchas escuras) */
       ctx.fillStyle = fogPat; ctx.fillRect(0, 0, W / sc + 512, H / (sc * 0.7) + 512);
     }
     ctx.restore();
@@ -1251,16 +1251,16 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       for (const sd of [1, -1]) for (let k = 0; k < 3; k++) { const L2 = nx ? b.w : b.h, u = (k - 1) * L2 / 3.4, wx = nx ? cxw + nx * u : cxw + tx * sd * (b.w / 2 + 1.0), wy = ny ? cyw + ny * u : cyw + ty * sd * (b.h / 2 + 1.0), g3 = iso(wx, wy); G.lights.push({ x: g3.sx + ox, y: g3.sy + oy, r: 44, c: cols[(k * 2 + (sd > 0 ? 1 : 0)) % 5], a: 0.9 }); }
     }
   }
-  if (inside && day.dark > 0.05) { const b = inside.b, c = iso(b.x + b.w / 2 - 0.5, b.y + b.h / 2 - 0.5); G.lights.push({ x: c.sx + ox, y: c.sy + oy - 20, r: Math.max(b.w, b.h) * 22, c: '255,200,140', a: 1 }); }
+  if (inside && day.dark > 0.05 && !(typeof luzInside === 'function' && luzInside(inside.b, ox, oy, day))) { const b = inside.b, c = iso(b.x + b.w / 2 - 0.5, b.y + b.h / 2 - 0.5); G.lights.push({ x: c.sx + ox, y: c.sy + oy - 20, r: Math.max(b.w, b.h) * 22, c: '255,200,140', a: 1 }); }
   if (G.cellarDark && inside) { const b = inside.b, c = iso(b.x + b.w / 2 - 0.5, b.y + b.h / 2 - 0.5); G.lights = [{ x: c.sx + ox, y: c.sy + oy + (bldDims(b).H / floorsOf(b)) * HV - 20, r: 150, c: '255,180,100', a: 0.9, flick: 1 }]; }   // porão: só a luz das velas
   // 7) iluminação noturna (camada em resolução reduzida = luz suave)
-  if (day.dark > 0.01) {
+  if (day.dark > 0.01 && !(typeof luzMapDraw === 'function' && luzMapDraw(ctx, vw, vh, day, now))) {
     const lw = Math.ceil(vw / 2), lh = Math.ceil(vh / 2);
     if (lightC.width !== lw || lightC.height !== lh) { lightC.width = lw; lightC.height = lh; }
     lightX.setTransform(0.5, 0, 0, 0.5, 0, 0);
     lightX.globalCompositeOperation = 'source-over';
     lightX.clearRect(0, 0, vw, vh);
-    lightX.fillStyle = `rgba(8,12,34,${day.dark})`; lightX.fillRect(0, 0, vw, vh);
+    lightX.fillStyle = `rgba(8,12,34,${typeof luzDark === 'function' ? luzDark(day) : day.dark})`; lightX.fillRect(0, 0, vw, vh);
     lightX.globalCompositeOperation = 'destination-out';
     for (const L of G.lights) {
       const r = L.r * 2 * (L.flick ? 0.93 + Math.sin(now / 70 + L.x) * 0.05 : 1);
@@ -1287,12 +1287,14 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   if (!G.cellarDark && (typeof qLevelNow !== 'function' || qLevelNow() >= 2)) drawAtmosphere(ctx, W, H, now, day, cam);   // névoa, chuva e neve: só do nível Baixa para cima   // chuva, neve e névoa não entram no porão
   if (day.dusk > 0.01) { ctx.fillStyle = `rgba(255,120,40,${day.dusk * 0.1})`; ctx.fillRect(0, 0, W, H); }
   // fim de tarde dourado: tudo um pouco mais escuro e quente, com brilho no alto da tela
+  if (typeof luzGrade === 'function' && luzGrade(ctx, W, H, day)) { } else {
   if (!day.night) { ctx.globalCompositeOperation = 'multiply'; ctx.fillStyle = 'rgb(228,206,176)'; ctx.fillRect(0, 0, W, H); ctx.globalCompositeOperation = 'source-over';
     if (!GOLD || GOLD.height !== H) { GOLD = ctx.createLinearGradient(0, 0, 0, H); GOLD.addColorStop(0, 'rgba(255,190,110,0.16)'); GOLD.addColorStop(0.45, 'rgba(255,190,110,0)'); GOLD.addColorStop(1, 'rgba(40,20,10,0.12)'); GOLD.height = H; }
     ctx.fillStyle = GOLD; ctx.fillRect(0, 0, W, H); }
   ctx.globalCompositeOperation = 'soft-light';
   ctx.fillStyle = day.night ? 'rgba(60,80,150,0.35)' : `rgba(${ATM.tint.map(Math.round).join(',')},${0.25 + ATM.ta})`; ctx.fillRect(0, 0, W, H);
   ctx.globalCompositeOperation = 'source-over';
+  }
   if (!VIGNETTE || VIGNETTE.width !== W || VIGNETTE.height !== H) {
     VIGNETTE = document.createElement('canvas'); VIGNETTE.width = W; VIGNETTE.height = H;
     const v = VIGNETTE.getContext('2d'), g = v.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);

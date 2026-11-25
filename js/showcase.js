@@ -114,5 +114,6 @@ function survMedalsUpdate(me) {
   const b = document.getElementById('sv-bulb'); if (b) b.setAttribute('fill', warm ? '#e8902a' : cold > 0.5 ? '#3a5ad8' : '#7aa8e8');
   document.querySelector('#surv-medals .sv-w').classList.toggle('low', food < 0.25 || water < 0.25);
   document.querySelectorAll('#surv-medals .sv-w')[1].classList.toggle('low', cold > 0.75);
+  { const W = document.querySelectorAll('#surv-medals .sv-w'); W[0].classList.add('sv-fade'); W[1].classList.add('sv-fade'); W[0].classList.toggle('full', food >= 0.9 && water >= 0.9); W[1].classList.toggle('full', cold < 0.1 && !warm); }   /* fome/sede cheias e sem frio: discretos, como o medalhão do corpo com fôlego cheio */
   const sn = typeof seasonNow === 'function' ? seasonNow() : null, se = document.getElementById('sv-season'); if (sn && se) se.textContent = sn.n + ' · dia ' + sn.day;
 }

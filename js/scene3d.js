@@ -2397,7 +2397,7 @@ function mInterior(b, fl = 0) {
   }
   if (RND) roundShell(o, b, fl, { w, h, hw, t, knee, KH, wallM, capM, dx });
   // luz quente no meio do cômodo
-  { const pl = new THREE.PointLight(0xffd09a, 0.55, Math.max(w, h) * 1.2); pl.position.set(w / 2, 1.6, h / 2); o.add(pl); }
+  { const LC = typeof LUZ !== 'undefined' && LUZ.v && typeof luzProfile === 'function' ? luzProfile(b).c.split(',').map(Number) : null, pl = new THREE.PointLight(LC ? (LC[0] << 16) | (LC[1] << 8) | LC[2] : 0xffd09a, LC ? [0, 0.5, 0.42, 0.34][LUZ.v] : 0.55, Math.max(w, h) * 1.2); pl.position.set(w / 2, 1.6, h / 2); o.add(pl); }   /* luz geral do cômodo: na cor do tipo de prédio (iluminação nova) */
   if (b.deco === 'thermae' && fl === 0 && typeof thermaeInterior === 'function') thermaeInterior(o, b, { w, h, hw, t, knee });
   // ---- luzes e detalhes ----
   if (b.deco !== 'machiya' && b.deco !== 'thermae' && !RND) {
@@ -3080,7 +3080,7 @@ function mInterior(b, fl = 0) {
   return o;
 }
 function interiorSprite(b, fl = 0) {
-  const key = 'in|' + archKey(b) + '|' + (b.door || 'S') + '|' + fl + (b.lot ? '|lot' : '') + (b.mstyle ? '|' + b.mstyle : '') + (b.kind === 'castle' ? ((typeof G !== 'undefined' && G.rkHd) ? '|K' + G.rkHd : '') : '') + (typeof intEditB === 'function' && intEditB(b) ? '|E' + b.dbi : '') + (typeof decoKey === 'function' ? decoKey(b, fl) : '');   /* prédio editado ou decorado não divide o desenho com outro igual */
+  const key = 'in|' + archKey(b) + '|' + (b.door || 'S') + '|' + fl + (b.lot ? '|lot' : '') + (b.mstyle ? '|' + b.mstyle : '') + (b.kind === 'castle' ? ((typeof G !== 'undefined' && G.rkHd) ? '|K' + G.rkHd : '') : '') + (typeof intEditB === 'function' && intEditB(b) ? '|E' + b.dbi : '') + (typeof decoKey === 'function' ? decoKey(b, fl) : '') + (typeof LUZ !== 'undefined' && LUZ.v ? '|L' + LUZ.v : '');   /* prédio editado ou decorado não divide o desenho com outro igual; cada versão da iluminação tem o seu */
   return scen3(key, () => b.kind === 'stairtower' ? placeRot(b, mStairTower({ ...localB(b), realDoor: b.door || 'S' }, true)) : placeRot(b, mInterior({ ...localB(b), realDoor: b.door || 'S' }, fl)));
 }
 // ============================================================

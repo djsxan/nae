@@ -505,7 +505,7 @@ body.nae:not(.nae-ready) #lobby > *:not(#title3d) { visibility: hidden; }
 #surv-medals .sv-body .sv-arc { stroke-width: 3.6; }
 #bodydoll { display: none !important; }   /* o corpo agora fica dentro do medalhão */
 #surv-medals .sv-w.low { animation: svPulse 1s ease-in-out infinite; }
-#surv-medals .sv-lw { transition: opacity .8s; } #surv-medals .sv-lw.full { opacity: .55; }   /* estamina cheia: o pulmão fica discreto */
+#surv-medals .sv-lw { transition: opacity .8s; } #surv-medals .sv-lw.full { opacity: .55; } #surv-medals .sv-fade { transition: opacity .8s; } #surv-medals .sv-fade.full:not(.low) { opacity: .55; }   /* fome/sede e frio também ficam discretos quando estão bem */   /* estamina cheia: o pulmão fica discreto */
 @keyframes svPulse { 50% { filter: drop-shadow(0 0 8px rgba(255,80,50,.9)) drop-shadow(0 4px 6px rgba(0,0,0,.6)); } }
 #surv-medals svg { width: 100%; height: 100%; display: block; }
 #surv-medals .sv-bg { fill: none; stroke: rgba(58,42,22,.25); stroke-width: 4.2; }

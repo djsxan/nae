@@ -2,7 +2,7 @@
 //  REBELIÃO LIDERADA POR JOGADOR (lista 4, item 8)
 //  quem fundou uma casa fala com o criado da sede: "Marchar contra o rei". Os soldados saem do casarão
 //  e marcham até o portão do castelo; o cerco começa quando chegam. O líder é o jogador: se ele cair,
-//  a rebelião acaba e ele vai para a guilhotina; se ficar um minuto no trono, é coroado.
+//  a rebelião acaba e ele vai para a guilhotina; se matar ou capturar o rei, é coroado.
 //  Do lado dele: os homens da casa, seus seguranças e capangas, os vassalos e as casas NPC amigas (favor 40+).
 // ============================================================
 const RB = { ally: 40, allyShare: 0.5, perMan: 5, marchMax: 150000, show: [4, 12] };
@@ -63,7 +63,7 @@ if (typeof sgDematerialize === 'function') { const _sdR = sgDematerialize; sgDem
 /* ---- vitória da rebelião do jogador: matar o rei, ou capturá-lo e executá-lo na guilhotina (sem o minuto no trono) ---- */
 const RB_CAPTURE = 0.2;   /* com 20% de vida ou menos, o rei se rende */
 if (typeof sgHitSoldier === 'function') { const _shR = sgHitSoldier; sgHitSoldier = function (q, dmg, by) { const S0 = S.estate && sgRec();
-  if (S0 && S0.on && S0.plead && q && q.sgKing && !S0.kingOut && q.hp - dmg > 0 && q.hp - dmg <= q.maxHp * RB_CAPTURE) {
+  if (S0 && S0.on && (S0.plead || (by && by.id && S.players[by.id])) && q && q.sgKing && !S0.kingOut && q.hp - dmg > 0 && q.hp - dmg <= q.maxHp * RB_CAPTURE) {
     q.hp -= dmg; S0.kingOut = 'captured'; q.downed = { until: now_() + 600000 }; for (const d of sgSoldiers('d')) d.yield = 1;
     sys('👑 O ' + sucKingName() + ' caiu de joelhos e se rendeu: está capturado!'); near(q.x, q.y, { t: 'anim', w: 'n', id: q.id, a: 'talk', txt: 'Eu me rendo!', ms: 1 }); return; }
   return _shR(q, dmg, by); }; }

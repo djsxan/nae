@@ -8,7 +8,7 @@ function faWater() { const me = G.me; if (!me || !((me.water ?? 100) < 98 || (me
 const fx = n => typeof window[n] === 'function';
 /* as ações na mesma ordem em que o F as testa (a primeira da lista é a que o F faria sozinho) */
 function faActions() {
-  const me = G.me, L = [], add = (t, run) => L.push({ t, run });
+  const me = G.me, L = [], add = (t, run, who) => L.push({ t, run, who }), own = new Set();   /* NPCs que já têm a ação deles na lista (a conversa genérica não repete) */
   if (fx('empNear') && empNear()) add('Ordens para ' + ((G.emp && G.emp.n) || 'a doméstica'), () => empMenu());
   if (fx('segNear')) { const s = segNear(); if (s) add('Ordens para ' + faName(s.id, 'o segurança'), () => segMenu(s.id)); }
   if (fx('duelPlayerNear')) { const q = duelPlayerNear(); if (q) add('Desafiar ' + q.name + ' para um duelo', () => dojoF()); }
@@ -16,14 +16,14 @@ function faActions() {
   if (fx('leverNear') && leverNear()) add('Mexer a alavanca da água', () => Net.send({ t: 'tub' }));
   if (fx('ofuroNear') && ofuroNear()) add('Entrar no ofurô', () => bathEnter());
   if (fx('csSpot')) { const s = csSpot(); if (s) add(s.k === 'pick' ? 'Abrir a porta dos fundos (gazua)' : (s.up ? 'Subir pela hera' : 'Descer pela hera'), () => csF()); }
-  if (fx('velNear')) { const v = velNear(); if (v) add('Falar com ' + faName(v.id, 'o atendente'), () => Net.send({ t: 'vel', a: 'talk', id: v.id })); }
+  if (fx('velNear')) { const v = velNear(); if (v) own.add(v.id); if (v) add('Falar com ' + faName(v.id, 'o atendente'), () => Net.send({ t: 'vel', a: 'talk', id: v.id })); }
   if (fx('tatNear') && tatNear()) add('Falar com o tatuador', () => Net.send({ t: 'tat', a: 'open' }));
-  if (fx('prazNear') && prazNear()) add('Falar com a Lívia', () => Net.send({ t: 'praz', a: 'open' }));
-  if (fx('prazWho')) { const w = prazWho(); if (w) add('Falar com ' + faName(w, 'o atendente'), () => Net.send({ t: 'praz', a: 'talk', who: w })); }
+  if (fx('prazNear') && prazNear()) { own.add('pz_livia'); add('Falar com a Lívia', () => Net.send({ t: 'praz', a: 'open' })); }
+  if (fx('prazWho')) { const w = prazWho(); if (w) own.add(w); if (w) add('Falar com ' + faName(w, 'o atendente'), () => Net.send({ t: 'praz', a: 'talk', who: w })); }
   if (fx('prazInPool') && prazInPool()) add('Opções da piscina', () => prazPoolMenu());
   if (fx('infNear') && infNear()) add('Ouvir o pregoeiro', () => Net.send({ t: 'inf', a: 'open', place: 'plaza' }));
-  if (fx('houseNear')) { const h = houseNear(); if (h) add('Falar com ' + faName(h.id, 'o nobre'), () => Net.send({ t: 'house', a: 'open', id: h.id })); }
-  if (fx('courtNear')) { const c = courtNear(); if (c) add('Falar com ' + faName(c.id, 'a corte'), () => Net.send({ t: 'court', a: 'open', id: c.id })); }
+  if (fx('houseNear')) { const h = houseNear(); if (h) own.add(h.id); if (h) add('Falar com ' + faName(h.id, 'o nobre'), () => Net.send({ t: 'house', a: 'open', id: h.id })); }
+  if (fx('courtNear')) { const c = courtNear(); if (c) own.add(c.id); if (c) add('Falar com ' + faName(c.id, 'a corte'), () => Net.send({ t: 'court', a: 'open', id: c.id })); }
   if (fx('entNear')) { const e = entNear(); if (e) add('Ordens para a guardiã', () => entMenu(e)); }
   if (fx('entLogNear')) { const g = entLogNear(); if (g) add('Pegar o galho caído (lenha)', () => Net.send({ t: 'ent', a: 'log', id: g.id })); }
   if (fx('mealNear') && mealNear()) add('Comer da bandeja', () => Net.send({ t: 'emp', a: 'mealeat' }));
@@ -38,7 +38,7 @@ function faActions() {
   if (fx('shiftHere') && G.shiftUntil <= performance.now() && shiftHere() && !(fx('talkTarget') && talkTarget()) && !(fx('estInBiz') && estInBiz())) add('Começar o turno de trabalho', () => Net.send({ t: 'shift', a: 'start' }));
   if (fx('nearGather')) { const g = nearGather(); if (g && hasTool(g.G0.tool) && profLv((me.prof || {})[g.G0.prof]) >= g.G0.min) add(g.G0.verb ? g.G0.verb[0].toUpperCase() + g.G0.verb.slice(1) : 'Coletar', () => jobsF({ repeat: false })); }
   if (fx('hotelChestNear') && hotelChestNear()) add('Abrir o baú da cabine', () => hotelChestF());
-  if (fx('talkTarget')) { const t = talkTarget(); if (t) add(t.k === 'n' ? 'Falar com ' + faName(t.id, 'a pessoa') : 'Dar ou seguir: ' + String((G.players[t.id] || {}).name || 'jogador').replace(/</g, ''), () => { if (t.k === 'n') openDialog(t.id); else giveOpen(t.id); }); }
+  if (fx('talkTarget')) { const t = talkTarget(); if (t && !(t.k === 'n' && own.has(t.id))) add(t.k === 'n' ? 'Falar com ' + faName(t.id, 'a pessoa') : 'Dar ou seguir: ' + String((G.players[t.id] || {}).name || 'jogador').replace(/</g, ''), () => { if (t.k === 'n') openDialog(t.id); else giveOpen(t.id); }); }
   if (fx('estChestHere') && estChestHere()) add('Abrir o baú da casa', () => chestOpen());
   else if (fx('estInHome') && estInHome()) add('Painel da sua casa', () => estToggle(true, 'mine'));
   if (fx('estInBiz')) { const b = estInBiz(); if (b) add('Gerenciar ' + ((PROPS_BY[b.pid] || {}).name || 'o negócio'), () => bizOpen(b.pid)); }

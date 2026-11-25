@@ -20,12 +20,17 @@ if (typeof estateJoin === 'function') { const _ejP = estateJoin; estateJoin = fu
   if (H) { np.x = H.b.x; np.y = H.b.y; np.z = 0; np.fl = H.b.fl || 0; np.fb = np.fl ? H.P.bi : -1; setTimeout(() => { if (S.players[np.id]) Net.toOne(np.id, { t: 'wakebed', k: H.k }); }, 1500); return r; }   /* acorda na própria cama */
   if (typeof hotelRoomOf === 'function' && hotelRoomOf(np) >= 0) return r;   /* cabine da pousada: como antes */
   const P0 = portalSpot(); if (!P0) return r; const Fr = ptFront(P0); np.x = Fr.x; np.y = Fr.y; np.z = 0; np.fl = 0; np.fb = -1;   /* para em frente ao portal */
-  setTimeout(() => { if (S.players[np.id]) near(P0.x, P0.y, { t: 'portal', x: P0.x, y: P0.y, id: np.id }, VIEW_RADIUS + 10); }, 1300); return r; }; }
+  np.ptShow = { x: P0.x, y: P0.y, t: now_(), k: np.joinT || 0 };   /* o cliente pede quando terminar de abrir o jogo (máquina lenta perdia o aviso) */
+  for (const ms of [1300, 3500]) setTimeout(() => { if (S.players[np.id]) near(P0.x, P0.y, { t: 'portal', x: P0.x, y: P0.y, id: np.id, k: np.joinT || 0 }, VIEW_RADIUS + 10); }, ms); return r; }; }   /* repetido: quem acabou de entrar ainda está abrindo o jogo e perdia o primeiro aviso (o cliente toca uma vez só) */
 
 // ---------- lado do jogador: o anel de faíscas, as runas no chão e o acordar na cama ----------
+function ptBusy() { return typeof document !== 'undefined' && (!G.started || !!document.getElementById('prebake') || !G.me); }
+function ptPlay(m) { G.portals.push({ x: m.x, y: m.y, t0: performance.now(), id: m.id }); if (m.id === G.myId && G.me) G.ptWalk = { t0: performance.now(), x0: m.x, y0: m.y, x1: G.me.x, y1: G.me.y }; }
+if (typeof phMsg === 'function') { const _phPT = phMsg; phMsg = function (p, m) { if (m && m.a === 'ptready') { const P = p.ptShow; if (P && now_() - P.t < 180000) { p.ptShow = null; near(P.x, P.y, { t: 'portal', x: P.x, y: P.y, id: p.id, k: P.k }, VIEW_RADIUS + 10); } return; } return _phPT(p, m); }; }
+if (typeof G !== 'undefined' && typeof setInterval === 'function') setInterval(() => { if (!G.ptAsked && G.started && G.me && !ptBusy()) { G.ptAsked = 1; setTimeout(() => Net.send({ t: 'funda', a: 'ptready' }), 600); } if (G.ptPend && !ptBusy()) { const m = G.ptPend; G.ptPend = null; G.ptSeen = G.ptSeen || {}; const key = m.id + ':' + (m.k || 0); if (!G.ptSeen[key]) { G.ptSeen[key] = 1; setTimeout(() => ptPlay(m), 400); } } }, 250);
 if (typeof G !== 'undefined') G.portals = [];
 if (typeof progEvent === 'function' && typeof G !== 'undefined') { const _peP2 = progEvent; progEvent = function (m, now) {
-  if (m.t === 'portal') { G.portals.push({ x: m.x, y: m.y, t0: performance.now(), id: m.id }); if (m.id === G.myId && G.me) G.ptWalk = { t0: performance.now(), x0: m.x, y0: m.y, x1: G.me.x, y1: G.me.y }; return true; }
+  if (m.t === 'portal') { const key = m.id + ':' + (m.k || 0); G.ptSeen = G.ptSeen || {}; if (G.ptSeen[key]) return true; if (ptBusy()) { G.ptPend = m; return true; } G.ptSeen[key] = 1; ptPlay(m); return true; }   /* ainda preparando a cidade (personagem novo): toca quando a tela de preparação sumir */
   if (m.t === 'wakebed') { try { if (typeof lieDown === 'function') { lieDown(m.k); setTimeout(() => { if (G.me && G.me.sleep && typeof getUp === 'function') getUp(); }, 2600); } } catch (e) { } return true; }
   return _peP2(m, now); }; }
 const PT_MS = { open: 900, walk0: 1100, walk1: 2300, hold: 2800, close: 3500 };

@@ -17,7 +17,8 @@ function sucRealmDay() { return typeof cpRec === 'function' ? estDay() - cpRec()
 /* a linha de sangue: herdeiro, irmão do rei e as cinco casas na ordem sorteada do reino */
 function sucLine() { const U = sucRec(), L = []; for (const k of ['alaric', 'corwyn']) if (U.alive[k] && U.king !== k) L.push(k); for (const h of (typeof cpRec === 'function' ? cpRec().line : HOUSES.map(x => x.id))) if (U.king !== 'h:' + h) L.push('h:' + h); return L; }
 function sucName(k) { if (k.startsWith('h:')) { const h = HOUSE_BY[k.slice(2)]; return h ? h.lord + ' (' + h.n + ')' : k; } return SUC_NAMES[k] || k; }
-function sucKingName() { const U = sucRec(); return U.king === 'edric' ? SUC_NAMES.edric : U.king.startsWith('h:') ? 'Rei ' + HOUSE_BY[U.king.slice(2)].lord.replace(/^(Lorde|Lady) /, '') : SUC_KINGNAME[U.king]; }
+function sucKingName() { const U = sucRec(); if (U.king && U.king.startsWith('h:') && !HOUSE_BY[U.king.slice(2)]) return 'Rei';   /* casa ainda não registrada (o mundo acabou de abrir): sem quebrar o carregamento */
+  return U.king === 'edric' ? SUC_NAMES.edric : U.king.startsWith('h:') ? 'Rei ' + HOUSE_BY[U.king.slice(2)].lord.replace(/^(Lorde|Lady) /, '') : SUC_KINGNAME[U.king]; }
 /* legitimidade: a antiga projeção (conselho 40%, povo 35%, Fé 25%) passa a medir o apoio de cada um */
 function sucLegit(k) { const E = typeof infElection === 'function' ? infElection() : [], au = (E.find(e => e.h === 'aurenfell') || {}).score || 50;
   if (k === 'edric' || k === 'alaric') return au; if (k === 'corwyn') { const U = sucRec(); return Math.min(SUC.buyMax, SUC.buyBase + U.buy); } if (k.startsWith('h:')) return (E.find(e => e.h === k.slice(2)) || {}).score || 0; return 0; }

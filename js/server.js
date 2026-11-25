@@ -479,6 +479,7 @@ function handleMove(p, m) {
     if (ti >= 0 && !p.dev && HOTEL_DOORS.has(ti) && hotelRoomOf(p) !== HOTEL_DOORS.get(ti)) { back(); return; }   // cabine de outro hóspede
     if (!c && ti >= 0) { const k = JAILCELLS.findIndex(q => q.tiles.has(ti) || (q.door[1] * MAP_W + q.door[0]) === ti); if (k >= 0 && st[k].locked && (q => q.door[1] * MAP_W + q.door[0])(JAILCELLS[k]) === ti) { back(); return; } } }
   if (p.sleep != null && m.w) p.sleep = null;   // voando / derrubado
+  if (p.sleep != null && !m.w) { const B0 = BEDS[p.sleep]; if (B0 && Math.hypot(+m.x - B0.x, +m.y - B0.y) < 0.35) { p.x = B0.x; p.y = B0.y; p.lastMv = now_(); return; } }   /* deitado na cama: a cama é sólida, mas quem dorme nela fica em cima (o catre da cela puxava o preso de volta e o acordava) */
   if (p.dev) { const x = +m.x, y = +m.y; if (isFinite(x) && isFinite(y)) { p.x = clamp(x, 1, MAP_W - 2); p.y = clamp(y, 1, MAP_H - 2); p.z = +m.z || 0; p.dir = m.d | 0; p.walking = !!m.w; p.lastMv = now_(); } return; }
   const now = now_();
   const x = +m.x, y = +m.y;
