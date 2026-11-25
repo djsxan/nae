@@ -2015,7 +2015,7 @@ function fadeFlash() {
 // ============================================================
 function prebakeCity(done) {
   if (typeof S3 === 'undefined' || !S3.ok) { done && done(); return; }
-  const jobs = [], seen = new Set(), X0 = CASTLE.x0 - 6, X1 = CASTLE.x1 + 6, Y0 = CASTLE.y0 - 6, Y1 = CASTLE.y1 + 6;
+  const jobs = [], seen = new Set(), X0 = CASTLE.x0 - 6, X1 = (typeof CITY_X1 !== "undefined" ? Math.max(CASTLE.x1, CITY_X1) : CASTLE.x1) + 6, Y0 = CASTLE.y0 - 6, Y1 = CASTLE.y1 + 6;   /* a cidade inteira, com o bairro nobre e a faixa norte */
   for (const b of BUILDINGS) { if (b.lot) continue; const k = archKey(b) + (b.door || 'S'); if (!seen.has(k)) { seen.add(k); jobs.push(() => { const sp = buildingSprite(b, false); if (sp) { maskOf(sp); silhouette(sp); } }); } }
   for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) {
     if (!inBounds(x, y)) continue;

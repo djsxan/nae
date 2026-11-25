@@ -100,6 +100,7 @@ function zoneOf(x, y) {
   const dx = x - CENTER, dy = y - CENTER;
   if (Math.max(Math.abs(dx - 0.5), Math.abs(dy - 0.5)) <= SAFE_R + 1.5) return Z.VILLAGE;
   if (!TEST3D && dx > 0 && dx - 0.5 <= SAFE_R + 1.5 + EAST_EXT && Math.abs(dy - 0.5) <= SAFE_R + 1.5) return Z.VILLAGE;   /* bairro das Casas Nobres */
+  if (!TEST3D && dy < 0 && dy >= -(SAFE_R + 1.5 + NORTH_EXT) && dx >= -(SAFE_R + 1.5) && dx - 0.5 <= SAFE_R + 1.5 + EAST_EXT) return Z.VILLAGE;   /* faixa norte nova (Prancheta 25/11) */
   const d = Math.hypot(dx, dy) + (vnoise(x / 12, y / 12, 55) - 0.5) * 10;
   if (d < 62) return Z.OUTSKIRTS;
   if (d < 82) return Z.FIELDS;
@@ -114,15 +115,16 @@ function zoneOf(x, y) {
 }
 
 // ---------- cidade de Nae (coordenadas relativas ao centro) ----------
-const CASTLE = { x0: C - 36, y0: C - 36, x1: C + 37, y1: C + 37 };   /* muralha maior (Prancheta 24/11) */
+const NORTH_EXT = 12;   /* a muralha norte avançou mais 12 casas (Prancheta 25/11) */
+const CASTLE = { x0: C - 36, y0: C - 36 - NORTH_EXT, x1: C + 37, y1: C + 37 };   /* muralha maior (Prancheta 24/11 e 25/11) */
 const CASTLE_OLD = { x0: C - 32, y0: C - 32, x1: C + 33, y1: C + 33 };   /* contorno antigo: o sorteio das casas e a vila do oeste continuam usando, para os prédios não mudarem */   // muralha externa (o sorteio da cidade usa este contorno)
-const EAST_EXT = 31, CITY_X1 = CASTLE.x1 + EAST_EXT;   // a muralha leste avançou 16 casas (Casas Nobres) e mais 15 (rua nova: Clube, Termas e Casa de Veludo)
+const EAST_EXT = 40, CITY_X1 = CASTLE.x1 + EAST_EXT;   // a muralha leste avançou 16 casas (Casas Nobres) e mais 15 (rua nova: Clube, Termas e Casa de Veludo)
 const BANNER_HOUSE = {};   /* estandarte de casa: índice do tile -> casa */
 const HOUSE_SEATS = [   /* sedes das casas rivais: casarões com jardim murado, de frente para a rua do bairro */
   { id: 'valcarne', name: 'Casa Valcarne', y: -28 }, { id: 'draemor', name: 'Casa Draemor', y: -18 }, { id: 'moranthe', name: 'Casa Moranthe', y: -10 },
   { id: 'thornvale', name: 'Casa Thornvale', y: 8 }, { id: 'solmire', name: 'Casa Solmire', y: 18 }];
 /* replanejamento da cidade (Prancheta, 23/11): [prédio, x, y relativos ao centro, largura, profundidade, porta, coluna da porta] */
-const CITY_RELAYOUT = [[0, 37, 5, 10, 13, 'S', 5], [3, -15, 10, 9, 7, 'E', 3], [4, 12, 7, 8, 6, 'E', 3], [5, -15, 25, 10, 5, 'S', 5], [7, -22, -8, 5, 5, 'S', 2], [8, -22, 10, 5, 4, 'E', 2], [11, -29, -34, 11, 16, 'S', 5], [12, 12, 14, 8, 5, 'S', 4], [13, -16, -8, 4, 12, 'S', 2], [14, -29, 16, 5, 4, 'S', 2], [15, 52, -21, 10, 8, 'S', 2], [16, 22, -21, 8, 14, 'S', 1], [17, 22, 24, 6, 5, 'S', 3], [18, 13, -14, 7, 8, 'E', 3], [20, -21, -14, 5, 4, 'S', 2], [21, 37, 23, 4, 6, 'S', 2], [22, 29, 25, 6, 4, 'S', 3], [23, 13, -34, 5, 9, 'S', 2], [24, 7, 22, 7, 6, 'S', 3], [25, 43, 23, 4, 6, 'S', 1], [35, -29, 22, 9, 9, 'E', 4], [37, 13, -22, 8, 8, 'E', 3], [38, 13, -5, 7, 7, 'S', 3], [39, 23, -5, 7, 7, 'S', 3], [42, -13, 19, 5, 4, 'E', 2], [45, 19, -34, 11, 9, 'E', 4], [46, 50, 23, 10, 7, 'S', 5], [47, 52, -9, 10, 8, 'S', 5], [48, 38, -34, 10, 9, 'S', 4], [49, 24, 7, 9, 12, 'S', 3], [50, 51, -34, 13, 9, 'S', 6], [51, 35, -21, 13, 20, 'S', 6], [52, 50, 5, 12, 11, 'S', 5], [53, 16, 22, 4, 6, 'S', 1]];
+const CITY_RELAYOUT = [[0, 43, 7, 13, 13, 'S', 6], [3, -15, 10, 9, 7, 'E', 3], [4, 12, 7, 8, 6, 'E', 3], [5, -15, 25, 10, 5, 'S', 5], [7, -22, -8, 5, 5, 'S', 2], [8, -22, 10, 5, 4, 'E', 2], [11, -29, -45, 11, 20, 'S', 5], [12, 12, 14, 8, 5, 'S', 4], [13, -16, -8, 4, 12, 'S', 2], [14, -29, 16, 5, 4, 'S', 2], [15, 64, -33, 10, 8, 'S', 2], [16, 26, -21, 10, 15, 'E', 8], [17, 22, 24, 6, 5, 'S', 3], [18, 13, -19, 7, 10, 'E', 5], [20, -21, -14, 5, 4, 'S', 2], [21, 37, 23, 4, 6, 'S', 2], [22, 29, 25, 6, 4, 'S', 3], [23, 7, -45, 11, 9, 'S', 5], [24, 7, 22, 7, 6, 'S', 3], [25, 43, 23, 4, 6, 'S', 1], [35, -29, 22, 9, 9, 'E', 4], [37, 13, -32, 8, 8, 'E', 3], [38, 13, -5, 7, 7, 'S', 3], [39, 26, -5, 10, 7, 'S', 5], [42, -13, 19, 5, 4, 'E', 2], [45, 21, -45, 11, 9, 'S', 5], [46, 53, 23, 21, 7, 'S', 10], [47, 64, 10, 10, 8, 'S', 5], [48, 35, -45, 10, 9, 'S', 4], [49, 24, 7, 9, 12, 'S', 3], [50, 50, -45, 19, 9, 'S', 9], [51, 43, -21, 13, 20, 'S', 6], [52, 63, -21, 12, 11, 'S', 5], [53, 16, 22, 4, 6, 'S', 1]];
 const CITY_LOTS = [16];   /* a Casa Aldren virou o lote vazio do bairro nobre */
 const KEEP = { x0: C - 13, y0: C - 30, x1: C + 11, y1: C - 3, by: C - 12, yx0: C - 11, yx1: C + 9 };   // castelo: corpo ao norte (até by) e pátio mais estreito ao sul (yx0..yx1)
 const KEEP_OLD = { x0: C - 9, y0: C - 22, x1: C + 10, y1: C - 3 };   // contorno antigo: só para o sorteio das casas continuar igual
@@ -310,8 +312,27 @@ function minFl(b) { return b && b.kind === 'castle' ? -2 : b && b.cellar ? -1 : 
 const DORM_EXTRA = { 1: { 1: 1 }, 3: { 1: 2 }, 4: { 0: ['bunk'], 1: ['bunk'] }, 11: { 1: 1 }, 35: { 0: 1 }, 36: { 0: [{ t: 'cot', i: 7, j: 3 }] }, 40: { 0: 1 }, 41: { 0: 1 }, 22: { 0: 1 }, 25: { 0: 1 }, 26: { 0: ['bunk'] }, 27: { 0: ['bunk'] }, 30: { 0: ['bunk'] }, 31: { 0: 1 }, 15: { 0: 1 }, 17: { 0: 1, 1: 4 } };   /* número = catres; lista = tipos (beliche = 2 camas) */
 function dormBi(b) { if (typeof BUILDINGS === 'undefined' || !b) return -1; if (BUILDINGS.length && BUILDINGS[BUILDINGS.length - 1].dbi !== BUILDINGS.length - 1) BUILDINGS.forEach((q, i) => { q.dbi = i; }); const i = BUILDINGS.indexOf(b); return i >= 0 ? i : (b.dbi != null ? b.dbi : -1); }   /* o desenho usa cópias do prédio: a cópia leva o dbi */
 const dormExtraKey = (b, fl) => { const bi = dormBi(b), D = DORM_EXTRA[bi]; return D && D[fl] ? 'd' + bi : ''; };
+/* prédios que cresceram na Prancheta de 25/11: área antiga (casas) → o andar ganha móveis do mesmo estilo na proporção do espaço novo */
+const FILL_OLD = { 11: 176, 50: 117, 46: 70, 23: 45, 18: 56, 39: 49 };
+const FILL_SKIP = new Set(['stairup', 'stairdown', 'ladder', 'laddertop', 'spiral', 'spiraltop', 'lift', 'lifttop', 'clift', 'clifttop', 'extdoor', 'blk', 'rug', 'nrug', 'kilim', 'starrug', 'tatami', 'bed', 'cot', 'bunk', 'futon', 'platbed', 'chest', 'stove', 'fireplace', 'vault', 'bars', 'celldoor', 'cabindoor', 'clubbar', 'altar', 'counter', 'hpart', 'mezzrail', 'gvoid', 'ofuro', 'clock', 'ratesboard', 'goldbars', 'chandelier', 'spellbooks', 'mirror']);
+function intFill(b, fl, L) { const bi = dormBi(b), old = FILL_OLD[bi]; if (!old || TEST3D) return L; const [w, h] = bDims(b), ratio = w * h / old; if (ratio < 1.15) return L;
+  const thin = hasIwalls(b), pal = L.F.filter(f => !FILL_SKIP.has(f.t) && !f.cab && !f.dorm && (!thin || !FURN_SOLID.has(f.t)) && (f.w || 1) * (f.h || 1) <= 4); if (!pal.length) return L;
+  const base = L.F.filter(f => !FILL_SKIP.has(f.t)).length, extra = Math.round(base * (ratio - 1)); if (extra <= 0) return L;
+  const K = (i, j) => i + ',' + j, occ = new Set(), near = new Set(), dc = doorCol(b);
+  for (const f of L.F) for (let a = 0; a < (f.w || 1); a++) for (let c = 0; c < (f.h || 1); c++) occ.add(K(f.i + a, f.j + c));
+  if (L.npc) occ.add(K(L.npc.i, L.npc.j));
+  for (const sf of [fl, fl - 1]) { if (sf < minFl(b) || sf >= floorsOf(b) - 1) continue; const sp = stairSpec(b, sf); for (const k0 of ['L', 'U', 'entry', 'arrive', 'trig']) if (sp[k0]) for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) occ.add(K(sp[k0][0] + a, sp[k0][1] + c)); }
+  if (fl === 0) { for (let j = h - 3; j < h; j++) for (let i = dc - 1; i <= dc + 1; i++) occ.add(K(i, j)); if (b.door2L) for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) occ.add(K(b.door2L[0] + a, b.door2L[1] + c)); }
+  const cand = []; for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const wall = (i === 0 || i === w - 1 ? 1 : 0) + (j === 0 ? 1 : 0); cand.push([i, j, (wall ? 0 : 10) + ((i * 7 + j * 13 + bi * 5 + fl * 3) % 10)]); }
+  cand.sort((a, c) => a[2] - c[2]);
+  const F = L.F.slice(); let added = 0, k = 0;
+  for (let tries = 0; tries < extra * 4 && added < extra; tries++) { const p = pal[k++ % pal.length], pw = p.w || 1, ph = p.h || 1;
+    const spot = cand.find(([i, j]) => { if (i + pw > w || j + ph > h) return false; for (let a = 0; a < pw; a++) for (let c = 0; c < ph; c++) if (occ.has(K(i + a, j + c)) || near.has(K(i + a, j + c))) return false; return true; });
+    if (!spot) continue; const [i, j] = spot, q = Object.assign({}, p, { i, j }); delete q.dorm; F.push(q); added++;
+    for (let a = -1; a <= pw; a++) for (let c = -1; c <= ph; c++) { if (a >= 0 && a < pw && c >= 0 && c < ph) occ.add(K(i + a, j + c)); else near.add(K(i + a, j + c)); } }
+  return { F, npc: L.npc }; }
 function interiorLayout0(b, fl = 0) {
-  const L = interiorLayoutBase(b, fl), bi = dormBi(b), D = DORM_EXTRA[bi], n = D && D[fl]; if (!n || intEdit(b, fl)) return L;   /* planta editada já traz as camas dos moradores */
+  const L = intEdit(b, fl) ? interiorLayoutBase(b, fl) : intFill(b, fl, interiorLayoutBase(b, fl)), bi = dormBi(b), D = DORM_EXTRA[bi], n = D && D[fl]; if (!n || intEdit(b, fl)) return L;   /* planta editada já traz as camas dos moradores */
   const [w, h] = bDims(b), occ = new Set(), K = (i, j) => i + ',' + j, dc = doorCol(b);
   for (const q of L.F) for (let a = 0; a < (q.w || 1); a++) for (let c = 0; c < (q.h || 1); c++) occ.add(K(q.i + a, q.j + c));
   if (L.npc) occ.add(K(L.npc.i, L.npc.j));
@@ -713,14 +734,14 @@ const NPCS = TEST3D ? [] : [
   { id: 'captain', name: 'Capitã Mirela Varn', kind: 'captain', ...npcIn(BUILDINGS[4]) },
   { id: 'guard1', name: 'Sentinela Aldric', kind: 'guard', x: C - 0.7, y: C + 34.6 },   /* muralha maior (24/11): portões 4 casas para fora */
   { id: 'guard2', name: 'Sentinela Bren', kind: 'guard', x: C + 2.4, y: C + 34.6 },
-  { id: 'guard3', name: 'Sentinela Odo', kind: 'guard', x: C - 1.4, y: C - 33.4 },
-  { id: 'guard4', name: 'Sentinela Wyn', kind: 'guard', x: C + 2.4, y: C - 33.4 },
+  { id: 'guard3', name: 'Sentinela Odo', kind: 'guard', x: C - 1.4, y: CASTLE.y0 + 2.6 },
+  { id: 'guard4', name: 'Sentinela Wyn', kind: 'guard', x: C + 2.4, y: CASTLE.y0 + 2.6 }   /* portão norte acompanha a muralha (25/11) */,
   { id: 'fruit', name: 'Marta, a Fruteira', kind: 'fruit', x: C - 3, y: C + 9, stall: [C - 3, C + 10] },
   { id: 'executioner', name: 'Mestre Corvo, o Carrasco', kind: 'executioner', x: C - 3.9, y: C + 4.05 },
   { id: 'tailor', name: 'Mestre Aurélio, o Alfaiate Real', kind: 'tailor', ...npcIn(BLD_BY('boutique'), { x: C - 12, y: C + 1 }) },
   { id: 'noble1', name: 'Lady Isaura Valmont', kind: 'noble', x: C + 23, y: C - 18, route: [[C + 23, C - 18], [C + 23, C - 12], [C + 21, C - 6], [C + 23, C + 2], [C + 23, C - 18]] },
   { id: 'noble2', name: 'Lorde Cassian Aldren', kind: 'noble2', x: C + 21, y: C + 2, route: [[C + 21, C + 2], [C + 21, C - 4], [C + 23, C - 11], [C + 21, C - 16], [C + 21, C + 2]] },
-  { id: 'gardener', name: 'Tobias, o Jardineiro', kind: 'gardener', x: C + 19.5, y: C - 15.5 },
+  { id: 'gardener', name: 'Tobias, o Jardineiro', kind: 'gardener', x: C + 20.5, y: C - 15.5 }   /* um passo para fora da Casa 18, que cresceu (25/11) */,
   { id: 'guard5', name: 'Sentinela Corin', kind: 'guard', x: C - 32.7, y: C + 4.3 },
   { id: 'guard6', name: 'Sentinela Lys', kind: 'guard', x: C - 32.7, y: C + 6.7 },
   // patrulhas em dupla nas duas ruas principais e a guarda da porta do castelo
@@ -1068,7 +1089,7 @@ function generateWorld() {
   const reserve = (ax, ay, bx, by) => { for (let y = ay; y <= by; y++) for (let x = ax; x <= bx; x++) if (inb(x, y)) used[idx(x, y)] = 1; };
 
   // área da cidade: limpa e cria o fosso
-  for (let y = C - SAFE_R - 1; y <= C + SAFE_R + 2; y++) for (let x = C - SAFE_R - 1; x <= C + SAFE_R + 2; x++) {
+  for (let y = Math.min(C - SAFE_R - 1, y0 - 6); y <= C + SAFE_R + 2; y++) for (let x = C - SAFE_R - 1; x <= C + SAFE_R + 2; x++) {   /* cobre a faixa norte nova (a muralha não é mais um quadrado) */
     const i = idx(x, y);
     obj[i] = O.NONE; river[i] = 0;
     ground[i] = T.GRASS;
@@ -1087,7 +1108,8 @@ function generateWorld() {
   };
   const clearSide = (x, y) => { if (inb(x, y) && BLOCKING.has(obj[idx(x, y)])) obj[idx(x, y)] = O.NONE; };
   const RG = 7; // distância do anel à muralha
-  for (let k = x0 - RG; k <= x1 + RG; k++) for (let w = 0; w < 2; w++) { road(k, y0 - RG + w, 1); road(k, y1 + RG - w, 1); road(x0 - RG + w, k, 2); road(x1 + RG - w, k, 2); }
+  for (let k = x0 - RG; k <= x1 + RG; k++) for (let w = 0; w < 2; w++) { road(k, y0 - RG + w, 1); road(k, y1 + RG - w, 1); }
+  for (let k = y0 - RG; k <= y1 + RG; k++) for (let w = 0; w < 2; w++) { road(x0 - RG + w, k, 2); road(x1 + RG - w, k, 2); }   /* as estradas dos lados seguem a altura da muralha */
   const lastLand = (sx, sy, dx, dy) => { let L = 0; for (let k = 0; k < 140; k++) { const x = sx + dx * k, y = sy + dy * k; if (!inb(x, y)) break; if (ground[idx(x, y)] !== T.WATER) L = k; } return L; };
   // sul: estrada larga (4) do portão principal até o mar
   { const L = lastLand(C, y1 + 1, 0, 1); for (let k = 1; k <= L; k++) for (let w = -1; w <= 2; w++) road(C + w, y1 + k, 2, 1); for (let k = 1; k <= L; k++) { clearSide(C - 2, y1 + k); clearSide(C + 3, y1 + k); } }
@@ -1106,6 +1128,7 @@ function generateWorld() {
   const sideT = [-21, -11, 12, 22];
   towers.push([x0, y0], [x1 - 1, y0], [x0, y1 - 1], [x1 - 1, y1 - 1]);
   for (const t of sideT) { towers.push([C + t, y0], [C + t, y1 - 1], [x0, C + t], [x1 - 1, C + t]); }
+  for (const ty of [C - 32, C - 43]) if (ty > y0 + 2) towers.push([x0, ty], [x1 - 1, ty]);   /* torres no trecho novo dos lados */
   towers.push([C - 2, y0], [C + 2, y0]);                                   // portão norte (secundário)
   towers.push([x0, C + 2], [x0, C + 8]);                                   // portão oeste (rua nova)
   const gateTowers = [[C - 3, y1 - 1], [C + 3, y1 - 1]];                    // portão principal: torres altas (as duas encostadas no portão)
@@ -1520,6 +1543,22 @@ function generateWorld() {
   if (!TEST3D) { /* replanejamento 2 (Prancheta 24/11): caminhos de pedra até as portas novas; por último, porque o bairro nobre é limpo e ajardinado antes */
     const L2 = [[20, 9, 21, 10], [21, 7, 22, 9], [-10, 30, -10, 31], [54, -13, 55, -12], [23, -7, 24, -6], [22, -7, 23, -6], [21, -6, 22, 4], [25, 29, 25, 30], [20, -10, 21, -9], [21, -22, 21, -10], [32, 29, 32, 30], [15, -25, 15, -24], [3, 28, 10, 28], [44, 29, 44, 30], [20, -18, 21, -17], [21, -22, 21, -18], [16, 2, 17, 4], [26, 2, 27, 4], [-4, -7, 0, -6], [0, -7, 1, -3], [1, -7, 3, -6], [30, -30, 35, -29], [54, 30, 55, 31], [57, -1, 57, 0], [40, -25, 42, -24], [27, 19, 27, 20], [54, -25, 57, -24], [41, -1, 41, 0], [55, 16, 56, 17], [17, 28, 18, 29]];
     for (const [ax, ay, bx, by] of L2) for (let y = C + ay; y <= C + by; y++) for (let x = C + ax; x <= C + bx; x++) { if (!inb(x, y)) continue; const i = idx(x, y); if (bld[i] >= 0 || obj[i] === O.WALL || obj[i] === O.PART || obj[i] === O.TOWER || obj[i] === O.GATE || obj[i] === O.FOUNTAIN) continue; obj[i] = O.NONE; ground[i] = T.COBBLE; rdir[i] = bx - ax > by - ay ? 1 : 2; } }
+  if (!TEST3D) { /* replanejamento 3 (Prancheta 25/11): Rua da Muralha Norte, travessas até as portas novas e praças nos espaços que ficaram livres */
+    const L3 = [[-35, -36, 75, -35], [49, 20, 51, 21], [58, -25, 66, -24], [20, -15, 20, -14], [10, 28, 10, 29], [21, -28, 22, -25], [31, 2, 32, 4], [56, 30, 63, 31], [63, 18, 69, 19], [49, -1, 49, 0], [68, -10, 69, -1]];   /* a rua do norte e as travessas até as portas que ficaram longe */
+    const solidO = o => o === O.WALL || o === O.PART || o === O.TOWER || o === O.GATE || o === O.FOUNTAIN;
+    for (const [ax, ay, bx, by] of L3) for (let y = C + ay; y <= C + by; y++) for (let x = C + ax; x <= C + bx; x++) { if (!inb(x, y)) continue; const i = idx(x, y); if (bld[i] >= 0 || solidO(obj[i])) continue; ground[i] = T.COBBLE; obj[i] = O.NONE; rdir[i] = ax === bx ? 2 : ay === by ? 1 : (bx - ax >= by - ay ? 1 : 2); }
+    const doorNear = new Set(); for (const b of BUILDINGS) { if (b.ham) continue; const [dx, dy] = doorTile(b); for (let a = -2; a <= 2; a++) for (let c = -2; c <= 2; c++) doorNear.add(idx(dx + a, dy + c)); }
+    const PLAZAS = [[-17, -46, -2, -33], [43, -34, 62, -23], [64, -9, 75, 8]];   /* Praça do Portão Norte, Praça do Clube, Jardim Leste */
+    for (const [ax, ay, bx, by] of PLAZAS) { const X0 = C + ax, Y0 = C + ay, X1 = C + bx, Y1 = C + by, free = (x, y) => { if (!inb(x, y)) return false; const i = idx(x, y); return bld[i] < 0 && !solidO(obj[i]) && !rdir[i]; };
+      for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) { if (!free(x, y)) continue; const i = idx(x, y), edge = x === X0 || y === Y0 || x === X1 || y === Y1; ground[i] = edge ? T.GRASS : ((x + y) % 2 ? T.FLOORSTONE : T.COBBLE); obj[i] = O.NONE; }
+      const put = (x, y, o) => { if (!free(x, y) || doorNear.has(idx(x, y))) return false; obj[idx(x, y)] = o; if (o === O.BENCH) seats.push({ x, y, dir: 7, h: 0.45, bi: -1 }); return true; };
+      const cx = Math.round((X0 + X1) / 2), cy = Math.round((Y0 + Y1) / 2), big = X1 - X0 >= 8 && Y1 - Y0 >= 8;
+      if (big && put(cx, cy, O.FOUNTAIN)) { for (const [dx, dy] of [[-2, 0], [2, 0], [0, -2], [0, 2]]) put(cx + dx, cy + dy, O.BENCH); for (const [dx, dy] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) put(cx + dx, cy + dy, O.FLOWERBED); }
+      else { put(cx, cy, O.STATUE); for (const [dx, dy] of [[-1, 0], [1, 0]]) put(cx + dx, cy + dy, O.BENCH); }
+      for (const [x, y] of [[X0 + 1, Y0 + 1], [X1 - 1, Y0 + 1], [X0 + 1, Y1 - 1], [X1 - 1, Y1 - 1]]) put(x, y, O.LAMP);
+      let k = 0; for (let x = X0; x <= X1; x += 3) for (const y of [Y0, Y1]) put(x, y, (k++ % 3) ? O.FLOWERBED : (k % 2 ? O.OAK : O.BIRCH));
+      for (let y = Y0 + 3; y < Y1; y += 3) for (const x of [X0, X1]) put(x, y, (k++ % 2) ? O.FLOWERBED : O.BUSH); }
+  }
   for (const b of BUILDINGS) { if (!b.lot) continue; const [dx, dy] = doorTile(b);   /* o lote vazio por último: as passagens de decoração do bairro limpam e enfeitam a área */
     for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { const i = idx(x, y), edge = x === b.x || y === b.y || x === b.x + b.w - 1 || y === b.y + b.h - 1; ground[i] = (x * 7 + y * 3) % 5 ? T.DIRT : T.GRASS; obj[i] = edge && !(Math.abs(x - dx) + Math.abs(y - dy) <= 1 && (x === dx || y === dy)) ? O.LOWWALL : O.NONE; rdir[i] = 0; } }
   for (let k = seats.length - 1; k >= 0; k--) if (seats[k].bi < 0) seats.splice(k, 1);

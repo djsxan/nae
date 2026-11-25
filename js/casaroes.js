@@ -51,7 +51,7 @@ if (typeof hMove === 'function') { const _hmC = hMove; hMove = function (n, T, d
   if (T.fl) { _hmC(n, T, dt); return; }
   const d = dist(n.x, n.y, T.x, T.y); if (d < 0.2) { n.walk = false; n.legs = null; n.path = null; return; }
   if (d < 0.9 && WORLD.bld[tileAt(n.x, n.y)] === WORLD.bld[tileAt(T.x, T.y)]) { _hmC(n, T, dt); return; }
-  if (d > 70) { n.x = T.x; n.y = T.y; n.walk = false; return; }   /* muito longe (o mundo acabou de abrir) */
+  if (d > 110) { n.x = T.x; n.y = T.y; n.walk = false; return; }   /* muito longe (o mundo acabou de abrir); a cidade cresceu (25/11): de um canto ao outro passa de 70 */
   if (npcWalk(n, T.x, T.y, 1.1, dt)) { n.walk = false; n.legs = null; n.path = null; } else n.walk = true; }; }
 
 /* ---- quem pode passar por onde: guardas na porta da frente, porta dos fundos aberta por gazua ---- */
