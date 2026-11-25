@@ -198,7 +198,7 @@ function thermaeInterior(o, b, { w, h, hw, t, knee }) {
     const pl = new THREE.PointLight(q.k === 'hot' ? 0x8fe8e0 : 0x8cc4ff, 0.5, 5); pl.position.set(cx, 0.6, cz); o.add(pl);
 }
   // ---- paredes internas baixas, com pilastras nos vãos ----
-  { const HH = 1.0; for (const [u0, v0, u1, v1] of thermaeWalls(b)) { const alongX = Math.abs(v0 - v1) < 0.01, L = alongX ? Math.abs(u1 - u0) : Math.abs(v1 - v0), cx = (u0 + u1) / 2, cz = (v0 + v1) / 2; if (L < 0.05) continue;
+  { const HH = 1.0; for (const [u0, v0, u1, v1] of (iwallsLocal(b, 0) || [])) { const alongX = Math.abs(v0 - v1) < 0.01, L = alongX ? Math.abs(u1 - u0) : Math.abs(v1 - v0), cx = (u0 + u1) / 2, cz = (v0 + v1) / 2; if (L < 0.05) continue;
       B(alongX ? L : 0.2, HH, alongX ? 0.2 : L, cx, HH / 2, cz, marb, 0.6); B(alongX ? L + 0.04 : 0.28, 0.07, alongX ? 0.28 : L + 0.04, cx, HH + 0.035, cz, marbD);
       B(alongX ? L : 0.22, 0.12, alongX ? 0.22 : L, cx, HH - 0.2, cz, smat(null, '#2a5a9a', { rough: 0.45 }));   /* friso azul */
       for (const e of [0, 1]) { const px = alongX ? (e ? u1 : u0) : u0, pz = alongX ? v0 : (e ? v1 : v0); if (px < 0.3 || px > w - 0.3 || pz < 0.3 || pz > h - 0.3) continue; o.add(mk(new THREE.CylinderGeometry(0.11, 0.13, 1.7, 12).translate(px, 0.85, pz), marb)); B(0.34, 0.1, 0.34, px, 1.75, pz, marbD); B(0.3, 0.08, 0.3, px, 0.04, pz, marbD); } } }
