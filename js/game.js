@@ -397,7 +397,7 @@ function updateLocal(now, dt) {
   if (G.push) { const kp = (now - G.push.t0) / 260; if (kp >= 1) G.push = null; else v = G.push.v; }
   const running = !!v && !kneel && !((me.lost || 0) & 24) && !(me.body && Math.max(PART_STATE(me.body.legL), PART_STATE(me.body.legR)) >= 3) && G.keys.has('shift') && !crouchKey && !G.tired && !me.downed && !me.carrying && G.stam > 0;
   if (running) { G.stam = Math.max(0, G.stam - STAM_DRAIN * dt); G.stamT = now; if (G.stam <= 0) G.tired = true; }
-  else if (now - G.stamT > STAM_DELAY) G.stam = Math.min(stamMax(), G.stam + STAM_REGEN * dt * (v ? 0.6 : me.sit ? 2.5 : 1) * ((me.food ?? 100) < 30 ? 0.6 : 1) * ((me.water ?? 100) < 30 ? 0.7 : 1) * ((me.cold || 0) > 50 ? 0.6 : 1));
+  else if (now - G.stamT > STAM_DELAY) G.stam = Math.min(stamMax(), G.stam + STAM_REGEN * dt * (v ? 0.6 : me.sit ? 2.5 : 1) * ((me.food ?? 100) < 30 ? 0.6 : 1) * ((me.water ?? 100) < 30 ? 0.7 : 1) * ((me.cold || 0) > 50 ? 0.6 : 1) * (me.buffs && me.buffs.love > now ? 1.15 : 1));
   revealFog(me.x, me.y);
   if (G.tired && G.stam >= stamMax() * 0.3) G.tired = false;
   me.running = running;
