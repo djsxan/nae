@@ -3212,7 +3212,7 @@ function hostTick() {
       if (inSafe(p.x, p.y)) { hr *= 2; mr *= 2; }
       if (p.sit) { hr = Math.ceil(hr * 2.5); mr = Math.ceil(mr * 2.5); }
       if (p.sleep != null) { const k = estHomeBed(p) ? 6 : 4; hr = Math.ceil(hr * k); mr = Math.ceil(mr * k); }   // na própria cama descansa melhor
-      if (buffOn(p, 'rested')) { hr = Math.ceil(hr * 1.3); mr = Math.ceil(mr * 1.3); } if (buffOn(p, 'love')) { hr = Math.ceil(hr * 1.15); mr = Math.ceil(mr * 1.15); }   /* apaixonado */
+      if (buffOn(p, 'rested')) { hr = Math.ceil(hr * 1.3); mr = Math.ceil(mr * 1.3); } if (buffOn(p, 'love')) { const lm = 1 + 0.15 * (p.loveM || 1); hr = Math.ceil(hr * lm); mr = Math.ceil(mr * lm); }   /* apaixonado (mais forte com atração) */   /* apaixonado */
       p.hp = Math.min(p.maxHp, p.hp + hr); p.mp = Math.min(p.maxMp, p.mp + mr);
       sendStat(p);
     }

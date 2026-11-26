@@ -132,7 +132,7 @@ function affParse(v) { if (!v || typeof v !== 'string') return null; const [k, w
 if (typeof applySnapshot === 'function') { const _asA = applySnapshot; applySnapshot = function (m, now) { _asA(m, now); for (const r of m.p || []) { const e = G.players[r[0]]; if (e) e.aff = affParse(r[14]); } }; }
 /* desenho: durante abraços e beijos quem conduz desenha o par inteiro (no meio dos dois); o outro não se desenha */
 if (typeof drawHeroEntity === 'function') { const _dhA = drawHeroEntity; drawHeroEntity = function (ctx, e, sx, sy, now) { const A = e && !e.isNpc && e.aff;
-  if (A && A.k !== 'hand' && R3.ok && !e.downed) { const o = G.players[A.w]; if (o && o.visible !== false && o.aff && o.aff.w === e.id) {
+  if (A && A.k !== 'hand' && GEST2[A.k] && R3.ok && !e.downed) {   /* só os gestos em pé desta versão */ const o = G.players[A.w]; if (o && o.visible !== false && o.aff && o.aff.w === e.id) {
     if (!A.lead) { e._spr = null; return; }
     const pa = tileW(e.rx, e.ry, 0), pb = tileW(o.rx, o.ry, 0), flip = A.side < 0, s = affPairSprite(A.k, e, o, flip);
     if (s) { ctx.imageSmoothingEnabled = true; const mx = sx + (pb.x - pa.x) / 2, my = sy + (pb.y - pa.y) / 2; softDab(ctx, mx, my, 16, '#000000', 0.35); pblit(ctx, s, mx, my); e._spr = s; e._sx = mx; e._sy = my; e._drawT = now; if (o.emote) o.emote = null; return; } } }
