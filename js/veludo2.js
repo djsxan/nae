@@ -141,3 +141,84 @@ if (typeof progEvent === 'function' && typeof G !== 'undefined') { const _peV2 =
   if (m.t === 'velfx' && m.k === 'sit') { setTimeout(() => { if (typeof sitDown === 'function' && WORLD.seats[m.s]) sitDown(m.s); }, 250); return true; }
   if (m.t === 'velfx' && m.k === 'stand') { if (typeof standUp === 'function' && G.me && G.me.sit) standUp(); return true; }
   return _peV2(m, now); }; }
+
+// ============================================================
+//  CASA DE VELUDO (versão 2): os quartos do 1º e do 2º andar e o elevador
+//  Sobe-se pelo elevador de latão (a ascensorista leva ao andar). A subida é livre, mas quem é pego num andar
+//  sem motivo (sem quarto ali, sem companhia) arruma problema com o capanga do andar.
+//  Quarto por noite (100, com a Mirela): cama para dormir (descanso de pousada) e chá ou vinho servidos pela criada.
+//  Companhia: Lis ou Dália sobem com o cliente e entram num quarto livre; com os 6 ocupados, ela pede para esperar.
+// ============================================================
+const VL_ROOM = { price: 100, tea: 10, wine: 15, visit: 900000, girlAway: 60000 };
+const VL_RSPOT = { 1: { p: [2.5, 1.5], g: [2.5, 0.55], u: [0, 4] }, 2: { p: [6.5, 1.5], g: [7.5, 0.55], u: [4, 9] }, 3: { p: [9.5, 1.5], g: [10.5, 1.5], u: [9, 13] } };   /* onde o cliente e a moça ficam em cada quarto (1 a 3, da esquerda para a direita) */
+VEL_STAFF.push(
+  { id: 'vl_lift', b: 'velvet', kind: 'vl_liftg', name: 'Lan, a ascensorista', at: [9.6, 2.5], dir: 1 },
+  { id: 'vl_c7', b: 'velvet', kind: 'vl_cap', name: 'Fei, capanga do 1º andar', at: [1.5, 8.6], fl: 1, dir: 1, cap: 1 },
+  { id: 'vl_c8', b: 'velvet', kind: 'vl_cap', name: 'Lei, capanga do 2º andar', at: [11.5, 9.2], fl: 2, dir: 5, cap: 1 });
+{ const _vpV = vlPost; vlPost = function (T) { const A = typeof S !== 'undefined' && S.vlAway && S.vlAway[T.id]; if (A && Date.now() < A.until) return A; return _vpV(T); }; }
+
+// ---------------- SERVIDOR ----------------
+function vlRooms() { const bi = vlBi(), out = []; BEDS.forEach((b, i) => { if (b.vlRoom && b.bi === bi) out.push({ k: b.vlRoom, fl: b.fl, n: +b.vlRoom % 100, bed: i }); }); return out; }
+function vlRoomRec() { const R = velRec(), d = estDay(); if (!R.rooms || R.rooms.d !== d) R.rooms = { d, own: {} }; return R.rooms; }
+function vlRoomOf(p) { const O = vlRoomRec().own, k = estOwner(p); for (const r in O) if (O[r] === k) return r; return null; }
+function vlRoomFree(k) { return !vlRoomRec().own[k] && !(S.vlUse && Date.now() < (S.vlUse[k] || 0)); }
+function vlRoomAt(p) { const fl = p.fl || 0; if (fl < 1 || p.fb !== vlBi()) return null; const b = velB('velvet'), [u, v] = worldToLocal(b, p.x, p.y); if (v > 2) return null; for (const n of [1, 2, 3]) { const R = VL_RSPOT[n].u; if (u >= R[0] && u < R[1]) return String(fl * 100 + n); } return null; }
+function vlVisitOk(p, k) { return !!p.vlVisit && Date.now() < p.vlVisit.until && (k == null || p.vlVisit.k === k); }
+function vlBedOk(p, bed) { return !!p.dev || bed.vlRoom === vlRoomOf(p) || vlVisitOk(p, bed.vlRoom); }
+function vlBedRest(p) { const b = BEDS[p.sleep]; return !!b && !!b.vlRoom && vlBedOk(p, b); }
+function vlToRoom(p, k) { const b = velB('velvet'), bi = vlBi(), fl = +k[0], S0 = VL_RSPOT[+k % 100], [x, y] = localToWorld(b, S0.p[0], S0.p[1]); p.x = x; p.y = y; p.fl = fl; p.fb = bi; p.sit = null; p.walking = false; if (p.atk) p.atk = null; Net.toOne(p.id, { t: 'tp', x, y, z: 0, fl, fb: bi }); }
+/* andares de cima: quem não tem motivo arruma problema com o capanga do andar */
+const VL_LINES2 = { up: ['Ei, você. Este andar é só para quem tem quarto aqui.', 'Desça agora, ou eu desço você.'], room: ['Esse quarto não é seu.', 'Fora do quarto alheio. Já.'] };
+function vlUpGuard(p, now) { const fl = p.fl || 0; if (fl < 1 || p.dev) return false; const b = velB('velvet'), mine = vlRoomOf(p), vis = vlVisitOk(p) ? p.vlVisit.k : null, here = vlRoomAt(p);
+  if (here && here !== mine && here !== vis) { vlWarn(p, 'room', now, VL_LINES2.room, 'Quem entra no quarto dos outros sai pela porta da frente.'); return true; }
+  const reason = (mine && +mine[0] === fl) || (vis && +vis[0] === fl); if (reason) return false;
+  const [ax, ay] = localToWorld(b, 10.5, 3.5); if (dist(p.x, p.y, ax, ay) < 1.6) return false;   /* saindo do elevador: ainda dá para voltar */
+  vlWarn(p, 'up', now, VL_LINES2.up, 'Curioso demais. Lá fora você passeia.'); return true; }
+{ const _vgV = vlGuard; vlGuard = function (now) { _vgV(now); for (const p of Object.values(S.players)) if (vlInside2(p) && !p.downed) vlUpGuard(p, now); }; }
+function vlInside2(p) { const b = velB('velvet'); return !!b && (p.fl || 0) > 0 && p.fb === vlBi() && p.x >= b.x - 0.5 && p.x < b.x + b.w - 0.5 && p.y >= b.y - 0.5 && p.y < b.y + b.h - 0.5; }
+{ const _viV2 = vlInside; vlInside = function (p) { return _viV2(p) || vlInside2(p); }; }
+/* a moça volta ao salão depois de um tempo */
+function vlAwayTick(now) { if (!S.vlAway) return; for (const id in S.vlAway) if (now >= S.vlAway[id].until) delete S.vlAway[id]; }
+{ const _vtV2 = velTick; velTick = function (now) { _vtV2(now); try { vlAwayTick(now); } catch (e) { } }; }
+{ const _vmV2 = velMenu; velMenu = function (p, T, n) { if (T.menu !== 'host') return _vmV2(p, T, n); _vmV2(p, T, n);
+  const mine = vlRoomOf(p); Net.toOne(p.id, { t: 'velrooms', price: VL_ROOM.price, mine, rooms: vlRooms().map(r => ({ k: r.k, fl: r.fl, st: r.k === mine ? 'seu' : vlRoomFree(r.k) ? 'livre' : 'ocupado' })) }); }; }
+{ const _vmsV2 = velMsg; velMsg = function (p, m) { const now = Date.now(); if (p.downed || p.vlRest) return;
+  if (m.a === 'room') { const n = velStaffNear(p, 'vl_mirela'); if (!n) return; { const C = vlClosed(); if (C && !vlAllowed(p, C)) { empSay(n, 'Esta noite a casa é de ' + C.name + '. Só para convidados.'); return; } }
+    if (vlRoomOf(p)) { empSay(n, 'O quarto ' + vlRoomOf(p) + ' já é seu até o meio-dia.'); return; } const r = vlRooms().find(q => (m.k ? q.k === m.k : true) && vlRoomFree(q.k)); if (!r) { empSay(n, 'Os quartos estão todos ocupados esta noite.'); return; }
+    if ((p.gold || 0) < VL_ROOM.price) { empSay(n, 'O quarto custa ' + VL_ROOM.price + ' de ouro por noite.'); return; }
+    p.gold -= VL_ROOM.price; vlRoomRec().own[r.k] = estOwner(p); if (typeof estateSave === 'function') estateSave(); empSay(n, 'O quarto ' + r.k + ' é seu até o meio-dia. A Lan leva você no elevador; peça chá ou vinho na mesinha do quarto.');
+    tell(p, 'Quarto ' + r.k + ' (' + r.fl + 'º andar) alugado por ' + VL_ROOM.price + ' de ouro, até o meio-dia. Suba pelo elevador de latão, na parede leste. Dormir na cama dá Bem descansado, como na pousada.'); sendStat(p); velMenu(p, VEL_STAFF.find(t => t.id === 'vl_mirela'), n); return; }
+  if (m.a === 'company') { const T = VEL_STAFF.find(t => t.id === m.id && t.menu === 'comp'), n = T && velStaffNear(p, T.id); if (!n) return;
+    const L = (p.vlGirl || []).filter(t => now - t < 60000); if (L.length >= 9) return _vmsV2(p, m);
+    if ((p.gold || 0) < VL_COMPANY) return _vmsV2(p, m);
+    const own = vlRoomOf(p), r = own ? vlRooms().find(q => q.k === own) : vlRooms().find(q => vlRoomFree(q.k)); if (!r) { empSay(n, 'Os quartos estão todos ocupados. Espere um pouco comigo, querido.'); return; }
+    p.gold -= VL_COMPANY; S.vlUse = S.vlUse || {}; S.vlUse[r.k] = now + 90000; p.vlVisit = { k: r.k, until: now + VL_ROOM.visit };
+    const b = velB('velvet'), S0 = VL_RSPOT[r.n]; S.vlAway = S.vlAway || {}; S.vlAway[T.id] = { at: S0.g, fl: r.fl, sit: 0, dir: 7, until: now + VL_ROOM.girlAway };
+    { const [gx, gy] = localToWorld(b, S0.g[0], S0.g[1]); n.x = gx; n.y = gy; n.fl = r.fl; n.fb = vlBi(); n.sitting = 0; }
+    vlToRoom(p, r.k); p.vlRest = { until: now + 6000, who: T.name }; empSay(n, 'Venha. O quarto ' + r.k + ' está livre, lá em cima ninguém nos incomoda.');
+    Net.toOne(p.id, { t: 'velfx', k: 'fade', who: T.name, ms: 6000 }); sendStat(p); return; }
+  if (m.a === 'talk' && m.id === 'vl_tea') { const k = vlRoomAt(p); if (!k || (k !== vlRoomOf(p) && !vlVisitOk(p, k))) { tell(p, 'Só quem está no próprio quarto pode pedir à criada.'); return; } Net.toOne(p.id, { t: 'velmenu', k: 'tea', room: k, tea: VL_ROOM.tea, wine: VL_ROOM.wine }); return; }
+  if (m.a === 'tea') { const k = vlRoomAt(p), w = m.w === 'wine' ? 'wine' : 'tea', cost = VL_ROOM[w]; if (!k || (k !== vlRoomOf(p) && !vlVisitOk(p, k)) || p.vlTeaT > now) return; if ((p.gold || 0) < cost) { tell(p, 'A bandeja custa ' + cost + ' de ouro.'); return; }
+    p.gold -= cost; p.vlTeaT = now + 9000; const b = velB('velvet'), S0 = VL_RSPOT[+k % 100], [mx, my] = localToWorld(b, S0.p[0] + 0.6, 2.6), id = 'vl_maid' + k;
+    if (!S.npcs[id]) { const v = { id, kind: 'vl_maid', name: 'Xiu, a criada', transient: true, court: 'praz', x: mx, y: my, z: 0, fl: +k[0], fb: vlBi(), hp: 100, maxHp: 100, downed: null, dead: false, dir: 3 }; S.npcs[id] = v; Net.toAll({ t: 'vspawn', v: visPublic(v) }); }
+    setTimeout(() => { const n = S.npcs[id]; if (n) empSay(n, w === 'tea' ? 'Chá de jasmim, bem quente. Com licença.' : 'Vinho de arroz da adega da Dama. Com licença.'); if (S.players[p.id]) { if (w === 'tea') { p.cst = Math.min(cstMaxOf(p), (p.cst || 0) + 60); p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.1)); p.buffs.warm = Math.max(p.buffs.warm || 0, Date.now() + 180000); tell(p, 'A criada serve o chá de jasmim: fôlego e um pouco de vida de volta, e o corpo aquecido.'); }
+      else { p.water = Math.min(100, (p.water ?? 100) + 20); p.cst = Math.min(cstMaxOf(p), (p.cst || 0) + 40); p.buffs.tipsy = Math.max(p.buffs.tipsy || 0, Date.now()) + 30000; p.buffs.warm = Math.max(p.buffs.warm || 0, Date.now() + 180000); tell(p, 'A criada serve o vinho de arroz: mata a sede, devolve fôlego e sobe um pouco à cabeça.'); } sendStat(p); } }, 2500);
+    setTimeout(() => { const n = S.npcs[id]; if (n) visGone(n); }, 9000); tell(p, 'Você toca a sineta. A criada já sobe com a bandeja (' + cost + ' de ouro).'); sendStat(p); return; }
+  return _vmsV2(p, m); }; }
+
+// ---------------- CLIENTE ----------------
+if (typeof NPC_LOOKS !== 'undefined' && typeof heroLook === 'function') {
+  NPC_LOOKS.vl_liftg = () => Object.assign(heroLook('mage', 'adept', '#8a1418'), { armor: 'robe', body: tone('#8a1418'), body2: tone('#d4a94a'), accent: tone('#d4a94a'), trim: tone('#d4a94a'), head: 'none', hair: tone('#121010'), hairStyle: 'bun', skin: tone('#e8c4a4'), weapon: null, cape: false, capeTone: null, shield: null });
+  NPC_LOOKS.vl_maid = () => Object.assign(heroLook('mage', 'adept', '#1a1a1e'), { armor: 'robe', body: tone('#1a1a1e'), body2: tone('#f0ece4'), accent: tone('#f0ece4'), trim: tone('#f0ece4'), head: 'none', hair: tone('#1a1414'), hairStyle: 'braid', skin: tone('#d8a880'), weapon: null, cape: false, capeTone: null, shield: null });
+  if (typeof FEM_KINDS !== 'undefined') { FEM_KINDS.add('vl_liftg'); FEM_KINDS.add('vl_maid'); } if (typeof NPC_CLS !== 'undefined') Object.assign(NPC_CLS, { vl_liftg: 'mage', vl_maid: 'mage' }); }
+{ const _vnV = velNear; velNear = function () { const T = _vnV(); if (T) return T; const me = G.me; if (!me || me.downed || !(me.fl > 0)) return null; const b = BUILDINGS[me.fb]; if (!b || b.deco !== 'velvet') return null;
+  for (const f of interiorLayout(b, me.fl).F) if (f.t === 'vtea') { const [x, y] = localToWorld(b, f.i + 0.5, f.j + 0.5); if (Math.hypot(x - me.x, y - me.y) < 1.4) return { id: 'vl_tea', menu: 'tea', name: 'a sineta' }; } return null; }; }
+{ const _vhV = velHint; velHint = function () { const T = velNear(); if (T && T.menu === 'tea') return 'F: tocar a sineta (chá ou vinho)'; return _vhV(); }; }
+if (typeof liftFloorName === 'function') { const _lfV = liftFloorName; liftFloorName = function (b, f) { if (b.deco === 'velvet') return f === 0 ? 'Térreo — salão, palco e saída' : f + 'º andar — quartos ' + (f * 100 + 1) + ' a ' + (f * 100 + 3); return _lfV(b, f); }; }
+function vlTeaMenu(m) { const d = velPanel('Quarto ' + m.room, '<div class="est-cost">Uma sineta de latão na mesinha chama a criada.</div><div class="tq-btns"><button class="est-btn" data-tw="tea">Chá de jasmim<small>' + m.tea + ' de ouro · fôlego, um pouco de vida, aquece</small></button><button class="est-btn" data-tw="wine">Vinho de arroz<small>' + m.wine + ' de ouro · mata a sede, fôlego, sobe à cabeça</small></button></div>'); velBtn(d, '[data-tw]', b => ({ a: 'tea', w: b.dataset.tw })); }
+function vlRoomsBox(m) { const d = $('tequip'); if (!d || !d.classList.contains('vel-panel')) return; let box = d.querySelector('.vel-rooms'); if (box) box.remove(); box = document.createElement('div'); box.className = 'vel-rooms';
+  const st = { livre: 'livre', seu: '<b>seu</b>', ocupado: 'ocupado' };
+  box.innerHTML = '<div class="vel-sub">Quartos (até o meio-dia)</div><div class="est-cost">Cama para dormir (Bem descansado, como na pousada) e chá ou vinho servidos no quarto. Suba pelo elevador. As companhias também usam os quartos.</div><div class="tq-btns vel-booths">' + m.rooms.map(r => '<button class="est-btn" data-rm="' + r.k + '"' + (r.st !== 'livre' || m.mine ? ' disabled' : '') + '>Quarto ' + r.k + ' (' + r.fl + 'º andar)<small>' + m.price + ' de ouro · ' + st[r.st] + '</small></button>').join('') + '</div>';
+  d.appendChild(box); velBtn(d, '[data-rm]', b => ({ a: 'room', k: b.dataset.rm })); }
+if (typeof velShowMenu === 'function') { const _vsmV2 = velShowMenu; velShowMenu = function (m) { if (m.k === 'tea') return vlTeaMenu(m); return _vsmV2(m); }; }
+if (typeof progEvent === 'function' && typeof G !== 'undefined') { const _peV3 = progEvent; progEvent = function (m, now) { if (m.t === 'velrooms') { vlRoomsBox(m); return true; } return _peV3(m, now); }; }

@@ -429,6 +429,7 @@ function hostOnClient(from, m) {
       if (!m.on || p.downed || p.carrying || p.carriedBy) { p.sleep = null; break; }
       const b = BEDS[m.b | 0]; if (!b || dist(p.x, p.y, b.x, b.y) > 2.6 || (b.fl || 0) !== (p.fl || 0)) break;
       if (b.apt) { const AP = PROPS_BY['ap' + b.apt], r = AP && estateLoad().r[AP.id]; if (!(AP.suite && SUITE_OPEN) && (!r || (r.owner !== estOwner(p) && !(r.auth || []).includes(p.name.trim().toLowerCase())))) { tell(p, 'Esse futon é de quem mora aqui.'); break; } }
+      if (b.vlRoom && typeof vlBedOk === 'function' && !vlBedOk(p, b)) { tell(p, 'Essa cama é do quarto ' + b.vlRoom + ' da Casa de Veludo. Fale com a Mirela, na entrada, para alugar um quarto (100 de ouro por noite).'); break; }   /* quartos da Casa de Veludo */
       if (BUILDINGS[b.bi] && BUILDINGS[b.bi].kind === 'hotel' && hotelBedOf(p) !== (m.b | 0)) { tell(p, 'Essa cabine não é sua. Fale com Dona Ilsa, no balcão, para alugar um (3 de ouro por dia).'); break; }
       p.x = b.x; p.y = b.y; p.dir = dirFromVecS(b.dx, b.dy); p.sleep = m.b | 0; p.sit = null; p.walking = false; break;
     }
@@ -3808,7 +3809,7 @@ function estateTick(now) {
   }
   if (E.evict) for (const pid of Object.keys(E.evict)) if (day >= E.evict[pid].day) { E.gone = E.gone || {}; E.gone[pid] = true; const ev = E.evict[pid]; delete E.evict[pid]; const P = PROPS_BY[pid]; for (const id of P.tenants || []) { const n = S.npcs && S.npcs[id]; if (n) { n.homeless = true; near(n.x, n.y, { t: 'anim', w: 'n', id, a: 'talk', txt: 'Vou dormir na taverna, então...', ms: 1 }); } } const q = Object.values(S.players).find(o => o.name === ev.owner); if (q) tell(q, 'Os inquilinos deixaram ' + P.name + '. A casa agora está vazia.'); estateChanged(); }
   for (const p of Object.values(S.players)) {
-    if (p.sleep == null || !(estHomeBed(p) || hotelBedOf(p) === p.sleep)) { p.homeSleep = 0; continue; }
+    if (p.sleep == null || !(estHomeBed(p) || hotelBedOf(p) === p.sleep || (typeof vlBedRest === 'function' && vlBedRest(p)))) { p.homeSleep = 0; continue; }
     p.homeSleep = (p.homeSleep || 0) + dt;
     if (p.homeSleep >= 20 && !buffOn(p, 'rested')) { const ms = typeof empSlept === 'function' ? empSlept(p) : 600000; p.buffs.rested = now + ms; tell(p, 'Você dormiu bem na sua cama: Bem descansado (' + Math.round(ms / 60000) + ' min' + (ms > 600000 ? ', a cama estava arrumada' : '') + '; recupera vida e mana mais rápido).'); sendStat(p); }
   }

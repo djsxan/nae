@@ -2530,7 +2530,7 @@ function mInterior(b, fl = 0) {
         for (let k = 0; k < 16; k++) g.add(mk(new THREE.SphereGeometry(0.06, 7, 5).translate(-f.w / 2 + 0.3 + (k % 8) * (f.w - 0.6) / 7, 0.83, (Math.floor(k / 8) - 0.5) * 0.25), smat(null, ['#c02a1e', '#e8c03a', '#7ab83a', '#d88a2a'][(k * 3) % 4], { rough: 0.45 })));
         g.add(mk(new THREE.CylinderGeometry(0.2, 0.15, 0.14, 12, 1, true).translate(f.w / 2 - 0.35, 0.84, 0), smat('wood', '#b08a42', { side: THREE.DoubleSide }))); break; }
       case 'lift': case 'lifttop': {   // elevador manual 2×2: cabine laqueada, grade pantográfica de latão virada para o corredor, mostrador de ponteiro
-        if (f.t === 'lifttop' && fl < nF - 1) break;
+        if (f.t === 'lifttop' && fl < nF - 1) break; if (b.deco === 'velvet') break;   /* a Casa de Veludo tem a gaiola de latão própria (vlift) */
         const lac = smat('wood', '#3a1a12', { bump: 0.6, rough: 0.45 }), br = smat(null, '#c9a24a', { metal: 0.9, rough: 0.3 }), HC = Math.min(hw - 0.05, 2.15), R2 = 0.96;
         g.add(wbox(1.94, 0.05, 1.94, 0, 0.025, 0, smat('oldplank', '#5a3420', { bump: 1 }), 1)); g.add(wbox(1.98, 0.04, 1.98, 0, 0.06, 0, br, 1));
         g.add(wbox(1.92, HC, 0.06, 0, HC / 2, -R2, lac, 1)); g.add(wbox(0.06, HC, 1.92, R2, HC / 2, 0, lac, 1));

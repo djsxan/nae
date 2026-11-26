@@ -190,3 +190,44 @@ if (typeof mNoble === 'function') { const _mnV = mNoble; mNoble = function (b, n
 /* à noite, as lanternas da fachada e o letreiro iluminam a rua */
 if (typeof luzMapDraw === 'function') { const _lmV = luzMapDraw; luzMapDraw = function (ctx, vw, vh, day, now) { try { const b = typeof velB === 'function' ? velB('velvet') : null; if (b && day.dark > 0.2 && G.view && Math.abs(G.me.x - b.x) < 40 && Math.abs(G.me.y - b.y) < 40) { const ox = G.view.ox, oy = G.view.oy, dX = b.x + doorCol(b) + 0.5, fy = b.y + b.h, ex = b.x + b.w, L = (x, y, z, rt, c) => { const p = iso(x - 0.5, y - 0.5); G.lights.push({ x: p.sx + ox, y: p.sy + oy - z, rt, c, a: 0.85, flick: 1 }); };
   L(dX, fy + 1.4, 60, 3.5, '255,60,40'); L(ex + 0.6, fy + 0.6, 150, 3.8, '255,200,110'); L(dX, fy + 0.8, 290, 3.0, '255,70,40'); for (let x = b.x + 1; x < ex; x += 2.2) L(x, fy + 0.8, 70, 2.0, '255,70,40'); for (let y = b.y + 1; y < fy; y += 2.2) L(ex + 0.8, y, 70, 2.0, y % 3 ? '255,70,40' : '60,220,160'); } } catch (e) { } return _lmV.apply(this, arguments); }; }
+
+// ---------- andares dos quartos (1º e 2º): poço do vão, cama de dossel, biombo, chá, bancos, paredes de seda e cortinas ----------
+const VL_FLC = { 1: ['#5a0a14', '#9a5aff', '#c8a040'], 2: ['#14402e', '#3ad8a0', '#c8a040'], 3: ['#5a3a0a', '#ffb020', '#c8a040'] };   /* cor do veludo, da luz e dos véus em cada andar */
+let VL_PIT = null; VL3.pitMat = () => { if (VL_PIT) return VL_PIT; const c = document.createElement('canvas'); c.width = c.height = 256; const x = c.getContext('2d'), g = x.createRadialGradient(128, 128, 10, 128, 128, 150); g.addColorStop(0, '#4a0c2a'); g.addColorStop(0.45, '#1e0612'); g.addColorStop(1, '#050203'); x.fillStyle = g; x.fillRect(0, 0, 256, 256);
+  x.fillStyle = 'rgba(255,90,170,0.22)'; x.beginPath(); x.ellipse(128, 118, 46, 34, 0, 0, 7); x.fill(); const t = new THREE.CanvasTexture(c); t.encoding = THREE.sRGBEncoding; return VL_PIT = new THREE.MeshBasicMaterial({ map: t }); };
+VL3.rail = (g, x0, z0, x1, z1) => { const red = VL3.red(), brass = VL3.brass(), len = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.round(len / 0.75)), hz = Math.abs(z1 - z0) > Math.abs(x1 - x0);
+  for (let q = 0; q <= n; q++) g.add(wbox(0.06, 0.52, 0.06, x0 + (x1 - x0) * q / n, 0.32, z0 + (z1 - z0) * q / n, red));
+  g.add(wbox(hz ? 0.07 : len + 0.06, 0.04, hz ? len + 0.06 : 0.07, (x0 + x1) / 2, 0.6, (z0 + z1) / 2, brass)); g.add(wbox(hz ? 0.03 : len, 0.03, hz ? len : 0.03, (x0 + x1) / 2, 0.14, (z0 + z1) / 2, red));
+  for (let q = 0; q < n; q++) for (let r = 0; r < 3; r++) { const t0 = (q + 0.5) / n, l = len / n - 0.1; g.add(wbox(hz ? 0.015 : l * (r === 1 ? 0.4 : 0.9), 0.015, hz ? l * (r === 1 ? 0.4 : 0.9) : 0.015, x0 + (x1 - x0) * t0, 0.24 + r * 0.12, z0 + (z1 - z0) * t0, red)); } };
+Object.assign(VFURN, {
+  /* o vão visto de cima: poço escuro com o brilho do palco lá embaixo, beirada de madeira e balaustrada de treliça em volta */
+  vvoid(g, f) { const W = f.w, D = f.h; g.add(mk(new THREE.PlaneGeometry(W - 0.16, D - 0.16).rotateX(-Math.PI / 2).translate(0, 0.075, 0), VL3.pitMat(), false));
+    for (const [x, z, ww, dd] of [[0, -D / 2 + 0.06, W, 0.12], [0, D / 2 - 0.06, W, 0.12], [-W / 2 + 0.06, 0, 0.12, D], [W / 2 - 0.06, 0, 0.12, D]]) g.add(wbox(ww, 0.1, dd, x, 0.07, z, VL3.red()));
+    VL3.rail(g, -W / 2 + 0.06, -D / 2 + 0.06, W / 2 - 0.06, -D / 2 + 0.06); VL3.rail(g, -W / 2 + 0.06, D / 2 - 0.06, W / 2 - 0.06, D / 2 - 0.06); VL3.rail(g, -W / 2 + 0.06, -D / 2 + 0.06, -W / 2 + 0.06, D / 2 - 0.06); VL3.rail(g, W / 2 - 0.06, -D / 2 + 0.06, W / 2 - 0.06, D / 2 - 0.06);
+    VL3.light(g, '#ff3aa0', 1.6, 4.5, 0, -0.4, 0); },
+  /* cama com dossel laqueado, véus da cor do andar, colchão de veludo e almofadas */
+  vbed(g, f) { const [vc, , veil] = VL_FLC[f.c] || VL_FLC[1], wd = VL3.wood(), red = VL3.red(), gold = VL3.gold();
+    g.add(wbox(1.55, 0.24, 1.8, 0, 0.12, -0.05, wd, 1)); g.add(wbox(1.48, 0.1, 1.74, 0, 0.29, -0.05, VL3.vel(vc), 1)); g.add(wbox(1.5, 0.03, 0.9, 0, 0.35, 0.35, VL3.vel(vc)));
+    for (const s of [-0.38, 0.38]) g.add(wbox(0.55, 0.1, 0.28, s, 0.4, -0.72, VL3.vel('#e8d8c0'), 1));
+    for (const [dx, dz] of [[-0.75, -0.92], [0.75, -0.92], [-0.75, 0.82], [0.75, 0.82]]) g.add(wbox(0.06, 1.25, 0.06, dx, 0.63, dz, red)); for (const z of [-0.92, 0.82]) { g.add(wbox(1.6, 0.1, 0.08, 0, 1.28, z, red)); g.add(wbox(1.62, 0.025, 0.1, 0, 1.345, z, gold)); } for (const x of [-0.75, 0.75]) { g.add(wbox(0.08, 0.1, 1.82, x, 1.28, -0.05, red)); g.add(wbox(0.1, 0.025, 1.84, x, 1.345, -0.05, gold)); } for (let q = 1; q < 4; q++) g.add(wbox(1.5, 0.03, 0.03, 0, 1.3, -0.92 + q * 0.435, red));
+    g.add(wbox(1.5, 0.95, 0.04, 0, 0.72, -0.95, smat('ranma', '#ffffff', { bump: 0.5 })));
+    for (const s of [-1, 1]) g.add(wbox(0.03, 0.95, 1.2, s * 0.77, 0.75, 0.0, smat('cloth', veil, { transparent: true, opacity: 0.4 }))); },
+  vtea(g, f) { const wd = VL3.wood(); g.add(mk(new THREE.CylinderGeometry(0.24, 0.24, 0.03, 16).translate(0, 0.34, 0), VL3.blk())); g.add(mk(new THREE.CylinderGeometry(0.04, 0.08, 0.32, 8).translate(0, 0.16, 0), wd));
+    g.add(mk(new THREE.SphereGeometry(0.05, 10, 8).translate(0.05, 0.4, 0), VL3.ceram('#e8e0d0'))); for (const [dx, dz] of [[-0.1, 0.08], [0.12, -0.08]]) g.add(mk(new THREE.CylinderGeometry(0.02, 0.015, 0.03, 8).translate(dx, 0.37, dz), VL3.ceram('#e8e0d0')));
+    VL3.lantern(g, -0.1, 0.48, -0.1, (VL_FLC[f.c] || VL_FLC[1])[1], 0.35); },
+  vscreen(g) { const red = VL3.red(), silk = VL3.silk(); for (let p = 0; p < 3; p++) { const pg = grp(); pg.add(wbox(0.32, 0.95, 0.03, 0, 0.5, 0, silk)); pg.add(wbox(0.36, 0.04, 0.04, 0, 0.99, 0, red)); pg.add(wbox(0.36, 0.04, 0.04, 0, 0.04, 0, red)); for (const s of [-1, 1]) pg.add(wbox(0.03, 0.99, 0.04, s * 0.17, 0.5, 0, red)); pg.position.set(-0.3 + p * 0.3, 0, -0.25 + (p % 2) * 0.1); pg.rotation.y = p % 2 ? 0.45 : -0.45; g.add(pg); } },
+  vbench(g, f) { const L = Math.max(f.w, f.h), wd = VL3.wood(); g.add(wbox(L - 0.3, 0.2, 0.42, 0, 0.1, -0.2, wd, 1)); g.add(wbox(L - 0.34, 0.06, 0.4, 0, 0.23, -0.2, VL3.vel('#5a0a14'), 1)); g.add(wbox(L - 0.3, 0.3, 0.07, 0, 0.4, -0.38, wd, 1)); },
+});
+function velvetUpper(o, b, fl, P) { const { w, h, hw, t } = P, wood = VL3.wood(), brass = VL3.brass(), red = VL3.red(), silk = VL3.silk(), ranma = smat('ranma', '#ffffff', { bump: 0.6 }), [vc, lc] = VL_FLC[fl] || VL_FLC[1];
+  const band = (len, put) => { put(len / 2, 0.25, 0.5, wood, 0.05); put(len / 2, 0.52, 0.04, brass, 0.06); put(len / 2, (0.56 + hw - 0.28) / 2, hw - 0.28 - 0.56, silk, 0.03); put(len / 2, hw - 0.14, 0.26, ranma, 0.05); };
+  band(w, (c, y, hh, m, d) => o.add(wbox(w, hh, d, c, y, t + d / 2, m, 0.45))); band(h, (c, y, hh, m, d) => o.add(wbox(d, hh, h, t + d / 2, y, c, m, 0.45)));
+  const HH = 1.45; for (const [u0, v0, u1, v1] of VL_UPPER_WALLS) { const ww = Math.max(0.12, u1 - u0), dd = Math.max(0.12, v1 - v0), cx = (u0 + u1) / 2, cz = (v0 + v1) / 2; o.add(wbox(ww, HH, dd, cx, HH / 2, cz, wood, 0.6)); o.add(wbox(ww + 0.03, 0.06, dd + 0.03, cx, HH + 0.03, cz, brass));
+    if (ww > 0.9) o.add(wbox(ww - 0.2, HH - 0.55, 0.13, cx, 0.35 + (HH - 0.55) / 2, cz, silk, 0.45)); else if (dd > 0.9) o.add(wbox(0.13, HH - 0.55, dd - 0.2, cx, 0.35 + (HH - 0.55) / 2, cz, silk, 0.45)); }
+  for (const [u0, u1] of [[1, 3], [5, 8], [9, 11]]) { const cx = (u0 + u1) / 2, L = u1 - u0; o.add(wbox(L + 0.1, 0.16, 0.12, cx, HH - 0.02, 2, red)); o.add(wbox(L - 0.1, 0.22, 0.04, cx, HH - 0.22, 2.04, ranma));   /* entrada do quarto: friso entalhado e cortinas de veludo presas dos lados */
+    for (const s of [-1, 1]) o.add(mk(new THREE.CylinderGeometry(0.07, 0.15, HH - 0.25, 8).translate(cx + s * (L / 2 - 0.16), (HH - 0.25) / 2 + 0.03, 2.08), VL3.vel(vc))); }
+  for (const [x, z] of [[3, 3], [10, 3], [3, 9], [10, 9], [3, 6], [10, 6]]) { o.add(mk(new THREE.CylinderGeometry(0.12, 0.13, hw, 14).translate(x, hw / 2, z), red)); o.add(mk(new THREE.CylinderGeometry(0.145, 0.145, 0.04, 14).translate(x, hw - 0.4, z), brass)); }
+  const cols = ['#ff2a1a', '#ffb020', '#3ad8a0', '#ff3a8a', '#9a5aff'];   /* lanternas penduradas no vão */
+  for (let q = 0; q < 7; q++) { const x = 4.0 + (q * 1.93) % 5.2, z = 4.0 + (q * 1.37) % 4.2, len = 0.3 + (q * 0.41) % 1.0; o.add(wbox(0.01, len, 0.01, x, hw - len / 2, z, smat(null, '#2a1a10'))); VL3.lantern(o, x, hw - len - 0.22, z, cols[q % 5], 1.0); }
+  for (const x of [2, 6.5, 11]) VL3.light(o, lc, 1.3, 3.2, x, 1.1, 1.1); VL3.light(o, '#3ad8a0', 0.9, 3.5, 1.5, 1.2, 7); VL3.light(o, '#ffb050', 0.8, 3.5, 11.5, 1.2, 7.5);
+  VL3.lantern(o, 1.5, hw - 0.5, 5.5, '#3ad8a0', 0.55); VL3.lantern(o, 1.5, hw - 0.5, 9, '#3ad8a0', 0.55); VL3.lantern(o, 11.5, hw - 0.5, 8.5, '#ffb040', 0.55); }
+{ const _viV = velvetInterior; velvetInterior = function (o, b, fl, P) { if (fl > 0) return velvetUpper(o, b, fl, P); return _viV(o, b, fl, P); }; }
