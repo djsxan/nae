@@ -209,9 +209,11 @@ Object.assign(VFURN, {
   vbed(g, f) { const [vc, , veil] = VL_FLC[f.c] || VL_FLC[1], wd = VL3.wood(), red = VL3.red(), gold = VL3.gold();
     g.add(wbox(1.55, 0.24, 1.8, 0, 0.12, -0.05, wd, 1)); g.add(wbox(1.48, 0.1, 1.74, 0, 0.29, -0.05, VL3.vel(vc), 1)); g.add(wbox(1.5, 0.03, 0.9, 0, 0.35, 0.35, VL3.vel(vc)));
     for (const s of [-0.38, 0.38]) g.add(wbox(0.55, 0.1, 0.28, s, 0.4, -0.72, VL3.vel('#e8d8c0'), 1));
-    for (const [dx, dz] of [[-0.75, -0.92], [0.75, -0.92], [-0.75, 0.82], [0.75, 0.82]]) g.add(wbox(0.06, 1.25, 0.06, dx, 0.63, dz, red)); for (const z of [-0.92, 0.82]) { g.add(wbox(1.6, 0.1, 0.08, 0, 1.28, z, red)); g.add(wbox(1.62, 0.025, 0.1, 0, 1.345, z, gold)); } for (const x of [-0.75, 0.75]) { g.add(wbox(0.08, 0.1, 1.82, x, 1.28, -0.05, red)); g.add(wbox(0.1, 0.025, 1.84, x, 1.345, -0.05, gold)); } for (let q = 1; q < 4; q++) g.add(wbox(1.5, 0.03, 0.03, 0, 1.3, -0.92 + q * 0.435, red));
+    /* dossel aberto: sem armação no alto (quem deita não fica "por cima" do dossel); colunas com remate, painel da cabeceira e véus baixos nos lados */
+    for (const [dx, dz, hh] of [[-0.75, -0.92, 1.25], [0.75, -0.92, 1.25], [-0.75, 0.82, 0.62], [0.75, 0.82, 0.62]]) { g.add(wbox(0.06, hh, 0.06, dx, hh / 2, dz, red)); g.add(mk(new THREE.SphereGeometry(0.045, 10, 8).translate(dx, hh + 0.03, dz), gold)); }
+    g.add(wbox(1.6, 0.1, 0.08, 0, 1.28, -0.92, red)); g.add(wbox(1.62, 0.025, 0.1, 0, 1.345, -0.92, gold));
     g.add(wbox(1.5, 0.95, 0.04, 0, 0.72, -0.95, smat('ranma', '#ffffff', { bump: 0.5 })));
-    for (const s of [-1, 1]) g.add(wbox(0.03, 0.95, 1.2, s * 0.77, 0.75, 0.0, smat('cloth', veil, { transparent: true, opacity: 0.4 }))); },
+    for (const s of [-1, 1]) g.add(wbox(0.03, 0.5, 0.7, s * 0.77, 0.62, -0.5, smat('cloth', veil, { transparent: true, opacity: 0.4 }))); },
   vtea(g, f) { const wd = VL3.wood(); g.add(mk(new THREE.CylinderGeometry(0.24, 0.24, 0.03, 16).translate(0, 0.34, 0), VL3.blk())); g.add(mk(new THREE.CylinderGeometry(0.04, 0.08, 0.32, 8).translate(0, 0.16, 0), wd));
     g.add(mk(new THREE.SphereGeometry(0.05, 10, 8).translate(0.05, 0.4, 0), VL3.ceram('#e8e0d0'))); for (const [dx, dz] of [[-0.1, 0.08], [0.12, -0.08]]) g.add(mk(new THREE.CylinderGeometry(0.02, 0.015, 0.03, 8).translate(dx, 0.37, dz), VL3.ceram('#e8e0d0')));
     VL3.lantern(g, -0.1, 0.48, -0.1, (VL_FLC[f.c] || VL_FLC[1])[1], 0.35); },

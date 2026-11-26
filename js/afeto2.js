@@ -6,13 +6,13 @@
 //  Cônjuge NPC aparece na lista do Afeto e aceita conforme o humor (gesto aceito: humor +4, uma vez por dia).
 //  A companhia paga fica no quarto (ou na suíte) durante toda a visita e aceita os gestos.
 // ============================================================
-const AF2 = { wLift: 9, seatR: 1.3, bedR: 2.6, vtub: [12, 7], vtubR: 1.6,
-  K: { sShoulder: ['seat', 'Cabeça no ombro', 'quer encostar a cabeça no seu ombro', '😌'], sHug: ['seat', 'Abraçados', 'quer ficar abraçado com você', '💑'], sKiss: ['seat', 'Beijo', 'quer te beijar', '💋', 6500], sLap: ['seat', 'Chamar para o colo', 'quer que você sente no colo dele', '😊'], sLapK: ['seat', 'Beijo no colo', 'quer que você sente no colo dele para um beijo', '💋', 6500], sLean: ['seat', 'Encostar no ombro dela', 'quer encostar a cabeça no seu ombro', '😌'], sKissF2: ['seat', 'Beijo no rosto', 'quer te dar um beijo no rosto', '😘', 4000],
+const AF2 = { lap: [0.45, 0.1, 1.57, 0, 0], lapT: [0.5, 0.12, -0.04, 0, 0.66, 1, 1, 1], wLift: 9, seatR: 1.3, bedR: 2.6, vtub: [12, 7], vtubR: 1.6,
+  K: { sShoulder: ['seat', 'Cabeça no ombro', 'quer encostar a cabeça no seu ombro', '😌'], sHug: ['seat', 'Abraçados', 'quer ficar abraçado com você', '💑'], sKiss: ['seat', 'Beijo', 'quer te beijar', '💋', 6500], sHand: ['seat', 'De mãos dadas', 'quer segurar a sua mão', '🤝'], sBelly: ['seat', 'Carinho na barriga', 'quer fazer carinho na sua barriga', '🤲'], wBelly: ['water', 'Carinho na barriga', 'quer fazer carinho na sua barriga na água', '🤲'], bBelly: ['bed', 'Carinho na barriga', 'quer fazer carinho na sua barriga', '🤲'], sLap: ['seat', 'Chamar para o colo', 'quer que você sente no colo dele', '😊'], sLapK: ['seat', 'Beijo no colo', 'quer que você sente no colo dele para um beijo', '💋', 6500], sLean: ['seat', 'Encostar no ombro dela', 'quer encostar a cabeça no seu ombro', '😌'], sKissF2: ['seat', 'Beijo no rosto', 'quer te dar um beijo no rosto', '😘', 4000],
     wHug: ['water', 'Abraçados na água', 'quer ficar abraçado com você na água', '💑'], wKiss: ['water', 'Beijo na água', 'quer te beijar', '💋', 6500], wEdge: ['edge', 'Cabeça no ombro', 'quer encostar a cabeça no seu ombro', '😌'],
     bHold: ['bed', 'Deitados abraçados', 'quer deitar abraçado com você', '💑'], bKiss: ['bed', 'Beijo', 'quer te beijar', '💋', 6500] } };
 for (const k in AF2.K) { const [c, n, a, i, d] = AF2.K[k]; AFX.n[k] = n; AFX.ask[k] = a; AFX.i[k] = i; if (d) AFX.dur[k] = d; if (!AFF_KS.includes(k)) AFF_KS.push(k); }
 AFX.sin.push('sKiss', 'wKiss', 'bKiss', 'bHold', 'sHug', 'wHug');
-const AFF_CTX = { stand: ['hand', 'hug', 'hold', 'kissF', 'kissM', 'kissH'], seat: ['sShoulder', 'sHug', 'sKiss', 'sLap', 'sLapK'], water: ['wHug', 'wKiss'], edge: ['wEdge'], bed: ['bHold', 'bKiss'], vtub: ['wHug', 'wKiss', 'hug', 'hold', 'kissF', 'kissM', 'kissH'] };
+const AFF_CTX = { stand: ['hand', 'hug', 'hold', 'kissF', 'kissM', 'kissH'], seat: ['sHand', 'sShoulder', 'sHug', 'sKiss', 'sBelly', 'sLap', 'sLapK'], water: ['wHug', 'wKiss', 'wBelly'], edge: ['wEdge'], bed: ['bHold', 'bKiss', 'bBelly'], vtub: ['wHug', 'wKiss', 'wBelly', 'hug', 'hold', 'kissF', 'kissM', 'kissH'] };
 const AFF_V2 = k => !!AF2.K[k];
 /* contexto do gesto: pelo tipo e pelo estado de quem pede */
 function affKCtx(k, p) { const c = AF2.K[k] ? AF2.K[k][0] : 'stand'; return c === 'water' && !affB(p) ? 'vtub' : c; }
@@ -142,7 +142,7 @@ function affLook(e, k, bath) { let L;
   return L; }
 affRigOf = function (slot, e, k, bath) { const L = affLook(e, k, bath), lk = slot + '|' + (e.isNpc ? 'n:' + e.kind + '#' + e.id : e.cls + ':' + e.skin + ':' + e.color + ':' + ((e.stb & 2097152) ? e.cas : '') + ((e.stb & 4194304) || /iss/.test(k) ? 'h' : '')) + (bath ? ':bath' : '');
   let R = AFF_RIG.get(lk); if (!R) { R = buildHumanoid(L, e.isNpc && typeof NPC_SCALE !== 'undefined' && NPC_SCALE[e.kind] ? { scale: NPC_SCALE[e.kind] } : undefined); if (!e.isNpc && !bath && typeof epicHero === 'function') epicHero(R, L, 1, String(e.skin).split('~')[0]);
-    if (e.isNpc && L.braids) R.root.scale.set(1.28, 1, 1.22); else if (e.isNpc && L.hS) R.root.scale.set(L.wS, L.hS, L.wS); AFF_RIG.set(lk, R); if (AFF_RIG.size > 30) AFF_RIG.delete(AFF_RIG.keys().next().value); } return { R, lk }; };
+    if (e.isNpc && L.braids) R.root.scale.set(1.28, 1, 1.22); else if (e.isNpc && L.hS) R.root.scale.set(L.wS, L.hS, L.wS); R._fem = !!L.fem; AFF_RIG.set(lk, R); if (AFF_RIG.size > 30) AFF_RIG.delete(AFF_RIG.keys().next().value); } return { R, lk }; };
 const affCls = e => e.isNpc ? ((typeof NPC_CLS !== 'undefined' && NPC_CLS[e.kind]) || 'knight') : e.cls;
 affPose = function (R, e, P) { rigReset(R); const PP = Object.assign({ dir: 2, walk: -1, view: 'S', shea: 1, shb: 1, nowp: 1 }, P || {}); if (!e.isNpc && typeof applyLost === 'function') applyLost(R, e.lost || 0, e.pro || 0); const Q = buildPose(affCls(e), PP);
   if (P && P.tub) Object.assign(Q, { tl: 0, ht: 0, hw: 0, tw: 0, sway: 0, yaw: 0, lA: [2.2, -2.1], lB: [2.15, -2.05] });
@@ -166,6 +166,23 @@ function affBend(R, pt, target, lim) { const set = q => { R.spine.rotation.x = q
 const affMouth = R => { R.root.updateMatrixWorld(true); return R.head.localToWorld(new THREE.Vector3(0, -0.05, 0.1)); };
 const affWP = (o, x, y, z) => { o.updateMatrixWorld(true); return o.localToWorld(new THREE.Vector3(x, y, z)); };
 const affNear2 = (R, a, b, P) => a.getWorldPosition(new THREE.Vector3()).distanceTo(P) < b.getWorldPosition(new THREE.Vector3()).distanceTo(P);
+function affLap(RA, RB, k) { const V = (x, y, z) => new THREE.Vector3(x, y, z), W = j => j.getWorldPosition(V(0, 0, 0));
+  const hipsA = W(RA.hips), knA = W(RA.LA.kn).add(W(RA.LB.kn)).multiplyScalar(0.5), seat = hipsA.clone().lerp(knA, AF2.lap[0]); seat.y = Math.max(W(RA.LA.hp).y, W(RA.LB.hp).y) + AF2.lap[1];
+  const yA = RA.root.rotation.y, fwd = s => { RB.root.rotation.set(0, yA + s * AF2.lap[2], 0); RB.root.updateMatrixWorld(true); return affWP(RB.hips, 0, 0, 1).sub(W(RB.hips)); }, prof = AF2.lapT[5] !== 0, score = s => { const f = fwd(s); return prof ? Math.abs(f.x) * 2 + f.z : f.z; }, sg0 = score(1) >= score(-1) ? 1 : -1, sg = AF2.lapT[3] ? -sg0 : sg0;   /* de perfil para a câmera: as pernas atravessam o colo para o lado */
+  RB.root.rotation.set(0, yA + sg * AF2.lap[2], 0); RB.root.position.set(0, 0, 0); RB.root.updateMatrixWorld(true); const hb = W(RB.hips), rtA = affWP(RA.hips, 1, 0, 0).sub(hipsA).normalize().multiplyScalar(AF2.lap[3] * (AF2.lap[4] ? -sg : sg)); RB.root.position.set(seat.x - hb.x + rtA.x, seat.y - hb.y, seat.z - hb.z + rtA.z); RB.root.updateMatrixWorld(true);
+  RB.LA.hp.rotation.set(-1.45, 0, AF2.lapT[7] ? 0.06 : 0); RB.LB.hp.rotation.set(-1.35, 0, AF2.lapT[7] ? -0.06 : 0); RB.LA.kn.rotation.x = 1.35; RB.LB.kn.rotation.x = AF2.lapT[7] ? 1.45 : 1.25;   /* joelhos juntos; com lapT[7] os tornozelos se cruzam */   /* coxas para a frente dela, joelhos dobrados: as pernas caem para o lado dele */
+  const T2 = AF2.lapT; RB.spine.rotation.set(T2[2], sg * T2[0] * 0.4, -sg * T2[1]); RB.chest.rotation.set(0, sg * T2[0] * 0.6, 0);   /* o tronco gira NA DIREÇÃO dele (lombar 40%, peito 60%), quase sem tombar de lado; inclina um pouco para trás, no braço dele */
+  const hA = W(RA.head), nape = affWP(RA.neckJ || RA.head, 0, 0.02, -0.06), nearB = affNear2(RB, RB.A.sh, RB.B.sh, hA) ? 'A' : 'B', farB = nearB === 'A' ? 'B' : 'A', nearA = affNear2(RA, RA.A.sh, RA.B.sh, W(RB.spine)) ? 'A' : 'B', farA = nearA === 'A' ? 'B' : 'A';
+  if (k === 'sLapK') { for (let r = 0; r < 4; r++) { const mid = affMouth(RA).add(affMouth(RB)).multiplyScalar(0.5); lookAtP(RA, affMouth(RB), 0.25); lookAtP(RB, affMouth(RA), -0.3); affBend(RA, affMouth, mid, [[-0.05, 0.35], [-0.25, 0.25], [-0.5, 0.5], [-0.15, 0.35], [-0.35, 0.35]]); affBend(RB, affMouth, mid, [[-0.1, 0.3], [-0.3, 0.3], [-0.8, 0.8], [-0.2, 0.35], [-0.4, 0.4]]); } }
+  else { const keep = [RB.spine.rotation.x, RB.spine.rotation.z, RB.chest.rotation.y], clN = (affNear2(RA, RA.A.sh, RA.B.sh, W(RB.head)) ? RA.A.clav : RA.B.clav) || RA.chest, tgt = AF2.lapT[6] ? affWP(clN, 0, 0.1, 0.03) : W(RA.chest).lerp(hA, AF2.lapT[4]).add(V(0, 0.02, 0)); affBend(RB, R => R.head.localToWorld(V(0, 0, 0.07)), tgt, [[keep[0] - 0.05, keep[0] + 0.15], [keep[1] - 0.08, keep[1] + 0.08], [keep[2] - 0.2, keep[2] + 0.2], [-0.15, 0.3], [-0.35, 0.35]]); lookAtP(RB, hA, sg * 0.15); if (AF2.lapT[6]) lookAtP(RA, W(RB.head), -sg * 0.15); }
+  ikArm(RB, nearB, nape, [1.6, -0.9, 0.4, 1.6]); ikArm(RB, farB, affWP(RA.chest, 0, 0.12, 0.15), [0.9, -0.3, 0, 1.4]);
+  ikArm(RA, nearA, affWP(RB.spine, 0, 0.12, -0.14), [0.8, -0.8, 0.2, 1.4]); ikArm(RA, farA, W(RB.LA.kn).add(W(RB.LB.kn)).multiplyScalar(0.5).add(V(0, 0.05, 0)), [0.5, -0.2, 0, 0.9]); }
+/* quem faz o carinho: a mulher do par (senão, quem chegou) */
+function affFem(RA, RB) { return RB._fem && !RA._fem ? RB : RA._fem && !RB._fem ? RA : RB; }
+/* carinho na barriga: a mão de F na barriga de M, num círculo lento (4 quadros) */
+function affCaress(F, M, fr) { const V = (x, y, z) => new THREE.Vector3(x, y, z), W = j => j.getWorldPosition(V(0, 0, 0)), h = W(M.hips), c = W(M.chest), fwd = affWP(M.hips, 0, 0, 1).sub(h).normalize(), rt = affWP(M.hips, 1, 0, 0).sub(h).normalize();
+  const a = (fr % 4) * Math.PI / 2, bp = h.clone().lerp(c, 0.42).add(fwd.multiplyScalar(0.15)).add(rt.multiplyScalar(0.035 * Math.cos(a))).add(V(0, 0.025 * Math.sin(a), 0));
+  const arm = affNear2(F, F.A.sh, F.B.sh, bp) ? 'A' : 'B'; ikArm(F, arm, bp, [0.9, -0.5, 0, 1.2]); }
 /* cabeça de RA no ombro de RB; RB passa o braço de perto pelos ombros de RA */
 function affShoulder(RA, RB) { const hA = RA.head.getWorldPosition(new THREE.Vector3()), nearB = affNear2(RB, RB.A.sh, RB.B.sh, hA) ? 'A' : 'B', cl = RB[nearB].clav || RB.chest, pB = cl.getWorldPosition(new THREE.Vector3()), sideA = affNear2(RA, RA.A.sh, RA.B.sh, pB) ? -1 : 1;
   affBend(RA, R => R.head.localToWorld(new THREE.Vector3(sideA * 0.09, 0.02, 0)), affWP(cl, 0, 0.08, 0), [[-0.05, 0.2], [-0.22, 0.22], [-0.25, 0.25], [-0.1, 0.3], [-0.6, 0.6]]); RA.head.rotation.z = sideA * -0.3;
@@ -176,26 +193,20 @@ function affBuild2(k, e, o, A) { const c = A.ctx || 'stand', bath = c === 'water
   if (c === 'seat') { const sitOf = x => x.isNpc ? 'c' : x === G.me ? (G.me.sit && G.me.sit.chair === 0 ? 'g' : 'c') : ((x.flags & 1024) ? 'c' : 'g');
     affPose(RA, e, { sit: sitOf(e), dir: dA }); affPose(RB, o, { sit: sitOf(o), dir: dB }); affPut(RA, dA, 0, 0); affPut(RB, dB, rel.x, rel.z);
     if (k === 'sShoulder') affShoulder(RA, RB);
-    else if (k === 'sLean') affShoulder(RB, RA);   /* quem chega encosta a cabeça no ombro de quem conduz */
+    else if (k === 'sLean') { affShoulder(RB, RA); affCaress(RB, RA, A.fr || 0); }   /* encostada no ombro, a mão na barriga dele */   /* quem chega encosta a cabeça no ombro de quem conduz */
     else if (k === 'sKissF2') { const hB = RB.head.getWorldPosition(V(0, 0, 0)), sA = affNear2(RA, RA.A.sh, RA.B.sh, hB) ? -1 : 1, ck = () => affWP(RA.head, sA * 0.075, -0.02, 0.04); for (let r = 0; r < 3; r++) { lookAtP(RB, ck(), -0.3); affBend(RB, affMouth, ck()); } ikArm(RB, affNear2(RB, RB.A.sh, RB.B.sh, hB) ? 'A' : 'B', affWP(RA.chest, -sA * 0.02, 0.15, 0.1).lerp(RA.head.getWorldPosition(V(0, 0, 0)), 0.1), [1.0, -0.6, 0, 1.2]); }
-    else if (k === 'sLap' || k === 'sLapK') { /* no colo: de lado sobre as coxas de quem conduz, braço no pescoço dele; ele segura a cintura dela */
-      const th = [RA.LA.hp, RA.LA.kn, RA.LB.hp, RA.LB.kn].map(j => j.getWorldPosition(V(0, 0, 0))), seat = th.reduce((s, v) => s.add(v), V(0, 0, 0)).multiplyScalar(0.25); seat.y += 0.07;
-      const yA = RA.root.rotation.y, pick = s => { RB.root.rotation.set(0, yA + s * Math.PI / 2, 0); RB.root.updateMatrixWorld(true); return affWP(RB.hips, 0, 0, 1).sub(RB.hips.getWorldPosition(V(0, 0, 0))).z; }, sg = pick(1) >= pick(-1) ? 1 : -1;
-      RB.root.rotation.set(0, yA + sg * Math.PI / 2, 0); RB.root.position.set(0, 0, 0); RB.root.updateMatrixWorld(true); const hb = RB.hips.getWorldPosition(V(0, 0, 0)); RB.root.position.set(seat.x - hb.x, seat.y - hb.y + 0.03, seat.z - hb.z); RB.root.updateMatrixWorld(true);
-      for (const R of [RB]) { R.LA.hp.rotation.x = -1.35; R.LA.kn.rotation.x = 1.2; R.LB.hp.rotation.x = -1.2; R.LB.kn.rotation.x = 1.1; }
-      const hA = RA.head.getWorldPosition(V(0, 0, 0)), nearB = affNear2(RB, RB.A.sh, RB.B.sh, hA) ? 'A' : 'B', farB = nearB === 'A' ? 'B' : 'A', farA = affNear2(RA, RA.A.sh, RA.B.sh, RB.hips.getWorldPosition(V(0, 0, 0))) ? 'B' : 'A', nearA = farA === 'A' ? 'B' : 'A';
-      if (k === 'sLapK') { for (let r = 0; r < 4; r++) { const mid = affMouth(RA).add(affMouth(RB)).multiplyScalar(0.5); lookAtP(RA, affMouth(RB), 0.3); lookAtP(RB, affMouth(RA), -0.3); affBend(RA, affMouth, mid, [[-0.1, 0.4], [-0.25, 0.25], [-0.6, 0.6], [-0.2, 0.4], [-0.4, 0.4]]); affBend(RB, affMouth, mid, [[-0.2, 0.3], [-0.35, 0.35], [-0.7, 0.7], [-0.2, 0.4], [-0.4, 0.4]]); } }
-      else { affBend(RB, R => R.head.localToWorld(V(0, 0.02, 0.06)), affWP(RA.chest, 0, 0.3, 0.06).lerp(hA, 0.35), [[-0.2, 0.3], [-0.35, 0.35], [-0.5, 0.5], [-0.2, 0.3], [-0.45, 0.45]]); RB.head.rotation.z = sg * 0.2; }
-      ikArm(RB, nearB, k === 'sLapK' ? affWP(RA.chest, 0, 0.2, -0.1) : affWP(RA[farA].clav || RA.chest, 0, 0.08, -0.06), [1.2, -0.9, 0.3, 1.5]);   /* no beijo, a mão na nuca dele */ ikArm(RB, farB, affWP(RA.chest, 0, 0.1, 0.16), [0.8, -0.4, 0, 1.2]);
-      ikArm(RA, nearA, affWP(RB.spine, 0, 0.06, -0.15), [0.9, -0.7, 0, 1.3]); ikArm(RA, farA, affWP(RB.LA.kn, 0, 0.05, 0), [0.5, -0.3, 0, 0.8]); }
+    else if (k === 'sLap' || k === 'sLapK') affLap(RA, RB, k);
+    else if (k === 'sHand') { const W = j => j.getWorldPosition(V(0, 0, 0)), hA = W(RA.hips), hB = W(RB.hips), mid = hA.clone().lerp(hB, 0.5), fw = affWP(RA.hips, 0, 0, 1).sub(hA).normalize(); mid.y += 0.12; mid.add(fw.multiplyScalar(0.16));   /* sentados lado a lado, as mãos juntas entre os dois */
+      ikArm(RA, affNear2(RA, RA.A.sh, RA.B.sh, hB) ? 'A' : 'B', mid.clone().lerp(hA, 0.06), [0.6, -0.3, 0, 0.9]); ikArm(RB, affNear2(RB, RB.A.sh, RB.B.sh, hA) ? 'A' : 'B', mid.clone().lerp(hB, 0.06), [0.6, -0.3, 0, 0.9]); RB.head.rotation.y = 0; lookAtP(RB, W(RA.head), -0.15); }
+    else if (k === 'sBelly') { const F = affFem(RA, RB), M = F === RA ? RB : RA; affShoulder(F, M); affCaress(F, M, A.fr || 0); }
     else if (k === 'sHug') { for (const [R, P] of [[RA, RB], [RB, RA]]) { const me = R.hips.getWorldPosition(V(0, 0, 0)), to = P.hips.getWorldPosition(V(0, 0, 0)).sub(me), f = affWP(R.hips, 0, 0, 1).sub(me); let ang = Math.atan2(to.x, to.z) - Math.atan2(f.x, f.z); while (ang > Math.PI) ang -= 2 * Math.PI; while (ang < -Math.PI) ang += 2 * Math.PI; const tw = Math.max(-0.8, Math.min(0.8, ang * 0.7)); R.chest.rotation.y = tw; R.spine.rotation.y = tw * 0.5; rigExtra(R, { clavA: [0.12, 0.3], clavB: [0.12, 0.3], tlc: 0.1, twc: tw }); R.spine.rotation.y = tw * 0.5; }
       RB.head.rotation.z = 0.3; for (const [R, P] of [[RA, RB], [RB, RA]]) { const ph = P.chest.getWorldPosition(V(0, 0, 0)), near = affNear2(R, R.A.sh, R.B.sh, ph) ? 'A' : 'B', far = near === 'A' ? 'B' : 'A'; ikArm(R, near, affWP(P.chest, 0, 0.1, -0.17), [1.2, -0.8, 0.2, 1.4]); ikArm(R, far, affWP(P.spine, 0, 0.08, 0.16), [1.0, -0.7, 0, 1.3]); } }
     else { kiss(); const near = affNear2(RA, RA.A.sh, RA.B.sh, RB.head.getWorldPosition(V(0, 0, 0))) ? 'A' : 'B'; ikArm(RA, near, affWP(RB.head, 0, -0.05, 0.02).lerp(RB.chest.getWorldPosition(V(0, 0, 0)), 0.15), [1.3, -0.8, 0, 1.4]); } }
   else if (c === 'water' || c === 'vtub') { const tub = c === 'water', LW = [[-0.1, 0.5], [-0.12, 0.12], [-0.25, 0.25], [-0.2, 0.35], [-0.35, 0.35]];
     affPose(RA, e, { sit: tub ? 'g' : undefined, tub, dir: 2 }); affPose(RB, o, { sit: tub ? 'g' : undefined, tub, dir: 6 }); affPut(RA, 2, -0.24, 0, tub); affPut(RB, 6, 0.24, 0, tub);   /* sentados retos, joelhos dobrados (as pernas não se cruzam) */
-    if (k === 'wHug') { rigExtra(RA, { tlc: 0.08, clavA: [0.12, 0.3], clavB: [0.12, 0.3] }); rigExtra(RB, { tlc: 0.08, clavA: [0.15, 0.3], clavB: [0.15, 0.3] }); RA.spine.rotation.x = 0.1; RB.spine.rotation.x = 0.12;
+    if (k === 'wHug' || k === 'wBelly') { rigExtra(RA, { tlc: 0.08, clavA: [0.12, 0.3], clavB: [0.12, 0.3] }); rigExtra(RB, { tlc: 0.08, clavA: [0.15, 0.3], clavB: [0.15, 0.3] }); RA.spine.rotation.x = 0.1; RB.spine.rotation.x = 0.12;
       const cl = RA.B.clav || RA.chest; affBend(RB, R => R.head.localToWorld(V(-0.07, 0.0, 0.05)), affWP(cl, 0.02, 0.12, 0.02), [[-0.1, 0.4], [-0.1, 0.1], [-0.25, 0.25], [-0.15, 0.25], [-0.18, 0.18]]); RB.head.rotation.z = 0.12;
-      ikArm(RA, 'A', affWP(RB.chest, 0.06, 0, -0.17)); ikArm(RA, 'B', affWP(RB.spine, -0.08, 0.04, -0.16)); ikArm(RB, 'A', affWP(RA.chest, -0.1, 0.14, -0.13)); ikArm(RB, 'B', affWP(RA.chest, 0.12, 0.12, -0.13)); }
+      ikArm(RA, 'A', affWP(RB.chest, 0.06, 0, -0.17)); ikArm(RA, 'B', affWP(RB.spine, -0.08, 0.04, -0.16)); ikArm(RB, 'A', affWP(RA.chest, -0.1, 0.14, -0.13)); ikArm(RB, 'B', affWP(RA.chest, 0.12, 0.12, -0.13)); if (k === 'wBelly') { const F = affFem(RA, RB); affCaress(F, F === RA ? RB : RA, A.fr || 0); } }
     else { rigExtra(RA, { clavA: [0.05, 0.22], clavB: [0.05, 0.25], roll: 0.3 }); rigExtra(RB, { clavA: [0.2, 0.2], clavB: [0.2, 0.2], roll: -0.3 });
       for (let r = 0; r < 3; r++) { const mid = affMouth(RA).add(affMouth(RB)).multiplyScalar(0.5); affBend(RA, affMouth, mid, LW); affBend(RB, affMouth, mid, LW); }
       ikArm(RA, 'A', affWP(RB.head, 0.07, -0.05, 0.02)); ikArm(RA, 'B', affWP(RB.spine, -0.05, 0.02, -0.16)); ikArm(RB, 'A', affWP(RA.chest, -0.06, 0.16, -0.14)); ikArm(RB, 'B', affWP(RA.chest, 0.12, 0.15, -0.06)); }
@@ -205,22 +216,22 @@ function affBuild2(k, e, o, A) { const c = A.ctx || 'stand', bath = c === 'water
   else if (c === 'bed') { const yaw = affYaw(dA), right = V(Math.cos(yaw), 0, -Math.sin(yaw)); affPose(RA, e, { down: true, bed: 1, dir: dA }); affPose(RB, o, { down: true, bed: 1, dir: dA });
     const pa = right.clone().multiplyScalar(-0.15), pb = right.clone().multiplyScalar(0.15), face = (R, roll, hp, other) => { affLie(R, yaw, roll, hp.x, hp.z); const f = affWP(R.head, 0, 0, 1).sub(R.head.getWorldPosition(V(0, 0, 0))); return f.x * (other.x - hp.x) + f.z * (other.z - hp.z); };
     const rollTo = (R, hp, other) => face(R, 1.3, hp, other) > face(R, -1.3, hp, other) ? 1.3 : -1.3;
-    if (k === 'bHold') { affLie(RA, yaw, 0, pa.x, pa.z); const r = rollTo(RB, pb, pa); affLie(RB, yaw, r, pb.x, pb.z);
+    if (k === 'bHold' || k === 'bBelly') { affLie(RA, yaw, 0, pa.x, pa.z); const r = rollTo(RB, pb, pa); affLie(RB, yaw, r, pb.x, pb.z);
       affBend(RB, R => R.head.localToWorld(V(0, 0, 0)), affWP(RA.B.clav || RA.chest, 0.05, 0.1, 0.06), [[-0.3, 0.5], [-0.45, 0.45], [-0.4, 0.4], [-0.3, 0.5], [-0.5, 0.5]]);
-      ikArm(RB, affNear2(RB, RB.A.sh, RB.B.sh, pa) ? 'B' : 'A', affWP(RA.chest, 0, 0.06, 0.14), [1.2, -0.4, 0, 0.8]); RB.LA.kn.rotation.x = 0.5; }
+      affCaress(RB, RA, A.fr || 0); RB.LA.kn.rotation.x = 0.5; }   /* deitada de lado, a mão na barriga dele */
     else { const ra = rollTo(RA, pa, pb), rb = rollTo(RB, pb, pa); affLie(RA, yaw, ra, pa.x, pa.z); affLie(RB, yaw, rb, pb.x, pb.z);
       for (let r = 0; r < 4; r++) { const mA = affMouth(RA), mB = affMouth(RB), mid = mA.clone().add(mB).multiplyScalar(0.5); affBend(RA, affMouth, mid); affBend(RB, affMouth, mid); lookAtP(RA, mB, 0.2); lookAtP(RB, mA, -0.2); }
       for (const R of [RA, RB]) { R.LA.kn.rotation.x = 0.45; R.LB.kn.rotation.x = 0.2; } }
     let minY = Infinity; for (const R of [RA, RB]) { R.root.updateMatrixWorld(true); const bb = new THREE.Box3().setFromObject(R.root); minY = Math.min(minY, bb.min.y); } for (const R of [RA, RB]) { R.root.position.y += 0.01 - minY; R.root.updateMatrixWorld(true); } }
   return [RA, RB, a.lk, b.lk]; }
-const AFF_PAIR2 = new Map();
+const AFF_PAIR2 = new Map(), AFF_CARESS = ['sBelly', 'wBelly', 'bBelly', 'bHold', 'sLean'];
 function affPairSprite2(e, o, A) { const rel = [Math.round(((o.rx ?? o.x) - (e.rx ?? e.x)) * 20), Math.round(((o.ry ?? o.y) - (e.ry ?? e.y)) * 20)], c = A.ctx || 'stand', bath = c !== 'seat';
-  const key = A.k + '|' + c + '|' + (e.dir | 0) + (o.dir | 0) + '|' + (c === 'seat' || c === 'edge' || c === 'water' || c === 'vtub' ? rel.join(',') : '') + '|' + affRigOf('A', e, A.k, bath).lk + '|' + affRigOf('B', o, A.k, bath).lk;
+  const fr = AFF_CARESS.includes(A.k) ? Math.floor(performance.now() / 650) % 4 : 0; A = Object.assign({}, A, { fr }); const key = A.k + '|' + fr + '|' + c + '|' + (e.dir | 0) + (o.dir | 0) + '|' + (c === 'seat' || c === 'edge' || c === 'water' || c === 'vtub' ? rel.join(',') : '') + '|' + affRigOf('A', e, A.k, bath).lk + '|' + affRigOf('B', o, A.k, bath).lk;
   let s = AFF_PAIR2.get(key); if (s) return s; if (!R3.ok) return null; const [RA, RB] = affBuild2(A.k, e, o, A), { renderer, scene, cam, W, H } = R3;
   for (const R of [RA, RB]) { for (const X of [R.A, R.B]) if (X && X.slv && typeof hangWorld === 'function') hangWorld(X.slv, R, 0); scene.add(R.root); R.root.updateMatrixWorld(true); }
   renderer.render(scene, cam); scene.remove(RA.root); scene.remove(RB.root);
   const cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.getContext('2d').drawImage(renderer.domElement, 0, 0);
-  s = { c: cv, w: FRAME_W, h: FRAME_H, ax: FRAME_W / 2, ay: FOOT_Y, painted: true, hd: true }; AFF_PAIR2.set(key, s); if (AFF_PAIR2.size > 30) AFF_PAIR2.delete(AFF_PAIR2.keys().next().value); return s; }
+  s = { c: cv, w: FRAME_W, h: FRAME_H, ax: FRAME_W / 2, ay: FOOT_Y, painted: true, hd: true }; AFF_PAIR2.set(key, s); if (AFF_PAIR2.size > 60) AFF_PAIR2.delete(AFF_PAIR2.keys().next().value); return s; }
 /* corte da água: por baixo transparente, por cima inteiro */
 function affWaterBlit(ctx, s, x0, y0, wy, a) { ctx.save(); ctx.imageSmoothingEnabled = true; ctx.save(); ctx.beginPath(); ctx.rect(x0 - 2, wy, s.w + 4, s.h); ctx.clip(); ctx.globalAlpha = a; ctx.drawImage(s.c, x0, y0, s.w, s.h); ctx.restore();
   ctx.save(); ctx.beginPath(); ctx.rect(x0 - 2, y0 - 4, s.w + 4, wy - y0 + 4); ctx.clip(); ctx.drawImage(s.c, x0, y0, s.w, s.h); ctx.restore(); ctx.restore(); }
@@ -237,7 +248,7 @@ if (typeof drawHeroEntity === 'function') { const _dhA2 = drawHeroEntity; drawHe
 /* o contexto do gesto no cliente: pelo tipo e pelo estado de quem conduz */
 function affKCtxC(A, e) { const c = AF2.K[A.k] ? AF2.K[A.k][0] : 'stand'; if (c === 'water') return e.bathing ? 'water' : 'vtub'; return c; }
 if (typeof drawBath === 'function') { const _dbA2 = drawBath; drawBath = function (ctx, e, sx, sy, now) { const A = e && e.aff, o = A && affPartC(A.w);
-  if (A && o && R3.ok && (A.k === 'wHug' || A.k === 'wKiss' || A.k === 'wEdge') && o.bathing) { if (!A.lead) return; const c = A.k === 'wEdge' ? 'edge' : 'water', s = affPairSprite2(e, o, Object.assign({}, A, { ctx: c })); if (s) {
+  if (A && o && R3.ok && (A.k === 'wHug' || A.k === 'wKiss' || A.k === 'wBelly' || A.k === 'wEdge') && o.bathing) { if (!A.lead) return; const c = A.k === 'wEdge' ? 'edge' : 'water', s = affPairSprite2(e, o, Object.assign({}, A, { ctx: c })); if (s) {
     if (c === 'edge') { const wy = sy - Math.max(0.04, 0.22 - 0.28 * (1 - tubLvC(e.fb))) * HV; affWaterBlit(ctx, s, sx - s.ax, sy - s.ay - 0.3 * HV, wy, 0.4); }
     else { const lift = (typeof BATH_POSES !== 'undefined' && BATH_POSES.A && BATH_POSES.A.lift) || 0, wy = sy - tubH(e.fb) * HV; affWaterBlit(ctx, s, sx - s.ax, sy - s.ay + 0.25 * HV - lift - AF2.wLift, wy, 0.32); }
     e._spr = s; return; } }

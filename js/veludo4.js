@@ -5,7 +5,7 @@
 //  clientes NPC dos reservados. Subir ao quarto sem tela escura: ela leva pela mão até o elevador, sobe
 //  com a Lan e leva ao quarto; lá deitam abraçados, e ao levantar o cliente ganha o descanso.
 // ============================================================
-const VL4 = { drink: 20, drinkMs: 180000, rotMs: 16000, gapMs: 4000, offerMs: 20000, declMs: 180000, speed: 1.8, guestUp: 0.25, guestUpMs: 180000, layMs: 15000, waitMs: 90000 };
+const VL4 = { drink: 20, drinkMs: 180000, rotMs: 20000, gapMs: 40000, talkN: 3, arrive: [60000, 120000], offerMs: 20000, declMs: 180000, speed: 1.8, guestUp: 0.25, guestUpMs: 180000, layMs: 15000, waitMs: 90000 };
 const VL4_ROT = ['sLean', 'sHug', 'sKissF2', 'sLap', 'sKiss', 'sLapK'];
 const VL4_LINES = { offer: ['Me paga uma bebida, querido?', 'Posso sentar com você? Uma bebida e eu fico.', 'Que mesa bonita. Me oferece uma taça?'], renew: ['Minha taça acabou… mais uma?', 'Mais uma bebida e eu fico mais um pouco.'], yes: ['Saúde, querido.', 'Hum, que gentil.', 'Assim eu gosto.'], no: ['Fica para outra hora.', 'Quem sabe mais tarde.', 'Tudo bem, querido.'] };
 const vl4Pick = L => L[Math.floor(Math.random() * L.length)];
@@ -32,6 +32,10 @@ function vl4NN() { const l = []; for (const g in S.vlTable || {}) { const T = S.
   for (const g in S.vlEsc || {}) { const E = S.vlEsc[g]; if (E.npc && E.hand) l.push([E.who, g, 'hand', 'stand']); } return l; }
 function vl4SendNN(force) { const l = vl4NN(), key = JSON.stringify(l); if (!force && key === S._vl4NN) return; S._vl4NN = key; Net.toAll({ t: 'affnn', l }); }
 /* fim da companhia na mesa */
+/* o clima avança: conversa, mãos dadas, ombro, abraço, beijo no rosto, beijo e por fim o colo; entre um e outro, conversa */
+const VL4_STEPS = ['talk', 'sHand', 'sLean', 'sHug', 'sKissF2', 'sKiss', 'sLap', 'sLapK'], VL4_LATE = ['sLean', 'sKiss', 'sLap', 'sLapK', 'sHug'];
+const VL4_TALK = ['E então, de onde você é?', 'Faz tempo que não vejo alguém tão bem-vestido aqui.', 'Conta uma história, querido.', 'Você vem sempre à Casa?', 'A banda está bonita hoje, não acha?', 'Gosto de quem sabe ouvir.', 'Hum… e o que mais?', 'Você tem um sorriso perigoso.'];
+function vl4Step(T) { if (T.after) { T.after = 0; return 'talk'; } if (T.stage < VL4_STEPS.length) return VL4_STEPS[T.stage]; return VL4_LATE[(T.stage++) % VL4_LATE.length]; }
 function vl4EndTable(g, say) { const T = S.vlTable && S.vlTable[g]; if (!T) return; delete S.vlTable[g]; const n = S.npcs[g], p = S.players[T.who]; if (p && p.aff && p.aff.w === g) affEnd(p); if (n) { n.aff = null; if (say) empSay(n, say); } }
 /* subir ao quarto de mãos dadas */
 function vl4Path0(n) { const [u, v] = vl4Loc(n.x, n.y), iu = u < 1.5 ? u + 1.3 : u > 11.5 ? u - 1.3 : u, iv = v > 9.8 ? v - 1.2 : v; return [[iu, iv], [iu, 9.2], [9.4, 9.2], [9.4, 3.3], [10, 3]].map(([a, b]) => localToWorld(velB('velvet'), a, b)); }
@@ -69,19 +73,20 @@ function vl4Tick(now) { if (!S.vlTable) S.vlTable = {}; if (!S.vlOffer) S.vlOffe
   for (const g in S.vlTable) { const T = S.vlTable[g], n = S.npcs[g];
     if (T.npc) { const c = S.npcs[T.who]; if (!c || !n || c.vlUp) { delete S.vlTable[g]; continue; } if (now >= T.next) { if (T.k && now < T.kUntil) continue; if (T.k) { T.k = null; T.next = now + VL4.gapMs; continue; }
         if (now > T.until) { if (Math.random() < VL4.guestUp) { vl4EscortNpc(c, n); continue; } if (Math.random() < 0.5) { delete S.vlTable[g]; continue; } T.until = now + VL4.drinkMs; }
-        T.k = VL4_ROT[T.gi++ % VL4_ROT.length]; T.kUntil = now + (AFX.dur[T.k] || VL4.rotMs); } continue; }
+        if (T.after) { T.after = 0; T.next = now + VL4.gapMs; continue; } const st = vl4Step(T); if (st === 'talk') { T.stage = (T.stage || 0) + 1; T.next = now + 30000; continue; } T.k = st; T.kUntil = now + (AFX.dur[T.k] || VL4.rotMs); T.after = 1; } continue; }
     if (n && T.seat != null) n.sitting = 1;   /* sentada no reservado entre um carinho e outro */
     const p = S.players[T.who], s = p && vl4BoothSeat(p); if (!p || !n || !p.sit || !s || B.own[s.vb] !== estOwner(p)) { vl4EndTable(g, 'Volto para o salão, então.'); continue; }
     if (now > T.until && !S.vlOffer[g]) { S.vlOffer[g] = { who: p.id, t: now, renew: 1, at: vl4Loc(n.x, n.y), dir: n.dir }; empSay(n, vl4Pick(VL4_LINES.renew)); Net.toOne(p.id, { t: 'vloffer', id: g, name: n.name, cost: VL4.drink, renew: 1 }); continue; }
     if (S.vlOffer[g]) continue;
-    const A = p.aff && p.aff.w === g ? p.aff : null; if (A && A.until && now < A.until) continue; if (A && !A.until && now < T.next) continue;
-    if (now >= T.next && affFree(p)) { const k = VL4_ROT[T.gi++ % VL4_ROT.length]; affStart(p, n, k); if (p.aff && p.aff.w === g) { if (!p.aff.until) p.aff.until = now + VL4.rotMs; if (n.aff) n.aff.until = p.aff.until; T.next = p.aff.until + VL4.gapMs; } else T.next = now + 5000; } }
+    const A = p.aff && p.aff.w === g ? p.aff : null; if (A && A.until && now < A.until) continue;
+    if (now >= T.next && affFree(p)) { const st = vl4Step(T); if (st === 'talk') { empSay(n, vl4Pick(VL4_TALK)); near(n.x, n.y, { t: 'anim', w: 'n', id: g, a: 'talk', ms: 3000 }); T.next = now + 12000 + Math.random() * 6000; T.talkN = (T.talkN || 0) + 1; if (T.talkN >= VL4.talkN) { T.talkN = 0; T.stage++; } continue; }
+      affStart(p, n, st); if (p.aff && p.aff.w === g) { if (!p.aff.until) p.aff.until = now + VL4.rotMs; if (n.aff) n.aff.until = p.aff.until; T.next = p.aff.until + VL4.gapMs; T.talkN = 0; T.stage++; T.after = 1; } else T.next = now + 5000; } }
   /* moças livres vão às mesas */
   for (const T of vl4Girls()) { const n = S.npcs[T.id]; if (!n || n.dead || n.downed || (n.fl || 0) || vl4Busy(T.id)) continue;
-    let cand = null; for (const p of Object.values(S.players)) { if (!p.sit || (p.fl || 0) || p.vlOffer || p.aff) continue; const s = vl4BoothSeat(p); if (!s || B.own[s.vb] !== estOwner(p)) continue; if (Object.values(S.vlTable).some(X => X.who === p.id)) continue; if (p.vlDecl && p.vlDecl[T.id] > now) continue; const fs = vl4FreeSeat(p, s.vb); if (fs < 0) continue; cand = { p, fs }; break; }
+    let cand = null; for (const p of Object.values(S.players)) { if (!p.sit || (p.fl || 0) || p.vlOffer || p.aff) { if (!p.sit) p._vlSitAt = 0; continue; } const s = vl4BoothSeat(p); if (!s || B.own[s.vb] !== estOwner(p)) continue; if (!p._vlSitAt) { p._vlSitAt = now; p._vlWait = VL4.arrive[0] + Math.random() * (VL4.arrive[1] - VL4.arrive[0]); } if (now - p._vlSitAt < p._vlWait) continue; if (Object.values(S.vlTable).some(X => X.who === p.id)) continue; if (p.vlDecl && p.vlDecl[T.id] > now) continue; const fs = vl4FreeSeat(p, s.vb); if (fs < 0) continue; cand = { p, fs }; break; }
     if (cand) { const s = WORLD.seats[cand.fs]; S.vlOffer[T.id] = { who: cand.p.id, t: now, seat: cand.fs, at: vl4Loc(s.x, s.y), dir: s.dir }; cand.p.vlOffer = T.id; empSay(n, vl4Pick(VL4_LINES.offer)); Net.toOne(cand.p.id, { t: 'vloffer', id: T.id, name: T.name, cost: VL4.drink }); continue; }
     if (!vlOpen()) continue; for (const c of Object.values(S.npcs)) { if (!/^vl_g/.test(c.id) || c.vlUp || (c.fl || 0)) continue; if (Object.values(S.vlTable).some(X => X.who === c.id) || now < (c.vlDecl || 0)) continue; const s = vl4BoothSeat(c); if (!s) continue; const fs = vl4FreeSeat(c, s.vb); if (fs < 0) continue;
-      if (Math.random() < 0.7) S.vlTable[T.id] = { who: c.id, npc: 1, seat: fs, until: now + VL4.drinkMs, next: now + 2000, gi: Math.floor(Math.random() * 6) }; else c.vlDecl = now + VL4.declMs; break; } }
+      if (Math.random() < 0.7) S.vlTable[T.id] = { who: c.id, npc: 1, seat: fs, until: now + VL4.drinkMs, next: now + 20000, gi: 0, stage: 0 }; else c.vlDecl = now + VL4.declMs; break; } }
   vl4SendNN(false); }
 if (typeof velTick === 'function') { const _vtV4 = velTick; velTick = function (now) { const run = S.estate && now - (S.vl4T || 0) >= 1000; _vtV4(now); if (!run) return; S.vl4T = now; try { vl4Tick(now); } catch (e) { console.warn('veludo4', e); } }; }
 if (typeof affTick === 'function') { const _atV4 = affTick; affTick = function (now) { _atV4(now); try { const dt = Math.min(0.5, (now - (S.vl4E || now)) / 1000); S.vl4E = now; if (dt > 0) vl4EscTick(now, dt); } catch (e) { console.warn('veludo4 esc', e); } }; }
@@ -91,7 +96,7 @@ if (typeof velMsg === 'function') { const _vmV4 = velMsg; velMsg = function (p, 
   if (m && m.a === 'drink') { const O = S.vlOffer && S.vlOffer[m.id], n = S.npcs[m.id]; if (!O || O.who !== p.id || !n) return; delete S.vlOffer[m.id]; p.vlOffer = null;
     if (!m.ok) { p.vlDecl = p.vlDecl || {}; p.vlDecl[m.id] = now + VL4.declMs; if (O.renew) vl4EndTable(m.id, vl4Pick(VL4_LINES.no)); else empSay(n, vl4Pick(VL4_LINES.no)); return; }
     if ((p.gold || 0) < VL4.drink) { empSay(n, 'Sem bebida, sem companhia, querido.'); if (O.renew) vl4EndTable(m.id); return; } p.gold -= VL4.drink; sendStat(p);
-    if (O.renew && S.vlTable[m.id]) S.vlTable[m.id].until = now + VL4.drinkMs; else S.vlTable[m.id] = { who: p.id, seat: O.seat, until: now + VL4.drinkMs, next: now + 2500, gi: 0 };
+    if (O.renew && S.vlTable[m.id]) { const T0 = S.vlTable[m.id]; T0.until = now + VL4.drinkMs; T0.stage = Math.max(T0.stage || 0, 1) + 1; T0.talkN = 0; } else S.vlTable[m.id] = { who: p.id, seat: O.seat, until: now + VL4.drinkMs, next: now + 4000, gi: 0, stage: 0, talkN: 0 };
     empSay(n, vl4Pick(VL4_LINES.yes)); tell(p, n.name + ' senta com você. Fale com ela para subir ao quarto (' + VL_COMPANY + ' de ouro).'); return; }
   if (m && m.a === 'company') { if (p.downed || p.vlRest) return; const T = VEL_STAFF.find(t => t.id === m.id && t.menu === 'comp'), n = T && S.npcs[T.id]; if (!n || dist(p.x, p.y, n.x, n.y) > 4 || (p.fl || 0) !== (n.fl || 0)) return;
     if (S.vlEsc && S.vlEsc[T.id]) { empSay(n, 'Agora não, querido, estou acompanhando alguém.'); return; }
