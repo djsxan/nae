@@ -29,7 +29,7 @@ const RUMORS = [
 
 const now_ = () => Date.now();
 function buffOn(p, b) { return (p.buffs[b] || 0) > now_(); }
-function pinfo(p) { return { id: p.id, name: p.name, color: p.color, cls: p.cls, skin: p.skin, lvl: p.lvl }; }
+function pinfo(p) { return { id: p.id, name: p.name, color: p.color, cls: p.cls, skin: p.skin, lvl: p.lvl, cas: p.cas || '' }; }
 // sorteia a madeira, o núcleo e o tamanho de uma varinha
 function wandRoll(k) { const W = WAND_WOODS[Math.floor(Math.random() * WAND_WOODS.length)], C = WAND_CORES[Math.floor(Math.random() * WAND_CORES.length)], len = 20 + Math.floor(Math.random() * 16);
   return { k, w: W[0], c: C[0], len, feel: WAND_FEEL[Math.floor(Math.random() * WAND_FEEL.length)], dmg: Math.round((W[1] + C[1] + (len - 27) * 0.002) * 1000) / 1000, mp: W[2] + C[2] }; }
@@ -170,6 +170,7 @@ function hostOnClient(from, m) {
     const np = {
       wandInfo: m.wandInfo && typeof m.wandInfo === 'object' && WANDS[m.wandInfo.k] ? { k: m.wandInfo.k, w: String(m.wandInfo.w || '').slice(0, 20), c: String(m.wandInfo.c || '').slice(0, 30), len: clamp(m.wandInfo.len | 0, 15, 40), feel: String(m.wandInfo.feel || '').slice(0, 24), dmg: clamp(+m.wandInfo.dmg || 0, -0.05, 0.08), mp: clamp(m.wandInfo.mp | 0, -5, 12) } : null,
       cloak: CLOAKS[m.cloak | 0] ? m.cloak | 0 : 0,
+      cas: /^[km][0-9a-f]{12}$/.test(String(m.cas || '')) ? String(m.cas) : 'm7a2a3ae8d8b8',   /* roupa casual escolhida (js/roupas.js) */
       id: from, name: String(m.name || 'Aventureiro').slice(0, 16), cls, skin, uid: /^[a-z0-9]{4,12}$/.test(m.uid || '') ? m.uid : '',
       color: /^#[0-9a-f]{6}$/i.test(m.color) ? m.color : '#8b2e2e',
       x: s.x, y: s.y, z: sz, fl: sfl, fb: sfb, lvl, xp: clamp(m.xp | 0, 0, need(lvl) - 1), gold: clamp(m.gold | 0, 0, 1e7),
@@ -434,6 +435,7 @@ function hostOnClient(from, m) {
       p.x = b.x; p.y = b.y; p.dir = dirFromVecS(b.dx, b.dy); p.sleep = m.b | 0; p.sit = null; p.walking = false; break;
     }
     case 'bath': bathMsg(p, m); break;
+    case 'outfit': if (typeof roupaMsg === 'function') roupaMsg(p, m); break;
     case 'tub': tubMsg(p, m); break;
     case 'emp': if (typeof empMsg === 'function') empMsg(p, m); break;
     case 'ent': if (typeof entMsg === 'function') entMsg(p, m); break;
@@ -763,7 +765,7 @@ function damagePlayer(p, raw, m, delay = 0, zone = null, exactPart = null) {
     return;
   }
   const c = CLASSES[p.cls];
-  let mult = 1 - c.armor;
+  let mult = 1 - (p.outfit === 'cas' ? 0 : c.armor);   /* roupa casual: a armadura de vocação não protege */
   if (buffOn(p, 'wall')) mult *= 0.4;
   if (buffOn(p, 'warcry')) mult *= 0.8;
   if (buffOn(p, 'bless')) mult *= 0.9;
@@ -3225,7 +3227,7 @@ function hostTick() {
       if (p.devHidden && p.id !== r.id) continue;
       let fl = (p.walking ? 1 : 0) | (p.downed ? 2 : 0) | (p.carriedBy ? 4 : 0) | (p.carrying ? 8 : 0) | (p.running && p.walking ? 256 : 0) | (p.sit ? 512 : 0) | (p.sit === 'c' ? 1024 : 0) | (p.sleep != null ? 32768 : 0) | (p.drawT ? 65536 : 0) | (p.dragBy ? 131072 : 0) | (p.dragMode === 'foot' ? 262144 : 0) | (p.drag && p.drag.mode === 'arms' ? 524288 : 0) | (p.drag && p.drag.mode === 'foot' ? 1048576 : 0) | (p.drag && p.drag.mode === 'back' ? 2097152 : 0) | (p.drag && p.drag.mode === 'grip' ? 4194304 : 0) | (p.gripBy ? 8388608 : 0) | (p.tied ? 16777216 : 0) | (p.choked ? 33554432 : 0) | (p.choking ? 67108864 : 0) | (p.escortBy || p.surrendered ? 134217728 : 0) | (p.jailUntil > now ? 536870912 : 0) | (p.bound ? 1073741824 : 0) | (p.drag && (p.drag.helper || ((dragTarget(p.drag.k, p.drag.id) || {}).dragBy2)) ? 268435456 : 0) | ((((p.fl || 0) + 1) & 3) << 11) | (p.crouch ? 8192 : 0) | (p.slide ? 16384 : 0);
       for (const b in BUFF_BITS) if (buffOn(p, b)) fl |= BUFF_BITS[b];
-      pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0, (p.surrendered ? 1 : 0) | (p.bound && p.bound.kind === 'rope' ? 2 : 0) | (p.bound && p.bound.kind === 'cuffs' ? 4 : 0) | (p.dragBy && (/^(n:|m:)/.test(String(p.dragBy)) || p.dragMode === 'lead') && !p.downed ? 8 : 0) | (p.pkg ? 16 : 0) | (p.shift ? 32 : 0) | (p.wpn === 'halberd' ? 64 : 0) | ((p.uni || 0) << 7) | (((p.cloak || 0) & 15) << 16) | (p.inMenu ? 1024 : 0) | (p.sheathed ? 2048 : 0) | (p.parry ? (PZ.indexOf(p.parry.z) + 1) << 12 : 0) | ((p.shieldHp ?? 100) <= 0 && p.cls === 'knight' ? 32768 : 0) | (p.buffs && p.buffs.tipsy > now_() ? 1048576 : 0), p.fl || 0]);   /* andar exato no fim (o campo de bits só cabe até o 2º andar) */
+      pl.push([p.id, Math.round(p.x * 100), Math.round(p.y * 100), Math.round(p.z * 100), p.dir | 0, fl, Math.round(p.hp / p.maxHp * 100), p.carrying || 0, p.lifted || 0, bodyBits(p), (p.lost || 0) | ((p.pro || 0) << 5), p.drag ? p.drag.k + ':' + p.drag.id : 0, (p.surrendered ? 1 : 0) | (p.bound && p.bound.kind === 'rope' ? 2 : 0) | (p.bound && p.bound.kind === 'cuffs' ? 4 : 0) | (p.dragBy && (/^(n:|m:)/.test(String(p.dragBy)) || p.dragMode === 'lead') && !p.downed ? 8 : 0) | (p.pkg ? 16 : 0) | (p.shift ? 32 : 0) | (p.wpn === 'halberd' ? 64 : 0) | ((p.uni || 0) << 7) | (((p.cloak || 0) & 15) << 16) | (p.inMenu ? 1024 : 0) | (p.sheathed ? 2048 : 0) | (p.parry ? (PZ.indexOf(p.parry.z) + 1) << 12 : 0) | ((p.shieldHp ?? 100) <= 0 && p.cls === 'knight' ? 32768 : 0) | (p.buffs && p.buffs.tipsy > now_() ? 1048576 : 0) | (p.outfit === 'cas' ? 2097152 : 0) | (p.helmOff ? 4194304 : 0), p.fl || 0]);   /* andar exato no fim (o campo de bits só cabe até o 2º andar) */
     }
     for (const m of mons) {
       if (Math.abs(m.x - r.x) > VIEW_RADIUS || Math.abs(m.y - r.y) > VIEW_RADIUS) continue;
