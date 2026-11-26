@@ -113,7 +113,7 @@ function massSermon() {   /* Lúmina abençoa a casa mais devota e condena a men
     if (v) { infFaithAdd(v, 2); infAdd(v, 'temple', 2); } q.hp = q.maxHp; sendStat(q); tell(q, 'Você assistiu à missa da Irmã Lúmina. Sua vida foi restaurada' + (v ? ' e a Fé lembrará da ' + infHN(v) + ' (+2 de fé).' : '.')); }
   infNews('Na missa da manhã, a Irmã Lúmina ' + (out.length ? out.join(' e ') : 'rezou pelo rei') + '.'); sys('Missa na Catedral da Aurora: a Irmã Lúmina ' + (out.length ? out.join(' e ') : 'rezou pelo rei') + '.'); estateSave(); }
 function infTick(now) {
-  if (!S.estate || TEST3D || now - (S.infT || 0) < 200) return; const dt = Math.min(0.4, (now - (S.infT || now)) / 1000) || 0.2; S.infT = now; const I = infRec();
+  if (!S.estate || !S.npcs || TEST3D || now - (S.infT || 0) < 200) return; const dt = Math.min(0.4, (now - (S.infT || now)) / 1000) || 0.2; S.infT = now; const I = infRec();
   if (I.day !== estDay()) { const first = !I.day; I.day = estDay(); if (!first) infDaily(); else estateSave(); }
   const hh = empHour(), tb = templeBi(), b = BUILDINGS[tb]; if (!b) return; const M = I.mass;
   const seats = (WORLD.seats || []).filter(s => s.bi === tb), massOn = hh >= MASS_H0 - 0.4 && hh < MASS_H1;
