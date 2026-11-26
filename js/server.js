@@ -571,8 +571,9 @@ function killMonster(m, p, delay) {
   const def = MON[m.type];
   // o corpo fica no chão (até o monstro voltar) com o ouro e os recursos dentro: é preciso revistar/esfolar (segurar F)
   const gold = rint(def.gold[0], def.gold[1]), drops = [];
-  for (const [k, ch] of MON_LOOT[m.type] || []) if (Math.random() < ch) drops.push(k);
-  if (Math.random() < 0.03) drops.push('gem');
+  const lk = p && p.buffs && buffOn(p, 'hypno') ? 1.25 : 1;   /* hipnotizado: um pouco mais de sorte */
+  for (const [k, ch] of MON_LOOT[m.type] || []) if (Math.random() < ch * (ch < 0.2 ? lk : 1)) drops.push(k);
+  if (Math.random() < 0.03 * lk) drops.push('gem');
   if (m.type !== 'wisp') (S.corpses = S.corpses || {})[m.id] = { lost: m.lost || 0, id: m.id, type: m.type, x: m.x, y: m.y, z: m.z || 0, gold, items: drops, looted: !gold && !drops.length, until: now_() + (m.bs && (BASTIONS.find(b => b.id === m.bs) || {}).fast ? 20000 : def.dragon ? (BASTIONS.find(b => b.id === 'dragon') || {}).respawn || BOSS_RESPAWN : def.boss ? BOSS_RESPAWN : BASTION_RESPAWN), ix: m.x - p.x, iy: m.y - p.y };
   { const c = S.corpses && S.corpses[m.id]; if (c && !c.looted && p && S.players[p.id] && !p.downed && dist(p.x, p.y, c.x, c.y) < 16) setTimeout(() => { if (!c.looted && S.players[p.id]) lootCorpse(p, c, true); }, (delay || 0) + 250); }
   if (def.boss) spawnChest(m);
@@ -599,6 +600,7 @@ function questCredit(p, type) {
 
 function gainXp(p, amount, delay = 0) {
   if (buffOn(p, 'cheer') && amount > 0) amount = Math.round(amount * 1.08);   /* animado pelo show da Casa de Veludo */
+  if (buffOn(p, 'hypno') && amount > 0) amount = Math.round(amount * 1.12);   /* hipnotizado pelo número da serpente */
   if (buffOn(p, 'rested') && amount > 0) amount = Math.round(amount * 1.1);   // bem descansado: +10% de experiência
   p.xp += amount;
   sfx(p.x, p.y, `+${amount} xp`, '#b9a8f0', delay);
@@ -4049,7 +4051,7 @@ function gather(p, m) {
   if (now < (p.gatherT || 0)) return; p.taskT = now;
   if (!p.inv[G0.tool]) return stop('Você precisa de ' + LOOT[G0.tool].name.toLowerCase() + ' (Empório do Borin).');
   const lv = profLv((p.prof || {})[G0.prof]); if (lv < G0.min) return stop('Precisa de ' + PROFS[G0.prof] + ' nível ' + G0.min + ' para isso.');
-  const rare = Math.random() < G0.rp + lv * 0.012, item = rare ? G0.rare : G0.item, n = 1 + (lv >= 5 && Math.random() < 0.3 ? 1 : 0);
+  const rare = Math.random() < (G0.rp + lv * 0.012) * (buffOn(p, 'hypno') ? 1.25 : 1), item = rare ? G0.rare : G0.item, n = 1 + (lv >= 5 && Math.random() < 0.3 ? 1 : 0);
   if (!p.inv[item] && Object.keys(p.inv).length >= INV_SLOTS) return stop('Sua mochila está cheia.');
   p.gatherT = now + 1200; p.inv[item] = (p.inv[item] || 0) + n; if (typeof empGather === 'function') empGather(p, item, x, y, COLL_ANIM[G0.tool]);
   if (o === O.TALLGRASS || o === O.FERN) { setObj(i, O.NONE); (S.objBack = S.objBack || []).push({ i, o, at: now + 120000 }); }

@@ -1231,6 +1231,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   for (const q of PL) { const e = q.e; if (!e._hid || !e._spr || inside) continue; pblit(ctx, tintOf(e._spr, q.me ? '#ffd060' : '#5aa8ff'), e._sx, e._sy, 0.62); }
 
   drawEffects(ctx, ox, oy, now);
+  if (typeof vlDrawSerpent === 'function') try { vlDrawSerpent(ctx); } catch (e) { }   /* a píton da Dança da Serpente, por cima da dançarina */
   if (!G.cellarDark) { if (typeof qLevelNow !== 'function' || qLevelNow() >= 1) ambient(visTrees, visFlowers, visGrass, day.night); drawParticles(ctx, ox, oy, now, dt); }   // no porão não chove nem venta
   if (G.cellarDark) for (let k = labels.length - 1; k >= 0; k--) if (!labels[k].e || labels[k].e._inC !== now) labels.splice(k, 1);   // nomes só de quem está no porão
 

@@ -39,7 +39,7 @@ function vlPost(T) { if (T.id === 'vl_ysolde' && vlYsUp()) return { at: [4.6, 2.
 function vlBi() { const b = velB('velvet'); return b ? BUILDINGS.indexOf(b) : -1; }
 function vlInside(p) { const b = velB('velvet'); if (!b) return false; const fl = p.fl || 0; if (fl !== 0 && !(fl === -1 && p.fb === vlBi())) return false; return p.x >= b.x - 0.5 && p.x < b.x + b.w - 0.5 && p.y >= b.y - 0.5 && p.y < b.y + b.h - 0.5; }
 velSpawn = function () { const h = empHour(), show = h >= VL_SHOW[0] && h < VL_SHOW[1];
-  for (const T of VEL_STAFF) { const b = velB(T.b); if (!b) continue; const bi = BUILDINGS.indexOf(b), n = S.npcs[T.id], on = !T.show || show, P = vlPost(T), fl = P.fl || 0, [x, y] = localToWorld(b, P.at[0], P.at[1]);
+  for (const T of VEL_STAFF) { if (T.serp || T.crier) continue; const b = velB(T.b); if (!b) continue; const bi = BUILDINGS.indexOf(b), n = S.npcs[T.id], on = !T.show || show, P = vlPost(T), fl = P.fl || 0, [x, y] = localToWorld(b, P.at[0], P.at[1]);
     if (on && !n) { const v = { id: T.id, kind: T.kind, name: T.name, transient: true, court: 'praz', x, y, z: 0, fl, fb: fl ? bi : -1, hp: 300, maxHp: 300, downed: null, dead: false, dir: P.dir || 0, sitting: P.sit ? 1 : 0, vlCap: T.cap ? 1 : 0 }; S.npcs[v.id] = v; Net.toAll({ t: 'vspawn', v: visPublic(v) }); }
     else if (on && n && !n.downed && !n.dead && !n.dragBy && ((n.fl || 0) !== fl || Math.abs(n.x - x) > 0.05 || Math.abs(n.y - y) > 0.05)) { n.x = x; n.y = y; n.fl = fl; n.fb = fl ? bi : -1; n.sitting = P.sit ? 1 : 0; }
     else if (!on && n) visGone(n); }
@@ -158,7 +158,7 @@ VEL_STAFF.push(
 { const _vpV = vlPost; vlPost = function (T) { const A = typeof S !== 'undefined' && S.vlAway && S.vlAway[T.id]; if (A && Date.now() < A.until) return A; return _vpV(T); }; }
 
 // ---------------- SERVIDOR ----------------
-function vlRooms() { const bi = vlBi(), out = []; BEDS.forEach((b, i) => { if (b.vlRoom && b.bi === bi) out.push({ k: b.vlRoom, fl: b.fl, n: +b.vlRoom % 100, bed: i }); }); return out; }
+function vlRooms() { const bi = vlBi(), out = []; BEDS.forEach((b, i) => { if (b.vlRoom && b.vlRoom !== 'suite' && b.bi === bi) out.push({ k: b.vlRoom, fl: b.fl, n: +b.vlRoom % 100, bed: i }); }); return out; }
 function vlRoomRec() { const R = velRec(), d = estDay(); if (!R.rooms || R.rooms.d !== d) R.rooms = { d, own: {} }; return R.rooms; }
 function vlRoomOf(p) { const O = vlRoomRec().own, k = estOwner(p); for (const r in O) if (O[r] === k) return r; return null; }
 function vlRoomFree(k) { return !vlRoomRec().own[k] && !(S.vlUse && Date.now() < (S.vlUse[k] || 0)); }
@@ -222,3 +222,99 @@ function vlRoomsBox(m) { const d = $('tequip'); if (!d || !d.classList.contains(
   d.appendChild(box); velBtn(d, '[data-rm]', b => ({ a: 'room', k: b.dataset.rm })); }
 if (typeof velShowMenu === 'function') { const _vsmV2 = velShowMenu; velShowMenu = function (m) { if (m.k === 'tea') return vlTeaMenu(m); return _vsmV2(m); }; }
 if (typeof progEvent === 'function' && typeof G !== 'undefined') { const _peV3 = progEvent; progEvent = function (m, now) { if (m.t === 'velrooms') { vlRoomsBox(m); return true; } return _peV3(m, now); }; }
+
+// ============================================================
+//  CASA DE VELUDO (versão 3): a suíte master, o número da serpente e o pregoeiro
+//  Suíte (3º andar inteiro, 800 por noite com a Mirela): cama de lua (Bem descansado de 30 min), companhia inclusa,
+//  prestígio com a nobreza e a cidade inteira fica sabendo; até 3 convidados; varanda para a rua. Algumas noites é de um lorde.
+//  Número da serpente (23h à meia-noite): a Jin Ling dança com a píton, Safira e Âmbar viram coro, luz verde no palco;
+//  quem assiste 15 s sai Hipnotizado (+12% de experiência e mais sorte por 20 min), uma vez por noite.
+//  Pregoeiro (19h à meia-noite) na rua, em frente ao portão: chama quem passa e anuncia a noite.
+// ============================================================
+const VL_SUITE = { price: 800, guests: 3, rest: 1800000, rep: 3, spotP: [6.5, 2.5], spotG: [7.6, 2.5] }, VL_SERP = [23, 24], VL_SERP_SECS = 15;
+VEL_STAFF.push(
+  { id: 'vl_c9', b: 'velvet', kind: 'vl_cap', name: 'Bai, capanga da suíte', at: [10.5, 9.5], fl: 3, dir: 5, cap: 1 },
+  { id: 'vl_serp', b: 'velvet', kind: 'vl_serpd', name: 'Jin Ling, a Dança da Serpente', at: [6.5, 4.4], z: 0.054, dir: 7, serp: 1 },
+  { id: 'vl_crier', b: 'velvet', kind: 'vl_crier', name: 'Wu, o pregoeiro', at: [4.4, 11.9], dir: 7, crier: 1 });
+const vlSerpOn = () => { const h = empHour(); return h >= VL_SERP[0] && h < VL_SERP[1]; };
+const vlCrierOn = () => { const h = empHour(); return h >= 19 && h < 24; };
+{ const _vpV3 = vlPost; vlPost = function (T) { if (vlSerpOn() && (T.id === 'vl_d1' || T.id === 'vl_d2')) return { at: T.id === 'vl_d1' ? [5.55, 4.0] : [7.45, 4.0], fl: 0, sit: 0, dir: 7 }; return _vpV3(T); }; }   /* no número da serpente as duas viram coro */
+/* staff que só aparece em certas horas (a atração à meia-noite, o pregoeiro à noite) */
+{ const _vsV3 = velSpawn; velSpawn = function () { const show = _vsV3(); const b = velB('velvet'); if (!b) return show; const bi = vlBi();
+  for (const T of VEL_STAFF) { if (!T.serp && !T.crier) continue; const on = T.serp ? vlSerpOn() : vlCrierOn(), n = S.npcs[T.id];
+    if (!on && n) visGone(n); else if (on && !n) { const [x, y] = localToWorld(b, T.at[0], T.at[1]), v = { id: T.id, kind: T.kind, name: T.name, transient: true, court: 'praz', x, y, z: 0, fl: 0, fb: -1, hp: 300, maxHp: 300, downed: null, dead: false, dir: T.dir || 0 }; S.npcs[v.id] = v; Net.toAll({ t: 'vspawn', v: visPublic(v) }); } }
+  return show; }; }
+
+// ---------------- SERVIDOR ----------------
+function vlSuiteLord() { const d = estDay(); if (vlHash(d, 77) >= 0.2) return null; const h = HOUSES[Math.floor(vlHash(d, 78) * HOUSES.length)]; return h && (!hRec().st[h.id] || !hRec().st[h.id].extinct) ? h : null; }
+function vlSuiteRec() { const R = velRec(), d = estDay(); if (!R.suite || R.suite.d !== d) R.suite = { d, own: null, n: '', g: [] }; return R.suite; }
+const vlSuiteOwn = p => vlSuiteRec().own === estOwner(p);
+const vlSuiteGuest = p => vlSuiteRec().own && vlSuiteRec().g.includes(String(p.name || '').trim().toLowerCase());
+{ const _vboV = vlBedOk; vlBedOk = function (p, bed) { if (bed.vlRoom === 'suite') return !!p.dev || vlSuiteOwn(p) || vlVisitOk(p, 'suite'); return _vboV(p, bed); }; }
+{ const _vraV = vlRoomAt; vlRoomAt = function (p) { if ((p.fl || 0) >= 3) return null; return _vraV(p); }; }
+/* 3º andar: só o hóspede, os convidados dele e quem sobe com a companhia */
+{ const _vugV = vlUpGuard; vlUpGuard = function (p, now) { if ((p.fl || 0) !== 3) return _vugV(p, now); if (p.dev || vlSuiteOwn(p) || vlSuiteGuest(p) || vlVisitOk(p, 'suite')) return false;
+  const b = velB('velvet'), [ax, ay] = localToWorld(b, 10.5, 3.5); if (dist(p.x, p.y, ax, ay) < 1.6) return false; vlWarn(p, 'up', now, ['A suíte tem dono esta noite. Volte para o elevador.', 'Última vez: desça.'], 'Penetra na suíte sai pela porta da frente.'); return true; }; }
+/* número da serpente e descanso da suíte */
+function vlSerpTick(now) { const R = velRec(), day = estDay(), on = vlSerpOn(); R.hypno = R.hypno || {};
+  if (on && now - (S.vlSerpA || 0) > 3000) { S.vlSerpA = now; const n = S.npcs.vl_serp; if (n) near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'dance', ms: 3200 }); }
+  for (const p of Object.values(S.players)) {
+    if (on && velIn(p, 'velvet') && !p.vlRest && R.hypno[estOwner(p)] !== day) { p.vlSerp = (p.vlSerp || 0) + 0.5; if (p.vlSerp >= VL_SERP_SECS) { p.vlSerp = 0; R.hypno[estOwner(p)] = day; p.buffs.hypno = now + 1200000; tell(p, 'A Jin Ling e a píton dançam como uma coisa só. Você sai Hipnotizado por 20 minutos (+12% de experiência e um pouco mais de sorte).'); sendStat(p); } }
+    else if (!on || !velIn(p, 'velvet')) p.vlSerp = 0;
+    if (p.sleep != null && BEDS[p.sleep] && BEDS[p.sleep].vlRoom === 'suite' && vlBedOk(p, BEDS[p.sleep])) { p.vlSuiteZ = (p.vlSuiteZ || 0) + 0.5; if (p.vlSuiteZ >= 20 && !(p.buffs.rested > now + VL_SUITE.rest - 120000)) { p.buffs.rested = now + VL_SUITE.rest; tell(p, 'Você dorme na cama de lua da suíte: Bem descansado por 30 minutos.'); sendStat(p); } } else p.vlSuiteZ = 0; } }
+/* pregoeiro: chama quem passa, com o que acontece na casa esta noite */
+function vlCrierLine() { const h = empHour(), C = vlClosed(), B = [0, 1, 2, 3, 4, 5].filter(c => vlBoothSt(c, null) === 'livre').length, L = vlSuiteLord(), su = vlSuiteRec().own;
+  const o = ['Casa de Veludo! Vinho doce, música e as moças mais bonitas de Nae!', 'Entre, senhor, entre! Aqui dentro o mundo lá fora não entra!'];
+  if (C) o.push(C.by === 'l' ? 'Esta noite a casa é d' + (/^(Lady|Dama)/.test(C.name) ? 'a ' : 'o ') + C.name + '! Só para convidados!' : 'Casa fechada esta noite: festa particular de ' + C.name + '!');
+  else { if (h < VL_SHOW[0]) o.push('Às ' + VL_SHOW[0] + 'h as dançarinas sobem ao palco!'); else o.push('As dançarinas já estão no palco! Venha ver!'); o.push('À meia-noite, a Dança da Serpente! Uma vez por noite, e ninguém esquece!'); o.push(B ? 'Ainda temos ' + B + (B > 1 ? ' reservados livres' : ' reservado livre') + ', com garrafa da casa!' : 'Casa cheia esta noite! Mas sempre cabe mais um no balcão!'); o.push(L ? 'A suíte esta noite é d' + (/^(Lady|Dama)/.test(L.lord) ? 'a ' : 'o ') + L.lord + '!' : su ? 'A suíte já tem hóspede esta noite. Quem será?' : 'A suíte com varanda está livre! Para quem pode!'); }
+  return o[Math.floor(Math.random() * o.length)]; }
+function vlCrierTick(now) { const n = S.npcs.vl_crier; if (!n || now - (S.vlCrierT || 0) < 14000) return; S.vlCrierT = now; empSay(n, vlCrierLine()); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: '', ms: 1 }); }
+{ const _vtV3 = velTick; velTick = function (now) { const run = S.estate && now - (S.velT || 0) >= 500; _vtV3(now); if (!run) return; try { vlSerpTick(now); vlCrierTick(now); } catch (e) { console.warn('veludo3', e); } }; }
+/* menu da Mirela: a suíte junto dos quartos */
+{ const _vmV3 = velMenu; velMenu = function (p, T, n) { _vmV3(p, T, n); if (T.menu !== 'host') return; const S0 = vlSuiteRec(), L = vlSuiteLord(), mine = vlSuiteOwn(p);
+  Net.toOne(p.id, { t: 'velsuite', price: VL_SUITE.price, st: mine ? 'seu' : L ? 'lorde' : S0.own ? 'ocupado' : 'livre', lord: L ? L.lord : null, guests: mine ? S0.g : undefined, max: VL_SUITE.guests }); }; }
+{ const _vmsV3 = velMsg; velMsg = function (p, m) { const now = Date.now(); if (p.downed || p.vlRest) return;
+  if (m.a === 'suite') { const n = velStaffNear(p, 'vl_mirela'); if (!n) return; { const C = vlClosed(); if (C && !vlAllowed(p, C)) { empSay(n, 'Esta noite a casa é de ' + C.name + '. Só para convidados.'); return; } }
+    const S0 = vlSuiteRec(), L = vlSuiteLord(); if (L) { empSay(n, 'Esta noite a suíte é d' + (/^(Lady|Dama)/.test(L.lord) ? 'a ' : 'o ') + L.lord + '.'); return; } if (S0.own) { empSay(n, S0.own === estOwner(p) ? 'A suíte já é sua, querido.' : 'A suíte já tem hóspede esta noite.'); return; }
+    if ((p.gold || 0) < VL_SUITE.price) { empSay(n, 'A suíte custa ' + VL_SUITE.price + ' de ouro por noite. Com companhia, varanda e o melhor da casa.'); return; }
+    p.gold -= VL_SUITE.price; S0.own = estOwner(p); S0.n = p.name; S0.g = String(m.g || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean).slice(0, VL_SUITE.guests); if (typeof estateSave === 'function') estateSave();
+    empSay(n, 'A suíte é sua até o meio-dia. A Lan leva você ao 3º andar. Quando quiser companhia, é só chamar uma das meninas: está incluída.');
+    tell(p, 'Suíte master alugada por ' + VL_SUITE.price + ' de ouro, até o meio-dia: 3º andar inteiro, cama de lua (Bem descansado de 30 min), banheira, sala, varanda para a rua e companhia incluída.' + (S0.g.length ? ' Convidados: ' + S0.g.join(', ') + '.' : ''));
+    if (typeof repAdd === 'function') { repAdd(p, 'nobres', VL_SUITE.rep, 'alugou a suíte da Casa de Veludo'); }
+    for (const q of Object.values(S.players)) if (q.id !== p.id) tell(q, 'Corre na cidade: ' + p.name + ' alugou a suíte da Casa de Veludo esta noite. Gente de muito ouro.'); sendStat(p); velMenu(p, VEL_STAFF.find(t => t.id === 'vl_mirela'), n); return; }
+  if (m.a === 'sguests') { const n = velStaffNear(p, 'vl_mirela'), S0 = vlSuiteRec(); if (!n || S0.own !== estOwner(p)) return; S0.g = String(m.g || '').split(',').map(x => x.trim().toLowerCase()).filter(Boolean).slice(0, VL_SUITE.guests); if (typeof estateSave === 'function') estateSave(); empSay(n, 'Anotado. O Bai deixa subir os seus convidados.'); return; }
+  if (m.a === 'company' && vlSuiteOwn(p)) { const T = VEL_STAFF.find(t => t.id === m.id && t.menu === 'comp'), n = T && velStaffNear(p, T.id); if (!n) return; const b = velB('velvet');
+    p.vlVisit = { k: 'suite', until: now + VL_ROOM.visit }; S.vlAway = S.vlAway || {}; S.vlAway[T.id] = { at: VL_SUITE.spotG, fl: 3, sit: 0, dir: 7, until: now + VL_ROOM.girlAway };
+    { const [gx, gy] = localToWorld(b, VL_SUITE.spotG[0], VL_SUITE.spotG[1]); n.x = gx; n.y = gy; n.fl = 3; n.fb = vlBi(); n.sitting = 0; }
+    const [x, y] = localToWorld(b, VL_SUITE.spotP[0], VL_SUITE.spotP[1]); p.x = x; p.y = y; p.fl = 3; p.fb = vlBi(); p.sit = null; p.walking = false; Net.toOne(p.id, { t: 'tp', x, y, z: 0, fl: 3, fb: vlBi() });
+    p.vlRest = { until: now + 6000, who: T.name }; empSay(n, 'A suíte? Que honra. Venha, querido.'); Net.toOne(p.id, { t: 'velfx', k: 'fade', who: T.name, ms: 6000 }); tell(p, 'A companhia está incluída na suíte.'); return; }
+  if (m.a === 'talk' && m.id === 'vl_tea' && (p.fl || 0) === 3) { if (!vlSuiteOwn(p) && !vlSuiteGuest(p) && !vlVisitOk(p, 'suite')) return; Net.toOne(p.id, { t: 'velmenu', k: 'tea', room: 'suíte', tea: VL_ROOM.tea, wine: VL_ROOM.wine }); return; }
+  if (m.a === 'tea' && (p.fl || 0) === 3) { const w = m.w === 'wine' ? 'wine' : 'tea', cost = VL_ROOM[w]; if ((!vlSuiteOwn(p) && !vlSuiteGuest(p) && !vlVisitOk(p, 'suite')) || p.vlTeaT > now) return; if ((p.gold || 0) < cost) { tell(p, 'A bandeja custa ' + cost + ' de ouro.'); return; }
+    p.gold -= cost; p.vlTeaT = now + 9000; const b = velB('velvet'), [mx, my] = localToWorld(b, 2.3, 6.6), id = 'vl_maidS';
+    if (!S.npcs[id]) { const v = { id, kind: 'vl_maid', name: 'Xiu, a criada', transient: true, court: 'praz', x: mx, y: my, z: 0, fl: 3, fb: vlBi(), hp: 100, maxHp: 100, downed: null, dead: false, dir: 5 }; S.npcs[id] = v; Net.toAll({ t: 'vspawn', v: visPublic(v) }); }
+    setTimeout(() => { const n = S.npcs[id]; if (n) empSay(n, 'Para a suíte, o melhor da adega. Com licença.'); if (S.players[p.id]) { if (w === 'tea') { p.cst = Math.min(cstMaxOf(p), (p.cst || 0) + 60); p.hp = Math.min(p.maxHp, p.hp + Math.round(p.maxHp * 0.1)); } else { p.water = Math.min(100, (p.water ?? 100) + 20); p.cst = Math.min(cstMaxOf(p), (p.cst || 0) + 40); p.buffs.tipsy = Math.max(p.buffs.tipsy || 0, Date.now()) + 30000; } p.buffs.warm = Math.max(p.buffs.warm || 0, Date.now() + 180000); tell(p, w === 'tea' ? 'A criada serve o chá de jasmim na sala da suíte.' : 'A criada serve o vinho de arroz na sala da suíte.'); sendStat(p); } }, 2500);
+    setTimeout(() => { const n = S.npcs[id]; if (n) visGone(n); }, 9000); tell(p, 'Você toca a sineta. A criada já sobe com a bandeja (' + cost + ' de ouro).'); sendStat(p); return; }
+  return _vmsV3(p, m); }; }
+
+// ---------------- CLIENTE ----------------
+if (typeof BUFF_NAMES !== 'undefined') BUFF_NAMES.hypno = 'Hipnotizado (+12% de experiência, mais sorte)';
+if (typeof NPC_LOOKS !== 'undefined' && typeof heroLook === 'function') {
+  NPC_LOOKS.vl_serpd = () => Object.assign(heroLook('mage', 'adept', '#1e5a32'), { armor: 'robe', body: tone('#1e5a32'), body2: tone('#d4a94a'), accent: tone('#d4a94a'), trim: tone('#e2c060'), head: 'none', hair: tone('#0e0c0c'), hairStyle: 'long', skin: tone('#e0b890'), weapon: null, cape: false, capeTone: null, shield: null, barefoot: true });
+  NPC_LOOKS.vl_crier = () => Object.assign(heroLook('archer', 'scout', '#8a1418'), { armor: 'vest', body: tone('#8a1418'), body2: tone('#d4a94a'), accent: tone('#d4a94a'), legs: tone('#1a1414'), head: 'none', hair: tone('#1a1414'), hairStyle: 'short', beard: tone('#1a1414'), weapon: null, quiver: false, shield: null });
+  if (typeof FEM_KINDS !== 'undefined') FEM_KINDS.add('vl_serpd'); if (typeof NPC_CLS !== 'undefined') Object.assign(NPC_CLS, { vl_serpd: 'mage', vl_crier: 'archer' }); }
+/* a píton nos ombros da Jin Ling: um corpo de escamas verde e ouro que ondula em volta dela */
+function vlDrawSerpent(ctx) { if (!G.npcs || !G.view) return; const e = G.npcs.vl_serp; if (!e || (G.me && (G.me.fl || 0) !== 0)) return; const p = iso(e.rx, e.ry), sx = p.sx + G.view.ox, sy = p.sy + G.view.oy - (e.z || 0) * FLOOR_PX - 26, t = performance.now() / 600;
+  const pts = []; for (let k = 0; k <= 26; k++) { const a = k / 26 * Math.PI * 2.4 + t * 0.4, r = 7 + Math.sin(k * 0.5 + t) * 1.5; pts.push([sx + Math.cos(a) * r * 1.3, sy - 3 + Math.sin(a) * r * 0.45 + k * 0.35 + Math.sin(k * 0.7 + t * 2) * 1.2]); }
+  ctx.save(); ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.strokeStyle = '#1e4a20'; ctx.lineWidth = 5.5; ctx.beginPath(); pts.forEach((q, i) => i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])); ctx.stroke();
+  ctx.strokeStyle = '#4a8a3a'; ctx.lineWidth = 3.5; ctx.stroke(); ctx.setLineDash([2, 3]); ctx.strokeStyle = '#d4b04a'; ctx.lineWidth = 1.6; ctx.stroke(); ctx.setLineDash([]);
+  const h = pts[pts.length - 1], hh = pts[pts.length - 2], ang = Math.atan2(h[1] - hh[1], h[0] - hh[0]); ctx.translate(h[0], h[1]); ctx.rotate(ang); ctx.fillStyle = '#2a5a2a'; ctx.beginPath(); ctx.ellipse(2, 0, 4.2, 2.6, 0, 0, 7); ctx.fill(); ctx.fillStyle = '#ffd040'; ctx.beginPath(); ctx.arc(3.2, -1.2, 0.7, 0, 7); ctx.fill(); ctx.strokeStyle = '#c82020'; ctx.lineWidth = 0.7; ctx.beginPath(); ctx.moveTo(6, 0); ctx.lineTo(8.5, 0.6); ctx.stroke(); ctx.restore(); }
+/* luz verde no palco durante o número */
+if (typeof luzMapDraw === 'function') { const _lmV3 = luzMapDraw; luzMapDraw = function (ctx, vw, vh, day, now) { try { const e = G.npcs && G.npcs.vl_serp; if (e && G.view && G.me && !(G.me.fl || 0)) { const p = iso(e.rx, e.ry); G.lights.push({ x: p.sx + G.view.ox, y: p.sy + G.view.oy - 40, r: 90, rt: 3.5, c: '80,255,140', a: 0.85, flick: 0 }); } } catch (er) { } return _lmV3.apply(this, arguments); }; }
+function vlSuiteBox(m) { const d = $('tequip'); if (!d || !d.classList.contains('vel-panel')) return; let box = d.querySelector('.vel-suite'); if (box) box.remove(); box = document.createElement('div'); box.className = 'vel-suite';
+  const st = { livre: 'livre', seu: '<b>sua esta noite</b>', ocupado: 'já tem hóspede', lorde: 'de ' + (m.lord || 'um lorde') + ' esta noite' };
+  box.innerHTML = '<div class="vel-sub">Suíte master (3º andar)</div><div class="est-cost">O andar inteiro: cama de lua (Bem descansado de 30 min), banheira de cobre, sala de estar, varanda para a rua e <b>companhia incluída</b>. Até ' + m.max + ' convidados. A cidade inteira fica sabendo. Agora: ' + st[m.st] + '.</div>' +
+    (m.st === 'livre' ? '<input id="vl-sg" class="vel-in" maxlength="120" placeholder="Convidados (até ' + m.max + '): nomes separados por vírgula"><div class="tq-btns"><button class="est-btn" data-su>Alugar a suíte<small>' + m.price + ' de ouro, até o meio-dia</small></button></div>' : m.st === 'seu' ? '<input id="vl-sg" class="vel-in" maxlength="120" value="' + (m.guests || []).join(', ').replace(/"/g, '') + '"><div class="tq-btns"><button class="est-btn" data-sg>Atualizar convidados</button></div>' : '');
+  d.appendChild(box); velBtn(d, '[data-su]', () => ({ a: 'suite', g: ($('vl-sg') || {}).value || '' })); velBtn(d, '[data-sg]', () => ({ a: 'sguests', g: ($('vl-sg') || {}).value || '' })); }
+if (typeof progEvent === 'function' && typeof G !== 'undefined') { const _peV4 = progEvent; progEvent = function (m, now) { if (m.t === 'velsuite') { vlSuiteBox(m); return true; } return _peV4(m, now); }; }
+{ const _vnV3 = velNear; velNear = function () { const T = _vnV3(); if (T) return T; const me = G.me; if (!me || me.downed || (me.fl || 0) !== 3) return null; const b = BUILDINGS[me.fb]; if (!b || b.deco !== 'velvet') return null; const [x, y] = localToWorld(b, 1.5, 6.5); return Math.hypot(x - me.x, y - me.y) < 1.4 ? { id: 'vl_tea', menu: 'tea', name: 'a sineta' } : null; }; }
+if (typeof liftFloorName === 'function') { const _lfV3 = liftFloorName; liftFloorName = function (b, f) { if (b.deco === 'velvet' && f === 3) return '3º andar — Suíte master'; return _lfV3(b, f); }; }

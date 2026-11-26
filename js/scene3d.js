@@ -2313,7 +2313,7 @@ function machiyaInterior(o, b, fl, { w, h, hw, t, nF, knee }) {
     for (const [u0, v0, u1, v1] of [[2.9, 1.9, 6.0, 3.6], [3.9, 0.05, 6.0, 1.95]]) { o.add(mk(wuv(new THREE.BoxGeometry(u1 - u0, 0.03, v1 - v0).translate((u0 + u1) / 2, 0.075, (v0 + v1) / 2), 1), tat)); for (const [x0, z0, x1, z1] of [[u0, v0, u1, v0], [u0, v1, u1, v1], [u0, v0, u0, v1], [u1, v0, u1, v1]]) o.add(wbox(Math.max(0.06, x1 - x0), 0.035, Math.max(0.06, z1 - z0), (x0 + x1) / 2, 0.08, (z0 + z1) / 2, gold, 1)); }
     o.add(mk(wuv(new THREE.BoxGeometry(6.0 - 0.15, 0.03, 0.6).translate(3.0, 0.075, h - 0.38), 1), hin)); }
   // varanda: piso fora da fachada, guarda-corpo de ripas, vasos; portas de correr nos vãos da fachada
-  const bc = balconyOf(b, fl); if (bc) { const hin = smat('oldplank', '#c8945a', { bump: 1 }), rail = smat('wood', '#9a6838', { bump: 0.8 }), iron = smat(null, '#1a1816', { metal: 0.7, rough: 0.45 }), [u0, u1] = bc;
+  const bc = b.deco === 'machiya' && balconyOf(b, fl); if (bc) { const hin = smat('oldplank', '#c8945a', { bump: 1 }), rail = smat('wood', '#9a6838', { bump: 0.8 }), iron = smat(null, '#1a1816', { metal: 0.7, rough: 0.45 }), [u0, u1] = bc;
     o.add(mk(wuv(new THREE.BoxGeometry(u1 - u0, 0.08, 1.0).translate((u0 + u1) / 2, 0.02, h + 0.5), 1), hin));
     for (let u = u0; u <= u1 + 0.001; u += 1) { o.add(wbox(0.08, 0.95, 0.08, u, 0.48, h + 0.96, rail, 1)); o.add(wbox(0.1, 0.05, 0.1, u, 0.98, h + 0.96, iron, 1)); }
     o.add(wbox(u1 - u0 + 0.08, 0.06, 0.08, (u0 + u1) / 2, 0.95, h + 0.96, rail, 1)); o.add(wbox(u1 - u0, 0.04, 0.05, (u0 + u1) / 2, 0.3, h + 0.96, rail, 1));
