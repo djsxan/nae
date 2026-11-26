@@ -7,35 +7,39 @@
 //  A companhia paga fica no quarto (ou na suíte) durante toda a visita e aceita os gestos.
 // ============================================================
 const AF2 = { wLift: 9, seatR: 1.3, bedR: 2.6, vtub: [12, 7], vtubR: 1.6,
-  K: { sShoulder: ['seat', 'Cabeça no ombro', 'quer encostar a cabeça no seu ombro', '😌'], sHug: ['seat', 'Abraçados', 'quer ficar abraçado com você', '💑'], sKiss: ['seat', 'Beijo', 'quer te beijar', '💋', 6500],
+  K: { sShoulder: ['seat', 'Cabeça no ombro', 'quer encostar a cabeça no seu ombro', '😌'], sHug: ['seat', 'Abraçados', 'quer ficar abraçado com você', '💑'], sKiss: ['seat', 'Beijo', 'quer te beijar', '💋', 6500], sLap: ['seat', 'Chamar para o colo', 'quer que você sente no colo dele', '😊'], sLapK: ['seat', 'Beijo no colo', 'quer que você sente no colo dele para um beijo', '💋', 6500], sLean: ['seat', 'Encostar no ombro dela', 'quer encostar a cabeça no seu ombro', '😌'], sKissF2: ['seat', 'Beijo no rosto', 'quer te dar um beijo no rosto', '😘', 4000],
     wHug: ['water', 'Abraçados na água', 'quer ficar abraçado com você na água', '💑'], wKiss: ['water', 'Beijo na água', 'quer te beijar', '💋', 6500], wEdge: ['edge', 'Cabeça no ombro', 'quer encostar a cabeça no seu ombro', '😌'],
     bHold: ['bed', 'Deitados abraçados', 'quer deitar abraçado com você', '💑'], bKiss: ['bed', 'Beijo', 'quer te beijar', '💋', 6500] } };
 for (const k in AF2.K) { const [c, n, a, i, d] = AF2.K[k]; AFX.n[k] = n; AFX.ask[k] = a; AFX.i[k] = i; if (d) AFX.dur[k] = d; if (!AFF_KS.includes(k)) AFF_KS.push(k); }
 AFX.sin.push('sKiss', 'wKiss', 'bKiss', 'bHold', 'sHug', 'wHug');
-const AFF_CTX = { stand: ['hand', 'hug', 'hold', 'kissF', 'kissM', 'kissH'], seat: ['sShoulder', 'sHug', 'sKiss'], water: ['wHug', 'wKiss'], edge: ['wEdge'], bed: ['bHold', 'bKiss'], vtub: ['wHug', 'wKiss', 'hug', 'hold', 'kissF', 'kissM', 'kissH'] };
+const AFF_CTX = { stand: ['hand', 'hug', 'hold', 'kissF', 'kissM', 'kissH'], seat: ['sShoulder', 'sHug', 'sKiss', 'sLap', 'sLapK'], water: ['wHug', 'wKiss'], edge: ['wEdge'], bed: ['bHold', 'bKiss'], vtub: ['wHug', 'wKiss', 'hug', 'hold', 'kissF', 'kissM', 'kissH'] };
 const AFF_V2 = k => !!AF2.K[k];
 /* contexto do gesto: pelo tipo e pelo estado de quem pede */
-function affKCtx(k, p) { const c = AF2.K[k] ? AF2.K[k][0] : 'stand'; return c === 'water' && !p.bath ? 'vtub' : c; }
+function affKCtx(k, p) { const c = AF2.K[k] ? AF2.K[k][0] : 'stand'; return c === 'water' && !affB(p) ? 'vtub' : c; }
 /* banheira de cobre da suíte da Casa de Veludo (3º andar) */
 function affVtub(p) { if (typeof velB !== 'function' || typeof localToWorld !== 'function') return null; const b = velB('velvet'); if (!b || (p.fl || 0) !== 3) return null; const bi = BUILDINGS.indexOf(b), fb = p.fb != null && p.fb >= 0 ? p.fb : bi; if (fb !== bi) return null;
   const [x, y] = localToWorld(b, AF2.vtub[0], AF2.vtub[1]), px = p.rx != null ? p.rx : p.x, py = p.ry != null ? p.ry : p.y; return Math.hypot(px - x, py - y) <= AF2.vtubR ? { x, y } : null; }
 
 // ---------------- SERVIDOR ----------------
+/* banho do ofurô (p.bath) ou das piscinas das Termas (p.thSit) */
+const affB = p => p.bath || (p.thSit ? { bi: 'th', mode: p.thSit.mode } : null);
 const affNpc = id => typeof S !== 'undefined' && !S.players[id] && S.npcs && S.npcs[id] ? S.npcs[id] : null;
 const affPart = id => (typeof S !== 'undefined' && (S.players[id] || (S.npcs && S.npcs[id]))) || null;
 /* NPCs que aceitam: o próprio cônjuge e a companhia paga da visita */
 function affNpcKind(p, n) { if (!n || n.dead || n.downed) return null; if (n.court === 'spouse' && n.mrKey && typeof estOwner === 'function' && n.mrKey === estOwner(p)) return 'spouse';
-  const A = S.vlAway && S.vlAway[n.id]; if (A && Date.now() < A.until && A.who === p.id && typeof vlVisitOk === 'function' && vlVisitOk(p)) return 'comp'; return null; }
+  const A = S.vlAway && S.vlAway[n.id]; if (A && Date.now() < A.until && A.who === p.id && typeof vlVisitOk === 'function' && vlVisitOk(p)) return 'comp';
+  const Tb = S.vlTable && S.vlTable[n.id]; if (Tb && Tb.who === p.id) return 'comp';   /* a moça que está com você na mesa */
+  return null; }
 affFree = function (p) { return !!p && !p.downed && !p.bound && !p.carriedBy && !p.dragBy && !p.gripBy && !p.surrendered && !p.tied && !(p.jailUntil > now_()) && now_() - (p.lastCombat || 0) > AFX.combat; };
 /* o que cada um precisa estar fazendo para o gesto */
-function affCan(p, c) { if (c === 'seat') return !!p.sit; if (c === 'water') return !!p.bath && p.bath.mode !== 'edge'; if (c === 'edge') return !!p.bath && p.bath.mode === 'edge'; if (c === 'bed') return p.sleep != null; if (c === 'vtub') return !p.bath && p.sleep == null && !!affVtub(p); return !p.bath && p.sleep == null; }
+function affCan(p, c) { if (c === 'seat') return !!p.sit; if (c === 'water') return !!affB(p) && affB(p).mode !== 'edge'; if (c === 'edge') return !!affB(p) && affB(p).mode === 'edge'; if (c === 'bed') return p.sleep != null; if (c === 'vtub') return !affB(p) && p.sleep == null && !!affVtub(p); return !affB(p) && p.sleep == null; }
 function affCanQ(p, q, c, npc) { const d = dist(p.x, p.y, q.x, q.y); if ((p.fl || 0) !== (q.fl || 0)) return false;
   if (npc) return ['stand', 'seat', 'bed', 'vtub'].includes(c) && d <= AFX.reach + (c === 'bed' ? 0.3 : 0);
-  if (c === 'seat') return q.sit ? d <= AF2.seatR : (q.sleep == null && !q.bath && d <= AFX.reach);
-  if (c === 'water' || c === 'edge') return !!q.bath && !!p.bath && q.bath.bi === p.bath.bi && (q.bath.mode === 'edge') === (c === 'edge') && d <= 2.6;
-  if (c === 'bed') return q.sleep == null && !q.bath && d <= AF2.bedR;
-  if (c === 'vtub') return !q.bath && q.sleep == null && d <= AFX.reach;
-  return !q.bath && q.sleep == null && d <= AFX.reach; }
+  if (c === 'seat') return q.sit ? d <= AF2.seatR : (q.sleep == null && !affB(q) && d <= AFX.reach);
+  if (c === 'water' || c === 'edge') return !!affB(q) && !!affB(p) && affB(q).bi === affB(p).bi && (affB(q).mode === 'edge') === (c === 'edge') && d <= 2.6;
+  if (c === 'bed') return q.sleep == null && !affB(q) && d <= AF2.bedR;
+  if (c === 'vtub') return !affB(q) && q.sleep == null && d <= AFX.reach;
+  return !affB(q) && q.sleep == null && d <= AFX.reach; }
 /* lugar livre vizinho do assento de quem pede */
 function affFreeSeat(p) { let best = -1, bd = 1e9; (WORLD.seats || []).forEach((s, i) => { if ((s.fl || 0) !== (p.fl || 0)) return; const d = dist(s.x, s.y, p.x, p.y); if (d < 0.3 || d > AF2.seatR || d >= bd) return;
   if (Object.values(S.players).some(o => o !== p && dist(o.x, o.y, s.x, s.y) < 0.25)) return; if (Object.values(S.npcs || {}).some(n => !n.dead && dist(n.x, n.y, s.x, s.y) < 0.25)) return; bd = d; best = i; }); return best; }
@@ -50,7 +54,7 @@ affStart = function (a, b, k) { const npc = !!affNpc(b.id), c = affKCtx(k, a);
   let side = 1;
   if (c === 'stand') { if (k === 'hand') { tell(a, 'De mãos dadas, só com outro jogador por enquanto.'); return; } const sp = affSpot(b, a, k); if (!sp) { tell(a, 'Não há espaço aqui para isso.'); return; }
     a.x = sp.x; a.y = sp.y; a.z = b.z || 0; side = -sp.s; a.dir = side > 0 ? 2 : 6; b.dir = side > 0 ? 6 : 2; a.sit = null; a.walking = false; Net.toOne(a.id, { t: 'tp', x: a.x, y: a.y, z: a.z, fl: a.fl || 0, fb: a.fb ?? -1 }); }
-  if (c === 'seat' && (npc || !b.sit)) { const si = affFreeSeat(a); if (si < 0) { tell(a, 'Não há lugar livre ao seu lado.'); if (!npc) tell(b, 'Não há lugar livre ao lado.'); return; } const s = WORLD.seats[si];
+  if (c === 'seat' && (npc || !b.sit) && !(npc && dist(a.x, a.y, b.x, b.y) <= AF2.seatR + 0.05 && (WORLD.seats || []).some(s => Math.hypot(s.x - b.x, s.y - b.y) < 0.06))) { const si = affFreeSeat(a); if (si < 0) { tell(a, 'Não há lugar livre ao seu lado.'); if (!npc) tell(b, 'Não há lugar livre ao lado.'); return; } const s = WORLD.seats[si];
     b.x = s.x; b.y = s.y; b.dir = s.dir; if (npc) b._affSit = s.low ? 'g' : 'c'; else { b.sit = s.low ? 'g' : 'c'; b.walking = false; x.seat = si; } }
   if (c === 'bed') { const B = BEDS[a.sleep]; if (!B) return; b.x = B.x; b.y = B.y; b.dir = a.dir; if (!npc) { b.sleep = a.sleep; b.sit = null; b.walking = false; x.bed = a.sleep; } }
   if (c === 'vtub') { const T = affVtub(a); if (!T) return; a.x = T.x - AFF_SR[0] * 0.22; a.y = T.y - AFF_SR[1] * 0.22; b.x = T.x + AFF_SR[0] * 0.22; b.y = T.y + AFF_SR[1] * 0.22; a.dir = 2; b.dir = 6; a.sit = null;
@@ -61,7 +65,7 @@ affStart = function (a, b, k) { const npc = !!affNpc(b.id), c = affKCtx(k, a);
   for (const p of npc ? [a] : [a, b]) { const had = buffOn(p, 'love'); p.buffs.love = now + AFX.buff; if (!had) tell(p, '💞 Apaixonado (20 min): vida, mana e fôlego voltam um pouco mais rápido.'); sendStat(p); }
   if (!npc) affSin(a, b, k); };
 /* o NPC fica no lugar do gesto (as rotinas dele não puxam de volta) */
-function affPin() { for (const p of Object.values(S.players)) { const A = p.aff; if (!A) continue; const n = affNpc(A.w); if (!n || !n.aff) continue; n.x = n.aff.ax; n.y = n.aff.ay; n.dir = n.aff.dir; if (n.aff.fl != null) n.fl = n.aff.fl; if (n.aff.fb != null) n.fb = n.aff.fb; n.walking = false; n.path = null; } }
+function affPin() { for (const p of Object.values(S.players)) { const A = p.aff; if (!A) continue; const n = affNpc(A.w); if (!n || !n.aff || n.aff.walk) continue; n.x = n.aff.ax; n.y = n.aff.ay; n.dir = n.aff.dir; if (n.aff.fl != null) n.fl = n.aff.fl; if (n.aff.fb != null) n.fb = n.aff.fb; n.walking = false; n.path = null; } }
 /* o NPC responde ao pedido */
 function affNpcAsk(p, n, k) { const kind = affNpcKind(p, n); if (!kind) { tell(p, n.name + ' não aceita esse tipo de gesto.'); return; }
   if (kind === 'spouse') { const M = mrOf(n.mrKey), mood = M ? (M.mood ?? MR.mood0) : 50, ch = mood >= 55 ? 1 : mood >= 30 ? 0.5 : 0.1;
@@ -71,9 +75,9 @@ function affNpcAsk(p, n, k) { const kind = affNpcKind(p, n); if (!kind) { tell(p
   affStart(p, n, k); }
 const _amA1 = affMsg;
 affMsg = function (p, m) { const now = now_();
-  if (m.a === 'near') { const l = []; for (const n of Object.values(S.npcs || {})) if (affNpcKind(p, n) && dist(n.x, n.y, p.x, p.y) <= AFX.reach + 0.3 && (n.fl || 0) === (p.fl || 0)) l.push({ id: n.id, name: n.name }); Net.toOne(p.id, { t: 'affnear', l }); return; }
+  if (m.a === 'near') { const l = []; for (const n of Object.values(S.npcs || {})) if (affNpcKind(p, n) && dist(n.x, n.y, p.x, p.y) <= AFX.reach + 0.3 && (n.fl || 0) === (p.fl || 0)) l.push({ id: n.id, name: n.name }); let hint = ''; if (!l.length && typeof VEL_STAFF !== 'undefined' && VEL_STAFF.some(T => T.menu === 'comp' && S.npcs[T.id] && dist(S.npcs[T.id].x, S.npcs[T.id].y, p.x, p.y) <= AFX.reach + 0.5 && (S.npcs[T.id].fl || 0) === (p.fl || 0))) hint = 'As moças da casa só aceitam gestos de afeto durante a companhia paga: fale com ela e escolha a companhia; ela sobe com você para o quarto (ou a suíte) e fica 15 min.'; Net.toOne(p.id, { t: 'affnear', l, hint }); return; }
   if (m.a === 'ask') { const k = AFF_KS.includes(m.k) ? m.k : null, n = affNpc(m.id), q = n || S.players[m.id]; if (!k || !q || q === p) return; const c = affKCtx(k, p);
-    if (!n && c === 'stand' && !p.bath && p.sleep == null && !q.bath && q.sleep == null) return _amA1(p, m);
+    if (!n && c === 'stand' && !affB(p) && p.sleep == null && !affB(q) && q.sleep == null) return _amA1(p, m);
     if (!affFree(p)) { tell(p, 'Agora não dá.'); return; } if (!affCan(p, c)) { tell(p, { seat: 'Sente-se primeiro.', water: 'Entre na água primeiro.', edge: 'Sente-se na beira primeiro.', bed: 'Deite-se primeiro.', vtub: 'Chegue perto da banheira.', stand: 'Levante-se primeiro.' }[c]); return; }
     if (!n && !affFree(q)) { tell(p, q.name + ' não pode agora.'); return; }
     if (!affCanQ(p, q, c, !!n)) { tell(p, n && (c === 'water' || c === 'edge') ? n.name + ' não está na água.' : 'Chegue mais perto de ' + q.name + '.'); return; }
@@ -81,7 +85,7 @@ affMsg = function (p, m) { const now = now_();
     if (n) { affNpcAsk(p, n, k); return; }
     q.affReq = { from: p.id, k, t: now }; Net.toOne(q.id, { t: 'affask', id: p.id, name: p.name, k }); tell(p, AFX.i[k] + ' Pedido enviado a ' + q.name + '.'); return; }
   if (m.a === 'ans') { const r = p.affReq; if (!r || r.from !== m.id || now - r.t > AFX.askMs + 3000) return; const a = S.players[r.from]; if (!a) { p.affReq = null; return; } const c = affKCtx(r.k, a);
-    if (c === 'stand' && !a.bath && a.sleep == null) return _amA1(p, m);
+    if (c === 'stand' && !affB(a) && a.sleep == null) return _amA1(p, m);
     p.affReq = null; if (!m.ok) { tell(a, m.off ? p.name + ' não está aceitando pedidos de afeto.' : p.name + ' recusou.'); return; }
     if (!affFree(a) || !affFree(p) || !affCan(a, c) || !affCanQ(a, p, c, false)) { tell(p, 'Não deu: algo mudou.'); tell(a, 'Não deu: algo mudou.'); return; }
     affStart(a, p, r.k); return; }
@@ -93,7 +97,7 @@ affTick = function (now) { for (const p of Object.values(S.players)) { const A =
   if (!affFree(p) || (!n && !affFree(q)) || (n && !affNpcKind(p, n))) { affEnd(p, 'O gesto foi interrompido.'); tell(p, 'O gesto foi interrompido.'); continue; }
   const c = A.ctx || 'stand';
   if (c === 'seat' && (!p.sit || (!n && !q.sit))) { affEnd(p); continue; }
-  if ((c === 'water' || c === 'edge') && (!p.bath || !q.bath)) { affEnd(p); continue; }
+  if ((c === 'water' || c === 'edge') && (!affB(p) || !affB(q))) { affEnd(p); continue; }
   if (c === 'bed' && (p.sleep == null || (!n && q.sleep !== p.sleep))) { affEnd(p, (n ? '' : p.name + ' se levantou.') || null); continue; }
   if (A.k === 'hand' && (dist(p.x, p.y, q.x, q.y) > 2.2 || (p.fl || 0) !== (q.fl || 0))) { tell(p, 'Vocês soltaram as mãos.'); affEnd(p, 'Vocês soltaram as mãos.'); } }
   affPin(); };
@@ -106,16 +110,16 @@ if (typeof velMsg === 'function') { const _vmA2 = velMsg; velMsg = function (p, 
 /* contexto de quem está na tela */
 function affCtxC() { const me = G.me; if (!me) return 'stand'; if (me.sleep) return 'bed'; if (me.bathing) return me.bathing.mode === 'edge' ? 'edge' : 'water'; if (me.sit) return 'seat'; if (affVtub(me)) return 'vtub'; return 'stand'; }
 if (typeof progEvent === 'function') { const _peA2 = progEvent; progEvent = function (m, now) {
-  if (m.t === 'affnear') { if (G._affPick) { clearTimeout(G._affPick); G._affPick = 0; affPick2(m.l || []); } return true; }
+  if (m.t === 'affnear') { if (G._affPick) { clearTimeout(G._affPick); G._affPick = 0; G._affHint = m.hint || ''; affPick2(m.l || []); } return true; }
   if (m.t === 'affst' && m.k && !m.lead && G.me) { const me = G.me;
     if (m.seat != null && !me.sit && typeof sitDown === 'function') { G.path = null; sitDown(m.seat); }
     if (m.bed != null && !me.sleep && BEDS[m.bed]) { const b = BEDS[m.bed]; if (me.sit && typeof standUp === 'function') standUp(); me.sleep = { bed: m.bed, ox: me.x, oy: me.y }; me.x = me.rx = b.x; me.y = me.ry = b.y; me.dir = typeof dirFromVec === 'function' ? dirFromVec(b.dx, b.dy, 0) : me.dir; me.sleepB = 1; G.path = null; G.pathGoal = null; me.walking = false; } }
   return _peA2(m, now); }; }
 /* a escolha: pede ao servidor os NPCs que aceitam (cônjuge, companhia) e mostra os gestos do lugar */
-affPick = function () { affCloseBox(); Net.send({ t: 'aff', a: 'near' }); if (G._affPick) clearTimeout(G._affPick); G._affPick = setTimeout(() => { G._affPick = 0; affPick2([]); }, 900); };
+affPick = function () { affCloseBox(); if (G._affPick) clearTimeout(G._affPick); G._affPick = setTimeout(() => { G._affPick = 0; affPick2([]); }, 1500); Net.send({ t: 'aff', a: 'near' }); };   /* espera ANTES de perguntar: no anfitrião a resposta chega na hora */
 function affPick2(npcs) { affCloseBox(); const c = affCtxC(), ks = AFF_CTX[c] || AFF_CTX.stand, me = G.me;
   const L = affNear().filter(q => c !== 'seat' || true).concat(npcs.map(n => Object.assign({}, G.npcs[n.id] || {}, { id: n.id, name: n.name, npc: 1 })));
-  if (!L.length) { showToast(c === 'water' || c === 'edge' ? 'Ninguém na água com você.' : 'Ninguém perto para um gesto de afeto.'); return; } let who = L[0];
+  if (!L.length) { showToast(G._affHint || (c === 'water' || c === 'edge' ? 'Ninguém na água com você.' : 'Ninguém perto para um gesto de afeto.')); G._affHint = ''; return; } let who = L[0];
   const d = document.createElement('div'); d.id = 'aff-box'; d.className = 'aff-box'; const where = { seat: ' · sentados', water: ' · na água', edge: ' · na beira', bed: ' · na cama', vtub: ' · na banheira' }[c] || '';
   const draw = () => { const ksW = who.npc && (c === 'water' || c === 'edge') ? [] : ks.filter(k => !(who.npc && k === 'hand'));
     d.innerHTML = '<div class="aff-h">💞 Afeto' + where + '</div>' + (L.length > 1 ? '<div class="aff-who">' + L.slice(0, 6).map(q => '<button type="button" data-w="' + q.id + '" class="' + (q === who ? 'on' : '') + '">' + escAff(q.name) + '</button>').join('') + '</div>' : '<div class="aff-one">com ' + escAff(who.name) + '</div>') +
@@ -172,6 +176,18 @@ function affBuild2(k, e, o, A) { const c = A.ctx || 'stand', bath = c === 'water
   if (c === 'seat') { const sitOf = x => x.isNpc ? 'c' : x === G.me ? (G.me.sit && G.me.sit.chair === 0 ? 'g' : 'c') : ((x.flags & 1024) ? 'c' : 'g');
     affPose(RA, e, { sit: sitOf(e), dir: dA }); affPose(RB, o, { sit: sitOf(o), dir: dB }); affPut(RA, dA, 0, 0); affPut(RB, dB, rel.x, rel.z);
     if (k === 'sShoulder') affShoulder(RA, RB);
+    else if (k === 'sLean') affShoulder(RB, RA);   /* quem chega encosta a cabeça no ombro de quem conduz */
+    else if (k === 'sKissF2') { const hB = RB.head.getWorldPosition(V(0, 0, 0)), sA = affNear2(RA, RA.A.sh, RA.B.sh, hB) ? -1 : 1, ck = () => affWP(RA.head, sA * 0.075, -0.02, 0.04); for (let r = 0; r < 3; r++) { lookAtP(RB, ck(), -0.3); affBend(RB, affMouth, ck()); } ikArm(RB, affNear2(RB, RB.A.sh, RB.B.sh, hB) ? 'A' : 'B', affWP(RA.chest, -sA * 0.02, 0.15, 0.1).lerp(RA.head.getWorldPosition(V(0, 0, 0)), 0.1), [1.0, -0.6, 0, 1.2]); }
+    else if (k === 'sLap' || k === 'sLapK') { /* no colo: de lado sobre as coxas de quem conduz, braço no pescoço dele; ele segura a cintura dela */
+      const th = [RA.LA.hp, RA.LA.kn, RA.LB.hp, RA.LB.kn].map(j => j.getWorldPosition(V(0, 0, 0))), seat = th.reduce((s, v) => s.add(v), V(0, 0, 0)).multiplyScalar(0.25); seat.y += 0.07;
+      const yA = RA.root.rotation.y, pick = s => { RB.root.rotation.set(0, yA + s * Math.PI / 2, 0); RB.root.updateMatrixWorld(true); return affWP(RB.hips, 0, 0, 1).sub(RB.hips.getWorldPosition(V(0, 0, 0))).z; }, sg = pick(1) >= pick(-1) ? 1 : -1;
+      RB.root.rotation.set(0, yA + sg * Math.PI / 2, 0); RB.root.position.set(0, 0, 0); RB.root.updateMatrixWorld(true); const hb = RB.hips.getWorldPosition(V(0, 0, 0)); RB.root.position.set(seat.x - hb.x, seat.y - hb.y + 0.03, seat.z - hb.z); RB.root.updateMatrixWorld(true);
+      for (const R of [RB]) { R.LA.hp.rotation.x = -1.35; R.LA.kn.rotation.x = 1.2; R.LB.hp.rotation.x = -1.2; R.LB.kn.rotation.x = 1.1; }
+      const hA = RA.head.getWorldPosition(V(0, 0, 0)), nearB = affNear2(RB, RB.A.sh, RB.B.sh, hA) ? 'A' : 'B', farB = nearB === 'A' ? 'B' : 'A', farA = affNear2(RA, RA.A.sh, RA.B.sh, RB.hips.getWorldPosition(V(0, 0, 0))) ? 'B' : 'A', nearA = farA === 'A' ? 'B' : 'A';
+      if (k === 'sLapK') { for (let r = 0; r < 4; r++) { const mid = affMouth(RA).add(affMouth(RB)).multiplyScalar(0.5); lookAtP(RA, affMouth(RB), 0.3); lookAtP(RB, affMouth(RA), -0.3); affBend(RA, affMouth, mid, [[-0.1, 0.4], [-0.25, 0.25], [-0.6, 0.6], [-0.2, 0.4], [-0.4, 0.4]]); affBend(RB, affMouth, mid, [[-0.2, 0.3], [-0.35, 0.35], [-0.7, 0.7], [-0.2, 0.4], [-0.4, 0.4]]); } }
+      else { affBend(RB, R => R.head.localToWorld(V(0, 0.02, 0.06)), affWP(RA.chest, 0, 0.3, 0.06).lerp(hA, 0.35), [[-0.2, 0.3], [-0.35, 0.35], [-0.5, 0.5], [-0.2, 0.3], [-0.45, 0.45]]); RB.head.rotation.z = sg * 0.2; }
+      ikArm(RB, nearB, k === 'sLapK' ? affWP(RA.chest, 0, 0.2, -0.1) : affWP(RA[farA].clav || RA.chest, 0, 0.08, -0.06), [1.2, -0.9, 0.3, 1.5]);   /* no beijo, a mão na nuca dele */ ikArm(RB, farB, affWP(RA.chest, 0, 0.1, 0.16), [0.8, -0.4, 0, 1.2]);
+      ikArm(RA, nearA, affWP(RB.spine, 0, 0.06, -0.15), [0.9, -0.7, 0, 1.3]); ikArm(RA, farA, affWP(RB.LA.kn, 0, 0.05, 0), [0.5, -0.3, 0, 0.8]); }
     else if (k === 'sHug') { for (const [R, P] of [[RA, RB], [RB, RA]]) { const me = R.hips.getWorldPosition(V(0, 0, 0)), to = P.hips.getWorldPosition(V(0, 0, 0)).sub(me), f = affWP(R.hips, 0, 0, 1).sub(me); let ang = Math.atan2(to.x, to.z) - Math.atan2(f.x, f.z); while (ang > Math.PI) ang -= 2 * Math.PI; while (ang < -Math.PI) ang += 2 * Math.PI; const tw = Math.max(-0.8, Math.min(0.8, ang * 0.7)); R.chest.rotation.y = tw; R.spine.rotation.y = tw * 0.5; rigExtra(R, { clavA: [0.12, 0.3], clavB: [0.12, 0.3], tlc: 0.1, twc: tw }); R.spine.rotation.y = tw * 0.5; }
       RB.head.rotation.z = 0.3; for (const [R, P] of [[RA, RB], [RB, RA]]) { const ph = P.chest.getWorldPosition(V(0, 0, 0)), near = affNear2(R, R.A.sh, R.B.sh, ph) ? 'A' : 'B', far = near === 'A' ? 'B' : 'A'; ikArm(R, near, affWP(P.chest, 0, 0.1, -0.17), [1.2, -0.8, 0.2, 1.4]); ikArm(R, far, affWP(P.spine, 0, 0.08, 0.16), [1.0, -0.7, 0, 1.3]); } }
     else { kiss(); const near = affNear2(RA, RA.A.sh, RA.B.sh, RB.head.getWorldPosition(V(0, 0, 0))) ? 'A' : 'B'; ikArm(RA, near, affWP(RB.head, 0, -0.05, 0.02).lerp(RB.chest.getWorldPosition(V(0, 0, 0)), 0.15), [1.3, -0.8, 0, 1.4]); } }

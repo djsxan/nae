@@ -139,15 +139,15 @@ if (typeof drawHeroEntity === 'function') { const _dhA = drawHeroEntity; drawHer
   return _dhA(ctx, e, sx, sy, now); }; }
 /* de mãos dadas: o braço de dentro estendido para o lado do outro */
 if (typeof heroPoseFor === 'function') { const _hpA = heroPoseFor; heroPoseFor = function (e, now) { const P = _hpA(e, now), A = e && !e.isNpc && e.aff;
-  if (A && A.k === 'hand' && !P.sit && !P.act) { const o = G.players[A.w]; if (o) { const d = (e.dir || 0) * Math.PI / 4, sxv = Math.sin(d), syv = Math.cos(d), fx = syv + sxv / 2, fy = syv - sxv / 2, rx = -fy, ry = fx;
+  if (A && A.k === 'hand' && !P.sit && !P.act) { const o = G.players[A.w] || (G.npcs && G.npcs[A.w]); if (o) { const d = (e.dir || 0) * Math.PI / 4, sxv = Math.sin(d), syv = Math.cos(d), fx = syv + sxv / 2, fy = syv - sxv / 2, rx = -fy, ry = fx;
     P.hand = ((o.rx - e.rx) * rx + (o.ry - e.ry) * ry) > 0 ? 'A' : 'B'; } } return P; }; }
 if (typeof buildPose === 'function') { const _bpA = buildPose; buildPose = function (cls, P) { const Q = _bpA(cls, P); if (P && P.hand) { Q[P.hand === 'A' ? 'aA' : 'aB'] = [0.22, 0.42, 0.25]; } return Q; }; }
 if (typeof pose3Key === 'function') { const _pkA = pose3Key; pose3Key = function (P) { return _pkA(P) + (P && P.hand ? '|hd' + P.hand : ''); }; }
 /* quem foi pego pela mão vai ao lado de quem conduz; andar por conta própria solta */
 if (typeof updateLocal === 'function') { const _ulA = updateLocal; updateLocal = function (now, dt) { const me = G.me, A = G.aff; if (!me || !A || A.k !== 'hand' || A.lead) return _ulA(now, dt);
   if (typeof myInput === 'function' && (myInput() || G.path)) { G.aff = null; Net.send({ t: 'aff', a: 'stop' }); return _ulA(now, dt); }
-  _ulA(now, dt); const L = G.players[A.w]; if (!L || L.rx == null) return; const g = AFX.gap.hand, tx = L.rx - AFF_SR[0] * g * A.side, ty = L.ry - AFF_SR[1] * g * A.side, k = Math.min(1, dt * 7), nx = me.x + (tx - me.x) * k, ny = me.y + (ty - me.y) * k;
-  const ok = typeof freeAt !== 'function' || freeAt(nx, ny, me.z), mv = Math.hypot(nx - me.x, ny - me.y); if (ok) { me.x = me.rx = nx; me.y = me.ry = ny; } me.dir = L.dir || 0; me.walking = mv > 0.004;
+  _ulA(now, dt); const L = G.players[A.w] || (G.npcs && G.npcs[A.w]); if (!L || L.rx == null) return; const g = AFX.gap.hand, tx = L.rx - AFF_SR[0] * g * A.side, ty = L.ry - AFF_SR[1] * g * A.side, k = Math.min(1, dt * 7), nx = me.x + (tx - me.x) * k, ny = me.y + (ty - me.y) * k;
+  const ok = L.isNpc || typeof freeAt !== 'function' || freeAt(nx, ny, me.z), mv = Math.hypot(nx - me.x, ny - me.y); if (ok) { me.x = me.rx = nx; me.y = me.ry = ny; } me.dir = L.dir || 0; me.walking = mv > 0.004;
   if (now - (me._affSent || 0) > 110 && (mv > 0.002 || me.walking !== me._affW)) { me._affSent = now; me._affW = me.walking; Net.send({ t: 'mv', x: Math.round(me.x * 100) / 100, y: Math.round(me.y * 100) / 100, z: Math.round((me.z || 0) * 100) / 100, d: me.dir, w: me.walking ? 1 : 0 }, true); } }; }
 /* mensagens */
 function affBlocked(name) { return (SET.affBlock || []).includes(String(name || '').trim().toLowerCase()); }
