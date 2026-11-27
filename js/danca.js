@@ -155,3 +155,48 @@ if (typeof npcSprite3D === 'function' && typeof G !== 'undefined') {
       const sheer = st.sty === 'strip' ? R.spine.children.filter(o => o.material && o.material.transparent && o.material.opacity < 0.5) : [], vis = st.strip === 'on' || (st.strip === 'throw' ? bF < 2 : st.strip !== 'off'); for (const o of sheer) o.visible = vis;
       const s = shoot3D(R, (dir + (Q.rot ? 4 : 0)) % 8, 0); for (const o of sheer) o.visible = true; return s; }, 'n|' + vk + dir); };
 }
+
+/* ---------- LAP DANCE PAGA: sentado no seu reservado com uma moça à mesa (ou no sofá na festa da suíte), 💃 Lap dance ---------- */
+const DZL = { price: 40, ch: 'lap' };
+const dzlTotal = () => DANCE_CHOREO[DZL.ch].seq.reduce((a, s) => a + s[1], 0), dzlMs = () => dzlTotal() / DANCE_CHOREO[DZL.ch].bpm * 60000;
+/* servidor */
+function dzlGirl(p) { const P = S.vlParty && S.vlParty[p.id]; if (P && P.stage === 'party' && p.sit) return P.girls[0]; const fav = typeof l9VFav === 'function' && S.estate ? l9VFav(p) : null; const L = Object.keys(S.vlTable || {}).filter(g => S.vlTable[g].who === p.id && !S.vlTable[g].npc); return L.includes(fav) ? fav : L[0] || null; }
+function dzlStart(p) { const now = Date.now(); if (!p.sit) { tell(p, 'Sente-se primeiro (no seu reservado ou no sofá da suíte).'); return; } if (p.dzl && p.dzl.until > now) { tell(p, 'Ela já está dançando para você.'); return; }
+  const g = dzlGirl(p), n = g && S.npcs[g]; if (!n) { tell(p, 'Chame uma moça para a sua mesa primeiro.'); return; } if ((p.gold || 0) < DZL.price) { tell(p, 'A lap dance custa ' + DZL.price + ' de ouro.'); return; }
+  p.gold -= DZL.price; sendStat(p); p.dzl = { g, t0: now + 800, until: now + 800 + dzlMs() }; if (p.aff && typeof affEnd === 'function') affEnd(p);
+  empSay(n, ['Relaxa e só olha.', 'Essa é só para você.', 'Mãos no sofá, querido.'][Math.floor(Math.random() * 3)]); near(p.x, p.y, { t: 'vllap', pid: p.id, g, t0: p.dzl.t0, until: p.dzl.until, on: 1 });
+  if (typeof l9VAdd === 'function' && S.estate) l9VAdd(p, g, 2); }
+function dzlTick(now) { for (const p of Object.values(S.players)) { const L = p.dzl; if (!L) continue; const n = S.npcs[L.g];
+  if (now > L.until || !p.sit || !n) { p.dzl = null; near(p.x, p.y, { t: 'vllap', pid: p.id, on: 0 }); if (n && now > L.until) { empSay(n, ['Gostou?', 'Quando quiser outra, é só pedir.', 'Fiquei com calor...'][Math.floor(Math.random() * 3)]); } continue; }
+  if (now - (L.re || 0) > 4000) { L.re = now; near(p.x, p.y, { t: 'vllap', pid: p.id, g: L.g, t0: L.t0, until: L.until, on: 1 }); } } }
+if (typeof velTick === 'function' && typeof S !== 'undefined') { const _vtL = velTick; velTick = function (now) { _vtL(now); try { if (S.estate) dzlTick(now); } catch (e) { console.warn('lap dance', e); } }; }
+if (typeof velMsg === 'function' && typeof S !== 'undefined') { const _vmL = velMsg; velMsg = function (p, m) { if (m && m.a === 'lap8') { dzlStart(p); return; } return _vmL.apply(this, arguments); }; }
+/* cliente: o par (ele sentado + ela dançando) num quadro só, desenhado no lugar dele; a moça some do lugar dela enquanto dança */
+const DZL_SPR = new Map();
+function dzlRig(e, slot) { const k = 'dzl|' + slot + '|' + (e.isNpc ? e.kind + '#' + e.id : e.cls + ':' + e.skin + ':' + e.color); let R = DZL_SPR.get(k); if (!R) { const L = Object.assign({}, affLook(e, 'hug', false), { weapon: null, shield: null, quiver: false, cape: false }); R = buildHumanoid(L); DZL_SPR.set(k, R); } return R; }   /* com a roupa de cada um (no reservado não é banho) */
+function dzlSprite(e, L) { const C = DANCE_CHOREO[DZL.ch], beat = Math.max(0, (Date.now() - L.t0) / 60000 * C.bpm), [st, b0] = dzStepAt({ ch: DZL.ch }, beat); if (!st) return null;
+  const nF = Math.min(16, Math.max(8, Math.round(st.len * 4))), f = Math.floor(((b0 % st.len) + st.len) % st.len / st.len * nF) % nF, bF = f / nF * st.len, dir = e.dir | 0, n = G.npcs[L.g], kind = n ? n.kind : 'vl_comp1';
+  const key = st.id + '|' + f + '|' + dir + '|' + L.g + '|' + (e.cls + e.skin + e.color); let s = DZL_SPR.get(key); if (s) return s; if (!R3.ok || (R3.budget != null && R3.budget <= 0 && L.last)) return L.last || null;
+  const RA = dzlRig(e, 'LH'), eg = { isNpc: true, kind, id: L.g }, RB = dzlRig(eg, 'LG'); rigReset(RA); rigReset(RB);
+  const V = (x, y, z) => new THREE.Vector3(x, y, z), W = j => j.getWorldPosition(V(0, 0, 0)), yaw = affYaw(dir);
+  affPose(RA, e, { dir: 2, sit: 'c' }); RA.root.rotation.set(0, 0, 0); RA.root.position.set(0, 0, -0.3); RA.root.updateMatrixWorld(true);
+  const ctx = { seatHead: W(RA.head), seatChest: W(RA.chest).add(V(0, 0, 0.12)), lapY: (W(RA.LA.hp).y + W(RA.LA.kn).y) / 2 + 0.1, lapZ: (W(RA.LA.hp).z + W(RA.LA.kn).z) / 2 }, P = danceStyle(st, bF, {});
+  affPose(RB, eg, { dir: 2 }); rigReset(RB); let rx = 0, rz = 0.22, ry = Math.PI;
+  if (st.chair === 'lap') { rz = ctx.lapZ - 0.05; ry = 0; } else if (st.chair === 'side') { rz = ctx.lapZ - 0.02; ry = Math.PI / 2; } else if (st.chair === 'orbit') { const a = P.orbitC || 0; rx = Math.sin(a) * 0.62; rz = -0.3 + Math.cos(a) * 0.62; ry = a + Math.PI / 2; }
+  RB.root.rotation.set(0, ry, 0); RB.root.position.set(rx, 0, rz); RB.root.updateMatrixWorld(true); danceApply(RB, P, null);
+  RB.root.updateMatrixWorld(true); if (P.sit) RB.root.position.y += ctx.lapY - W(RB.hips).y; else { let m = 9; for (const j of [RB.LA.ft, RB.LB.ft]) m = Math.min(m, W(j).y); RB.root.position.y += 0.035 - m; } RB.root.updateMatrixWorld(true); danceApply(RB, P, ctx);
+  /* gira o par para a direção dele e põe no chão do quadro */
+  const piv = new THREE.Group(); piv.rotation.y = yaw; for (const R of [RA, RB]) piv.add(R.root); piv.updateMatrixWorld(true);
+  let minY = Infinity; for (const R of [RA, RB]) minY = Math.min(minY, new THREE.Box3().setFromObject(R.root).min.y); piv.position.y = -minY + 0.01; piv.updateMatrixWorld(true);
+  const { renderer, scene, cam, W: Wd, H: Hh } = R3; scene.add(piv); renderer.render(scene, cam); scene.remove(piv); for (const R of [RA, RB]) piv.remove(R.root);
+  const cv = document.createElement('canvas'); cv.width = Wd; cv.height = Hh; cv.getContext('2d').drawImage(renderer.domElement, 0, 0); if (R3.budget != null) R3.budget--;
+  s = { c: cv, w: FRAME_W, h: FRAME_H, ax: FRAME_W / 2, ay: FOOT_Y, painted: true, hd: true }; DZL_SPR.set(key, s); L.last = s; if (DZL_SPR.size > 140) { const k0 = [...DZL_SPR.keys()].find(k => !k.startsWith('dzl|')); if (k0) DZL_SPR.delete(k0); } return s; }
+if (typeof progEvent === 'function' && typeof G !== 'undefined') { const _peL = progEvent; progEvent = function (m, now) {
+  if (m.t === 'vllap') { G.vlLap = G.vlLap || {}; if (m.on) G.vlLap[m.pid] = Object.assign(G.vlLap[m.pid] || {}, m); else delete G.vlLap[m.pid]; return true; }
+  const r = _peL(m, now);
+  if (m.t === 'vlbooth') { let b = document.getElementById('vl-lap'); if (!m.on) { if (b) b.remove(); } else if (!b) { b = document.createElement('button'); b.id = 'vl-lap'; b.className = 'vl-tray'; b.style.bottom = '212px'; b.textContent = '💃 Lap dance (' + DZL.price + ')'; b.onclick = () => Net.send({ t: 'vel', a: 'lap8' }); document.body.appendChild(b); } }
+  if (m.t === 'vl6ui') { const d = document.getElementById('vl6-ui'); if (d && m.on && !d.querySelector('[data-lap8]')) { const row = d.querySelector('.aff-row'); if (row) { const b = document.createElement('button'); b.type = 'button'; b.dataset.lap8 = 1; b.textContent = '💃 Lap dance (' + DZL.price + ', sentado)'; b.onclick = () => Net.send({ t: 'vel', a: 'lap8' }); row.appendChild(b); } } }
+  return r; }; }
+if (typeof drawHeroEntity === 'function' && typeof G !== 'undefined') { const _dhL = drawHeroEntity; drawHeroEntity = function (ctx, e, sx, sy, now) { const LL = G.vlLap;
+  if (LL && e) { if (e.isNpc) { for (const k in LL) if (LL[k].g === e.id) { e._spr = null; return; } } else if (LL[e.id] && LL[e.id].g) { const s = dzlSprite(e, LL[e.id]); if (s) { ctx.imageSmoothingEnabled = true; pblit(ctx, s, sx, sy); e._spr = s; e._sx = sx; e._sy = sy; e._drawT = now; return; } } }
+  return _dhL.apply(this, arguments); }; }
