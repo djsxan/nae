@@ -77,6 +77,6 @@ function bjPoleSprite(kind, nid, F, d, dir, off) { const vk = kind + '#' + nid, 
 if (typeof npcSprite3D === 'function' && typeof G !== 'undefined') { const _nsBj = npcSprite3D; npcSprite3D = function (kind, P) { const nid = P && P.nid ? String(P.nid) : '', d = nid && G.npcDz && G.npcDz[nid];
   if (!d || !R3.ok || (P && (P.down || P.sit))) return _nsBj.apply(this, arguments);
   const e = G.npcs && G.npcs[nid];
-  if (d.j && e && e.walking) { delete G.npcDz[nid]; try { return _nsBj.apply(this, arguments); } finally { G.npcDz[nid] = d; } }   /* quem entrou na dança e saiu andando anda normal */
+  if (e && e.walking) { delete G.npcDz[nid]; try { return _nsBj.apply(this, arguments); } finally { G.npcDz[nid] = d; } }   /* quem entrou na dança e saiu andando anda normal */
   const F = bjFrame(d); if (F && F.st.pole) { const off = bjPoleOff(nid); if (off) { const dir = P.dir | 0; return cache3('dzp|' + nid + '|' + F.st.id + '|' + F.f + '|' + (d.mir ? 1 : 0) + '|' + dir + '|' + off.join(','), () => bjPoleSprite(kind, nid, F, d, dir, off), 'n|' + kind + '#' + nid + dir); } }
   return _nsBj.apply(this, arguments); }; }
