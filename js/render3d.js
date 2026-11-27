@@ -689,6 +689,7 @@ const MON_LOOK = {
 MON_LOOK.bandit = () => ({ skin: tone('#c8a080'), hair: tone('#3a2a1a'), armor: 'leather', body: tone('#4a3a2a'), body2: tone('#2a2016'), accent: tone('#3a2a1a'), legs: tone('#3a3024'), boots: tone('#2a1d12'), trim: tone('#6a5a3a'), head: 'hood', headTone: tone('#3a3226'), weapon: 'dagger', capeTone: tone('#2e261e') });
 MON_LOOK.deserter = () => ({ skin: tone('#c09878'), hair: tone('#4a3a2a'), armor: 'plate', body: tone('#6a6862'), body2: tone('#3a2a1a'), accent: tone('#5a1a14'), legs: tone('#3d2b1a'), boots: tone('#27180d'), trim: tone('#7a5a2a'), head: 'helm', headTone: tone('#5a5e62'), weapon: 'rustsword', shield: 'kite', capeTone: tone('#4a1a14') });
 MON_LOOK.deserterchief = () => ({ skin: tone('#b89070'), hair: tone('#2a1a10'), armor: 'plate', body: tone('#4a4c50'), body2: tone('#2a1a10'), accent: tone('#7a1a14'), legs: tone('#2d1b0a'), boots: tone('#1a1008'), trim: tone('#a8843a'), head: 'greathelm', headTone: tone('#3a3c40'), weapon: 'sword', shield: 'kite', capeTone: tone('#6a1410') });
+MON_LOOK.smugglercap = () => ({ ...MON_LOOK.bandit(), body: tone('#2a3a5a'), body2: tone('#1a1a24'), accent: tone('#8a1a1a'), trim: tone('#c8a040'), head: 'hood', headTone: tone('#1a2236'), capeTone: tone('#1a2236') });   /* contrabandista: casaco azul de marinheiro e faixa vermelha */
 MON_LOOK.orcchief = () => ({ ...MON_LOOK.orc(), accent: tone('#9a1a14'), trim: tone('#c8a040'), head: 'horned', weapon: 'axe', capeTone: tone('#5a0e0a') });
 MON_LOOK.cryptlord = () => ({ ...MON_LOOK.skeleton(), head: 'circlet', weapon: 'darkblade', accent: tone('#3a1a4a'), trim: tone('#c8a850'), capeTone: tone('#2a1a3a') });
 // O Tecelão de Nae: manto cinza esfarrapado com fios de ouro, capuz sem rosto, olhos de luz
@@ -703,7 +704,7 @@ function weaverExtras(R) {
   for (const s of [-1, 1]) h.add(mesh(sphG(0.016 * S), mat('#fff0b0', 'gem', { emissive: '#ffd060', emissiveIntensity: 3.5 }), s * 0.036 * S, 0.012 * S, 0.11 * S));
   for (let k = 0; k < 7; k++) { const t = mesh(cylG(0.004 * S, 0.002 * S, (0.25 + (k % 3) * 0.1) * S, 4), mat('#e8c860', 'gold', { emissive: '#8a6a10', emissiveIntensity: 1.2 }), (k - 3) * 0.04 * S, -0.25 * S, -0.06 * S); t.rotation.z = (k - 3) * 0.08; R.chest.add(t); }
 }
-const MON_SCALE = { goblin: 0.72, skeleton: 0.98, orc: 1.18, troll: 1.7, bandit: 0.98, deserter: 1.0, deserterchief: 1.12, orcchief: 1.45, cryptlord: 1.25 };
+const MON_SCALE = { smugglercap: 1.1, goblin: 0.72, skeleton: 0.98, orc: 1.18, troll: 1.7, bandit: 0.98, deserter: 1.0, deserterchief: 1.12, orcchief: 1.45, cryptlord: 1.25 };
 function buildCreature(type) {
   const root = new THREE.Group(), R = { root, legs: [], type };
   const body = new THREE.Group(); root.add(body); R.body = body;

@@ -15,7 +15,8 @@ const O = {
   STATUE: 37, BRAZIER: 38, DUMMY: 39, WATERFALL: 40, LOWWALL: 41, IVY: 42, ANVIL: 43, WEAPONRACK: 44, CART: 45, TABLE: 46, CAVE: 47, HOARD: 48, ARMORPILE: 49, RUINTOWER: 50, OAK: 51, BIRCH: 52, WILLOW: 53, FERN: 54, ROOTS: 55, SHROOMS: 56, BERRY: 57, HERB: 58, WHEAT: 67, WHEATSPROUT: 68, BOULDER: 59, GUILLOTINE: 60, STOOL: 61, STAGEFLOOR: 62, VITRINE: 63, FRUITCRATE: 64, WATERWHEEL: 65, NOTICEBOARD: 66,
 };
 O.SCAFFOLD = 69;   /* andaime das obras do lote */
-const BLOCKING = new Set([O.SCAFFOLD, O.TREE, O.PINE, O.ROCK, O.FOUNTAIN, O.STUMP, O.DEADTREE, O.GRAVE, O.TENT,
+O.OLIVE = 70; O.LIGHTHOUSE = 71;   /* Arredores: oliveira e o Farol do Cabo */
+const BLOCKING = new Set([O.OLIVE, O.LIGHTHOUSE, O.SCAFFOLD, O.TREE, O.PINE, O.ROCK, O.FOUNTAIN, O.STUMP, O.DEADTREE, O.GRAVE, O.TENT,
   O.CAMPFIRE, O.FENCE, O.BARREL, O.CRATE, O.HAY, O.WELL, O.STALL, O.LOG, O.SPIKES,
   O.WALL, O.TOWER, O.PART, O.RUBBLEBIG, O.CAVE, O.HOARD, O.RUINTOWER, O.OAK, O.BIRCH, O.WILLOW, O.BOULDER, O.GUILLOTINE, O.STOOL, O.VITRINE, O.FRUITCRATE, O.WATERWHEEL, O.NOTICEBOARD, O.STATUE, O.BRAZIER, O.DUMMY, O.WATERFALL, O.LOWWALL, O.ANVIL, O.WEAPONRACK, O.CART, O.TABLE]);
 // objetos soltos que dá para pegar e arremessar (dano base)
@@ -823,8 +824,8 @@ const BASTIONS = TEST3D ? [] : [
   { id: 'fort', name: 'Torre dos Desertores', kind: 'fort', x: 312, y: 176, r: 9, mons: { bandit: 6, deserter: 4 }, boss: 'deserterchief', patrol: ['bandit', 'bandit', 'deserter'] },
   { id: 'pools', name: 'Salinas Podres', kind: 'pools', x: 92, y: 322, r: 9, mons: { slime: 7 }, boss: 'elderslime', night: { wisp: 4 } },
   // TEMPORÁRIO (testes do combate): acampamento de bandidos logo depois do portão sul, repovoa rápido
-  { id: 'mine', name: 'Mina de Prata Abandonada', kind: 'mine', x: 240, y: 54, r: 8, mons: { spider: 9 }, patrol: ['spider', 'spider'] },
-  { id: 'cove', name: 'Enseada dos Contrabandistas', kind: 'cove', x: 334, y: 282, r: 8, mons: { bandit: 6, deserter: 3 }, patrol: ['bandit', 'bandit'] },
+  { id: 'mine', name: 'Mina de Prata Abandonada', kind: 'mine', x: 240, y: 54, r: 8, mons: { spider: 9 }, boss: 'spiderqueen', patrol: ['spider', 'spider'] },
+  { id: 'cove', name: 'Enseada dos Contrabandistas', kind: 'cove', x: 334, y: 282, r: 8, mons: { bandit: 6, deserter: 3 }, boss: 'smugglercap', patrol: ['bandit', 'bandit'] },
   { id: 'dragon', name: 'Covil do Dragão', kind: 'dragon', x: 338, y: 58, r: 9, mons: {}, boss: 'dragon', respawn: 1800000 },
   { id: 'cave', name: 'Garganta do Troll', kind: 'cave', x: CAVE_POS.x + Math.round(CAVE_POS.ux * 6), y: CAVE_POS.y + Math.round(CAVE_POS.uy * 6), r: 6, mons: {}, boss: 'troll' },
 ];
@@ -873,11 +874,18 @@ function arrWater(W) { const { ground, obj, height, flow, river, idx, inb } = W;
     for (let yy = Math.floor(py - 4); yy <= py + 4; yy++) for (let xx = Math.floor(px - 4); xx <= px + 4; xx++) { if (!inb(xx, yy) || Math.hypot(xx - px, yy - py) > w) continue; const i = idx(xx, yy); if (ground[i] === T.CLIFF) continue; ground[i] = T.WATER; river[i] = 1; flow[i * 2] = fx / fl; flow[i * 2 + 1] = fy / fl; obj[i] = O.NONE; height[i] = 0; } }); }
   for (const F of ARR.falls) { if (F.kind === 'ledge') { for (let t = -4; t <= 4; t++) for (const dy of [0, 1]) { const x = F.x + t, y = F.y + dy, i = idx(x, y); if (!inb(x, y)) continue; ground[i] = T.CLIFF; height[i] = 2 + (dy ? 0 : 1); obj[i] = O.NONE; } const i = idx(F.x, F.y); obj[i] = O.WATERFALL; height[i] = 3; const j = idx(F.x + 1, F.y); obj[j] = O.WATERFALL; height[j] = 3; continue; }
     for (let s = 0; s < 12; s++) { const x = F.x, y = F.y - s, i = idx(x, y); if (ground[i] !== T.CLIFF) { ground[i] = T.WATER; river[i] = 1; flow[i * 2] = 0; flow[i * 2 + 1] = 1; obj[i] = O.NONE; continue; } for (const ax of [0, 1]) { const j = idx(x + ax, y); if (ground[j] === T.CLIFF) { obj[j] = O.WATERFALL; height[j] = Math.max(3, height[j]); } } break; } } }
+/* Porto de Nae: cais de madeira mar adentro no fim da estrada sul, com caixotes, barris e lampiões; Farol do Cabo na terra mais perto da ponta */
+function arrPort(W) { const { ground, obj, idx, inb, C } = W; let y = W.y1 + 1; while (y < MAP_H - 2 && ground[idx(C, y)] !== T.WATER) y++; const y0 = y;
+  for (let k = 0; k < 9; k++) for (let w = -1; w <= 1; w++) { const i = idx(C + w, y0 + k); if (inb(C + w, y0 + k) && ground[i] === T.WATER) { ground[i] = T.BRIDGE; obj[i] = O.NONE; W.rdir[i] = 2; } }
+  for (let w = -4; w <= 4; w++) for (let k = 9; k <= 10; k++) { const i = idx(C + w, y0 + k); if (inb(C + w, y0 + k) && ground[i] === T.WATER) { ground[i] = T.BRIDGE; obj[i] = O.NONE; W.rdir[i] = 1; } }
+  for (const [dx, dy, o] of [[-3, -1, O.CRATE], [-4, -1, O.CRATE], [3, -1, O.BARREL], [4, -2, O.BARREL], [-2, -3, O.LAMP], [2, -3, O.LAMP], [-4, 10, O.LAMP], [4, 10, O.LAMP], [5, -2, O.CART]]) { const i = idx(C + dx, y0 + dy); if (inb(C + dx, y0 + dy) && ground[i] !== T.WATER) obj[i] = o; else if (ground[i] === T.BRIDGE && o === O.LAMP) obj[i] = o; }
+  let best = null, bd = 1e9; for (let yy = 286; yy < 330; yy++) for (let xx = 306; xx < 350; xx++) { if (!inb(xx, yy)) continue; const i = idx(xx, yy); if (ground[i] === T.WATER || ground[i] === T.CLIFF || ground[i] === T.BRIDGE) continue; let sea = 0; for (const [ax, ay] of DIRS8) if (ground[idx(xx + ax * 2, yy + ay * 2)] === T.WATER) sea++; if (sea < 3) continue; const d = Math.hypot(xx - 330, yy - 312); if (d < bd) { bd = d; best = [xx, yy]; } }
+  if (best) { const [lx, ly] = best; for (let yy = ly - 2; yy <= ly + 2; yy++) for (let xx = lx - 2; xx <= lx + 2; xx++) { const i = idx(xx, yy); if (inb(xx, yy) && ground[i] !== T.WATER) { obj[i] = O.NONE; if (Math.hypot(xx - lx, yy - ly) < 2.2) ground[i] = T.STONE; } } obj[idx(lx, ly)] = O.LIGHTHOUSE; } }
 /* olivais em fileiras e vinhas entre elas */
-const ARR_NAT = new Set([O.NONE, O.TALLGRASS, O.FLOWER, O.BUSH, O.TREE, O.OAK, O.PINE, O.BIRCH, O.FERN, O.BERRY, O.LOG, O.ROOTS, O.ROCK, O.MUSHROOM, O.SHROOMS, O.HERB, O.BOULDER, O.STUMP, O.WILLOW]);
+const ARR_NAT = new Set([O.OLIVE, O.NONE, O.TALLGRASS, O.FLOWER, O.BUSH, O.TREE, O.OAK, O.PINE, O.BIRCH, O.FERN, O.BERRY, O.LOG, O.ROOTS, O.ROCK, O.MUSHROOM, O.SHROOMS, O.HERB, O.BOULDER, O.STUMP, O.WILLOW]);
 function arrOlives(W) { const { ground, obj, zone, idx } = W; for (let y = 2; y < MAP_H - 2; y++) for (let x = 2; x < MAP_W - 2; x++) { const i = idx(x, y); if (zone[i] !== Z.OLIVE || ground[i] === T.WATER || ground[i] === T.SAND || ground[i] === T.CLIFF || W.river[i]) continue;
   const o = obj[i]; if (!ARR_NAT.has(o)) continue; const r = hash2(x, y, 975);
-  const rw = (y + 1000) % 7, cl = (x + (Math.floor(y / 7) % 2) * 3 + 1000) % 6; if (rw === 0 && cl === 0) obj[i] = r < 0.9 ? O.TREE : O.NONE; else if (rw === 3 && x % 2 === 0) obj[i] = r < 0.75 ? O.BUSH : O.NONE; else obj[i] = r < 0.05 ? O.FLOWER : r < 0.09 ? O.TALLGRASS : O.NONE; if (rw === 3 || rw === 4) ground[i] = r < 0.7 ? T.DIRT : ground[i]; else if (ground[i] === T.FOREST) ground[i] = T.GRASS; } }
+  const rw = (y + 1000) % 7, cl = (x + (Math.floor(y / 7) % 2) * 3 + 1000) % 6; if (rw === 0 && cl === 0) obj[i] = r < 0.9 ? O.OLIVE : O.NONE; else if (rw === 3 && x % 2 === 0) obj[i] = r < 0.75 ? O.BUSH : O.NONE; else obj[i] = r < 0.05 ? O.FLOWER : r < 0.09 ? O.TALLGRASS : O.NONE; if (rw === 3 || rw === 4) ground[i] = r < 0.7 ? T.DIRT : ground[i]; else if (ground[i] === T.FOREST) ground[i] = T.GRASS; } }
 
 
 function catmull(p0, p1, p2, p3, t) {
@@ -1225,6 +1233,7 @@ function generateWorld() {
   { const L = lastLand(x0 - RG, C, -1, 0); for (let k = 1; k <= L; k++) for (let w = 0; w <= 1; w++) road(x0 - RG - k, C + w, 1); }
   for (let x = x0 - RG; x < x0; x++) for (let y = C + 4; y <= C + 7; y++) road(x, y, 1, 1);
   if (ARRON) for (const P of ARR.roads) { const pts = arrCurve(P); for (let k = 0; k < pts.length; k++) { const [px, py] = pts[k], n = pts[Math.min(pts.length - 1, k + 1)], dir = Math.abs(n[0] - px) >= Math.abs(n[1] - py) ? 1 : 2; for (const [ox, oy] of [[0, 0], [1, 0], [0, 1]]) road(Math.round(px) + ox, Math.round(py) + oy, dir); } }   /* trilhas: à mina, à enseada, ao lago e à necrópole */
+  if (ARRON) arrPort({ ground, obj, rdir, idx, inb, C, y1 });   /* Porto de Nae (cais no fim da estrada sul) e o Farol do Cabo */
 
   // chão da cidade: calçamento com canteiros de grama
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) set(x, y, vnoise(x / 5, y / 5, 610) > 0.7 ? T.GRASS : T.COBBLE, O.NONE);
@@ -1934,7 +1943,7 @@ function walkableTile(x, y, z = 0) {
   return g !== T.WATER && g !== T.CLIFF && !BLOCKING.has(WORLD.obj[i]) && !NPC_AT.has(i);
 }
 // objetos redondos: colidem só no tamanho real (círculo), não no tile inteiro
-const OBJ_R = { [O.NOTICEBOARD]: 0.3, [O.WATERWHEEL]: 0.45, [O.TREE]: 0.38, [O.PINE]: 0.34, [O.OAK]: 0.44, [O.BIRCH]: 0.26, [O.WILLOW]: 0.4, [O.ROCK]: 0.34, [O.STUMP]: 0.24, [O.DEADTREE]: 0.3, [O.GRAVE]: 0.28, [O.CAMPFIRE]: 0.3,
+const OBJ_R = { [O.OLIVE]: 0.3, [O.LIGHTHOUSE]: 0.55, [O.NOTICEBOARD]: 0.3, [O.WATERWHEEL]: 0.45, [O.TREE]: 0.38, [O.PINE]: 0.34, [O.OAK]: 0.44, [O.BIRCH]: 0.26, [O.WILLOW]: 0.4, [O.ROCK]: 0.34, [O.STUMP]: 0.24, [O.DEADTREE]: 0.3, [O.GRAVE]: 0.28, [O.CAMPFIRE]: 0.3,
   [O.BARREL]: 0.28, [O.CRATE]: 0.32, [O.HOARD]: 0.5, [O.HAY]: 0.38, [O.BRAZIER]: 0.24, [O.DUMMY]: 0.22, [O.STATUE]: 0.4, [O.ANVIL]: 0.3, [O.WEAPONRACK]: 0.32, [O.WELL]: 0.46 };
 function solidTile(x, y, L) {
   if (!inBounds(x, y)) return true;

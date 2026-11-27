@@ -23,8 +23,8 @@ const HERALDS = {
   moranthe: { house: 'Moranthe', field: '#33295a', field2: '#1d1630', metal: '#c9c2e8', charge: 'owl' }, thornvale: { house: 'Thornvale', field: '#21492f', field2: '#14301f', metal: '#e4dcc0', charge: 'boar' },
   solmire: { house: 'Solmire', field: '#4a3a22', field2: '#2b2216', metal: '#e8a33c', charge: 'eclipse' } };
 const HERALD = { house: 'Aurenfell', name: 'Casa Aurenfell', field: '#9a2a1c', field2: '#6e1d14', metal: '#f1cf6a', charge: 'tower', motto: 'A Luz Não se Curva' };
-const VERSION = 'v1.178.0';
-const VERSION_NAME = 'Nae · Arredores';
+const VERSION = 'v1.179.0';
+const VERSION_NAME = 'Nae · Porto';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -174,6 +174,8 @@ const MON = {
   deserterchief: { name: 'Capitão Varrick', hp: 680, dmg: [15, 28], xp: 410, gold: [70, 120], speed: 2.0, atk: 1250, aggro: 7, big: true, boss: true, base: 'deserter', trophy: 'insignia' },
   dragon:   { name: 'Drakhar, o Flagelo Rubro', hp: 3400, dmg: [32, 50], xp: 2000, gold: [180, 300], speed: 2.1, atk: 1700, aggro: 6, big: true, boss: true, dragon: true, rad: 3.6, trophy: 'dragonscale' },
   elderslime: { name: 'Lodo Ancião',     hp: 480, dmg: [10, 20], xp: 300, gold: [0, 0],   speed: 1.1, atk: 1600, aggro: 6, big: true, boss: true, base: 'slime', cs: 1.9, trophy: 'slimecore' },
+  spiderqueen: { name: 'Rainha-Aranha', hp: 560, dmg: [14, 26], xp: 380, gold: [40, 90], speed: 2.3, atk: 1250, aggro: 7, big: true, boss: true, base: 'spider', cs: 2.3, trophy: 'queensilk' },
+  smugglercap: { name: 'Capitão Duarte da Enseada', hp: 640, dmg: [15, 27], xp: 400, gold: [80, 140], speed: 2.1, atk: 1200, aggro: 7, big: true, boss: true, base: 'bandit', trophy: 'covekey' },
 };
 for (const k in MON) MON[k].speed *= 0.75; // escala nova do mundo
 const MON_TYPES = Object.keys(MON);
@@ -182,13 +184,13 @@ const MON_TYPES = Object.keys(MON);
 const QUESTS = [
   { id: 'q_rat', name: 'Praga nos Celeiros', mon: 'rat', count: 8, xp: 80, gold: 30, desc: 'As ratazanas estão devorando as reservas de grãos. Elimine 8 delas nos Campos.' },
   { id: 'q_slime', name: 'Lodo nas Valas', mon: 'slime', count: 6, xp: 120, gold: 40, desc: 'Os lodos vivos estão entupindo as valas de irrigação. Destrua 6.' },
-  { id: 'q_wolf', name: 'Uivos no Bosque', mon: 'wolf', count: 6, xp: 260, gold: 70, desc: 'Uma alcateia vem atacando os lenhadores no Bosque Sombrio. Abata 6 lobos.' },
-  { id: 'q_spider', name: 'Teias na Trilha', mon: 'spider', count: 5, xp: 280, gold: 75, desc: 'Aranhas-tecelãs fecharam a trilha dos caçadores. Mate 5.' },
-  { id: 'q_toad', name: 'O Brejo Inquieto', mon: 'toad', count: 6, xp: 300, gold: 80, desc: 'Os sapos-boi do pântano estão cada vez mais agressivos. Elimine 6.' },
+  { id: 'q_wolf', name: 'Uivos no Bosque', mon: 'wolf', count: 6, xp: 260, gold: 70, desc: 'Uma alcateia vem atacando os lenhadores no Pinhal do Norte. Abata 6 lobos.' },
+  { id: 'q_spider', name: 'Teias na Trilha', mon: 'spider', count: 5, xp: 280, gold: 75, desc: 'Aranhas-tecelãs que saíram da Mina de Prata fecharam a trilha dos caçadores. Mate 5.' },
+  { id: 'q_toad', name: 'O Brejo Inquieto', mon: 'toad', count: 6, xp: 300, gold: 80, desc: 'Os sapos-boi das Salinas Podres estão cada vez mais agressivos. Elimine 6.' },
   { id: 'q_goblin', name: 'Saque Interrompido', mon: 'goblin', count: 8, xp: 520, gold: 120, desc: 'Saqueadores goblins roubaram uma caravana. Derrube 8 deles no Acampamento Orc.' },
-  { id: 'q_skeleton', name: 'Descanso aos Mortos', mon: 'skeleton', count: 8, xp: 600, gold: 130, desc: 'Os mortos das Colinas de Ossos se levantaram. Devolva 8 deles ao descanso.' },
+  { id: 'q_skeleton', name: 'Descanso aos Mortos', mon: 'skeleton', count: 8, xp: 600, gold: 130, desc: 'Os mortos da Necrópole dos Primeiros Reis se levantaram. Devolva 8 deles ao descanso.' },
   { id: 'q_orc', name: 'Lâminas do Oeste', mon: 'orc', count: 6, xp: 800, gold: 180, desc: 'Orcs guerreiros preparam um ataque. Enfraqueça as fileiras: 6 orcs.' },
-  { id: 'q_troll', name: 'O Gigante da Montanha', mon: 'troll', count: 1, xp: 1000, gold: 250, desc: 'Um troll desceu da montanha da cachoeira. Derrube-o.' },
+  { id: 'q_troll', name: 'O Troll da Garganta', mon: 'troll', count: 1, xp: 1000, gold: 250, desc: 'Um troll ataca os lenhadores na Garganta, atrás da cachoeira do Véu. Derrube-o.' },
 ];
 const MAX_ACTIVE_QUESTS = 3;
 
@@ -242,6 +244,8 @@ const LOOT = {
   orcbanner: { name: 'Estandarte de Grukk', price: 160, icon: '⚑', color: '#c83a2a', desc: 'Troféu do chefe do Acampamento Orc.' },
   cryptcrown: { name: 'Coroa do Senhor da Cripta', price: 180, icon: '♛', color: '#d8c070', desc: 'Ouro velho e frio, tirado de um morto.' },
   insignia: { name: 'Insígnia do Capitão', price: 170, icon: '✠', color: '#c8c8d0', desc: 'Prova de que Varrick caiu.' },
+  queensilk: { name: 'Seda da Rainha-Aranha', price: 150, icon: '🕸', color: '#d8d8e8', desc: 'Fio de prata do fundo da mina abandonada.' },
+  covekey: { name: 'Chave da Enseada', price: 160, icon: '🗝', color: '#c8a050', desc: 'Abria o baú dos contrabandistas. Agora é sua.' },
   slimecore: { name: 'Núcleo do Lodo Ancião', price: 130, icon: '◉', color: '#5ad84a', desc: 'Pulsa como um coração verde.' },
   trolltusk: { name: 'Presa do Troll',  price: 150, icon: '◣', color: '#f0e8d0', desc: 'Do tamanho de um braço.' },
   dragonscale: { name: 'Escama de Dragão', price: 420, icon: '⬢', color: '#c83a2a', desc: 'Dura como aço e ainda morna. O troféu mais raro de Nae.' },

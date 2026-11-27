@@ -17,11 +17,14 @@ function weatherS() {   /* chuva igual à que os jogadores veem (mesma fórmula)
 const MAX_MON = typeof TEST3D !== 'undefined' && TEST3D ? 10 : 480;
 
 const RUMORS = [
-  'Os lenhadores evitam o Bosque Sombrio depois do pôr do sol. Os lobos de lá caçam em bando.',
-  'Dizem que algo grande vive na montanha da cachoeira. As pegadas na lama têm o tamanho de um escudo.',
-  'O pântano a leste engoliu duas carroças este mês. Os sapos de lá não têm medo de ninguém.',
-  'Ao sul ficam as Colinas de Ossos. Os mortos que não foram enterrados direito não descansam.',
-  'Os orcs a oeste estão se organizando. Alguém está pagando os goblins para saquear as estradas.',
+  'Os lenhadores evitam o Pinhal do Norte depois do pôr do sol. Os lobos de lá caçam em bando.',
+  'Dizem que um troll mora atrás da cachoeira do Véu, na Mata Antiga. Quem vai cortar carvalho velho não volta inteiro.',
+  'As Salinas Podres engoliram duas carroças este mês. Desde a peste, só sapos e gosmas vivem lá.',
+  'Um mago expulso da corte andou pela Necrópole dos Primeiros Reis. Agora os mortos andam à noite perto do Lago do Espelho.',
+  'Os orcs desceram da serra no inverno e acamparam no vau do oeste. A Vila dos Viajantes já perdeu três carroças.',
+  'A Mina de Prata fechou depois do desabamento, mas ainda tem prata lá dentro. E aranhas do tamanho de um cavalo.',
+  'Barcos sem bandeira descarregam à noite na enseada perto do farol. O Capitão Duarte não deixa testemunhas.',
+  'Desertores ocupam a velha torre na estrada do leste e cobram pedágio de quem vai aos sobreiros.',
   'Um Cavaleiro na frente, um Atirador atrás e um Mago curando. É assim que se volta vivo.',
   'Se um companheiro cair, não o abandone. Levante-o, ou carregue-o até a capela.',
   'A cidadela foi reconstruída pedra por pedra depois da última guerra. Ainda há quem jure ouvir os mortos nas muralhas.',

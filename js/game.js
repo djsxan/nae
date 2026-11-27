@@ -804,7 +804,7 @@ function showBanner(title, sub, dark) {
 function flashDamage() { const v = $('vignette'); v.classList.remove('hit'); void v.offsetWidth; v.classList.add('hit'); }
 
 // ---------- diálogos com NPCs ----------
-const GUARD_TEXT = 'Além do fosso: os Campos (★) logo além da paliçada; o Bosque Sombrio (★★) ao norte; o Pântano Pútrido (★★) a leste; as Colinas de Ossos (★★★) ao sul; o Acampamento Orc (★★★) a oeste. Perto do mar, as Terras Selvagens (★★★★). A cachoeira fica na montanha, a noroeste.';
+const GUARD_TEXT = 'Além do fosso: campos, olivais e vinhas (★) até a costa sul, onde fica o Porto de Nae. Ao norte, o Pinhal (★★) e, depois dele, a Serra do Norte (★★★) com a Mina de Prata abandonada; o Rio Claro desce da Cachoeira dos Três Véus até o nosso fosso. A leste, os Sobreiros (★★), a Torre dos Desertores na estrada e a Enseada dos Contrabandistas nas falésias, perto do farol. A oeste, depois da ponte do Rio Velho, a Vila dos Viajantes e as terras dos orcs (★★★); a noroeste, o Lago do Espelho e a Necrópole dos Primeiros Reis (★★★★). A sudoeste, as Salinas Podres (★★). No nordeste, a Mata Antiga e a Garganta do Troll (★★★★), e no Pico Cinzento dorme o dragão.';
 const NPC_DIALOG = {
   v_house3: { greet: "Preciso de linho e ervas para casa.", opts: [['Tudo bem?', { local: 'Tudo, tudo. Bom dia para você.' }]] },
   v_house4: { greet: "No meu tempo o pão era mais barato.", opts: [['Tudo bem?', { local: 'Tudo, tudo. Bom dia para você.' }]] },

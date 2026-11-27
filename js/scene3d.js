@@ -676,6 +676,19 @@ function mOak(v) {
   for (const [bx, by, bz, rx, ry] of blobs) { if (bx || bz) g.add(limb(V3(top.x, 0.8, top.z), V3(bx * 0.75, by - 0.2, bz * 0.75), 0.1, 0.045, bark, 6)); g.add(crown(R, bx, by, bz, rx, ry, Math.round(rx * 120), 0.42, leafM, '#203a16')); }
   return g;
 }
+/* oliveira: tronco grosso e retorcido, copa baixa e larga em tufos verde-prateados */
+function mOlive(v) { const R = rng(1151 + v * 7), bark = smat('bark', '#6a5a46', { bump: 2.6 }), g = grp();
+  const mid = V3((R() - 0.5) * 0.25, 0.42, (R() - 0.5) * 0.25), top = V3(mid.x + (R() - 0.5) * 0.3, 0.8, mid.z + (R() - 0.5) * 0.3); g.add(limb(V3(0, -0.05, 0), mid, 0.2, 0.15, bark, 9)); g.add(limb(mid, top, 0.15, 0.09, bark, 8)); g.add(limb(V3(0.05, 0.1, 0), V3(mid.x - 0.2, 0.55, mid.z + 0.12), 0.1, 0.06, bark, 7));
+  const leafM = smat(null, '#8a9a6a', { leafMap: leafTex(), rough: 0.9 }), blobs = [[top.x, 1.05, top.z, 0.5, 0.28]]; for (let k = 0; k < 5; k++) { const a = k / 5 * Math.PI * 2 + R() * 0.7, d = 0.38 + R() * 0.15; blobs.push([top.x + Math.cos(a) * d, 0.88 + R() * 0.18, top.z + Math.sin(a) * d, 0.34 + R() * 0.08, 0.22 + R() * 0.05]); }
+  for (const [bx, by, bz, rx, ry] of blobs) g.add(crown(R, bx, by, bz, rx, ry, Math.round(rx * 110), 0.34, leafM, '#3a4428'));
+  return g; }
+/* Farol do Cabo: torre de pedra caiada com faixas vermelhas e a lanterna acesa no alto */
+function mLighthouse() { const g = grp(), white = smat(null, '#ece6d8', { rough: 0.8 }), red = smat(null, '#a8322a', { rough: 0.6 }), dark = smat(null, '#2a2a2e', { metal: 0.6, rough: 0.4 }), glass = smat(null, '#fff2b0', { emissive: '#ffd060', emissiveIntensity: 2.2 });
+  g.add(mk(new THREE.CylinderGeometry(0.62, 0.72, 0.4, 16).translate(0, 0.2, 0), smat('stoneblock', '#8a8274', { bump: 1.2 })));
+  for (let k = 0; k < 4; k++) { const y0 = 0.4 + k * 0.62; g.add(mk(new THREE.CylinderGeometry(0.5 - (k + 1) * 0.05, 0.5 - k * 0.05, 0.62, 16).translate(0, y0 + 0.31, 0), k % 2 ? red : white)); }
+  g.add(mk(new THREE.CylinderGeometry(0.42, 0.42, 0.06, 16).translate(0, 2.92, 0), dark)); g.add(mk(new THREE.CylinderGeometry(0.22, 0.22, 0.34, 12).translate(0, 3.12, 0), glass)); g.add(mk(new THREE.ConeGeometry(0.3, 0.3, 12).translate(0, 3.44, 0), red));
+  for (let k = 0; k < 6; k++) { const a = k / 6 * Math.PI * 2; g.add(mk(new THREE.BoxGeometry(0.02, 0.36, 0.02).translate(Math.cos(a) * 0.23, 3.12, Math.sin(a) * 0.23), dark)); }
+  return g; }
 function mBirch(v) {
   const R = rng(1201 + v * 7), bark = smat(null, '#e8e2d2', { rough: 0.7 }), dark = smat(null, '#2a2622', { rough: 0.9 }), g = grp();
   const top = V3((R() - 0.5) * 0.25, 2.2, (R() - 0.5) * 0.25); g.add(limb(V3(0, -0.05, 0), top, 0.085, 0.045, bark, 8));
@@ -804,7 +817,7 @@ function mNoticeBoard() {
   const paper = ['#efe6cf', '#e8dcb8', '#f4ecd8', '#e0d4b0']; for (let k = 0; k < 5; k++) { const p = mk(new THREE.BoxGeometry(0.2 + (k % 2) * 0.06, 0.22, 0.01).translate(-0.33 + k * 0.165, 1.02 + (k % 3 - 1) * 0.12, 0.06), smat(null, paper[k % 4], { rough: 1 })); p.rotation.z = (k % 2 ? 0.08 : -0.06); o.add(p); }
   return o;
 }
-const NATURE = { board: [mNoticeBoard, 1.0], wheel: [mWaterWheel, 1.0], guilp: [mGuilPlank, 1.0], guil: [mGuillotineG, 1.0], stool: [mStool, 1.0], fcrate: [mFruitCrate, 1.0], oak: [mOak, 2.15], birch: [mBirch, 2.0], willow: [mWillow, 2.05], fern: [mFern, 1.15], roots: [mRoots, 1.0], shrooms: [mShrooms, 0.95], berry: [mBerry, 1.05], herb: [mHerb, 1.0], boulder: [mBoulder, 1.15] };
+const NATURE = { olive: [mOlive, 1.7], lighthouse: [mLighthouse, 1.0], board: [mNoticeBoard, 1.0], wheel: [mWaterWheel, 1.0], guilp: [mGuilPlank, 1.0], guil: [mGuillotineG, 1.0], stool: [mStool, 1.0], fcrate: [mFruitCrate, 1.0], oak: [mOak, 2.15], birch: [mBirch, 2.0], willow: [mWillow, 2.05], fern: [mFern, 1.15], roots: [mRoots, 1.0], shrooms: [mShrooms, 0.95], berry: [mBerry, 1.05], herb: [mHerb, 1.0], boulder: [mBoulder, 1.15] };
 function natureSprite(kind, v) { const N = NATURE[kind]; if (!N || !S3.ok) return null; return scen3('nt|' + kind + '|' + v, () => { const g = N[0](v); g.scale.setScalar(N[1]); return g; }); }
 function rockGeo(seed, r, sx, sy, sz) {
   const g = new THREE.IcosahedronGeometry(r, 2), p = g.attributes.position, R = rng(seed), off = [R() * 9, R() * 9, R() * 9];

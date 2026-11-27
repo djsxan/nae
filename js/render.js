@@ -644,8 +644,8 @@ function drawAuras1(ctx, e, sx, sy, now) {
 // ---------- objetos ----------
 // ---------- objetos ----------
 const TREE_TINT = { [Z.FOREST]: 3, [Z.SWAMP]: 3, [Z.WILD]: 1 };
-const SWAY = { [O.WHEAT]: 0.08, [O.WHEATSPROUT]: 0.05, [O.TREE]: 0.035, [O.PINE]: 0.025, [O.BUSH]: 0.03, [O.TALLGRASS]: 0.09, [O.REEDS]: 0.08, [O.OAK]: 0.025, [O.BIRCH]: 0.045, [O.WILLOW]: 0.05, [O.FERN]: 0.07, [O.HERB]: 0.06, [O.BERRY]: 0.03 };
-const CASTS = new Set([O.OAK, O.BIRCH, O.WILLOW, O.BOULDER, O.BERRY, O.TREE, O.PINE, O.DEADTREE, O.BUSH, O.ROCK, O.WALL, O.LOWWALL, O.STATUE, O.LAMP, O.BANNER, O.TENT, O.WELL, O.STALL, O.HAY, O.BARREL, O.CRATE, O.CART, O.GRAVE, O.DUMMY, O.WEAPONRACK, O.STUMP, O.TORCH, O.BRAZIER, O.FENCE, O.GATE]);
+const SWAY = { [O.OLIVE]: 0.02, [O.WHEAT]: 0.08, [O.WHEATSPROUT]: 0.05, [O.TREE]: 0.035, [O.PINE]: 0.025, [O.BUSH]: 0.03, [O.TALLGRASS]: 0.09, [O.REEDS]: 0.08, [O.OAK]: 0.025, [O.BIRCH]: 0.045, [O.WILLOW]: 0.05, [O.FERN]: 0.07, [O.HERB]: 0.06, [O.BERRY]: 0.03 };
+const CASTS = new Set([O.OLIVE, O.LIGHTHOUSE, O.OAK, O.BIRCH, O.WILLOW, O.BOULDER, O.BERRY, O.TREE, O.PINE, O.DEADTREE, O.BUSH, O.ROCK, O.WALL, O.LOWWALL, O.STATUE, O.LAMP, O.BANNER, O.TENT, O.WELL, O.STALL, O.HAY, O.BARREL, O.CRATE, O.CART, O.GRAVE, O.DUMMY, O.WEAPONRACK, O.STUMP, O.TORCH, O.BRAZIER, O.FENCE, O.GATE]);
 function objSprite(o, x, y) {
   const h = hash2(x, y, 17), v = Math.floor(h * 3), i = y * MAP_W + x, z = WORLD.zone[i];
   switch (o) {
@@ -657,6 +657,8 @@ function objSprite(o, x, y) {
     case O.STAGEFLOOR: return null;
     case O.GUILLOTINE: if (x !== STAGE.x) return natureSprite('guilp', 0); return natureSprite('guil', typeof guilState === 'function' ? guilState() : 0) || smallSprite('cart');
     case O.OAK: return natureSprite('oak', v & 1) || treeSprite(v, 1, 3);
+    case O.OLIVE: return natureSprite('olive', v & 1) || treeSprite(v, 1, 3);
+    case O.LIGHTHOUSE: return natureSprite('lighthouse', 0) || treeSprite(v, 1, 3);
     case O.BIRCH: return natureSprite('birch', v & 1) || treeSprite(v, 1, 1);
     case O.WILLOW: return natureSprite('willow', v & 1) || treeSprite(v, 1, 0);
     case O.FERN: return natureSprite('fern', v % 3) || grassSprite(v, 1, 0);
