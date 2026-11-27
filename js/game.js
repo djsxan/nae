@@ -2073,7 +2073,7 @@ function emoteList() { return G.me && G.me.bathing ? [{ k: 'smoke', n: 'Fumar', 
 function closeEmoteWheel(fire) {
   const wl = G.wheel; G.wheel = null; $('emote-wheel').classList.add('hidden');
   document.querySelectorAll('#emote-wheel .ew-opt').forEach(o => o.classList.remove('on'));
-  if (fire && wl && wl.sel >= 0) { const k = emoteList()[wl.sel].k; if (k === 'meditate') { if (typeof meditPick === 'function') meditPick(); return; } if (k === 'smoke') { G.me.smokeT = performance.now(); Net.send({ t: 'emote', k }); return; } if (G.me.bathing) { Net.send({ t: 'emote', k }); return; } if (G.me.sit) standUp(); G.me.emote = { k, t0: performance.now() }; Net.send({ t: 'emote', k }); }
+  if (fire && wl && wl.sel >= 0) { const k = emoteList()[wl.sel].k; if (k === 'meditate') { if (typeof meditPick === 'function') meditPick(); return; } if (k === 'smoke') { G.me.smokeT = performance.now(); Net.send({ t: 'emote', k }); return; } if (G.me.bathing) { Net.send({ t: 'emote', k }); return; } if (k === 'salute' && typeof vl8SeatCall === 'function' && vl8SeatCall()) { Net.send({ t: 'emote', k }); return; } if (G.me.sit) standUp(); G.me.emote = { k, t0: performance.now() }; Net.send({ t: 'emote', k }); }
 }
 
 // ---------- mapa: zoom (roda do mouse / botões) e ícones minimalistas dos lugares ----------

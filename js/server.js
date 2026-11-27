@@ -414,7 +414,7 @@ function hostOnClient(from, m) {
       if (m.k === 'toast' && !p.downed) { const bi = WORLD.bld[tileAt(p.x, p.y)]; for (const q of Object.values(S.players)) { if (q.downed || dist(q.x, q.y, p.x, p.y) > 3.5 || WORLD.bld[tileAt(q.x, q.y)] !== bi) continue; near(q.x, q.y, { t: 'emote', id: q.id, k: 'cheer' }); }
         for (const n of Object.values(S.npcs || {})) if (!n.dead && !n.downed && dist(n.x, n.y, p.x, p.y) < 3.5 && WORLD.bld[tileAt(n.x, n.y)] === bi && bi >= 0) near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'talk', txt: 'Saúde! 🍻', ms: 1 });
         near(p.x, p.y, { t: 'chat', id: p.id, name: p.name, text: '🍻 Saúde!' }); break; }
-      if (m.k === 'smoke') { if (p.bath || p.thSit) near(p.x, p.y, { t: 'emote', id: p.id, k: 'smoke' }); break; }
+      if (m.k === 'smoke') { if (p.bath || p.thSit || p.vl8Balc) { near(p.x, p.y, { t: 'emote', id: p.id, k: 'smoke' }); if (p.vl8Balc && typeof vl8Smoke === 'function') vl8Smoke(p); } break; }
       { const k = ['salute', 'dance', 'point', 'cheer', 'surprise', 'adore', 'anger', 'fear', 'sad'].includes(m.k) ? m.k : null; if (k && !p.downed) near(p.x, p.y, { t: 'emote', id: p.id, k });
       if (k === 'adore' && !p.dev && Object.values(S.players).some(w => w.dev && w.skin === 'weaver' && w !== p && dist(w.x, w.y, p.x, p.y) < 6)) { const had = now_() < (p.buffs.weaver || 0); p.buffs.weaver = now_() + 3600000; p.food = Math.max(p.food ?? 100, 80); p.water = Math.max(p.water ?? 100, 80); p.cold = 0; if (!had) tell(p, 'O Tecelão aceita a sua devoção: por 1 hora você não sente fome, sede nem frio.'); sendStat(p); }
       break; }
