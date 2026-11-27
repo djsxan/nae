@@ -46,7 +46,7 @@ function vl5Face(n, x, y) { n.dir = dirFromVecS(x - n.x, y - n.y); }
 function vl5Anim(n, a, ms, txt) { near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a, ms, txt }); }
 /* frente de cada reservado (onde quem passa para) e outros pontos do salão */
 const VL5_BFRONT = [[2.15, 4.0], [2.15, 6.0], [10.35, 6.0], [10.35, 8.0], [3.0, 8.4], [10.0, 8.4]];
-const VL5_SPOTS = { bar: [[0.9, 2.75], [1.9, 2.75], [2.9, 2.75], [3.6, 2.4]], stage: [[4.9, 6.4], [5.9, 6.6], [7.0, 6.6], [8.0, 6.4], [4.6, 4.3], [8.4, 4.3]], open: [[4.2, 7.4], [8.7, 7.4], [6.5, 8.6], [4.6, 9.4], [8.4, 9.4], [3.6, 2.9], [9.2, 3.3]] };
+const VL5_SPOTS = { bar: [[0.9, 2.75], [1.9, 2.75], [2.9, 2.75], [3.6, 2.4]], stage: [[4.9, 6.4], [5.9, 6.6], [7.0, 6.6], [8.0, 6.4], [4.6, 4.3], [8.4, 4.3]], open: [[6.5, 8.6], [4.6, 9.4], [8.4, 9.4], [3.6, 2.9], [9.2, 3.3], [4.0, 8.2], [8.9, 8.2]] };
 const VL5_PATROL = { 0: [[8.3, 7.7], [8.8, 3.4], [6.5, 2.7], [3.8, 2.9], [3.4, 7.4], [6.5, 8.8]], 1: [[1.5, 8.6], [1.6, 3.6], [6.5, 2.4], [10.6, 4.6], [11.4, 9.2], [6.5, 9.7]], 2: [[11.5, 9.2], [10.6, 4.6], [6.5, 2.4], [1.6, 3.6], [1.5, 8.6], [6.5, 9.7]] };
 function vl5BoothPt(c, id) { const B = VL5_BFRONT[c]; if (!B) return VL5_SPOTS.open[0]; const ax = c < 4 ? [0, 1] : [1, 0]; return vl5Spot([B, [B[0] + ax[0] * 0.7, B[1] + ax[1] * 0.7], [B[0] - ax[0] * 0.7, B[1] - ax[1] * 0.7]], id); }
 /* mesas com gente agora: reservados com jogador, lorde ou clientes da casa */
@@ -62,7 +62,7 @@ function vl5OfferFor(g, now) { const B = vlBooths(); S.vl5Claim = S.vl5Claim || 
     if (Object.values(S.vlTable || {}).filter(X => X.who === p.id).length >= (typeof AF4 !== 'undefined' ? AF4.girls : 1)) continue;
     if (p.vlDecl && p.vlDecl[g] > now) continue; if (S.vl5Claim[p.id] && S.vl5Claim[p.id] !== g && S.vl5 && S.vl5[S.vl5Claim[p.id]]) continue; const fs = vl4FreeSeat(p, s.vb); if (fs < 0) continue; return { p, c: s.vb, fs }; } return null; }
 /* a mesa é do jogador (ou ele foi convidado para ela: a versão da mesa dividida estende esta função) */
-function vl5MyTable(p, c) { return vlBooths().own[c] === estOwner(p); }
+function vl5MyTable(p, c) { return typeof vlBoothMine === 'function' ? vlBoothMine(p, c) : vlBooths().own[c] === estOwner(p); }
 /* ---- rotina de cada moça ---- */
 function vl5GirlNext(n, T, now) { const L = { id: n.id, ph: 'go', t: now };
   const O = vl5OfferFor(n.id, now); if (O) { S.vl5Claim[O.p.id] = n.id; const [u, v] = vl5BoothPt(O.c, n.id); return Object.assign(L, { a: 'offer', pid: O.p.id, c: O.c, pts: vl5Path(n, u, v), i: 0, dur: 5500 }); }

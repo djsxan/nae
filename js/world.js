@@ -690,7 +690,7 @@ function interiorLayoutBase(b, fl = 0) {
     booth(2, 9, 2, 4, [[2.6, 10.55, 3], [3.4, 10.55, 3], [2.3, 9.75, 1], [3.7, 9.75, 5]]); booth(9, 9, 2, 5, [[9.6, 10.55, 3], [10.4, 10.55, 3], [9.3, 9.75, 1], [10.7, 9.75, 5]]);
     put('vlift', 11, 2, { w: 2, h: 2, block: false, force: true }); put('vrug', 9, 2, { w: 2, h: 2, block: false, force: true, c: 2 });
     put('varm', 10, 0, { seat: 7 }); put('vplant', 11, 0); put('varm', 12, 0, { seat: 7 });
-    put('vding', 4, 5); put('vding', 8, 5); put('vvase', 4, 10); put('vvase', 8, 10); put('vplant', 12, 10); put('vplant', 0, 7);
+    put('vding', 4, 5); put('vding', 8, 5); put('vtable', 4, 7); put('vstool', 3, 7, { block: false, seat: 1 }); put('vstool', 5, 7, { block: false, seat: 5 }); put('vtable', 8, 7); put('vstool', 7, 7, { block: false, seat: 1 }); put('vstool', 9, 7, { block: false, seat: 5 });   /* mesinhas abertas perto do palco (sem reserva) */ put('vvase', 4, 10); put('vvase', 8, 10); put('vplant', 12, 10); put('vplant', 0, 7);
   } else if (k === 'temple') {
     put('altar', dc - 1, 0, { w: 3 }); npcAt(dc, 1); put('candles', 1, 0); put('candles', w - 2, 0);
     for (let j = 3; j <= Math.max(5, h - 3); j += 2) { put('pew', 1, j, { w: dc - 1, seat: 3 }); put('pew', dc + 1, j, { w: w - dc - 2, seat: 3 }); }   /* a nave inteira com bancos */

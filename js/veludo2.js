@@ -85,7 +85,7 @@ function vlGuard(now) { const b = velB('velvet'); if (!b) return; const R = velR
     if (p.vlW && p.vlW.k !== 'girls' && now - p.vlW.t > 6000) p.vlW = null; } }
 /* ---- reservado: garrafa, sentar e levantar quem sentou no reservado dos outros ---- */
 function vlBoothTick(now) { const bi = vlBi(), B = vlBooths(); for (const p of Object.values(S.players)) { if (!p.sit || (p.fl || 0) || !vlInside(p)) continue; const s = WORLD.seats.find(q => q.bi === bi && q.vb != null && Math.abs(q.x - p.x) < 0.05 && Math.abs(q.y - p.y) < 0.05); if (!s) continue;
-    if (B.own[s.vb] === estOwner(p)) { if (now - (p.vlBT || 0) > 2000) { p.vlBT = now; p.cst = Math.min(cstMaxOf(p), (p.cst || 0) + 6); } continue; }
+    if ((typeof vlBoothMine === 'function' ? vlBoothMine(p, s.vb) : vlBooths().own[s.vb] === estOwner(p))) { if (now - (p.vlBT || 0) > 2000) { p.vlBT = now; p.cst = Math.min(cstMaxOf(p), (p.cst || 0) + 6); } continue; }
     if (now - (p.vlSitW || 0) < 6000) continue; p.vlSitW = now; const m = S.npcs.vl_mirela; if (m) empSay(m, 'Esse reservado é pago, querido. Fale comigo na entrada.'); tell(p, 'Mirela: “Os reservados são pagos. Fale comigo na entrada.”'); p.sit = null; Net.toOne(p.id, { t: 'velfx', k: 'stand' }); } }
 if (typeof velTick === 'function') { const _vtV = velTick; velTick = function (now) { const run = S.estate && now - (S.velT || 0) >= 500; _vtV(now); if (!run) return; try { vlGuard(now); vlBoothTick(now); } catch (e) { console.warn('veludo2', e); } }; }
 if (typeof velMenu === 'function') { const _vmV = velMenu; velMenu = function (p, T, n) {
