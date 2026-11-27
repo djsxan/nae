@@ -595,6 +595,8 @@ window.FACE = { style: 'old', expr: 'n' };
     const on = window.FACE && (FACE.style === 'C' || L.newLook) && FACE.body !== false;
     if (!on) return _bh.apply(this, arguments);
     const P = bodyParams(L);
+    const lod0 = window.VN_LOD; if (L.ling || L.isHero) window.VN_LOD = 1;   /* moças da casa e heróis dos jogadores: resolução cheia (aparecem de perto) */
+    try {
     { const bareX = L.armor === 'bare', plate = L.armor === 'plate', rb = L.armor === 'robe'; P.dm = bareX ? 1 : plate ? 0 : L.armor === 'leather' ? 0.15 : 0.08; P.sm = bareX ? 1 : plate ? 0.04 : 0.12; P.bm = bareX ? 1 : rb ? 0 : plate ? 0.3 : 0.6; P.bb = bareX ? 1 : plate ? 0.35 : 0.85;   /* sob a roupa: músculos quase somem, o volume do busto e do glúteo fica */ }
     P.ar = L.armor; if (L.ling && L.armor === 'bare' && P.fem) P.ling = L.ling; const PK = JSON.stringify(P);
     /* tom de pele: quem não tem um tom próprio (o padrão dos heróis ou L.skinAuto) recebe um da paleta pela semente */
@@ -639,8 +641,8 @@ window.FACE = { style: 'old', expr: 'n' };
         if (bare || fem) { const pt = new THREE.Mesh(G('patela' + S, () => { const g = new THREE.SphereGeometry(0.028 * S, 16, 12); g.scale(1.1, 1.2, 0.4); return g; }), m0(th || ca)); pt.position.set(0, 0.006 * S, 0.044 * S); Lg.kn.add(pt); } }
       const ft = Lg.ft.children.find(o => o.geometry && o.geometry.type === 'BoxGeometry'); if (ft) setG(ft, footG(S), false);
     }
-    R._body = P;
-    return R; };
+    R._body = P; R._lodFull = window.VN_LOD === 1 && lod0 !== 1;
+    return R; } finally { window.VN_LOD = lod0; } };
   window.BODYK = { tubeG, torsoSpec, pelvisSpec, thighG, bodyParams, capF, g2, lerpK, G, vcMat, setG, capR, m0, hx };
 })();
 
@@ -721,7 +723,7 @@ window.FACE = { style: 'old', expr: 'n' };
 
   const _bh = buildHumanoid;
   buildHumanoid = function (L, opts = {}) {
-    const R = _bh.apply(this, arguments); const P = R._body; if (!P) return R;
+    const R = _bh.apply(this, arguments); const P = R._body; if (!P) return R; const lod0 = window.VN_LOD; if (L.ling || L.isHero) window.VN_LOD = 1;
     const S = opts.scale || 1, robe = L.armor === 'robe', bare = L.armor === 'bare';
     try {
       /* manto/vestido: a malha nova fica no mesmo objeto (o laço de animação continua mexendo nela) */
@@ -765,14 +767,14 @@ window.FACE = { style: 'old', expr: 'n' };
           for (let k = 0; k < 9; k++) { const a = front - 0.9 + k * 0.225, r = polarMax(bodyPts(P, -0.12, false), -0.004, 96)[Math.round(a / (2 * PI) * 96) % 96] + 0.008; const c = add(R.spine, new THREE.CylinderGeometry(0.011 * S, 0.011 * S, 0.003 * S, 10), gold); c.position.set(r * Math.cos(a) * S, -0.135 * S, (-0.004 + r * Math.sin(a)) * S); c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(Math.cos(a), 0, Math.sin(a))); } }
         if (g.t === 'robe') { const front = PI / 2; const { g: rg } = skirtG(P, 0.46, -0.84, { fl: 0.12, nf: 11, amp: 0.012, clear: 0.014 }, S, 0, 1, (row, a) => angD(a, front) < 0.42 + 0.25 * Math.max(0, Math.min(1, (0.2 - row.y) / 0.3)));
           add(R.spine, rg, sheer(g.c, 0.36)); }
-        if (g.t === 'qipao') { const { sp, g: qg } = skirtG(P, -0.12, -0.33, { fl: 0.06, nf: 7, amp: 0.006, clear: 0.008 }, S, 0, 1, (row, a) => row.y < -0.19 && (angD(a, 0) < 0.13 || angD(a, PI) < 0.13));
+        if (g.t === 'qipao') { const { sp, g: qg } = skirtG(P, -0.12, -0.32, { fl: 0.025, nf: 7, amp: 0.005, clear: 0.005 }, S, 0, 1, (row, a) => row.y < -0.16 && (angD(a, 0) < 0.13 || angD(a, PI) < 0.13));
           add(R.spine, qg, new THREE.MeshStandardMaterial({ color: col(g.c), roughness: 0.35, metalness: 0.1, vertexColors: true, side: THREE.DoubleSide })); add(R.spine, hemG(sp, S, 0.005, 0, 1, false), gold); }
         if (R.neckJ) { const ch = add(R.neckJ, new THREE.TorusGeometry(0.05 * S * (P.fem ? 0.86 : 1) + 0.004 * S, 0.0055 * S, 6, 28), new THREE.MeshStandardMaterial({ color: col(g.c2), roughness: 0.6 })); ch.rotation.x = PI / 2; ch.position.y = 0.035 * S; ch.scale.set(1, 1.04, 1);
           const gem = add(R.neckJ, new THREE.SphereGeometry(0.007 * S, 10, 8), gold); gem.position.set(0, 0.028 * S, 0.049 * S); } }
       /* capa: inclina para trás para passar pelo glúteo */
       if (R.cape) { let back = 0; for (const y of [-0.05, -0.08, -0.11, -0.14]) { const r = polarMax(bodyPts(P, y, false), 0, 96); back = Math.max(back, r[72]); } const need = back + 0.02 - 0.13, dy = 0.24 + 0.3 + 0.1; if (need > 0) R.cape.rotation.x = Math.max(R.cape.rotation.x, Math.atan(need / dy)); }
     } catch (e) { console.warn('roupas novas', e); }
-    return R;
+    window.VN_LOD = lod0; return R;
   };
   window.CLOTHK = { bodyPts, polarMax, skirtProfile, panelG, bandG };
 })();
@@ -805,7 +807,7 @@ if (typeof VISUAL_NOVO !== 'undefined' && VISUAL_NOVO) { FACE.style = 'C'; FACE.
 })();
 /* ajuste do corpo do herói (visual novo): a aparência leva ~b + 8 algarismos — tom de pele, musculatura, peso, ombros, cintura, quadril, seios e glúteos */
 (function () {
-  if (typeof heroLook === 'function') { const _hl = heroLook; heroLook = function (cls, skinId, accentHex) { const L = _hl(cls, skinId, accentHex); const m = /~b([0-9]{8})/.exec(String(skinId || ''));
+  if (typeof heroLook === 'function') { const _hl = heroLook; heroLook = function (cls, skinId, accentHex) { const L = _hl(cls, skinId, accentHex); L.isHero = true; const m = /~b([0-9]{8})/.exec(String(skinId || ''));
     if (m && typeof VISUAL_NOVO !== 'undefined' && VISUAL_NOVO) { L.bodyCfg = m[1]; const h = (window.BODY_SKINS || [])[+m[1][0]]; if (h) L.skin = typeof tone === 'function' ? tone(h) : h; } return L; }; }
   if (typeof VISUAL_NOVO === 'undefined' || !VISUAL_NOVO || typeof document === 'undefined') return;
   const host = document.getElementById('bodysel'); if (!host) return;
