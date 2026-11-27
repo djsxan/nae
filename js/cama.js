@@ -10,7 +10,7 @@
 //  · Novo: "Por cima de mim" / "Por cima de você": quem fica embaixo deitado de barriga para cima e quem fica por
 //    cima ajoelhado, girando o quadril e os braços.
 // ============================================================
-const CAMA = { hk: 0.57, faceMs: 12000, faceR: 4.5, frames: { bBelly: [650, 4], bKiss: [700, 4], bTop: [210, 8], bTopMe: [210, 8] } };
+const CAMA = { hk: 0.57, faceMs: 12000, faceR: 4.5, frames: { bBelly: [650, 4], bKiss: [700, 4], bTop: [210, 8], bTopMe: [210, 8], bLapK: [520, 24], bLapMeK: [520, 24] } };
 const CAMA_NEW = { bTop: ['Por cima de mim', 'quer que você fique por cima', '🔥'], bTopMe: ['Por cima de você', 'quer ficar por cima de você', '🔥'] };
 if (typeof AF2 !== 'undefined' && typeof AFX !== 'undefined') {
   for (const k in CAMA_NEW) { const [n, a, i] = CAMA_NEW[k]; AF2.K[k] = ['bed', n, a, i]; AFX.n[k] = n; AFX.ask[k] = a; AFX.i[k] = i; delete AFX.dur[k]; if (!AFF_KS.includes(k)) AFF_KS.push(k); if (typeof AFF_CTX !== 'undefined' && !AFF_CTX.bed.includes(k)) AFF_CTX.bed.push(k); if (!AFX.sin.includes(k)) AFX.sin.push(k); }
@@ -112,7 +112,7 @@ function camaLapBed(k, e, o, A, F) { const me = /LapMe/.test(k), kiss = /K$/.tes
   affPose(base, eb, { sit: 'g', dir: 2 }); affPose(rider, er, { sit: 'c', dir: 2 }); affPut(base, 2, 0, 0, true);
   for (const [L, s] of [[base.LA, -1], [base.LB, 1]]) { L.hp.rotation.set(-1.5, 0, s * 0.09); L.kn.rotation.x = 0.12; if (L.ft) L.ft.rotation.x = -0.2; }   /* pernas esticadas para a frente */
   base.spine.rotation.x = -0.32; base.chest.rotation.x = -0.08; base.root.updateMatrixWorld(true);   /* recostado */
-  affStraddle(base, rider, kiss); camaStraddleLegs(base, rider); if (kiss) camaLapKissHead(base, rider);
+  affStraddle(base, rider, kiss); camaStraddleLegs(base, rider); if (kiss) { camaLapKissHead(base, rider); if (typeof lapKissAnim === 'function') lapKissAnim(base, rider, ((A && A.fr) || 0) % 100 % 24); }
   if (F) camaFit([base, rider], F, camaW(base.head), camaAxis(base, camaKnees(base)), { fwd: 0.08 });
   else { let minY = Infinity; for (const R of [base, rider]) { R.root.updateMatrixWorld(true); minY = Math.min(minY, new THREE.Box3().setFromObject(R.root).min.y); } for (const R of [base, rider]) { R.root.position.y += 0.01 - minY; R.root.updateMatrixWorld(true); } }
   return [RA, RB, a.lk, b.lk]; }

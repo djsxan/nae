@@ -888,7 +888,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
   const ox = vw / 2 - c.sx + shx, oy = vh / 2 - c.sy + 30 + (cam.z || 0) * FLOOR_PX + shy;
   G.view = { ox, oy };
   G.lights = [];
-  const day = dayInfo(), sh = sunShadow(day);
+  const day = typeof vlDayFix === 'function' ? vlDayFix(dayInfo()) : dayInfo(), sh = sunShadow(day);   /* lista 13: o térreo da Casa de Veludo é sempre noite por dentro */
   updateAtmosphere(cam.x, cam.y, dt);
 
   ctx.setTransform(k, 0, 0, k, 0, 0);

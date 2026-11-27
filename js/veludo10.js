@@ -27,7 +27,7 @@ function vl10DrinkTick(now) { if (!S.vlTray) return; for (const pid in S.vlTray)
   if (ids.length) near(at[0], at[1], { t: 'vldrink', ids, x: at[0], y: at[1], ms: VL10.drinkMs + 1500 }); } }
 if (typeof affTick === 'function' && typeof S !== 'undefined') { const _atV10 = affTick; affTick = function (now) { _atV10(now);
   try { const R = S.vlTrayRun; if (R && R._v10 && S.vlTray && S.vlTray[R.who] && !S.vlTray[R.who].at10) S.vlTray[R.who].at10 = R.at;
-    { const L = S.vl5 && S.vl5.vl_mirela, n = S.npcs.vl_mirela, w = L && L.who && S.players[L.who]; if (L && n && w && L.ph === 'do' && now - (L._v10f || 0) > 1500) { L._v10f = now; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'face', tx: w.x, ty: w.y, ms: 1 }); } }   /* a Mirela olha para quem está recebendo */
+    { const L = S.vl5 && S.vl5.vl_mirela, n = S.npcs.vl_mirela, w = L && L.who && S.players[L.who]; if (L && n && w && L.ph === 'do' && !L._v10f) { L._v10f = now; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'face', tx: w.x, ty: w.y, ms: 6500 }); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'bow', tx: w.x, ty: w.y, ms: 1200 }); } }   /* a Mirela olha para quem está recebendo */
     if (now - (S.vl10T || 0) > VL10.drinkMs) { S.vl10T = now; vl10DrinkTick(now); } } catch (e) { console.warn('veludo10', e); } }; }
 
 // ---------------- CLIENTE ----------------
