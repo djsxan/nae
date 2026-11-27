@@ -141,7 +141,7 @@ function af5Sprite(G0) { const fr = Math.floor(performance.now() / AF5.frMs) % A
   const cv = document.createElement('canvas'); cv.width = W; cv.height = Hh; cv.getContext('2d').drawImage(renderer.domElement, 0, 0); if (R3.budget != null) R3.budget--;
   s = { c: cv, w: FRAME_W, h: FRAME_H, ax: FRAME_W / 2, ay: FOOT_Y, painted: true, hd: true }; AF5_SPR.set('s|' + key, s); G0.last = s;
   for (const k of [...AF5_SPR.keys()]) if (k.startsWith('s|') && AF5_SPR.size > 90) AF5_SPR.delete(k); return s; }
-if (typeof progEvent === 'function' && typeof G !== 'undefined') { const _peA5 = progEvent; progEvent = function (m, now) { if (m.t === 'vlgrp') { G.vlGrp = G.vlGrp || {}; if (m.on) { const o = G.vlGrp[m.pid]; G.vlGrp[m.pid] = Object.assign(o && o.sc === m.sc ? o : {}, m); } else delete G.vlGrp[m.pid]; return true; } return _peA5(m, now); }; }
+if (typeof progEvent === 'function' && typeof G !== 'undefined') { const _peA5 = progEvent; progEvent = function (m, now) { if (m.t === 'vlgrp') { G.vlGrp = G.vlGrp || {}; const K = m.pid + (m.water ? '|w' : ''); if (m.on) { const o = G.vlGrp[K]; G.vlGrp[K] = Object.assign(o && o.sc === m.sc ? o : {}, m); } else delete G.vlGrp[K]; return true; } return _peA5(m, now); }; }
 if (typeof drawHeroEntity === 'function' && typeof G !== 'undefined') { const _dhA5 = drawHeroEntity; drawHeroEntity = function (ctx, e, sx, sy, now) {
   const GR = G.vlGrp; if (GR && e) { if (e.isNpc) { for (const k in GR) if (GR[k].ids.includes(e.id)) { e._spr = null; return; } }
     else if (GR[e.id]) { const G0 = GR[e.id], B = BEDS[G0.bed]; const s = B && af5Sprite(G0); if (s) { const pa = tileW(e.rx, e.ry, 0), pb = tileW(B.x, B.y, 0); ctx.imageSmoothingEnabled = true; const x = sx + (pb.x - pa.x), y = sy + (pb.y - pa.y) - 11; pblit(ctx, s, x, y); e._spr = s; e._sx = x; e._sy = y; e._drawT = now; return; } } }
@@ -195,13 +195,13 @@ if (typeof af3Start === 'function' && typeof S !== 'undefined') { const _a3A5 = 
 const AF5_TUB = ['wThree', 'wPair'];
 if (typeof vl6Tick === 'function' && typeof S !== 'undefined') { const _v6A5 = vl6Tick; vl6Tick = function (now) { _v6A5(now);
   try { for (const pid in S.vlParty || {}) { const P = S.vlParty[pid], p = S.players[pid]; if (!p) continue; const G0 = P.girls.map(g => S.npcs[g]).filter(Boolean);
-    if (P.stage !== 'tub' || G0.length < 3) { if (P.tgrp) { P.tgrp = 0; af5Send(p, P, 0); } continue; }
-    if (p.aff && P.tgrp && P.tgrp !== 'start') { P.tgrp = 0; af5Send(p, P, 0); P.tUser = now + 20000; continue; }   /* gesto escolhido na roda: pausa */
-    if (!P.tgrp && now < (P.tUser || 0)) continue; if (!P.tgrp) { if (p.aff && typeof affEnd === 'function') affEnd(p); P.tgrp = 1; P.tgs = 0; P.tgT = now; af5Send(p, P, 1); }
-    else if (now - P.tgT > AF5.rot) { P.tgT = now; P.tgs = (P.tgs + 1) % AF5_TUB.length; af5Send(p, P, 1); } else if (now - (P.tgSend || 0) > 5000) { P.tgSend = now; af5Send(p, P, 1); }
+    if (P.stage !== 'tub' || G0.length < 3) { if (P.tgrp) { P.tgrp = 0; af5SendTub(p, P, 0); } continue; }
+    if (p.aff && P.tgrp && P.tgrp !== 'start') { P.tgrp = 0; af5SendTub(p, P, 0); P.tUser = now + 20000; continue; }   /* gesto escolhido na roda: pausa */
+    if (!P.tgrp && now < (P.tUser || 0)) continue; if (!P.tgrp) { if (p.aff && typeof affEnd === 'function') affEnd(p); P.tgrp = 1; P.tgs = 0; P.tgT = now; af5SendTub(p, P, 1); }
+    else if (now - P.tgT > AF5.rot) { P.tgT = now; P.tgs = (P.tgs + 1) % AF5_TUB.length; af5SendTub(p, P, 1); } else if (now - (P.tgSend || 0) > 5000) { P.tgSend = now; af5SendTub(p, P, 1); }
     P.next = now + 60000; } } catch (e) { console.warn('banheira a quatro', e); } }; }   /* enquanto a cena vale, o revezamento antigo de gestos fica parado */
-if (typeof af5Send === 'function' && typeof S !== 'undefined') { const _sdA5 = af5Send; af5Send = function (p, P, on) { if (P.stage === 'tub') { const b = velB('velvet'), [x, y] = localToWorld(b, AF2.vtub[0], AF2.vtub[1]); near(x, y, { t: 'vlgrp', pid: p.id, bed: -1, x, y, water: 1, ids: on ? P.girls.slice(0, 3) : [], sc: on ? AF5_TUB[(P.tgs || 0) % AF5_TUB.length] : '', on: on ? 1 : 0 }); return; } return _sdA5.apply(this, arguments); }; }
-if (typeof drawHeroEntity === 'function' && typeof G !== 'undefined') { const _dhT5 = drawHeroEntity; drawHeroEntity = function (ctx, e, sx, sy, now) { const GR = G.vlGrp, G0 = GR && e && !e.isNpc && GR[e.id];
+function af5SendTub(p, P, on) { const b = velB('velvet'), [x, y] = localToWorld(b, AF2.vtub[0], AF2.vtub[1]); near(x, y, { t: 'vlgrp', pid: p.id, bed: -1, x, y, water: 1, ids: on ? P.girls.slice(0, 3) : [], sc: on ? AF5_TUB[(P.tgs || 0) % AF5_TUB.length] : '', on: on ? 1 : 0 }); }   /* a cena da banheira tem a sua própria mensagem (não apaga a da cama) */
+if (typeof drawHeroEntity === 'function' && typeof G !== 'undefined') { const _dhT5 = drawHeroEntity; drawHeroEntity = function (ctx, e, sx, sy, now) { const GR = G.vlGrp, G0 = GR && e && !e.isNpc && GR[e.id + '|w'];
   if (G0 && G0.water && G0.x != null) { const s = af5Sprite(G0); if (s) { const pa = tileW(e.rx, e.ry, 0), pb = tileW(G0.x, G0.y, 0), x = sx + (pb.x - pa.x), y = sy + (pb.y - pa.y); ctx.imageSmoothingEnabled = true; affWaterBlit(ctx, s, x - s.ax, y - s.ay + 0.22 * HV, y - 0.3 * HV, 0.35); e._spr = s; e._sx = x; e._sy = y; e._drawT = now; return; } }
   return _dhT5.apply(this, arguments); }; }
 
