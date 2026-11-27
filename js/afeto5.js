@@ -146,3 +146,24 @@ if (typeof drawHeroEntity === 'function' && typeof G !== 'undefined') { const _d
   const GR = G.vlGrp; if (GR && e) { if (e.isNpc) { for (const k in GR) if (GR[k].ids.includes(e.id)) { e._spr = null; return; } }
     else if (GR[e.id]) { const G0 = GR[e.id], B = BEDS[G0.bed]; const s = B && af5Sprite(G0); if (s) { const pa = tileW(e.rx, e.ry, 0), pb = tileW(B.x, B.y, 0); ctx.imageSmoothingEnabled = true; const x = sx + (pb.x - pa.x), y = sy + (pb.y - pa.y) - 11; pblit(ctx, s, x, y); e._spr = s; e._sx = x; e._sy = y; e._drawT = now; return; } } }
   return _dhA5.apply(this, arguments); }; }
+
+/* ---------- movimentos leves em TODOS os gestos de afeto (pedido 28/11): 4 quadros com respiração, cabeça, braços, joelhos e quadril ---------- */
+if (typeof affPairSprite === 'function' && typeof affBuild === 'function' && typeof G !== 'undefined') {
+  affPairSprite = function (k, eA, eB, flip) { const fr = Math.floor(performance.now() / 650) % 4, key = k + '|' + fr + '|' + (flip ? 1 : 0) + '|' + affRigOf('A', eA, k).lk + '|' + affRigOf('B', eB, k).lk + '|' + (eA.lost || 0) + (eB.lost || 0);
+    let s = AFF_PAIR.get(key); if (s) return s; if (!R3.ok) return null;
+    const [RA, RB] = affBuild(k, eA, eB, flip), { renderer, scene, cam, W, H } = R3, ph = fr / 4 * Math.PI * 2; af5Wiggle(RA, ph, 0.3); af5Wiggle(RB, ph, 1.9);
+    for (const R of [RA, RB]) { for (const A of [R.A, R.B]) if (A && A.slv && typeof hangWorld === 'function') hangWorld(A.slv, R, 0); scene.add(R.root); R.root.updateMatrixWorld(true); }
+    renderer.render(scene, cam); scene.remove(RA.root); scene.remove(RB.root);
+    const c = document.createElement('canvas'); c.width = W; c.height = H; c.getContext('2d').drawImage(renderer.domElement, 0, 0);
+    s = { c, w: FRAME_W, h: FRAME_H, ax: FRAME_W / 2, ay: FOOT_Y, painted: true, hd: true }; AFF_PAIR.set(key, s); if (AFF_PAIR.size > 120) AFF_PAIR.delete(AFF_PAIR.keys().next().value); return s; };
+}
+if (typeof affPairSprite2 === 'function' && typeof affBuild2 === 'function' && typeof G !== 'undefined') {
+  affPairSprite2 = function (e, o, A) { const rel = [Math.round(((o.rx ?? o.x) - (e.rx ?? e.x)) * 20), Math.round(((o.ry ?? o.y) - (e.ry ?? e.y)) * 20)], c = A.ctx || 'stand', bath = c !== 'seat';
+    const fr = A._lapfr != null ? A._lapfr : Math.floor(performance.now() / 650) % 4; A = Object.assign({}, A, { fr }); const key = A.k + '|' + fr + '|' + c + '|' + (e.dir | 0) + (o.dir | 0) + '|' + (c === 'seat' || c === 'edge' || c === 'water' || c === 'vtub' ? rel.join(',') : '') + '|' + affRigOf('A', e, A.k, bath).lk + '|' + affRigOf('B', o, A.k, bath).lk;
+    let s = AFF_PAIR2.get(key); if (s) return s; if (!R3.ok) return null; const [RA, RB] = affBuild2(A.k, e, o, A), { renderer, scene, cam, W, H } = R3;
+    if (!AFF_CARESS.includes(A.k)) { const ph = fr / 4 * Math.PI * 2; af5Wiggle(RA, ph, 0.3); af5Wiggle(RB, ph, 1.9); }   /* o carinho já tem o seu próprio movimento de mão */
+    for (const R of [RA, RB]) { for (const X of [R.A, R.B]) if (X && X.slv && typeof hangWorld === 'function') hangWorld(X.slv, R, 0); scene.add(R.root); R.root.updateMatrixWorld(true); }
+    renderer.render(scene, cam); scene.remove(RA.root); scene.remove(RB.root);
+    const cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.getContext('2d').drawImage(renderer.domElement, 0, 0);
+    s = { c: cv, w: FRAME_W, h: FRAME_H, ax: FRAME_W / 2, ay: FOOT_Y, painted: true, hd: true }; AFF_PAIR2.set(key, s); if (AFF_PAIR2.size > 160) AFF_PAIR2.delete(AFF_PAIR2.keys().next().value); return s; };
+}
