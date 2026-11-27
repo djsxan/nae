@@ -161,7 +161,7 @@ function hostOnClient(from, m) {
     if (WTs().ph != null || WTs().rain != null) setTimeout(() => Net.toOne(from, { t: 'wt', ph: WTs().ph, rain: WTs().rain }), 1500);
     const cls = CLASSES[m.cls] ? m.cls : 'knight';
     const lvl = clamp(m.lvl | 0 || 1, 1, 300);
-    const SPk = skinParts(m.skin), sk0 = SPk.base, si = SKINS[cls].findIndex(s => s.id === sk0), skin = skinJoin(si >= 0 && lvl >= SKIN_LVL[si] ? sk0 : SKINS[cls][0].id, SPk.fem, SPk.tats);   /* ~f = corpo feminino, ~t = tatuagens */
+    const SPk = skinParts(m.skin), sk0 = SPk.base, si = SKINS[cls].findIndex(s => s.id === sk0), skin = skinJoin(si >= 0 && lvl >= SKIN_LVL[si] ? sk0 : SKINS[cls][0].id, SPk.fem, SPk.tats, SPk.body);   /* ~f = corpo feminino, ~t = tatuagens */
     let s = townSpot(), sz = 0, sfl = 0, sfb = -1;   /* reconexão: volta para onde estava (não para o Templo) */
     const ghost = /^[a-z0-9]{4,12}$/.test(m.uid || '') ? Object.values(S.players).find(q => q.uid === m.uid && q.id !== from && q.id !== Net.myId) : null;
     if (ghost && !ghost.downed && !ghost.jailUntil) { m.px = ghost.x; m.py = ghost.y; m.pz = ghost.z || 0; m.pfl = ghost.fl || 0; m.pfb = ghost.fb ?? -1; }

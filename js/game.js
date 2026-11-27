@@ -1343,7 +1343,8 @@ document.addEventListener('mouseover', e => {
 const HERALDRY = ['#8b2e2e', '#2c4a7a', '#3a6b3a', '#5e3a7a', '#8a5a24', '#2a6a64', '#7a2a5a', '#3a3a40'];
 let chosenClass = 'knight', chosenSkin = { knight: 'iron', archer: 'scout', mage: 'adept' }, chosenColor = HERALDRY[0];
 let chosenFem = false; try { chosenFem = localStorage.getItem('nae_fem') === '1'; } catch (e) { }   /* corpo: masculino ou feminino */
-const skinSel = cls => chosenSkin[cls] + (chosenFem ? '~f' : '');
+let chosenBody = (() => { try { const v = localStorage.getItem('nae_body') || ''; return /^[0-9]{8}$/.test(v) ? v : ''; } catch (e) { return ''; } })();   /* ajuste do corpo (só com o visual novo) */
+const skinSel = cls => chosenSkin[cls] + (chosenFem ? '~f' : '') + (chosenBody && typeof VISUAL_NOVO !== 'undefined' && VISUAL_NOVO ? '~b' + chosenBody : '');
 function bodyPick(f) { chosenFem = !!f; try { localStorage.setItem('nae_fem', chosenFem ? '1' : '0'); } catch (e) { } document.querySelectorAll('#bodysel button').forEach(b => b.classList.toggle('sel', (b.dataset.f === '1') === chosenFem)); }
 setTimeout(() => bodyPick(chosenFem), 0);
 function randomCode() { const ch = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let s = ''; for (let i = 0; i < 5; i++) s += ch[Math.floor(Math.random() * ch.length)]; return s; }
@@ -1607,7 +1608,7 @@ function selectClass(cls) {
 }
 // lista de heróis salvos: todos, com escolher, apagar (confirma na própria linha) e "Novo personagem"
 function pickChar(ch) {
-  $('name').value = ch.name; if (ch.skin) { const SPc = skinParts(ch.skin); chosenSkin[ch.cls] = SPc.base; bodyPick(SPc.fem); } chosenColor = ch.color || chosenColor;
+  $('name').value = ch.name; if (ch.skin) { const SPc = skinParts(ch.skin); chosenSkin[ch.cls] = SPc.base; bodyPick(SPc.fem); if (SPc.body) { chosenBody = SPc.body; if (typeof bodyCfgSync === 'function') bodyCfgSync(); } } chosenColor = ch.color || chosenColor;
   for (const el of $('swatches').children) el.classList.toggle('sel', el.dataset.col === chosenColor);
   selectClass(ch.cls);
   document.querySelectorAll('.class-card').forEach(card => { if (card.dataset.cls === ch.cls) card.querySelectorAll('.skin').forEach((el, i) => el.classList.toggle('sel', SKINS[ch.cls][i].id === chosenSkin[ch.cls])); });

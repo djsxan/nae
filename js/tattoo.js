@@ -12,7 +12,7 @@ function tatOf(p) { if (!p.tats) p.tats = (skinParts(p.skin).tats || [0, 0, 0, 0
 function tatHas(p, f) { return tatOf(p).some(i => TATS[i] && TATS[i].f === f); }
 function tatRec(p) { const E = S.estate; E.tat = E.tat || { seen: {} }; const k = estOwner(p); return E.tat.seen[k] || (E.tat.seen[k] = {}); }
 function tatKnown(p, f) { if (!p || !S.estate || !tatHas(p, f)) return false; const R = tatRec(p); return !!(f === 'guard' ? R['guard+'] : f === 'under' ? R['under+'] : f === 'faith' ? R.faith : f === 'crown' ? R.crown : R['own:' + f]); }
-function tatApply(p) { const SP = skinParts(p.skin); p.skin = skinJoin(SP.base, SP.fem, tatOf(p)); Net.toAll({ t: 'pinfo', p: pinfo(p) }); }
+function tatApply(p) { const SP = skinParts(p.skin); p.skin = skinJoin(SP.base, SP.fem, tatOf(p), SP.body); Net.toAll({ t: 'pinfo', p: pinfo(p) }); }
 function tatSwim(p) { return !!(p.thw || p.bath || p.thMass || p.thSit); }   /* sem a roupa: nas piscinas, no ofurô, na mesa de massagem */
 function tatFaction(n) { if (n.house) return n.house; const k = n.kind || ''; if (k.startsWith('k_')) return 'crown'; if (k === 'guard' || k === 'captain' || k === 'v_offguard' || n.id === 'pz_guard') return 'guard'; if (k.startsWith('v_thug') || n.id === 'pz_shadow') return 'under'; return null; }
 /* alguém da facção f viu o corpo de p: cada efeito acontece uma vez */

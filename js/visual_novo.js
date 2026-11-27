@@ -438,6 +438,7 @@ window.FACE = { style: 'old', expr: 'n' };
       mus: q(fem ? 0.1 + 0.6 * r() : 0.2 + 0.8 * r()), fat: q(fem ? 0.1 + 0.65 * r() : 0.0 + 0.7 * r()), sh: q(r()), waist: q(r()), hip: q(r()), thigh: q(r()),
       bust: { size: q(r()), lift: q(r()), sep: q(r()), shape: q(r()), sag: q(r()) }, butt: { size: q(r()), lift: q(r()), round: q(r()) } };
     const U = P0.butt; U.size = 0.1 + 0.65 * U.size; P0.hip = Math.max(P0.hip, U.size * 0.7); U.round = Math.max(U.round, 0.4 + 0.3 * U.size);   /* sem glúteo grande em quadril estreito */
+    if (L.bodyCfg && /^[0-9]{8}$/.test(L.bodyCfg)) { const d = L.bodyCfg.split('').map(c => +c / 9); P0.skin = +L.bodyCfg[0]; P0.mus = d[1]; P0.fat = d[2] * 0.8; P0.sh = d[3]; P0.waist = d[4]; P0.hip = d[5]; P0.bust.size = d[6]; U.size = 0.1 + 0.65 * d[7]; U.round = Math.max(U.round, 0.4 + 0.3 * U.size); }   /* ajuste escolhido pelo jogador na criação */
     return P0;
   }
   window.bodyParams = bodyParams;
@@ -801,4 +802,25 @@ if (typeof VISUAL_NOVO !== 'undefined' && VISUAL_NOVO) { FACE.style = 'C'; FACE.
   const _nl = npcLookOf; npcLookOf = function (kind, nid) { const L = _nl(kind, nid); try { if (L.seed == null) L.seed = nid || kind;
     const m = /^(?:hh|hb)_(?:lord|heir|young|child)_([a-z]+)$/.exec(String(kind)); let base = m && HOUSE[m[1]]; if (/^k_(king|prince|princess|rchild|ryoung)$/.test(String(kind))) base = ROYAL;
     if (base) { const h = vary(base, String(nid || kind)); L.skin = typeof tone === 'function' ? tone(h) : h; } } catch (e) { } return L; };
+})();
+/* ajuste do corpo do herói (visual novo): a aparência leva ~b + 8 algarismos — tom de pele, musculatura, peso, ombros, cintura, quadril, seios e glúteos */
+(function () {
+  if (typeof heroLook === 'function') { const _hl = heroLook; heroLook = function (cls, skinId, accentHex) { const L = _hl(cls, skinId, accentHex); const m = /~b([0-9]{8})/.exec(String(skinId || ''));
+    if (m && typeof VISUAL_NOVO !== 'undefined' && VISUAL_NOVO) { L.bodyCfg = m[1]; const h = (window.BODY_SKINS || [])[+m[1][0]]; if (h) L.skin = typeof tone === 'function' ? tone(h) : h; } return L; }; }
+  if (typeof VISUAL_NOVO === 'undefined' || !VISUAL_NOVO || typeof document === 'undefined') return;
+  const host = document.getElementById('bodysel'); if (!host) return;
+  const F = [['mus', 'Musculatura'], ['fat', 'Peso'], ['sh', 'Ombros'], ['waist', 'Cintura'], ['hip', 'Quadril'], ['bust', 'Seios'], ['butt', 'Glúteos']];
+  const st = document.createElement('style'); st.textContent = '#bodycfg{display:grid;gap:6px;margin:6px 0 10px}#bodycfg .tones{display:flex;flex-wrap:wrap;gap:5px}#bodycfg .tones button{width:24px;height:24px;border-radius:50%;border:2px solid transparent;padding:0;cursor:pointer}#bodycfg .tones button.sel{border-color:#f0d890}#bodycfg .row{display:grid;grid-template-columns:90px 1fr;align-items:center;gap:8px;font-size:13px}#bodycfg input[type=range]{width:100%;accent-color:#d9a35b}#bodycfg .rnd{justify-self:start;padding:4px 10px;cursor:pointer}';
+  document.head.appendChild(st);
+  const box = document.createElement('div'); box.id = 'bodycfg';
+  box.innerHTML = '<div class="tones">' + (window.BODY_SKINS || []).map((h, i) => '<button type="button" data-t="' + i + '" style="background:' + h + '" title="Tom ' + (i + 1) + '"></button>').join('') + '</div>' + F.map(([k, n], i) => '<div class="row" data-k="' + k + '"><span>' + n + '</span><input type="range" min="0" max="9" step="1" data-i="' + (i + 1) + '"></div>').join('') + '<button type="button" class="rnd">🎲 Sortear corpo</button>';
+  const lab = document.createElement('label'); lab.textContent = 'Ajuste do corpo';
+  host.after(box); host.after(lab);
+  const cur = () => (chosenBody && /^[0-9]{8}$/.test(chosenBody) ? chosenBody : '34444444').split('');
+  const save = d => { chosenBody = d.join(''); try { localStorage.setItem('nae_body', chosenBody); } catch (e) { } bodyCfgSync(); };
+  window.bodyCfgSync = () => { const d = cur(); box.querySelectorAll('.tones button').forEach(b => b.classList.toggle('sel', b.dataset.t === d[0])); box.querySelectorAll('input[type=range]').forEach(r => { r.value = d[+r.dataset.i]; }); const bu = box.querySelector('[data-k=bust]'); if (bu) bu.style.display = chosenFem ? '' : 'none'; };
+  box.addEventListener('click', e => { const t = e.target.closest('.tones button'); if (t) { const d = cur(); d[0] = t.dataset.t; save(d); } if (e.target.closest('.rnd')) save(Array.from({ length: 8 }, (v, i) => String(i === 0 ? Math.floor(Math.random() * 10) : Math.floor(1 + Math.random() * 8)))); });
+  box.addEventListener('input', e => { const r = e.target.closest('input[type=range]'); if (!r) return; const d = cur(); d[+r.dataset.i] = String(r.value); save(d); });
+  if (typeof bodyPick === 'function') { const _bp = bodyPick; bodyPick = function (f) { const r = _bp.apply(this, arguments); try { bodyCfgSync(); } catch (e) { } return r; }; }
+  bodyCfgSync();
 })();
