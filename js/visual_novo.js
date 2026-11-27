@@ -771,6 +771,11 @@ window.FACE = { style: 'old', expr: 'n' };
           add(R.spine, qg, new THREE.MeshStandardMaterial({ color: col(g.c), roughness: 0.35, metalness: 0.1, vertexColors: true, side: THREE.DoubleSide })); add(R.spine, hemG(sp, S, 0.005, 0, 1, false), gold); }
         if (R.neckJ) { const ch = add(R.neckJ, new THREE.TorusGeometry(0.05 * S * (P.fem ? 0.86 : 1) + 0.004 * S, 0.0055 * S, 6, 28), new THREE.MeshStandardMaterial({ color: col(g.c2), roughness: 0.6 })); ch.rotation.x = PI / 2; ch.position.y = 0.035 * S; ch.scale.set(1, 1.04, 1);
           const gem = add(R.neckJ, new THREE.SphereGeometry(0.007 * S, 10, 8), gold); gem.position.set(0, 0.028 * S, 0.049 * S); } }
+      /* ombreiras: em vez da esfera, três lâminas sobrepostas descendo pelo ombro */
+      for (const A of [R.A, R.B]) { if (!A || !A.sh) continue; const pd = A.sh.children.find(o => ofType(o, 'SphereGeometry') && near(o.geometry.parameters.radius, 0.11 * S)); if (!pd || pd.userData.lames) continue; pd.userData.lames = 1;
+        const lame = k => G('lame' + k + S, () => { const g = new THREE.SphereGeometry((0.1 - 0.01 * k) * S, 24, 10, 0, 2 * PI, 0, PI * (0.5 + 0.04 * k)); return g; });
+        pd.material = pd.material.clone(); pd.material.side = THREE.DoubleSide; pd.geometry = lame(0); pd.scale.set(1.1, 0.82, 1.0); pd.position.y = 0.0; for (let k = 1; k < 3; k++) { const m = new THREE.Mesh(lame(k), pd.material); m.position.y = -0.02 * k * S / 0.82; m.scale.set(1 + 0.03 * k, 1, 1 + 0.02 * k); pd.add(m); }
+        const rim = new THREE.Mesh(G('lrim' + S, () => new THREE.TorusGeometry(0.1 * S, 0.005 * S, 5, 26)), pd.material); rim.rotation.x = PI / 2; rim.position.y = 0; pd.add(rim); }
       /* capa: inclina para trás para passar pelo glúteo */
       if (R.cape) { let back = 0; for (const y of [-0.05, -0.08, -0.11, -0.14]) { const r = polarMax(bodyPts(P, y, false), 0, 96); back = Math.max(back, r[72]); } const need = back + 0.02 - 0.13, dy = 0.24 + 0.3 + 0.1; if (need > 0) R.cape.rotation.x = Math.max(R.cape.rotation.x, Math.atan(need / dy)); }
     } catch (e) { console.warn('roupas novas', e); }
