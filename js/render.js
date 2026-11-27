@@ -1205,6 +1205,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
     if (typeof drawStaffFx === 'function') try { drawStaffFx(ctx, (x, y, z) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy - (z || 0) * FLOOR_PX]; }, now); } catch (e) { }
     if (typeof drawBowLate === 'function') try { drawBowLate(ctx, now); } catch (e) { }   /* flechas cravadas nos bonecos e as que voam nos andares */   /* cama desarrumada */
     if (inside.b.deco === 'thermae' && typeof drawThermaeFx === 'function') try { drawThermaeFx(ctx, inside.b, now); } catch (e) { }   /* água correndo, espuma e vapor das Termas */
+    if (typeof drawVlTrays === 'function') try { drawVlTrays(ctx, inside.b, now); } catch (e) { }   /* bandeja em cima da mesa da Casa de Veludo */
     if (typeof drawOfuroFx === 'function') try { drawOfuroFx(ctx, (x, y, z) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy - (z || 0) * FLOOR_PX]; }, now); } catch (e) { }   /* bolhas e vapor do ofurô, por cima da água */
     for (const it of items) if (it.inside) drawItem(it);
     if (typeof drawRailOver === 'function') try { drawRailOver(ctx, (x, y, z) => { const q = iso(x, y); return [q.sx + G.view.ox, q.sy + G.view.oy - (z || 0) * FLOOR_PX]; }, now); } catch (e) { }   /* guarda-corpo das varandas por cima de quem está atrás dele */
