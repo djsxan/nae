@@ -79,7 +79,7 @@ const CAMA_SPR = new Map();
 function camaSleepDraw(ctx, e, sx, sy, now, pr) { if (pr || !R3.ok || typeof affRigOf !== 'function') return false; const bk = camaBedOf(e); if (bk < 0) return false;
   const ex = e.rx ?? e.x, ey = e.ry ?? e.y, bath = !e.isNpc, r = affRigOf('C', e, 'bed', bath), key = r.lk + '|' + bk + '|' + Math.round((ex - BEDS[bk].x) * 20) + ',' + Math.round((ey - BEDS[bk].y) * 20) + '|' + (e.lost || 0) + ':' + (e.pro || 0);
   let s = CAMA_SPR.get(key); if (!s) { if (R3.budget != null && R3.budget <= 0) return false; if (R3.budget != null) R3.budget--; const R = r.R, F = camaFrame(bk, ex, ey); if (!F) return false;
-    affPose(R, e, { down: true, bed: 1, dir: 2 }); affLie(R, 0, 0, 0, 0); camaPillowHead(R); camaFit([R], F, camaW(R.head), camaAxis(R), { lat: 0 }); s = camaRender([R]); s.zz = F.tile;
+    affPose(R, e, { down: true, bed: 1, dir: 2 }); affLie(R, 0, 0, 0, 0); camaPillowHead(R); camaFit([R], F, camaW(R.head), camaAxis(R), { lat: -F.c.dot(F.r) }); s = camaRender([R]); s.zz = F.tile;
     CAMA_SPR.set(key, s); if (CAMA_SPR.size > 40) CAMA_SPR.delete(CAMA_SPR.keys().next().value); }
   ctx.imageSmoothingEnabled = true; pblit(ctx, s, sx, sy - 11);
   if (typeof drawZzz === 'function') { const z = s.zz || { x: 0, y: 0 }; drawZzz(ctx, sx + (z.x - z.y) * HTW, sy + (z.x + z.y) * HTH - 30, now); } e._spr = null; return true; }
@@ -146,3 +146,14 @@ function camaTop(k, e, o, A, F, f) { const me = k === 'bTopMe', a = affRigOf('A'
   if (F) camaFit([base, rider], F, camaW(base.head), camaAxis(base), { lat: 0 });
   else { let minY = Infinity; for (const R of [base, rider]) { R.root.updateMatrixWorld(true); minY = Math.min(minY, new THREE.Box3().setFromObject(R.root).min.y); } for (const R of [base, rider]) { R.root.position.y += 0.01 - minY; R.root.updateMatrixWorld(true); } }
   return [RA, RB, a.lk, b.lk]; }
+
+/* cama a quatro (afeto5): a cena gira com a cama, a cabeça dele no travesseiro (no meio da cama) e todos no colchão */
+if (typeof af5Sprite === 'function' && typeof G !== 'undefined') af5Sprite = function (G0) { const fr = Math.floor(performance.now() / AF5.frMs) % AF5.frames, key = 'c|' + G0.sc + '|' + fr + '|' + G0.pid + '|' + G0.bed + '|' + G0.ids.join(','); let s = AF5_SPR.get('s|' + key); if (s) return s; if (!R3.ok || (R3.budget != null && R3.budget <= 0 && G0.last)) return G0.last || null;
+  const pe = G.players[G0.pid]; if (!pe || !POSES[G0.sc]) return null; const H = { e: pe, R: af5Rig(pe, 'H') }, girls = G0.ids.map((id, i) => { const n = G.npcs[id]; const e = { isNpc: true, kind: n ? n.kind : 'vl_comp1', id }; return { e, R: af5Rig(e, 'G' + i) }; }); if (girls.length < 3) return null;
+  for (const R of [H.R].concat(girls.map(g => g.R))) rigReset(R);
+  const Rs = POSES[G0.sc](H, girls), ph = fr / AF5.frames * Math.PI * 2; Rs.forEach((R, i) => af5Wiggle(R, ph, i * 1.3)); for (const R of Rs) R.root.updateMatrixWorld(true);
+  const B = BEDS[G0.bed], F = B ? camaFrame(G0.bed, B.x, B.y) : null;
+  if (F) camaFit(Rs, F, camaW(H.R.head), camaAxis(H.R), { lat: 0, fwd: 0.04 });
+  else { let minY = Infinity; for (const R of Rs) { R.root.position.z += AF5.zShift; R.root.updateMatrixWorld(true); minY = Math.min(minY, new THREE.Box3().setFromObject(R.root).min.y); } for (const R of Rs) { R.root.position.y += 0.01 - minY; R.root.updateMatrixWorld(true); } }
+  s = camaRender(Rs); if (R3.budget != null) R3.budget--; AF5_SPR.set('s|' + key, s); G0.last = s;
+  for (const k of [...AF5_SPR.keys()]) if (k.startsWith('s|') && AF5_SPR.size > 90) AF5_SPR.delete(k); return s; };
