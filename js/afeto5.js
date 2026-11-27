@@ -167,3 +167,43 @@ if (typeof affPairSprite2 === 'function' && typeof affBuild2 === 'function' && t
     const cv = document.createElement('canvas'); cv.width = W; cv.height = H; cv.getContext('2d').drawImage(renderer.domElement, 0, 0);
     s = { c: cv, w: FRAME_W, h: FRAME_H, ax: FRAME_W / 2, ay: FOOT_Y, painted: true, hd: true }; AFF_PAIR2.set(key, s); if (AFF_PAIR2.size > 160) AFF_PAIR2.delete(AFF_PAIR2.keys().next().value); return s; };
 }
+
+/* ---------- gestos novos do catálogo na roda 💞 (com jogador ou NPC): em pé, sentados e na água ---------- */
+const AF5_NEW = {
+  sBackH: ['stand', 'sBack', 'Abraço por trás', 'quer te abraçar por trás', '🫂'],
+  sFore: ['stand', 'sForehead', 'Testa com testa', 'quer encostar a testa na sua', '😌'],
+  sDance: ['stand', 'sDance', 'Dança lenta', 'quer dançar com você', '💃'],
+  sHandK: ['stand', 'sHandKiss', 'Beijo na mão', 'quer beijar a sua mão', '🤚'],
+  tLapH: ['seat', 'tLap', 'Cabeça no colo', 'quer deitar a cabeça no seu colo', '😴'],
+  tWhis: ['seat', 'tWhisper', 'Sussurro', 'quer sussurrar no seu ouvido', '🤫'],
+  wBetw: ['water', 'wBetween', 'Entre as pernas', 'quer sentar entre as suas pernas na água', '🛁'] };
+if (typeof AFX !== 'undefined' && AFX.gap) Object.assign(AFX.gap, { sBackH: 0.3, sFore: 0.42, sDance: 0.46, sHandK: 0.7 });   /* distância entre os dois em pé (o servidor usa para posicionar) */
+if (typeof AF2 !== 'undefined' && typeof AFX !== 'undefined') for (const k in AF5_NEW) { const [c, sc, n, a, i] = AF5_NEW[k]; AF2.K[k] = [c, n, a, i, 12000]; AFX.n[k] = n; AFX.ask[k] = a; AFX.i[k] = i; AFX.dur[k] = 12000; if (!AFF_KS.includes(k)) AFF_KS.push(k); if (AFF_CTX[c] && !AFF_CTX[c].includes(k)) AFF_CTX[c].push(k); }
+/* quem faz o papel "dele" na cena do catálogo: o homem do par (senão, quem conduz) */
+function af5Roles(RA, RB, eA, eB) { const aF = !!RA._fem, bF = !!RB._fem; return !aF && bF ? [{ e: eA, R: RA }, { e: eB, R: RB }] : aF && !bF ? [{ e: eB, R: RB }, { e: eA, R: RA }] : [{ e: eA, R: RA }, { e: eB, R: RB }]; }
+if (typeof affBuild === 'function' && typeof G !== 'undefined') { const _abA5 = affBuild; affBuild = function (k, eA, eB, flip) { const N = AF5_NEW[k]; if (!N || N[0] !== 'stand') return _abA5.apply(this, arguments);
+  const a = affRigOf('A', eA, k), b = affRigOf('B', eB, k); rigReset(a.R); rigReset(b.R); const [H, X] = af5Roles(a.R, b.R, eA, eB); POSES[N[1]](H, [X]); return [a.R, b.R]; }; }
+if (typeof affBuild2 === 'function' && typeof G !== 'undefined') { const _ab2A5 = affBuild2; affBuild2 = function (k, e, o, A) { const N = AF5_NEW[k]; if (!N || N[0] === 'stand') return _ab2A5.apply(this, arguments);
+  const bath = (A.ctx || N[0]) !== 'seat', a = affRigOf('A', e, k, bath), b = affRigOf('B', o, k, bath); rigReset(a.R); rigReset(b.R); const [H, X] = af5Roles(a.R, b.R, e, o); POSES[N[1]](H, [X]);
+  { const bb = new THREE.Box3(); for (const R of [a.R, b.R]) { R.root.updateMatrixWorld(true); bb.union(new THREE.Box3().setFromObject(R.root)); } const cx = (bb.min.x + bb.max.x) / 2; for (const R of [a.R, b.R]) { R.root.position.x -= cx; if (bath) R.root.position.y -= bb.min.y; R.root.updateMatrixWorld(true); } }   /* centraliza no quadro (a moça deitada no sofá não sai pela borda) */
+  return [a.R, b.R, a.lk, b.lk]; }; }
+/* na festa da suíte: as moças usam os gestos novos com você e entre elas */
+if (typeof vl6Rot === 'function' && typeof S !== 'undefined') { const _vrA5 = vl6Rot; vl6Rot = function (p, P, keys, now) { const extra = keys.includes('hug') ? ['sDance', 'sFore', 'sBackH', 'sHandK'] : keys.includes('sShoulder') ? ['tLapH', 'tWhis'] : keys.includes('wHug') ? ['wBetw'] : []; return _vrA5.call(this, p, P, keys.concat(extra), now); }; }
+if (typeof af3Start === 'function' && typeof S !== 'undefined') { const _a3A5 = af3Start; af3Start = function (a, b, k, ms, place) { if (S.vlParty && (k === 'hug' || k === 'kissF') && Object.values(S.vlParty).some(P => P.girls.includes(a.id)) && Math.random() < 0.5) k = Math.random() < 0.5 ? 'sDance' : 'sFore'; return _a3A5.call(this, a, b, k, ms, place); }; }
+
+/* ---------- banheira de cobre com as três: cena de grupo como a da cama ("as três na banheira" e "você com uma, elas entre si") ---------- */
+const AF5_TUB = ['wThree', 'wPair'];
+if (typeof vl6Tick === 'function' && typeof S !== 'undefined') { const _v6A5 = vl6Tick; vl6Tick = function (now) { _v6A5(now);
+  try { for (const pid in S.vlParty || {}) { const P = S.vlParty[pid], p = S.players[pid]; if (!p) continue; const G0 = P.girls.map(g => S.npcs[g]).filter(Boolean);
+    if (P.stage !== 'tub' || G0.length < 3) { if (P.tgrp) { P.tgrp = 0; af5Send(p, P, 0); } continue; }
+    if (p.aff && P.tgrp && P.tgrp !== 'start') { P.tgrp = 0; af5Send(p, P, 0); P.tUser = now + 20000; continue; }   /* gesto escolhido na roda: pausa */
+    if (!P.tgrp && now < (P.tUser || 0)) continue; if (!P.tgrp) { if (p.aff && typeof affEnd === 'function') affEnd(p); P.tgrp = 1; P.tgs = 0; P.tgT = now; af5Send(p, P, 1); }
+    else if (now - P.tgT > AF5.rot) { P.tgT = now; P.tgs = (P.tgs + 1) % AF5_TUB.length; af5Send(p, P, 1); } else if (now - (P.tgSend || 0) > 5000) { P.tgSend = now; af5Send(p, P, 1); }
+    P.next = now + 60000; } } catch (e) { console.warn('banheira a quatro', e); } }; }   /* enquanto a cena vale, o revezamento antigo de gestos fica parado */
+if (typeof af5Send === 'function' && typeof S !== 'undefined') { const _sdA5 = af5Send; af5Send = function (p, P, on) { if (P.stage === 'tub') { const b = velB('velvet'), [x, y] = localToWorld(b, AF2.vtub[0], AF2.vtub[1]); near(x, y, { t: 'vlgrp', pid: p.id, bed: -1, x, y, water: 1, ids: on ? P.girls.slice(0, 3) : [], sc: on ? AF5_TUB[(P.tgs || 0) % AF5_TUB.length] : '', on: on ? 1 : 0 }); return; } return _sdA5.apply(this, arguments); }; }
+if (typeof drawHeroEntity === 'function' && typeof G !== 'undefined') { const _dhT5 = drawHeroEntity; drawHeroEntity = function (ctx, e, sx, sy, now) { const GR = G.vlGrp, G0 = GR && e && !e.isNpc && GR[e.id];
+  if (G0 && G0.water && G0.x != null) { const s = af5Sprite(G0); if (s) { const pa = tileW(e.rx, e.ry, 0), pb = tileW(G0.x, G0.y, 0), x = sx + (pb.x - pa.x), y = sy + (pb.y - pa.y); ctx.imageSmoothingEnabled = true; affWaterBlit(ctx, s, x - s.ax, y - s.ay + 0.22 * HV, y - 0.3 * HV, 0.35); e._spr = s; e._sx = x; e._sy = y; e._drawT = now; return; } }
+  return _dhT5.apply(this, arguments); }; }
+
+/* gesto na água ou na cama: sem a roupa da casa por cima do traje de banho */
+if (typeof affLook === 'function' && typeof G !== 'undefined') { const _alA5 = affLook; affLook = function (e, k, bath) { const L = _alA5.apply(this, arguments); if (bath && L) L.ling = null; return L; }; }
