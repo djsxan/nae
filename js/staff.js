@@ -488,7 +488,7 @@ function segSpawn(key, r, near0) {
 function segSend(key) { const q = empOwnerP(key); if (!q) return; Net.toOne(q.id, { t: 'segme', list: segList(key).map(r => { const n = S.npcs[segNid(r)]; return { id: segNid(r), escort: r.escort ? 1 : 0, carry: r.carry || 0, job: r.job ? r.job.k : '', n: r.n, g: r.g, tr: r.tr, w: r.w, mode: r.mode, hp: Math.round(n ? n.hp : r.hp), maxHp: r.maxHp, warn: r.warn ? 1 : 0, jail: r.jail && Date.now() < r.jail ? Math.ceil((r.jail - Date.now()) / 1000) : 0 }; }) }); }
 function segQuit(key, r, why, dead) {
   const L = segLoad(), list = L[key] || [], i = list.indexOf(r); if (i >= 0) list.splice(i, 1); if (!list.length) delete L[key];
-  const n = S.npcs[segNid(r)]; if (n) { if (dead) { n.dead = true; n.hp = 0; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'hurt', ms: 400 }); setTimeout(() => { if (S.npcs[n.id]) visGone(n); }, 300000); } else visGone(n); }   /* o corpo fica no chão 5 minutos */
+  const n = S.npcs[segNid(r)]; if (n) { if (dead) { n.dead = true; n.hp = 0; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'hurt', ms: 400 }); n.corpseT = now_(); n.corpseName = r.n; } else visGone(n); }   /* o corpo fica no chão 5 minutos */
   estateSave(); const q = empOwnerP(key); if (q) { tell(q, why); segSend(key); }
 }
 function segOrder(p, key, m) {

@@ -577,7 +577,7 @@ function killMonster(m, p, delay) {
   const lk = p && p.buffs && buffOn(p, 'hypno') ? 1.25 : 1;   /* hipnotizado: um pouco mais de sorte */
   for (const [k, ch] of MON_LOOT[m.type] || []) if (Math.random() < ch * (ch < 0.2 ? lk : 1)) drops.push(k);
   if (Math.random() < 0.03 * lk) drops.push('gem');
-  if (m.type !== 'wisp') (S.corpses = S.corpses || {})[m.id] = { lost: m.lost || 0, id: m.id, type: m.type, x: m.x, y: m.y, z: m.z || 0, gold, items: drops, looted: !gold && !drops.length, until: now_() + (m.bs && (BASTIONS.find(b => b.id === m.bs) || {}).fast ? 20000 : def.dragon ? (BASTIONS.find(b => b.id === 'dragon') || {}).respawn || BOSS_RESPAWN : def.boss ? BOSS_RESPAWN : BASTION_RESPAWN), ix: m.x - p.x, iy: m.y - p.y };
+  if (m.type !== 'wisp') (S.corpses = S.corpses || {})[m.id] = { lost: m.lost || 0, id: m.id, type: m.type, x: m.x, y: m.y, z: m.z || 0, gold, items: drops, looted: !gold && !drops.length, until: now_() + Math.max(1800000, (m.bs && (BASTIONS.find(b => b.id === m.bs) || {}).fast ? 20000 : def.dragon ? (BASTIONS.find(b => b.id === 'dragon') || {}).respawn || BOSS_RESPAWN : def.boss ? BOSS_RESPAWN : BASTION_RESPAWN)), ix: m.x - p.x, iy: m.y - p.y };
   { const c = S.corpses && S.corpses[m.id]; if (c && !c.looted && p && S.players[p.id] && !p.downed && dist(p.x, p.y, c.x, c.y) < 16) setTimeout(() => { if (!c.looted && S.players[p.id]) lootCorpse(p, c, true); }, (delay || 0) + 250); }
   if (def.boss) spawnChest(m);
   const group = Object.values(S.players).filter(q => !q.downed && dist(q.x, q.y, m.x, m.y) <= 10);
@@ -1892,7 +1892,7 @@ function playerKick(p, a, now) {
 }
 function combatTick(p, now, dt) {
   if (p.atk) { const A = p.atk; if (!A.done && now >= A.t0 + A.W) { A.done = true; resolvePlayerStrike(p, A, now); } if (p.atk && now >= A.t0 + A.W + A.R + A.C) p.atk = null; }
-  if (p.running && p.walking && !p.dev) { p.cst = Math.max(0, (p.cst ?? cstMaxOf(p)) - STAM_DRAIN * dt); p.cstT = now; }   // correr gasta a mesma estamina do combate
+  if (p.running && p.walking && !p.dev) { const runK = p.sheathed ? 0.5 : (p.cls === 'knight' && (p.wpn === 'halberd' || p.shield === 'tower')) ? 1.15 : 1; p.cst = Math.max(0, (p.cst ?? cstMaxOf(p)) - STAM_DRAIN * runK * dt); p.cstT = now; }   /* lista 9: desarmado cansa a metade; alabarda e escudo grande um pouco mais */   // correr gasta a mesma estamina do combate
   if (now - (p._stT || 0) > 700 && ((p.running && p.walking) || (p.cst ?? 0) < cstMaxOf(p) - 1)) { p._stT = now; sendStat(p); }   // a barra no cliente acompanha
   if (!p.atk && !p.parry && now - (p.cstT || 0) > 900) p.cst = Math.min(cstMaxOf(p), (p.cst ?? cstMaxOf(p)) + CST_REGEN * dt * survFactor(p) * (1 + useBonus(p, 'breath')));
   if (p.parry) p.cst = Math.max(0, p.cst - 2 * dt);

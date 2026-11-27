@@ -932,7 +932,7 @@ function renderWorld(ctx, now, cam, W, H, dpr) {
       const [bx, by] = P(b.x, b.y, b.z); if (bx < -40 || bx > vw + 40 || by < -40 || by > vh + 40) continue;
       const life = 1 - (now - b.t0) / (b.until - b.t0), a = Math.min(1, life * 4) * 0.75, R = b.r * 24;
       let s = b.seed; const rnd = () => (s = (s * 9301 + 49297) % 233280) / 233280;
-      ctx.fillStyle = 'rgba(' + (70 + rnd() * 30 | 0) + ',4,4,' + a.toFixed(2) + ')';
+      { const dry = Math.min(1, (now - b.t0) / Math.min(240000, b.until - b.t0)), r0 = 70 + rnd() * 30; ctx.fillStyle = 'rgba(' + (r0 * (1 - 0.42 * dry) | 0) + ',' + (4 + 10 * dry | 0) + ',' + (4 + 4 * dry | 0) + ',' + a.toFixed(2) + ')'; }   /* lista 9: o sangue escurece ao secar */
       for (let k = 0; k < 5; k++) { ctx.beginPath(); ctx.ellipse(bx + (rnd() - 0.5) * R, by + (rnd() - 0.5) * R * 0.5, R * (0.25 + rnd() * 0.35), R * (0.12 + rnd() * 0.16), 0, 0, 7); ctx.fill(); }
     }
     G.teles = G.teles.filter(t => now - t.t0 < t.ms + 700);

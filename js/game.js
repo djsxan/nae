@@ -1214,7 +1214,7 @@ function frame() {
     if (G.reviveSticky && (G.me.walking || !G.reviving)) { if (G.reviving) Net.send({ t: 'revive', id: G.reviving, on: false }); G.reviving = null; G.reviveSticky = false; }
     if (G.shootHeld && inCombatZone() && now - (G.shootT || 0) > 220) { G.shootT = now; Net.send({ t: 'shoot', a: G.me.fa ?? 0, id: G.target || 0 }); }
     for (const id in G.players) { const e = G.players[id]; if (id !== G.myId) { if (e.fling) stepFling(e, now); else interp(e, now); } updateIdle(e, now); bleed(e, now); }
-    for (const id in G.monsters) { const q = G.monsters[id]; if (q.dieAt && !q._pool && now > q.dieAt && !NO_BLOOD.has(q.type)) { q._pool = 1; addBlood(q.rx, q.ry, q.z || 0, MON[q.type].big ? 1.3 : 0.8, 60000); } }
+    for (const id in G.monsters) { const q = G.monsters[id]; if (q.dieAt && !q._pool && now > q.dieAt && !NO_BLOOD.has(q.type)) { q._pool = 1; addBlood(q.rx, q.ry, q.z || 0, MON[q.type].big ? 1.3 : 0.8, 1800000); } }
     for (const id in G.monsters) { const m = G.monsters[id]; interp(m, now); if (m.dieAt && now > m.dieAt + 650) delete G.monsters[id]; }
     for (const id in G.npcs) updateIdle(G.npcs[id], now);
     { // câmera acompanha a altura do andar (e a subida na escada), como um elevador curto
@@ -1937,7 +1937,7 @@ function liftOrThrow() {
 // ---------- sangue no chão: respingos, pingos de quem sangra e rastro de quem se arrasta caído (5 min) ----------
 const NO_BLOOD = new Set(['skeleton', 'cryptlord', 'slime', 'elderslime', 'wisp', 'spider']);   // aranhas e insetos não sangram
 const bloodOn = () => SET.blood !== '0';   /* opção de desligar o sangue: manchas, respingos e feridas */
-function addBlood(x, y, z, r, ms) { if (!bloodOn()) return; G.blood.push({ x, y, z, r, t0: performance.now(), until: performance.now() + ms, seed: Math.random() * 1000 }); if (G.blood.length > 500) G.blood.shift(); }
+function addBlood(x, y, z, r, ms) { if (!bloodOn()) return; G.blood.push({ x, y, z, r, t0: performance.now(), until: performance.now() + ms, seed: Math.random() * 1000 }); if (G.blood.length > 1500) G.blood.shift(); }
 function bleed(e, now) {
   if (!e.visible) return;
   const bleedingNow = e === G.me ? (e.bleed && BODY_PARTS.some(k => e.bleed[k] > 0)) : e.bleeding;
