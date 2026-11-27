@@ -117,14 +117,14 @@ if (typeof vl8Bed === 'function' && typeof S !== 'undefined') {
     if (G0.length < 3) { if (P.grp) { P.grp = 0; af5Send(p, P, 0); } return _vbA5.apply(this, arguments); }
     const b = velB('velvet'), B = BEDS[P.bed]; if (!B) { vl6End(p.id); return; }
     if (p.sleep !== P.bed) { if (P.grp) { P.grp = 0; af5Send(p, P, 0); } return _vbA5.apply(this, arguments); }   /* levantou: a lógica de antes cuida do descanso */
-    const pos = () => G0.forEach((n, k) => { const [u, v] = VL6_BEDG[Math.min(k, VL6_BEDG.length - 1)], [x, y] = localToWorld(b, u, v); if (n.aff && n.aff.w === p.id) { vl6Hold(n, now); return; } n.x = x; n.y = y; n.sleeping = true; n.walk = false; vl6Pos(n, u, v, 3, B.dir || 0); });
+    const pos = () => G0.forEach((n, k) => { const [u, v] = VL6_BEDG[Math.min(k, VL6_BEDG.length - 1)], [x, y] = localToWorld(b, u, v); if (n.aff && n.aff.w === p.id) { vl6Hold(n, now); return; } n.x = x; n.y = y; n.sleeping = false; n.walk = false; vl6Pos(n, u, v, 3, B.dir || 0); });
     if (P.grp && p.aff) { P.grp = 0; af5Send(p, P, 0); P.userAff = 1; }   /* escolheu um gesto na roda: a cena de grupo pausa */
     if (P.userAff) { if (p.aff) { pos(); return; } P.userAff = 0; }   /* acabou o gesto: volta a cena */
     if (!P.grp && p.aff && typeof affEnd === 'function') affEnd(p);
     if (!P.grp) { P.grp = 1; P.gs = 0; P.gT = now; af5Send(p, P, 1); empSay(G0[0], vl6Pick(VL6_LINES.bed)); }
     else if (now - P.gT > AF5.rot) { P.gT = now; P.gs = (P.gs + 1) % AF5.scenes.length; af5Send(p, P, 1); if (Math.random() < 0.5) empSay(G0[Math.floor(Math.random() * 3)], vl6Pick(VL6_LINES.bed)); }
     else if (now - (P.gSend || 0) > 5000) { P.gSend = now; af5Send(p, P, 1); }   /* quem chega depois também vê */
-    G0.forEach((n, k) => { const [u, v] = VL6_BEDG[Math.min(k, VL6_BEDG.length - 1)], [x, y] = localToWorld(b, u, v); n.x = x; n.y = y; n.sleeping = true; n.walk = false; vl6Pos(n, u, v, 3, B.dir || 0); }); };
+    G0.forEach((n, k) => { const [u, v] = VL6_BEDG[Math.min(k, VL6_BEDG.length - 1)], [x, y] = localToWorld(b, u, v); n.x = x; n.y = y; n.sleeping = false; n.walk = false; vl6Pos(n, u, v, 3, B.dir || 0); }); };
 }
 if (typeof vl6End === 'function' && typeof S !== 'undefined') { const _veA5 = vl6End; vl6End = function (pid) { const P = S.vlParty && S.vlParty[pid], p = S.players[pid]; if (P && P.grp && p) { P.grp = 0; af5Send(p, P, 0); } return _veA5.apply(this, arguments); }; }
 /* ---------------- CLIENTE ---------------- */
