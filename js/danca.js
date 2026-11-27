@@ -35,28 +35,41 @@
   const AUP = [2.7, 0.3, 0, 0.35], AL = [0.15, 0.2, 0, 0.3], AFLOW = [0.9, 0.5, 0, 1.2];
 
   /* ===================== FUNK (130) ===================== */
-  add('fk_rebolado', 'funk', 'Rebolado', 4, [[0, { hz: 0.22, hy: 0.15, h: 'w', LA: SOFT, LB: SOFT }], [1, { hx: 0.25, h: 'w', LA: SOFT, LB: SOFT }], [2, { hz: -0.22, hy: -0.15, h: 'w', LA: SOFT, LB: SOFT }], [3, { hx: -0.22, h: 'w', LA: SOFT, LB: SOFT }]]);
+  add('fk_rebolado', 'funk', 'Rebolado', 4, [   /* quadril em círculo; braços soltos balançando ao contrário do quadril; o joelho do lado que sobe dobra mais */
+    [0, { hz: 0.24, hy: 0.16, A: [0.25, 0.32, 0, 0.9], B: [0.05, 0.28, 0, 0.5], LA: [0.18, 0.32, 0.1, 0.15], LB: [0.32, 0.6, 0.1, 0.15] }], [1, { hx: 0.26, A: [0.35, 0.3, 0, 1.0], B: [0.35, 0.3, 0, 1.0], LA: [0.3, 0.5, 0.1, 0.15], LB: [0.3, 0.5, 0.1, 0.15] }],
+    [2, { hz: -0.24, hy: -0.16, A: [0.05, 0.28, 0, 0.5], B: [0.25, 0.32, 0, 0.9], LA: [0.32, 0.6, 0.1, 0.15], LB: [0.18, 0.32, 0.1, 0.15] }], [3, { hx: -0.22, A: [0.15, 0.3, 0, 0.7], B: [0.15, 0.3, 0, 0.7], LA: [0.22, 0.4, 0.1, 0.15], LB: [0.22, 0.4, 0.1, 0.15] }]]);
   add('fk_quadradinho', 'funk', 'Quadradinho', 4, [[0, { fw: 0.55, nx: -0.45, hx: 0.3, hz: 0.18, h: 'k', LA: HALF, LB: HALF }], [1, { fw: 0.55, nx: -0.45, hx: -0.2, hz: 0.18, h: 'k', LA: HALF, LB: HALF }], [2, { fw: 0.55, nx: -0.45, hx: -0.2, hz: -0.18, h: 'k', LA: HALF, LB: HALF }], [3, { fw: 0.55, nx: -0.45, hx: 0.3, hz: -0.18, h: 'k', LA: HALF, LB: HALF }]], { lin: 1 });
-  add('fk_sarrada', 'funk', 'Sarrada', 2, [   /* desce rápido com o quadril para trás e sobe empurrando, braços acompanham */
-    [0, { fw: 0.35, hx: 0.35, A: [0.6, 0.4, 0, 1.5], B: [0.6, 0.4, 0, 1.5], LA: WIDE, LB: WIDE }], [0.5, { fw: 0.1, hx: -0.3, A: [-0.3, 0.3, 0, 0.6], B: [-0.3, 0.3, 0, 0.6], LA: SOFT, LB: SOFT }],
-    [1, { fw: 0.35, hx: 0.35, A: [0.6, 0.4, 0, 1.5], B: [0.6, 0.4, 0, 1.5], LA: WIDE, LB: WIDE }], [1.5, { fw: 0.1, hx: -0.3, A: [-0.3, 0.3, 0, 0.6], B: [-0.3, 0.3, 0, 0.6], LA: SOFT, LB: SOFT }]]);
-  add('fk_passinho', 'funk', 'Passinho', 2, [[0, { hy: 0.25, cy: -0.2, A: [0.6, 0.3, 0, 1.6], B: [-0.2, 0.2, 0, 0.8], LA: [0.6, 1.0, 0.08, 0.2], LB: SOFT }], [0.5, { A: AL, B: AL, LA: SOFT, LB: SOFT }], [1, { hy: -0.25, cy: 0.2, A: [-0.2, 0.2, 0, 0.8], B: [0.6, 0.3, 0, 1.6], LA: SOFT, LB: [0.6, 1.0, 0.08, 0.2] }], [1.5, { A: AL, B: AL, LA: SOFT, LB: SOFT }]]);
+  add('fk_sarrada', 'funk', 'Sarrada', 2, [   /* desce fundo com o quadril para trás e os braços à frente; sobe rápido empurrando o quadril, braços puxando para trás */
+    [0, { fw: 0.42, hx: 0.42, nx: -0.2, A: [0.85, 0.35, 0, 1.3], B: [0.85, 0.35, 0, 1.3], LA: [0.85, 1.45, 0.3, 0.35], LB: [0.85, 1.45, 0.3, 0.35] }], [0.35, { fw: 0.05, hx: -0.4, nx: 0.1, A: [-0.35, 0.4, 0, 1.4], B: [-0.35, 0.4, 0, 1.4], LA: [0.2, 0.35, 0.22, 0.3], LB: [0.2, 0.35, 0.22, 0.3] }],
+    [1, { fw: 0.42, hx: 0.42, nx: -0.2, A: [0.85, 0.35, 0, 1.3], B: [0.85, 0.35, 0, 1.3], LA: [0.85, 1.45, 0.3, 0.35], LB: [0.85, 1.45, 0.3, 0.35] }], [1.35, { fw: 0.05, hx: -0.4, nx: 0.1, A: [-0.35, 0.4, 0, 1.4], B: [-0.35, 0.4, 0, 1.4], LA: [0.2, 0.35, 0.22, 0.3], LB: [0.2, 0.35, 0.22, 0.3] }]]);
+  add('fk_passinho', 'funk', 'Passinho (sabará)', 4, [   /* um pé de apoio; a outra perna vai à frente e atrás; quadril para o lado contrário; braços soltos; troca o apoio a cada 2 batidas */
+    [0, { hy: -0.2, hz: 0.12, cy: 0.15, A: [0.5, 0.3, 0, 1.4], B: [-0.15, 0.25, 0, 0.7], LA: [0.55, 0.35, 0.05, 0.1], LB: [0.25, 0.45, 0.06, 0.15] }], [0.5, { hy: 0.15, hz: 0.12, cy: -0.1, A: [-0.1, 0.25, 0, 0.7], B: [0.45, 0.3, 0, 1.3], LA: [-0.3, 0.7, 0.05, 0.1], LB: [0.25, 0.45, 0.06, 0.15] }],
+    [1, { hy: -0.2, hz: 0.12, cy: 0.15, A: [0.5, 0.3, 0, 1.4], B: [-0.15, 0.25, 0, 0.7], LA: [0.55, 0.35, 0.05, 0.1], LB: [0.25, 0.45, 0.06, 0.15] }], [1.5, { hy: 0.15, hz: 0.12, cy: -0.1, A: [-0.1, 0.25, 0, 0.7], B: [0.45, 0.3, 0, 1.3], LA: [-0.3, 0.7, 0.05, 0.1], LB: [0.25, 0.45, 0.06, 0.15] }],
+    [2, { hy: 0.2, hz: -0.12, cy: -0.15, A: [-0.15, 0.25, 0, 0.7], B: [0.5, 0.3, 0, 1.4], LA: [0.25, 0.45, 0.06, 0.15], LB: [0.55, 0.35, 0.05, 0.1] }], [2.5, { hy: -0.15, hz: -0.12, cy: 0.1, A: [0.45, 0.3, 0, 1.3], B: [-0.1, 0.25, 0, 0.7], LA: [0.25, 0.45, 0.06, 0.15], LB: [-0.3, 0.7, 0.05, 0.1] }],
+    [3, { hy: 0.2, hz: -0.12, cy: -0.15, A: [-0.15, 0.25, 0, 0.7], B: [0.5, 0.3, 0, 1.4], LA: [0.25, 0.45, 0.06, 0.15], LB: [0.55, 0.35, 0.05, 0.1] }], [3.5, { hy: -0.15, hz: -0.12, cy: 0.1, A: [0.45, 0.3, 0, 1.3], B: [-0.1, 0.25, 0, 0.7], LA: [0.25, 0.45, 0.06, 0.15], LB: [-0.3, 0.7, 0.05, 0.1] }]]);
   add('fk_ombrinho', 'funk', 'Ombrinho', 2, [[0, { cy: 0.35, hy: -0.12, hz: 0.1, A: [0.55, 0.25, 0, 1.4], B: [0.1, 0.2, 0, 1.2], LA: SOFT, LB: [0.32, 0.55, 0.1, 0.15] }], [1, { cy: -0.35, hy: 0.12, hz: -0.1, A: [0.1, 0.2, 0, 1.2], B: [0.55, 0.25, 0, 1.4], LA: [0.32, 0.55, 0.1, 0.15], LB: SOFT }]]);
-  add('fk_tremidinha', 'funk', 'Tremidinha', 1, [[0, { fw: 0.25, hx: 0.12, h: 't', LA: [0.5, 0.9, 0.28, 0.3], LB: [0.5, 0.9, 0.28, 0.3] }], [0.25, { fw: 0.25, hx: -0.06, h: 't', LA: [0.42, 0.78, 0.36, 0.3], LB: [0.42, 0.78, 0.36, 0.3] }], [0.5, { fw: 0.25, hx: 0.12, h: 't', LA: [0.5, 0.9, 0.28, 0.3], LB: [0.5, 0.9, 0.28, 0.3] }], [0.75, { fw: 0.25, hx: -0.06, h: 't', LA: [0.42, 0.78, 0.36, 0.3], LB: [0.42, 0.78, 0.36, 0.3] }]], { lin: 1 });
+  add('fk_tremidinha', 'funk', 'Tremidinha', 1, [   /* joelhos alternando rápido (um dobra, o outro estica), o quadril treme junto, mãos nas coxas */
+    [0, { fw: 0.3, hx: 0.14, hz: 0.1, h: 't', LA: [0.5, 1.0, 0.28, 0.3], LB: [0.42, 0.65, 0.28, 0.3] }], [0.25, { fw: 0.3, hx: -0.04, hz: -0.1, h: 't', LA: [0.42, 0.65, 0.28, 0.3], LB: [0.5, 1.0, 0.28, 0.3] }],
+    [0.5, { fw: 0.3, hx: 0.14, hz: 0.1, h: 't', LA: [0.5, 1.0, 0.28, 0.3], LB: [0.42, 0.65, 0.28, 0.3] }], [0.75, { fw: 0.3, hx: -0.04, hz: -0.1, h: 't', LA: [0.42, 0.65, 0.28, 0.3], LB: [0.5, 1.0, 0.28, 0.3] }]], { lin: 1 });
   add('fk_destravada', 'funk', 'Destravada', 2, [   /* joelhos abrem e fecham juntos, braços cruzando */
     [0, { fw: 0.2, LA: [0.45, 0.85, 0.05, -0.15], LB: [0.45, 0.85, 0.05, -0.15], A: [0.8, -0.2, 0, 1.0], B: [0.8, -0.2, 0, 1.0] }], [0.5, { fw: 0.2, LA: [0.45, 0.85, 0.4, 0.45], LB: [0.45, 0.85, 0.4, 0.45], A: [0.6, 0.6, 0, 0.6], B: [0.6, 0.6, 0, 0.6] }],
     [1, { fw: 0.2, LA: [0.45, 0.85, 0.05, -0.15], LB: [0.45, 0.85, 0.05, -0.15], A: [0.8, -0.2, 0, 1.0], B: [0.8, -0.2, 0, 1.0] }], [1.5, { fw: 0.2, LA: [0.45, 0.85, 0.4, 0.45], LB: [0.45, 0.85, 0.4, 0.45], A: [0.6, 0.6, 0, 0.6], B: [0.6, 0.6, 0, 0.6] }]]);
   add('fk_maosalto', 'funk', 'Mãos elevatórias', 4, [[0, { hz: 0.2, A: AUP, B: [2.4, 0.5, 0, 0.6], LA: SOFT, LB: SOFT, ty: 0.2 }], [2, { hz: -0.2, A: [2.4, 0.5, 0, 0.6], B: AUP, LA: SOFT, LB: SOFT, ty: -0.2 }]]);
 
   /* ===================== TWERK (100) ===================== */
-  const TW = { fw: 0.8, nx: -0.75, h: 'k', LA: [0.85, 1.25, 0.34, 0.4], LB: [0.85, 1.25, 0.34, 0.4] };
-  add('tw_pe', 'twerk', 'Twerk de pé', 1, [[0, Object.assign({}, TW, { hx: 0.4 })], [0.5, Object.assign({}, TW, { hx: -0.18 })]], { lin: 1 });
-  add('tw_agachado', 'twerk', 'Agachado', 2, [[0, { fw: 0.55, nx: -0.4, hx: 0.35, hA: 'k', B: AUP, LA: SQ, LB: SQ }], [0.5, { fw: 0.55, nx: -0.4, hx: -0.15, hA: 'k', B: AUP, LA: SQ, LB: SQ }], [1, { fw: 0.55, nx: -0.4, hx: 0.35, A: AUP, hB: 'k', LA: SQ, LB: SQ }], [1.5, { fw: 0.55, nx: -0.4, hx: -0.15, A: AUP, hB: 'k', LA: SQ, LB: SQ }]], { lin: 1 });
-  add('tw_shuffle', 'twerk', 'Shuffle', 2, [[0, Object.assign({}, TW, { hz: 0.28, hx: 0.25 })], [1, Object.assign({}, TW, { hz: -0.28, hx: 0.25 })]]);
-  add('tw_pulse', 'twerk', 'Pulso', 1, [[0, { fw: 0.45, hx: 0.3, h: 't', LA: WIDE, LB: WIDE }], [0.5, { fw: 0.35, hx: -0.28, h: 't', LA: WIDE, LB: WIDE }]]);
-  add('tw_circulo', 'twerk', 'Círculos', 4, [[0, Object.assign({}, TW, { hz: 0.25 })], [1, Object.assign({}, TW, { hx: 0.42 })], [2, Object.assign({}, TW, { hz: -0.25 })], [3, Object.assign({}, TW, { hx: -0.15 })]]);
+  const TW = (hx, kb, hz) => ({ fw: 0.8, nx: -0.75, hx, hz: hz || 0, h: 'k', LA: [0.85 + kb * 0.5, 1.25 + kb, 0.34, 0.4], LB: [0.85 + kb * 0.5, 1.25 + kb, 0.34, 0.4] });   /* o joelho dobra mais quando o quadril sai */
+  add('tw_pe', 'twerk', 'Twerk de pé', 1, [[0, TW(0.42, 0.14, 0.05)], [0.5, TW(-0.18, -0.06, -0.05)]]);
+  add('tw_agachado', 'twerk', 'Agachado', 2, [   /* agachamento fundo com quique: desce no tempo, sobe um pouco no contratempo; um braço para cima */
+    [0, { fw: 0.55, nx: -0.4, hx: 0.38, hA: 'k', B: AUP, LA: [1.2, 2.05, 0.42, 0.45], LB: [1.2, 2.05, 0.42, 0.45] }], [0.5, { fw: 0.5, nx: -0.4, hx: -0.12, hA: 'k', B: [2.5, 0.4, 0, 0.6], LA: [1.0, 1.7, 0.42, 0.45], LB: [1.0, 1.7, 0.42, 0.45] }],
+    [1, { fw: 0.55, nx: -0.4, hx: 0.38, A: AUP, hB: 'k', LA: [1.2, 2.05, 0.42, 0.45], LB: [1.2, 2.05, 0.42, 0.45] }], [1.5, { fw: 0.5, nx: -0.4, hx: -0.12, A: [2.5, 0.4, 0, 0.6], hB: 'k', LA: [1.0, 1.7, 0.42, 0.45], LB: [1.0, 1.7, 0.42, 0.45] }]]);
+  add('tw_shuffle', 'twerk', 'Shuffle', 2, [[0, TW(0.28, 0.1, 0.3)], [0.5, TW(0.05, 0, 0)], [1, TW(0.28, 0.1, -0.3)], [1.5, TW(0.05, 0, 0)]]);
+  add('tw_pulse', 'twerk', 'Pulso', 1, [   /* quadril para a frente e para trás, os joelhos acompanham (dobram no para trás) */
+    [0, { fw: 0.5, hx: 0.34, h: 't', LA: [0.7, 1.2, 0.3, 0.35], LB: [0.7, 1.2, 0.3, 0.35] }], [0.5, { fw: 0.32, hx: -0.3, h: 't', LA: [0.45, 0.8, 0.3, 0.35], LB: [0.45, 0.8, 0.3, 0.35] }]]);
+  add('tw_circulo', 'twerk', 'Círculos', 4, [[0, TW(0.1, 0.05, 0.28)], [1, TW(0.45, 0.14, 0)], [2, TW(0.1, 0.05, -0.28)], [3, TW(-0.18, -0.04, 0)]]);
   add('tw_onda', 'twerk', 'Onda', 4, [[0, { cx: -0.3, nx: 0.15, A: AL, B: AL, LA: ST, LB: ST }], [1, { cx: 0.25, sx: -0.25, nx: -0.1, A: [0.4, 0.3, 0, 1.0], B: [0.4, 0.3, 0, 1.0], LA: SOFT, LB: SOFT }], [2, { cx: 0.1, sx: 0.25, hx: -0.3, h: 't', LA: [0.4, 0.7, 0.12, 0.2], LB: [0.4, 0.7, 0.12, 0.2] }], [3, { cx: -0.1, hx: 0.3, h: 't', LA: SOFT, LB: SOFT }]]);
-  add('tw_costas', 'twerk', 'De costas', 2, [[0, { rot: PI, fw: 0.3, hz: 0.25, hx: 0.25, ty: 0.9, nz: 0.2, hA: 'w', B: [0.6, 0.3, 0, 1.2], LA: WIDE, LB: WIDE }], [1, { rot: PI, fw: 0.3, hz: -0.25, hx: 0.25, ty: 0.9, nz: 0.2, hA: 'w', B: [0.6, 0.3, 0, 1.2], LA: WIDE, LB: WIDE }]]);
+  add('tw_costas', 'twerk', 'De costas', 2, [   /* de costas, coluna em onda e quadril solto, olhando por cima do ombro */
+    [0, { rot: PI, fw: 0.35, sx: 0.15, cy: 0.12, hz: 0.34, hx: 0.32, ty: 0.9, nz: 0.2, hA: 't', B: [0.6, 0.3, 0, 1.2], LA: [0.6, 1.0, 0.3, 0.35], LB: [0.45, 0.75, 0.3, 0.35] }], [0.5, { rot: PI, fw: 0.22, sx: -0.12, hx: -0.1, ty: 0.8, nz: 0.15, hA: 't', B: [0.5, 0.3, 0, 1.0], LA: [0.5, 0.85, 0.3, 0.35], LB: [0.5, 0.85, 0.3, 0.35] }],
+    [1, { rot: PI, fw: 0.35, sx: 0.15, cy: -0.12, hz: -0.34, hx: 0.32, ty: 0.9, nz: 0.2, hA: 't', B: [0.6, 0.3, 0, 1.2], LA: [0.45, 0.75, 0.3, 0.35], LB: [0.6, 1.0, 0.3, 0.35] }], [1.5, { rot: PI, fw: 0.22, sx: -0.12, hx: -0.1, ty: 0.8, nz: 0.15, hA: 't', B: [0.5, 0.3, 0, 1.0], LA: [0.5, 0.85, 0.3, 0.35], LB: [0.5, 0.85, 0.3, 0.35] }]]);
   add('tw_chao', 'twerk', 'Ajoelhada', 2, [   /* de joelhos, mãos no chão à frente, quadril batendo */
     [0, { kneel: 1, fw: 1.0, nx: -0.7, hx: 0.35, A: [1.4, 0.15, 0, 0.1], B: [1.4, 0.15, 0, 0.1], LA: [-0.1, 1.65, 0.2, 0], LB: [-0.1, 1.65, 0.2, 0] }], [0.5, { kneel: 1, fw: 1.0, nx: -0.7, hx: -0.15, A: [1.4, 0.15, 0, 0.1], B: [1.4, 0.15, 0, 0.1], LA: [-0.1, 1.65, 0.2, 0], LB: [-0.1, 1.65, 0.2, 0] }],
     [1, { kneel: 1, fw: 1.0, nx: -0.7, hx: 0.35, A: [1.4, 0.15, 0, 0.1], B: [1.4, 0.15, 0, 0.1], LA: [-0.1, 1.65, 0.2, 0], LB: [-0.1, 1.65, 0.2, 0] }], [1.5, { kneel: 1, fw: 1.0, nx: -0.7, hx: -0.15, A: [1.4, 0.15, 0, 0.1], B: [1.4, 0.15, 0, 0.1], LA: [-0.1, 1.65, 0.2, 0], LB: [-0.1, 1.65, 0.2, 0] }]], { lin: 1 });
@@ -75,10 +88,16 @@
     [0, { fw: 0.15, h: 'w', LA: SOFT, LB: SOFT }], [2, { fw: 0.95, nx: -0.6, hz: 0.1, h: 's', LA: [0.25, 0.35, 0.1, 0.1], LB: [0.25, 0.35, 0.1, 0.1] }]], { chair: 'front' });
 
   /* ===================== STRIPTEASE (80) ===================== */
-  add('st_ombro', 'strip', 'Desce a alça', 4, [[0, { hz: 0.15, ty: 0.5, A: [1.0, 0.1, 0, 2.4], B: AL, LA: ST, LB: [0.35, 0.5, 0.05, 0.15] }], [2, { hz: -0.1, ty: 0.7, nz: 0.2, A: [0.3, 0.6, 0, 1.0], B: AL, LA: [0.35, 0.5, 0.05, 0.15], LB: ST }]], { strip: 'on' });
-  add('st_abre', 'strip', 'Abre o robe', 4, [[0, { A: [0.6, -0.1, 0, 1.8], B: [0.6, -0.1, 0, 1.8], LA: ST, LB: ST }], [2, { A: [1.0, 1.2, 0, 0.3], B: [1.0, 1.2, 0, 0.3], cx: -0.2, hz: 0.12, LA: ST, LB: [0.3, 0.5, 0.05, 0.15] }]], { strip: 'on' });
+  add('st_ombro', 'strip', 'Desce a alça', 4, [   /* rebolando devagar enquanto desliza o robe pelo ombro */
+    [0, { hz: 0.24, hy: 0.12, ty: 0.5, A: [1.0, 0.1, 0, 2.4], B: [0.2, 0.3, 0, 0.8], LA: [0.15, 0.25, 0.06, 0.12], LB: [0.38, 0.65, 0.08, 0.15] }], [1, { hx: 0.2, ty: 0.6, A: [0.8, 0.3, 0, 1.9], B: [0.2, 0.3, 0, 0.9], LA: [0.28, 0.48, 0.07, 0.13], LB: [0.28, 0.48, 0.07, 0.13] }],
+    [2, { hz: -0.24, hy: -0.12, ty: 0.7, nz: 0.2, A: [0.3, 0.6, 0, 1.0], B: [0.2, 0.3, 0, 0.8], LA: [0.38, 0.65, 0.08, 0.15], LB: [0.15, 0.25, 0.06, 0.12] }], [3, { hx: -0.15, ty: 0.5, A: [0.6, 0.4, 0, 1.6], B: [0.2, 0.3, 0, 0.9], LA: [0.28, 0.48, 0.07, 0.13], LB: [0.28, 0.48, 0.07, 0.13] }]], { strip: 'on' });
+  add('st_abre', 'strip', 'Abre o robe', 4, [   /* rebola em oito enquanto abre o robe como asas */
+    [0, { hz: 0.22, hy: 0.14, A: [0.6, -0.1, 0, 1.8], B: [0.6, -0.1, 0, 1.8], LA: [0.15, 0.25, 0.06, 0.12], LB: [0.38, 0.65, 0.08, 0.15] }], [1, { hx: 0.18, A: [0.8, 0.5, 0, 1.0], B: [0.8, 0.5, 0, 1.0], LA: [0.28, 0.48, 0.07, 0.13], LB: [0.28, 0.48, 0.07, 0.13] }],
+    [2, { hz: -0.22, hy: -0.14, A: [1.0, 1.2, 0, 0.3], B: [1.0, 1.2, 0, 0.3], cx: -0.2, LA: [0.38, 0.65, 0.08, 0.15], LB: [0.15, 0.25, 0.06, 0.12] }], [3, { hx: -0.15, A: [0.8, 0.8, 0, 0.6], B: [0.8, 0.8, 0, 0.6], LA: [0.28, 0.48, 0.07, 0.13], LB: [0.28, 0.48, 0.07, 0.13] }]], { strip: 'on' });
   add('st_bodyroll', 'strip', 'Ondulação', 4, [[0, { cx: -0.3, A: [2.6, 0.3, 0, 2.0], B: [2.6, 0.3, 0, 2.0], LA: ST, LB: ST }], [1.3, { cx: 0.25, sx: -0.2, A: [0.9, 0.2, 0, 2.3], B: [0.9, 0.2, 0, 2.3], LA: SOFT, LB: SOFT }], [2.6, { sx: 0.25, hx: -0.3, h: 't', LA: [0.4, 0.7, 0.12, 0.2], LB: [0.4, 0.7, 0.12, 0.2] }]]);
-  add('st_jogar', 'strip', 'Jogar a peça', 4, [[0, { ty: -0.3, A: [2.8, 0.4, 0, 0.2], hB: 'w', LA: ST, LB: ST }], [1, { ty: 0.3, A: [2.9, 0.6, 0.6, 0.3], hB: 'w', LA: ST, LB: ST }], [2, { hy: 0.4, cy: 0.3, A: [1.4, 1.1, 0, 0.1], hB: 'w', LA: ST, LB: [0.4, 0.6, 0.05, 0.15] }], [3, { hz: 0.15, A: AL, hB: 'w', LA: ST, LB: ST }]], { strip: 'throw' });
+  add('st_jogar', 'strip', 'Jogar a peça', 4, [   /* gira a peça na mão sem parar de rebolar e joga */
+    [0, { hz: 0.22, ty: -0.3, A: [2.8, 0.4, 0, 0.2], hB: 'w', LA: [0.15, 0.25, 0.06, 0.12], LB: [0.38, 0.65, 0.08, 0.15] }], [1, { hz: -0.22, ty: 0.3, A: [2.9, 0.6, 0.6, 0.3], hB: 'w', LA: [0.38, 0.65, 0.08, 0.15], LB: [0.15, 0.25, 0.06, 0.12] }],
+    [2, { hy: 0.4, cy: 0.3, hz: 0.18, A: [1.4, 1.1, 0, 0.1], hB: 'w', LA: [0.15, 0.25, 0.06, 0.12], LB: [0.38, 0.65, 0.08, 0.15] }], [3, { hz: -0.2, hx: 0.12, A: [0.3, 0.4, 0, 0.9], hB: 'w', LA: [0.38, 0.65, 0.08, 0.15], LB: [0.15, 0.25, 0.06, 0.12] }]], { strip: 'throw' });
   add('st_shimmy', 'strip', 'Shimmy', 1, [[0, { cy: 0.18, h: 'b', LA: SOFT, LB: SOFT }], [0.25, { cy: -0.18, h: 'b', LA: SOFT, LB: SOFT }], [0.5, { cy: 0.18, h: 'b', LA: SOFT, LB: SOFT }], [0.75, { cy: -0.18, h: 'b', LA: SOFT, LB: SOFT }]], { lin: 1 });
   add('st_lento', 'strip', 'Rebolado lento', 4, [[0, { hz: 0.28, hx: 0.1, hA: 'n', hB: 't', LA: SOFT, LB: [0.35, 0.6, 0.1, 0.15], ty: 0.3 }], [2, { hz: -0.28, hx: 0.1, hA: 't', hB: 'n', LA: [0.35, 0.6, 0.1, 0.15], LB: SOFT, ty: -0.3 }]]);
   add('st_pose', 'strip', 'Pose final', 4, [[0, { hz: 0.25, sz: -0.12, hdz: -0.15, hA: 'n', hB: 'w', LA: ST, LB: [0.35, 0.6, 0.05, 0.15] }], [2, { hz: -0.2, sz: 0.1, hdz: 0.15, hA: 'w', hB: 'n', LA: [0.35, 0.6, 0.05, 0.15], LB: ST }]], { strip: 'off' });
@@ -112,6 +131,22 @@
     g_twerk: { n: 'Trio de twerk', sty: 'twerk', len: 2, m: [['tw_shuffle', -0.8, 0, 0.5, 0, 0, 1.0], ['tw_pe', 0, 0.1, 0, 0, 0, 1.15], ['tw_shuffle', 0.8, 0, -0.5, 1, 0.5, 0.9]] },
     p_frente: { n: 'Dupla frente a frente', sty: 'twerk', len: 4, m: [['tw_circulo', -0.38, 0, Math.PI / 2, 0, 0, 1.0], ['fk_rebolado', 0.38, 0, -Math.PI / 2, 1, 0.5, 1.0]] },
     p_costas: { n: 'Dupla costas com costas', sty: 'strip', len: 4, m: [['st_lento', -0.22, 0, -Math.PI / 2, 0, 0, 1.0], ['st_lento', 0.22, 0, Math.PI / 2, 1, 0, 1.0]] } };
+  /* ---- física de mola nas juntas (o "ragdoll" da dança): cada junta segue a pose-alvo com atraso e um leve balanço.
+     O passo é simulado 3 voltas (24 subpassos por batida) e os quadros saem da 3ª volta, então o laço fecha sem salto.
+     Firme no quadril e nas pernas de apoio (os pés não escorregam), solta nos braços; na barra as pernas ficam bem soltas e pendem. ---- */
+  const SPRING = { arm: [50, 0.45], head: [85, 0.55], spine: [140, 0.7], hips: [200, 0.8], leg: [260, 0.9], legAir: [28, 0.3] };
+  const GROUP = { A: 'arm', B: 'arm', LA: 'leg', LB: 'leg', hx: 'hips', hy: 'hips', hz: 'hips', sx: 'spine', sy: 'spine', sz: 'spine', cx: 'spine', cy: 'spine', cz: 'spine', fw: 'spine', nx: 'head', ny: 'head', nz: 'head', ty: 'head', hdx: 'head', hdz: 'head' };
+  function frames(step, nF) { step._fr = step._fr || {}; if (step._fr[nF]) return step._fr[nF]; const L = step.len, sub = 24, dt = 1 / sub, st = {}, out = new Array(nF);
+    const par = k => { let g = GROUP[k]; if ((k === 'LA' || k === 'LB') && step.pole) g = 'legAir'; const [kk, z] = SPRING[g]; return [kk, 2 * z * Math.sqrt(kk)]; };
+    const n = Math.round(L * sub * 3), rec0 = Math.round(L * sub * 2);
+    for (let i = 0; i <= n; i++) { const t = i * dt, T = at(step, t % L);
+      for (const k in GROUP) { const tg = T[k]; if (tg == null) continue; const [kk, c] = par(k);
+        if (Array.isArray(tg)) { const S0 = st[k] || (st[k] = { x: tg.slice(), v: tg.map(() => 0) }); for (let j = 0; j < tg.length; j++) { const acc = kk * (tg[j] - S0.x[j]) - c * S0.v[j]; S0.v[j] += acc * dt; S0.x[j] += S0.v[j] * dt; } }
+        else { const S0 = st[k] || (st[k] = { x: tg, v: 0 }); const acc = kk * (tg - S0.x) - c * S0.v; S0.v += acc * dt; S0.x += S0.v * dt; } }
+      if (i >= rec0) { const f = Math.round((i - rec0) / (L * sub) * nF); if (f < nF && !out[f]) { const P = Object.assign({}, T); for (const k in st) if (T[k] != null) P[k] = Array.isArray(st[k].x) ? st[k].x.slice() : st[k].x; out[f] = P; } } }
+    for (let f = 0; f < nF; f++) if (!out[f]) out[f] = at(step, f / nF * L); return (step._fr[nF] = out); }
+  window.danceFrames = frames;
+  window.danceStyleF = (step, f, nF, me) => { me = me || {}; const fr = frames(step, nF), sh = Math.round((me.ph || 0) / step.len * nF); let P = fr[(((f + sh) % nF) + nF) % nF]; if (me.mir) P = mirror(P); if (me.k && me.k !== 1) P = flavor(P, me.k); return P; };
   window.danceAt = at; window.danceApply = apply;
 })();
 
@@ -151,7 +186,7 @@ if (typeof npcSprite3D === 'function' && typeof G !== 'undefined') {
     const nF = Math.min(16, Math.max(8, Math.round(st.len * 4))), f = Math.floor(((b0 % st.len) + st.len) % st.len / st.len * nF) % nF, bF = f / nF * st.len, vk = kind + '#' + nid, dir = P.dir | 0;
     return cache3('dz|' + vk + '|' + st.id + '|' + f + '|' + (d.mir ? 1 : 0) + '|' + (d.k || 1) + '|' + dir, () => {
       const L = lookFor('npc:' + vk, typeof npcLookOf === 'function' && NPC_LOOKS[kind] ? () => npcLookOf(kind, nid) : NPC_LOOKS[kind]), R = rigFor('npc:' + vk, L, NPC_SCALE[kind] ? { scale: NPC_SCALE[kind] } : undefined);
-      const Q = danceStyle(st, bF, { mir: d.mir, ph: 0, k: d.k }); affPose(R, { isNpc: true, kind, id: nid }, { dir }); rigReset(R); danceApply(R, Q, null);
+      const Q = danceStyleF(st, f, nF, { mir: d.mir, k: d.k }); affPose(R, { isNpc: true, kind, id: nid }, { dir }); rigReset(R); danceApply(R, Q, null);
       const sheer = st.sty === 'strip' ? R.spine.children.filter(o => o.material && o.material.transparent && o.material.opacity < 0.5) : [], vis = st.strip === 'on' || (st.strip === 'throw' ? bF < 2 : st.strip !== 'off'); for (const o of sheer) o.visible = vis;
       const s = shoot3D(R, (dir + (Q.rot ? 4 : 0)) % 8, 0); for (const o of sheer) o.visible = true; return s; }, 'n|' + vk + dir); };
 }
@@ -180,9 +215,9 @@ function dzlSprite(e, L) { const C = DANCE_CHOREO[DZL.ch], beat = Math.max(0, (D
   const RA = dzlRig(e, 'LH'), eg = { isNpc: true, kind, id: L.g }, RB = dzlRig(eg, 'LG'); rigReset(RA); rigReset(RB);
   const V = (x, y, z) => new THREE.Vector3(x, y, z), W = j => j.getWorldPosition(V(0, 0, 0)), yaw = affYaw(dir);
   affPose(RA, e, { dir: 2, sit: 'c' }); RA.root.rotation.set(0, 0, 0); RA.root.position.set(0, 0, -0.3); RA.root.updateMatrixWorld(true);
-  const ctx = { seatHead: W(RA.head), seatChest: W(RA.chest).add(V(0, 0, 0.12)), lapY: (W(RA.LA.hp).y + W(RA.LA.kn).y) / 2 + 0.1, lapZ: (W(RA.LA.hp).z + W(RA.LA.kn).z) / 2 }, P = danceStyle(st, bF, {});
-  affPose(RB, eg, { dir: 2 }); rigReset(RB); let rx = 0, rz = 0.22, ry = Math.PI;
-  if (st.chair === 'lap') { rz = ctx.lapZ - 0.05; ry = 0; } else if (st.chair === 'side') { rz = ctx.lapZ - 0.02; ry = Math.PI / 2; } else if (st.chair === 'orbit') { const a = P.orbitC || 0; rx = Math.sin(a) * 0.62; rz = -0.3 + Math.cos(a) * 0.62; ry = a + Math.PI / 2; }
+  const ctx = { seatHead: W(RA.head), seatChest: W(RA.chest).add(V(0, 0, 0.12)), lapY: (W(RA.LA.hp).y + W(RA.LA.kn).y) / 2 + 0.1, lapZ: (W(RA.LA.hp).z + W(RA.LA.kn).z) / 2 }, P = danceStyleF(st, f, nF, {});
+  affPose(RB, eg, { dir: 2 }); rigReset(RB); let rx = 0, rz = 0.36, ry = Math.PI;
+  if (st.chair === 'lap') { rz = ctx.lapZ + 0.03; ry = 0; } else if (st.chair === 'side') { rz = ctx.lapZ - 0.02; ry = Math.PI / 2; } else if (st.chair === 'orbit') { const a = P.orbitC || 0; rx = Math.sin(a) * 0.62; rz = -0.3 + Math.cos(a) * 0.62; ry = a + Math.PI / 2; }
   RB.root.rotation.set(0, ry, 0); RB.root.position.set(rx, 0, rz); RB.root.updateMatrixWorld(true); danceApply(RB, P, null);
   RB.root.updateMatrixWorld(true); if (P.sit) RB.root.position.y += ctx.lapY - W(RB.hips).y; else { let m = 9; for (const j of [RB.LA.ft, RB.LB.ft]) m = Math.min(m, W(j).y); RB.root.position.y += 0.035 - m; } RB.root.updateMatrixWorld(true); danceApply(RB, P, ctx);
   /* gira o par para a direção dele e põe no chão do quadro */
