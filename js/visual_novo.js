@@ -445,6 +445,53 @@ window.FACE = { style: 'old', expr: 'n' };
       for (const sx of [-1, 1]) { for (let k = 0; k < 4; k++) { const o = new THREE.Mesh(new THREE.SphereGeometry(0.02 * S, 10, 8), hm); o.position.set(sx * 0.03 * S, (-0.2 - k * 0.034) * S, 0.075 * S); o.scale.set(1, 1.2, 1); head.add(o); }
         const r = new THREE.Mesh(new THREE.CylinderGeometry(0.019 * S, 0.019 * S, 0.018 * S, 10), gold); r.position.set(sx * 0.03 * S, -0.345 * S, 0.075 * S); head.add(r); } }
   }
+  /* elmos e chapéus na cabeça nova */
+  const HELMK = [[0.205, 0, 0, -0.01], [0.19, 0.07, 0.075, -0.01], [0.16, 0.11, 0.118, -0.008], [0.11, 0.128, 0.138, -0.005], [0.04, 0.133, 0.146, 0], [-0.03, 0.132, 0.146, 0.003], [-0.09, 0.127, 0.141, 0.004], [-0.14, 0.12, 0.131, 0.004], [-0.17, 0.124, 0.13, 0]];
+  const hkI = (K, y) => { for (let i = 0; i < K.length - 1; i++) { const a = K[i], b = K[i + 1]; if (y <= a[0] && y >= b[0]) { const t = (a[0] - y) / (a[0] - b[0]), s = t * t * (3 - 2 * t); return [y, a[1] + (b[1] - a[1]) * s, a[2] + (b[2] - a[2]) * s, a[3] + (b[3] - a[3]) * s]; } } return K[K.length - 1]; };
+  const HGC = new Map();
+  function helmShellG(S, open) { const key = S + '|' + open; if (HGC.has(key)) return HGC.get(key);
+    const NY = 34, NA = 64, pos = [], idx = [], edge = [], y0 = 0.205, y1 = -0.17;
+    for (let j = 0; j <= NY; j++) { const y = y0 + (y1 - y0) * j / NY, k = hkI(HELMK, y); let a0 = 0;
+      if (open) { const u = (y + 0.035) / 0.105; if (Math.abs(u) < 1) a0 = Math.asin(Math.min(0.97, 0.088 * Math.pow(1 - u * u, 0.3) / k[1])) * 1.05; }
+      for (let i = 0; i <= NA; i++) { const a = a0 + (2 * PI - 2 * a0) * i / NA, ridge = 1 + 0.025 * Math.exp(-Math.pow(Math.sin(a / 2) * 9, 2)) * (y > 0.06 ? 1 : 0);   /* crista no alto, de trás para a frente */
+        const x = Math.sin(a) * k[1] * ridge, z = Math.cos(a) * k[2] * ridge + k[3]; pos.push(x * S, y * S, z * S); if (i === 0 && a0 > 0) edge.push([x, y, z]); } }
+    for (let j = 0; j < NY; j++) for (let i = 0; i < NA; i++) { const a = j * (NA + 1) + i, b = a + NA + 1; idx.push(a, b, a + 1, b, b + 1, a + 1); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+    let rim = null; if (edge.length > 2) { const pts = edge.map(p => new V3(p[0] * S, p[1] * S, p[2] * S)), all = pts.slice().reverse().concat(pts.map(p => new V3(-p.x, p.y, p.z))); rim = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(all), 60, 0.008 * S, 6, false); }
+    const bot = []; { const k = hkI(HELMK, y1); for (let i = 0; i <= 40; i++) { const a = i / 40 * 2 * PI; bot.push(new V3(Math.sin(a) * k[1] * S, y1 * S, (Math.cos(a) * k[2] + k[3]) * S)); } }
+    const out = { g, rim, bot: new THREE.TubeGeometry(new THREE.CatmullRomCurve3(bot, true), 40, 0.009 * S, 6, true) }; HGC.set(key, out); return out; }
+  const isG = (o, t, f) => o.geometry && o.geometry.type === t && (!f || f(o.geometry.parameters || {}));
+  const nr = (a, b) => Math.abs(a - b) < 1e-4;
+  function fixHeadgear(head, L, S) {
+    const kind = L.head, ch = head.children;
+    if (['greathelm', 'horned', 'winged', 'wolfhelm', 'wyvernhelm', 'owlhelm', 'boarhelm', 'sunhelm'].includes(kind)) {
+      const i0 = ch.findIndex(o => isG(o, 'CylinderGeometry', p => nr(p.radiusTop, 0.118 * S) && nr(p.radiusBottom, 0.122 * S) && nr(p.height, 0.24 * S))); if (i0 < 0) return;
+      const base = ch[i0], hm = base.material, deco = ch.slice(i0 + 4);
+      for (const o of ch.slice(i0, i0 + 4)) o.visible = false;
+      const open = !['greathelm', 'horned', 'winged'].includes(kind), sg = helmShellG(S, open);
+      const shm = hm.side === THREE.DoubleSide ? hm : (hm.userData.ds || (hm.userData.ds = Object.assign(hm.clone(), { side: THREE.DoubleSide })));
+      const sh = new THREE.Mesh(sg.g, shm); sh.name = 'helmN'; head.add(sh); head.add(new THREE.Mesh(sg.bot, hm)); if (sg.rim) head.add(new THREE.Mesh(sg.rim, hm));
+      if (!open) { const dk = mat('#0c0a08', 'cloth'); const slit = new THREE.Mesh(new THREE.TorusGeometry(0.147 * S, 0.008 * S, 4, 24, 1.15), dk); slit.rotation.x = PI / 2; slit.rotation.z = PI / 2 - 0.575; slit.position.y = 0.018 * S; head.add(slit);
+        const rg = new THREE.Mesh(new THREE.BoxGeometry(0.01 * S, 0.17 * S, 0.012 * S), hm); rg.position.set(0, -0.06 * S, 0.147 * S); head.add(rg);
+        for (let q = 0; q < 6; q++) { const h = new THREE.Mesh(new THREE.SphereGeometry(0.0055 * S, 6, 4), dk); const a = 0.35 + (q % 3) * 0.12, y = -0.045 - Math.floor(q / 3) * 0.028; h.position.set(Math.sin(a) * 0.141 * S, y * S, Math.cos(a) * 0.15 * S); head.add(h); } }
+      if (kind === 'boarhelm') for (const o of deco) if (isG(o, 'SphereGeometry') && nr(o.position.z, 0.125 * S)) { o.position.set(0, 0.105 * S, 0.125 * S); o.scale.setScalar(0.8); }
+      for (const o of deco) { if (o.userData.mv) continue; if (o.position.y > 0.15 * S) o.position.y -= 0.03 * S; if (o.position.z > 0.1 * S) o.position.z += 0.03 * S; if (o.position.z < -0.1 * S) o.position.z -= 0.02 * S; if (Math.abs(o.position.x) > 0.11 * S && Math.abs(o.position.x) < 0.16 * S) o.position.x *= 1.1; }
+      return; }
+    if (kind === 'helm') { for (const o of ch) { if (isG(o, 'SphereGeometry', p => nr(p.radius, 0.12 * S)) && nr(o.position.y, 0.04 * S)) { o.position.y = 0.095 * S; o.scale.set(1.12, 0.9, 1.18); }
+        else if (isG(o, 'CylinderGeometry', p => nr(p.radiusTop, 0.16 * S) && nr(p.height, 0.012 * S))) { o.position.y = 0.088 * S; o.scale.set(1.08, 1, 1.12); }
+        else if (isG(o, 'BoxGeometry', p => nr(p.width, 0.012 * S) && nr(p.height, 0.1 * S)) && nr(o.position.z, 0.12 * S)) { o.position.set(0, 0.05 * S, 0.142 * S); o.scale.y = 0.6; } } return; }
+    if (kind === 'cap') { for (const o of ch) { if (isG(o, 'CylinderGeometry', p => nr(p.radiusTop, 0.15 * S) && nr(p.height, 0.012 * S))) { o.position.y = 0.06 * S; o.scale.set(1.05, 1, 1.05); }
+        else if (isG(o, 'SphereGeometry', p => nr(p.radius, 0.11 * S)) && nr(o.position.y, 0.09 * S)) { o.position.y = 0.075 * S; o.scale.set(1.2, 0.66, 1.24); }
+        else if (isG(o, 'CapsuleGeometry') && nr(o.position.y, 0.17 * S)) o.position.y = 0.16 * S; } return; }
+    if (kind === 'wizard') { for (const o of ch) { if (isG(o, 'CylinderGeometry', p => nr(p.radiusTop, 0.21 * S))) o.position.y = 0.038 * S; else if (isG(o, 'ConeGeometry', p => nr(p.radius, 0.12 * S) && nr(p.height, 0.36 * S))) { o.position.y = 0.215 * S; o.scale.set(1.1, 1, 1.1); } else if (isG(o, 'CylinderGeometry', p => nr(p.radiusTop, 0.122 * S))) { o.position.y = 0.058 * S; o.scale.set(1.1, 1, 1.1); } } return; }
+    if (kind === 'crown') { const gd = mat(hx(L.trim || '#f1cf6a'), 'gold'), gm = [mat('#c8283a', 'gem', { emissive: '#4a0810' }), mat('#2a6ac8', 'gem', { emissive: '#0a2050' }), mat('#2aa86a', 'gem', { emissive: '#0a4020' })];
+      const cr = new THREE.Group(); cr.position.set(0, 0.055 * S, -0.012 * S); cr.rotation.x = -0.18; cr.scale.setScalar(1.06); head.add(cr);
+      const band = new THREE.Mesh(new THREE.CylinderGeometry(0.112 * S, 0.108 * S, 0.034 * S, 32, 1, true), mat(hx(L.trim || '#f1cf6a'), 'gold', { side: THREE.DoubleSide })); band.scale.set(1, 1, 1.1); cr.add(band);
+      for (const yy of [-0.017, 0.017]) { const t = new THREE.Mesh(new THREE.TorusGeometry(0.111 * S, 0.004 * S, 5, 32), gd); t.rotation.x = PI / 2; t.position.y = yy * S; t.scale.set(1, 1.1, 1); cr.add(t); }
+      for (let q = 0; q < 8; q++) { const a = q / 8 * 2 * PI, x = Math.sin(a) * 0.111 * S, z = Math.cos(a) * 0.122 * S; const pt = new THREE.Mesh(new THREE.ConeGeometry(0.016 * S, (q % 2 ? 0.04 : 0.06) * S, 4), gd); pt.position.set(x, (0.017 + (q % 2 ? 0.02 : 0.03)) * S, z); pt.rotation.y = a; cr.add(pt);
+        const ball = new THREE.Mesh(new THREE.SphereGeometry(0.006 * S, 8, 6), gd); ball.position.set(x, (0.017 + (q % 2 ? 0.042 : 0.062)) * S, z); cr.add(ball);
+        const gem = new THREE.Mesh(new THREE.SphereGeometry(0.008 * S, 8, 6), gm[q % 3]); gem.position.set(Math.sin(a) * 0.116 * S, 0, Math.cos(a) * 0.127 * S); cr.add(gem); } return; }
+  }
   const _bh = buildHead;
   buildHead = function (head, L, S, skinM, accM, trimM) {
     const ok = window.FACE && (FACE.style === 'C' || L.newLook) && FACE.hair !== false && L.hair && !L.bald && !L.nihongami && !L.topknot && !HELM.includes(L.head) && !HOOD.includes(L.head) && L.hairStyle !== 'mohawk';
@@ -457,8 +504,11 @@ window.FACE = { style: 'old', expr: 'n' };
     for (const o of head.children) { const g = o.geometry; if (g && g.type === 'TorusGeometry' && g.parameters && Math.abs(g.parameters.radius - 0.105 * S) < 1e-4) o.scale.setScalar(1.07); }   /* tiara por cima do volume novo */
     return r; };
   const _bh2 = buildHead;
-  buildHead = function (head, L, S, skinM, accM, trimM) { if (!(window.FACE && FACE.style === 'C' && L.beard)) return _bh2.apply(this, arguments);
-    const Lb = Object.assign(Object.create(Object.getPrototypeOf(L)), L, { beard: null, braids: false }); const r = _bh2.call(this, head, Lb, S, skinM, accM, trimM); addBeard(head, L, S); return r; };
+  buildHead = function (head, L, S, skinM, accM, trimM) { if (!(window.FACE && FACE.style === 'C')) return _bh2.apply(this, arguments);
+    let L1 = L; const cl = o => Object.assign(Object.create(Object.getPrototypeOf(L1)), L1, o);
+    if (['cap', 'helm', 'wizard'].includes(L.head) && (L.hairStyle === 'bun' || L.topknot || (L.head === 'helm' && L.hairStyle === 'tail'))) L1 = cl({ hairStyle: 'short', topknot: false });   /* coque não atravessa o chapéu */
+    if (L.beard) L1 = cl({ beard: null, braids: false });
+    const r = _bh2.call(this, head, L1, S, skinM, accM, trimM); if (L.beard) addBeard(head, L, S); try { fixHeadgear(head, L, S); } catch (e) { console.warn('elmo novo', e); } return r; };
 })();
 
 ;
