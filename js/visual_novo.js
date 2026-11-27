@@ -976,3 +976,26 @@ if (typeof VISUAL_NOVO !== 'undefined' && VISUAL_NOVO) { FACE.style = 'C'; FACE.
   if (typeof bodyPick === 'function') { const _bp = bodyPick; bodyPick = function (f) { const r = _bp.apply(this, arguments); try { bodyCfgSync(); } catch (e) { } return r; }; }
   bodyCfgSync();
 })();
+
+/* nitidez de perto: com zoom ou tela grande (pixels de tela por unidade acima da imagem), os moradores perto do herói e os heróis
+   são desenhados na resolução da tela (até 5,5 na média e 7,5 na alta); fila própria limita a memória das imagens nítidas */
+(function () {
+  if (typeof VISUAL_NOVO === 'undefined' || !VISUAL_NOVO || typeof cache3 !== 'function' || typeof npcSprite3D !== 'function' || typeof R3 === 'undefined') return;
+  const CAP = [0, 5.5, 7.5][typeof VISUAL_Q !== 'undefined' ? VISUAL_Q : 2], RAD = 7, MAXN = 10, MAXF = 140;
+  let near = new Set(), nearT = 0, px = 0; const HQ = [];
+  const target = () => { if (!CAP || !R3.ok || window.VN_HD_OFF) return 0; const s = (typeof SCALE !== 'undefined' ? SCALE : 3) * (typeof DPR !== 'undefined' ? DPR : 1); const p = Math.min(CAP, Math.ceil(s * 2) / 2); return p > PXU * 1.1 ? p : 0; };
+  function nearSet() { const now = performance.now(); if (now - nearT < 400) return near; nearT = now; px = target(); near = new Set();
+    const me = typeof G !== 'undefined' && G.me; if (!px || !me || !G.npcs) return near; const L = [];
+    for (const id in G.npcs) { const n = G.npcs[id]; if (!n) continue; const d = Math.hypot((n.rx != null ? n.rx : n.x) - (me.rx != null ? me.rx : me.x), (n.ry != null ? n.ry : n.y) - (me.ry != null ? me.ry : me.y)); if (d <= RAD) L.push([d, id]); }
+    L.sort((a, b) => a[0] - b[0]); for (const [, id] of L.slice(0, MAXN)) near.add(String(id)); return near; }
+  let hdNow = 0;
+  const _c3 = cache3;
+  cache3 = function (key, make, who) { if (!hdNow) return _c3(key, make, who); const p = hdNow, k2 = 'H' + p + '|' + key;
+    return _c3(k2, () => { const W0 = R3.W, H0 = R3.H, W = Math.round(FRAME_W * p), H = Math.round(FRAME_H * p); R3.renderer.setSize(W, H, false); R3.W = W; R3.H = H;
+      try { const s = make(); HQ.push(k2); while (HQ.length > MAXF) { const old = HQ.shift(); if (typeof SPR3 !== 'undefined') SPR3.delete(old); } return s; } finally { R3.renderer.setSize(W0, H0, false); R3.W = W0; R3.H = H0; } }, who); };
+  const _ns = npcSprite3D;
+  npcSprite3D = function (kind, P) { const id = P && P.nid != null ? String(P.nid) : ''; if (!id || !nearSet().has(id)) return _ns.apply(this, arguments);
+    hdNow = px; try { return _ns.apply(this, arguments); } finally { hdNow = 0; } };
+  if (typeof heroSprite3D === 'function') { const _hs = heroSprite3D; heroSprite3D = function () { nearSet(); if (!px) return _hs.apply(this, arguments); hdNow = px; try { return _hs.apply(this, arguments); } finally { hdNow = 0; } }; }
+  window.VN_HD = () => ({ px, near: [...near], frames: HQ.length });
+})();
