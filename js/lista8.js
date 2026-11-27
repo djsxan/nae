@@ -137,3 +137,186 @@ if (typeof document !== 'undefined' && typeof G !== 'undefined') {
   const st = document.createElement('style'); st.textContent = 'body:has(.vl-tray) #pplbtn, body:has(.aff-box) #pplbtn, body:has(#vl7-panel) #pplbtn { display: none !important; }'; document.head.appendChild(st);
   if (typeof pplBtnSync === 'function') { const _pbL8 = pplBtnSync; pplBtnSync = function () { _pbL8.apply(this, arguments); const b = document.getElementById('pplbtn'); if (b && document.querySelector('.vl-tray, .aff-box, #vl7-panel')) b.hidden = true; }; }
 }
+
+/* ---------- 5. mapa: sua doméstica e seus seguranças aparecem no mapa (posição a cada 2 s, de qualquer lugar do reino) ---------- */
+if (typeof estateTick === 'function' && typeof S !== 'undefined') {
+  const _etL8 = estateTick;
+  estateTick = function (now) { const r0 = _etL8.apply(this, arguments);
+    try { if (now - (S.l8mapT || 0) > 2000 && S.estate) { S.l8mapT = now;
+      for (const p of Object.values(S.players)) { const key = estOwner(p), l = [], E = S.estate.emp && S.estate.emp[key];
+        if (E && typeof empNid === 'function') { const n = S.npcs[empNid(E)]; if (n && !n.dead) l.push([n.id, Math.round(n.x * 2) / 2, Math.round(n.y * 2) / 2, E.n, E.g === 'm' ? 'empm' : 'emp']); }
+        if (typeof segList === 'function') for (const r of segList(key)) { const n = S.npcs[segNid(r)]; if (n && !n.dead && !r.jail && !r.flee) l.push([n.id, Math.round(n.x * 2) / 2, Math.round(n.y * 2) / 2, (n.name || 'Segurança').split(',')[0], 'seg']); }
+        if (l.length || p.l8had) { p.l8had = l.length > 0; Net.toOne(p.id, { t: 'staffmap', l }); } } } } catch (e) { }
+    return r0; };
+}
+if (typeof progEvent === 'function' && typeof G !== 'undefined') { const _peL8 = progEvent; progEvent = function (m, now) { if (m.t === 'staffmap') { G.staffMap = m.l || []; if (G.mapOpen && typeof drawWorldMap === 'function') drawWorldMap(); return true; } return _peL8(m, now); }; }
+if (typeof drawWorldMap === 'function' && typeof G !== 'undefined') {
+  const _dwL8 = drawWorldMap;
+  drawWorldMap = function () { _dwL8.apply(this, arguments);
+    try { if (!G.mapOpen || !G.me || !(G.staffMap || []).length) return; const cv = $('wm-canvas'), size = G.mapSize; if (!cv || !size) return;
+      const dpr = cv.width / size, x = cv.getContext('2d'); x.setTransform(dpr, 0, 0, dpr, 0, 0); const P = wmView(size).P; x.textAlign = 'center'; x.textBaseline = 'middle';
+      for (const [id, sx, sy, name, k] of G.staffMap) { const e = G.npcs && G.npcs[id], wx = e && e.visible ? e.rx : sx, wy = e && e.visible ? e.ry : sy, [px, py] = P(wx, wy);
+        x.save(); x.translate(px, py);
+        if (k === 'emp' || k === 'empm') { x.beginPath(); x.moveTo(0, -6); x.lineTo(5, 0); x.lineTo(0, 6); x.lineTo(-5, 0); x.closePath(); x.fillStyle = '#2a8a5a'; }
+        else { x.beginPath(); x.moveTo(-5, -5); x.lineTo(5, -5); x.lineTo(5, 0); x.quadraticCurveTo(5, 5, 0, 7); x.quadraticCurveTo(-5, 5, -5, 0); x.closePath(); x.fillStyle = '#4a4e5a'; }
+        x.fill(); x.lineWidth = 1.5; x.strokeStyle = '#f4e8c8'; x.stroke(); x.restore();
+        x.font = '600 10px "Alegreya Sans SC", sans-serif'; x.fillStyle = k === 'seg' ? '#2a2a34' : '#1a4a2a'; x.fillText(name + (k === 'emp' ? ' (doméstica)' : k === 'empm' ? ' (doméstico)' : ' (segurança)'), px, py + 13); } } catch (e) { }
+  };
+}
+
+/* ---------- 4. escolta: o segurança escalado avisa e acompanha a doméstica também nas compras e nas vendas do loot ---------- */
+if (typeof empMsg === 'function' && typeof S !== 'undefined') {
+  const _emL8 = empMsg;
+  empMsg = function (p, m) { const r0 = _emL8.apply(this, arguments);
+    try { if (m && m.a === 'order' && (m.o === 'shop' || m.o === 'sellloot')) { const key = estOwner(p), r = S.estate.emp && S.estate.emp[key];
+      if (r && (r.mode === 'shop' || r.mode === 'sell') && typeof segList === 'function') { const g = segList(key).find(x => x.escort && !x.jail && !x.flee); const n = g && S.npcs[segNid(g)];
+        if (n && !n.dead) { empSay(n, r.mode === 'shop' ? 'Vou com ela às compras, patrão.' : 'Vou junto nas vendas, a bolsa fica comigo de olho.'); } } } } catch (e) { }
+    return r0; };
+}
+
+/* ---------- 6. casas nobres: extinção muito rara. Quando a linha principal acaba, um parente distante (primo, sobrinho ou bastardo legitimado) assume;
+   a casa só fica sem herdeiro depois de 3 mortes do sangue em 12 dias (ou pelo exílio da rebelião perdida). Vale para todas as casas, no trono ou não ---------- */
+const L8_KIN = [['primo distante', 'prima distante'], ['sobrinho criado no interior', 'sobrinha criada no interior'], ['bastardo legitimado', 'bastarda legitimada'], ['primo de segundo grau', 'prima de segundo grau']];
+function l8Deaths(hid) { const E = S.estate; E.l8d = E.l8d || {}; return (E.l8d[hid] = (E.l8d[hid] || []).filter(d => estDay() - d <= 12)); }
+function l8Death(hid) { if (!S.estate || !hid) return; l8Deaths(hid).push(estDay()); }
+function l8DistantHeir(hid) {
+  const h = HOUSE_BY[hid]; if (!h || h.player || typeof lnKid !== 'function' || typeof lnTakeHeir !== 'function') return false;
+  const L = lnRec(); L.kids[hid] = L.kids[hid] || []; const k = lnKid(hid, 19 + Math.floor(Math.random() * 14)); L.kids[hid].push(k);
+  const kin = L8_KIN[Math.floor(Math.random() * L8_KIN.length)][k.g === 'm' ? 0 : 1];
+  if (!lnTakeHeir(h)) return false;
+  const txt = (k.g === 'm' ? 'Sor ' : 'Lady ') + k.n + ', ' + kin + ', foi chamad' + (k.g === 'm' ? 'o' : 'a') + ' para herdar a ' + h.n + '. A casa segue viva.';
+  if (typeof hNews === 'function') hNews(txt); if (typeof sys === 'function') sys('🕯 ' + txt); estateSave(); return true; }
+if (typeof fhNoHeir === 'function' && typeof S !== 'undefined') {
+  const _fnL8 = fhNoHeir;
+  fhNoHeir = function (hid, why) { try { if (l8Deaths(hid).length < 3 && l8DistantHeir(hid)) return; } catch (e) { console.warn('herdeiro distante', e); } return _fnL8.apply(this, arguments); };
+}
+if (typeof trLordDead === 'function' && typeof S !== 'undefined') { const _tlL8 = trLordDead; trLordDead = function (hid, cause) { l8Death(hid); return _tlL8.apply(this, arguments); }; }
+if (typeof mr2FamDead === 'function' && typeof S !== 'undefined') { const _mfL8 = mr2FamDead; mr2FamDead = function (h, role, cause) { if (h) l8Death(h.id); return _mfL8.apply(this, arguments); }; }
+if (typeof rgDie === 'function' && typeof S !== 'undefined') { const _rdL8 = rgDie; rgDie = function (h, role) { if (h) l8Death(h.id); return _rdL8.apply(this, arguments); }; }
+/* casas que já estavam sem herdeiro no mundo salvo: o parente distante aparece (a cada minuto confere) */
+if (typeof housesTick === 'function' && typeof S !== 'undefined') {
+  const _htL8 = housesTick;
+  housesTick = function (now) { const r = _htL8.apply(this, arguments);
+    try { if (S.estate && typeof fhRec === 'function' && now - (S.l8hT || 0) > 60000) { S.l8hT = now; const R = fhRec();
+      for (const hid of Object.keys(R.noHeir || {})) { if (fhIs(hid)) continue; if (l8Deaths(hid).length < 3 && l8DistantHeir(hid)) { delete R.noHeir[hid]; estateSave(); } } } } catch (e) { }
+    return r; };
+}
+/* mais filhos nas casas (pedido 28/11): nascem quase o dobro, até 5 por casal, 3 ficam na cidade; reino novo começa com 1 a 3 filhos por casa */
+if (typeof LN !== 'undefined') Object.assign(LN, { birth: 0.055, maxKids: 5, limit: 3, startKids: [1, 3] });
+
+/* ---------- 7. massagem: a doméstica sobe na cama e senta montada sobre o quadril de quem está de bruços, de frente para a cabeça; vale para qualquer jogador deitado numa cama da casa ---------- */
+if (typeof ACTS !== 'undefined' && ACTS.massage && !ACTS.massride) {
+  ACTS.massride = ACTS.massage.map(([t, q]) => [t, Object.assign({}, q, { lA: [1.3, -2.65, 0, -0.55], lB: [1.3, -2.65, 0, 0.55], tl: (q.tl || 0.45) + 0.32, ht: -0.12, aA: [q.aA[0] - 0.55, Math.max(0.02, q.aA[1] - 0.04), q.aA[2] + 0.05], aB: [q.aB[0] - 0.55, Math.max(0.02, q.aB[1] - 0.04), q.aB[2] + 0.05] })]);
+  if (typeof ACT_MS !== 'undefined') ACT_MS.massride = ACT_MS.massage || 5000;
+}
+if (typeof empMassage === 'function' && typeof S !== 'undefined') {
+  empMassage = function (n, r, p) {
+    if (p.sleep == null || !S.players[p.id]) { empSay(n, 'Ué, levantou?'); return; }
+    const bd = BEDS[p.sleep], H = empHome(r), len = Math.hypot(bd.dx, bd.dy) || 1, ux = bd.dx / len, uy = bd.dy / len;
+    n.x = bd.x + ux * 0.16; n.y = bd.y + uy * 0.16; n.walk = false; n.legs = null; n.path = null; n.walkKey = null; n.dir = dirFromVecS(-ux, -uy);   /* sobre o quadril, olhando para a cabeça */
+    const hh = (bd.apt ? (H && H.A && H.A.suite ? 0.2 : 0.07) : 0.24) + 0.13, lines = ['Relaxe os ombros…', 'Respire fundo…', 'Deixe o peso ir embora…', 'Só mais um pouquinho…', 'Aqui está bem tenso…'];
+    near(n.x, n.y, { t: 'massage', pid: p.id, mid: n.id, on: 1, ms: 20000, h: hh }); const say1 = 1 + Math.floor(Math.random() * 2);
+    for (let k = 0; k < 4; k++) setTimeout(() => { if (p.sleep == null || !S.npcs[n.id] || !n.task) return; near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'massride', ms: 5000, tx: bd.x - ux, ty: bd.y - uy }); if (k === say1) empSay(n, lines[Math.floor(Math.random() * lines.length)]); }, k * 5000);
+    n.task = { until: now_() + 20000, done: () => { near(n.x, n.y, { t: 'massage', pid: p.id, mid: n.id, on: 0 }); const off = [bd.x - uy * 0.9, bd.y + ux * 0.9]; if (WORLD.bld[tileAt(off[0], off[1])] === WORLD.bld[tileAt(bd.x, bd.y)]) { n.x = off[0]; n.y = off[1]; }   /* desce da cama pelo lado */
+      if (p.sleep == null || !S.players[p.id]) { empSay(n, 'Levantou antes do fim!'); return; }
+      p.hp = p.maxHp; p.cst = cstMaxOf(p); if (p.bleed) for (const k in p.bleed) p.bleed[k] = 0; if (p.body) for (const k in p.body) p.body[k] = Math.max(p.body[k], 100); const t = now_(); p.buffs.warm = Math.max(p.buffs.warm || 0, t + 600000); p.buffs.rested = Math.max(p.buffs.rested || 0, t + 900000);
+      sendStat(p); tell(p, r.n + ' terminou a massagem: vida e fôlego cheios, membros recuperados, aquecido e bem descansado.'); empSay(n, 'Pronto. Como novo.'); } };
+  };
+}
+if (typeof empMsg === 'function' && typeof S !== 'undefined') {   /* massagem para outro jogador deitado numa cama da casa */
+  const _emM8 = empMsg;
+  empMsg = function (p, m) {
+    try { if (m && m.a === 'order' && m.o === 'massage' && p.sleep == null) { const key = estOwner(p), r = S.estate.emp && S.estate.emp[key], n = r && S.npcs[empNid(r)], H = r && empHome(r);
+      if (r && n && H) { const T = Object.values(S.players).find(q => q.sleep != null && BEDS[q.sleep] && BEDS[q.sleep].bi === H.bi && (!H.A || BEDS[q.sleep].apt === H.A.key) && (q.fl || 0) === (H.fl || 0));
+        if (T) { r.mode = 'home'; r.massage = 0; const bd = BEDS[T.sleep], vl = Math.hypot(H.x - bd.x, H.y - bd.y) || 1; n.goal = Object.assign(empTgt(H, bd.x + (H.x - bd.x) / vl * 1.2, bd.y + (H.y - bd.y) / vl * 1.2), { act: () => empMassage(n, r, T) });
+          empSay(n, 'Vou cuidar de ' + T.name + '.'); if (T !== p) tell(T, r.n + ' vem fazer uma massagem em você.'); estateSave(); empSend(r, key); return; } } } } catch (e) { console.warn('massagem', e); }
+    return _emM8.apply(this, arguments); };
+}
+/* ajoelhada (seiza, massagem, montada): a saia/manto encurta e se abre sobre as coxas em vez de atravessar a cama ou quem está deitado */
+if (typeof applyPose === 'function' && typeof THREE !== 'undefined') {
+  const _apL8 = applyPose;
+  applyPose = function (R, Q, P, walkPh) { const r = _apL8.apply(this, arguments);
+    try { if (R && R.robe && Q && Q.tuck > 0.5 && !(P && (P.sit || P.med))) { const rw = R.robeW || 1, S0 = R.robeS || 1, spread = Q.lA && Q.lA[3] ? 1.45 : 1.25; R.robe.scale.set(rw * spread, 0.34, 0.82 * rw * 1.35); R.robe.rotation.x = -0.25; R.robe.position.z = 0.04 * S0;
+      if (R.hem) { R.hem.position.y = -0.04 * S0 - 0.82 * S0 * 0.34; R.hem.position.z = 0.1 * S0; R.hem.scale.set(rw * spread, 0.82 * rw * 1.35, 1); } } } catch (e) { }
+    return r; };
+}
+
+/* ---------- 8. mimar a doméstica: carinho de 0 a 100 (presentes, folga, aumento, elogios e conversa, passeio); com 60 ou mais, a roda de afeto funciona com ela ---------- */
+if (typeof LOOT !== 'undefined') Object.assign(LOOT, {
+  buque: { name: 'Buquê de flores', price: 18, icon: '💐', color: '#e87aa8', desc: 'Flores do campo amarradas com fita. Um presente para alguém querido.' },
+  doces: { name: 'Caixa de doces', price: 22, icon: '🍬', color: '#e8a050', desc: 'Bombons de mel e frutas cristalizadas da padaria. Um presente para alguém querido.' },
+  vestido: { name: 'Vestido de seda', price: 90, icon: '👗', color: '#b05ac8', desc: 'Seda tingida da Alfaiataria, com bordado na barra. Um presente para alguém querido.' },
+  colar: { name: 'Colar de prata', price: 140, icon: '📿', color: '#c8d0e0', desc: 'Corrente de prata com uma pedra polida. Um presente para alguém querido.' } });
+if (typeof TRADE !== 'undefined') { const add = (k, o) => { if (TRADE[k]) Object.assign(TRADE[k].sell, o); }; add('fruit', { buque: 8 }); add('st_bakery', { doces: 6 }); add('st_tailor', { vestido: 3 }); add('st_arcane', { colar: 2 }); }
+const L8_GIFT = { buque: 6, doces: 5, vestido: 14, colar: 18, pie: 3, tea: 2, firemead: 3, amulet_luck: 10, gem: 8, berries: 1, apple: 1 };
+const L8_GIFT_LINES = { buque: ['Flores! Para mim? Que lindas...', 'Vou pôr num vaso na cozinha.'], doces: ['Hmm, doces! Vou guardar um para depois.', 'Você sabe me agradar.'], vestido: ['Um vestido de seda?! Eu... não sei o que dizer.', 'Vou usar no meu dia de folga.'], colar: ['Prata de verdade... é lindo demais.', 'Nunca ganhei nada assim.'] };
+const L8_STROLL = ['tavern', 'baths', 'club', 'velvet'];
+function l8Car(r) { if (r.car == null) r.car = 10; return r.car; }
+function l8Sx(r, m, f) { return r.g === 'm' ? m : f; }
+function l8CarAdd(r, v, n, key) { const before = l8Car(r); r.car = Math.max(0, Math.min(100, before + v));
+  if (before < 60 && r.car >= 60) { const q = empOwnerP(key); if (q) tell(q, '💞 ' + r.n + ' gosta muito de você agora: a roda de afeto (💞) funciona com ' + l8Sx(r, 'ele', 'ela') + '.'); if (n) empSay(n, 'Sabe... gosto muito de trabalhar para você.'); }
+  estateSave(); empSend(r, key); }
+if (typeof empMsg === 'function' && typeof S !== 'undefined') {
+  const _emC8 = empMsg;
+  empMsg = function (p, m) {
+    if (!m || m.a !== 'mimo') return _emC8.apply(this, arguments);
+    const key = estOwner(p), r = S.estate && S.estate.emp && S.estate.emp[key], n = r && S.npcs[empNid(r)]; if (!r || !n) return;
+    const day = estDay(), close = (p.fl || 0) === (n.fl || 0) && dist(p.x, p.y, n.x, n.y) <= 3, ela = l8Sx(r, 'ele', 'ela'), oa = l8Sx(r, 'o', 'a'); l8Car(r);
+    if (m.o === 'endstroll') { if (r.stroll) { r.stroll = null; n.goal = empTgt(empHome(r)); empSay(n, 'Foi um passeio ótimo. Vou para casa.'); empSend(r, key); } return; }
+    if (!close) { tell(p, 'Chegue perto de ' + r.n + '.'); return; }
+    r.mimo = r.mimo || {}; if (r.mimo.d !== day) r.mimo = { d: day, gift: 0, gk: {}, talk: {} };
+    if (m.o === 'gift') { const k = String(m.k); if (!L8_GIFT[k] || !(p.inv[k] > 0)) return; p.inv[k]--; if (!p.inv[k]) delete p.inv[k]; sendStat(p);
+      let v = L8_GIFT[k] * (r.mimo.gk[k] ? 0.4 : 1); v = Math.max(1, Math.round(Math.min(v, 30 - r.mimo.gift))); r.mimo.gift += v; r.mimo.gk[k] = 1;
+      const L = L8_GIFT_LINES[k]; empSay(n, L ? L[Math.floor(Math.random() * L.length)] : 'Obrigad' + oa + ', que gentil!'); near(n.x, n.y, { t: 'anim', w: 'n', id: n.id, a: 'adore', ms: 2600 });
+      tell(p, 'Você deu ' + tName(k).toLowerCase() + ' a ' + r.n + '. Carinho +' + v + '.'); l8CarAdd(r, v, n, key); return; }
+    if (m.o === 'off') { if (r.off === day) { tell(p, r.n + ' já está de folga hoje.'); return; } const v = day - (r.offLast == null ? -99 : r.offLast) >= 4 ? 8 : 3; r.off = day; r.offLast = day; n.goal = null; n.task = null;
+      empSay(n, 'Folga? Obrigad' + oa + '! Vou descansar um pouco hoje.'); tell(p, r.n + ' está de folga até amanhã (não faz as tarefas da casa). Carinho +' + v + '.'); l8CarAdd(r, v, n, key); return; }
+    if (m.o === 'raise') { const add = Math.max(2, Math.round((r.w | 0) * 0.15)), v = day - (r.raiseLast == null ? -99 : r.raiseLast) >= 6 ? 10 : 2; r.w = (r.w | 0) + add; r.raiseLast = day;
+      empSay(n, 'Um aumento? Que generosidade!'); tell(p, 'O salário de ' + r.n + ' subiu ' + add + ' (agora ' + r.w + ' por dia). Carinho +' + v + '.'); l8CarAdd(r, v, n, key); return; }
+    if (m.o === 'talk') { const s = ['food', 'thanks', 'chat'].includes(m.s) ? m.s : 'chat';
+      const T = { food: ['Que bom que gostou da comida!', 'Fiz com carinho.'], thanks: ['Não precisa agradecer, é o meu trabalho.', 'Fico feliz em ajudar.'], chat: ['Hoje vi um gato enorme no mercado...', 'Minha mãe fazia um pão igual ao da padaria.', 'Gosto quando a casa fica quieta à noite.'] }[s];
+      empSay(n, T[Math.floor(Math.random() * T.length)]); if (r.mimo.talk[s]) { tell(p, 'Vocês conversam um pouco (o carinho por isso já subiu hoje).'); return; } r.mimo.talk[s] = 1; tell(p, 'Carinho +2.'); l8CarAdd(r, 2, n, key); return; }
+    if (m.o === 'stroll') { if (r.mode === 'shop' || r.mode === 'sell' || n.forage) { tell(p, r.n + ' está ocupad' + oa + ' na rua agora.'); return; }
+      r.stroll = { by: p.id, t0: now_(), acc: 0, done: r.strollD === day }; n.goal = null; n.task = null; empSay(n, 'Passear com você? Vamos!');
+      tell(p, r.n + ' vai com você. Leve ' + ela + ' à taverna, às Termas, ao Clube ou à Casa de Veludo e fiquem um pouco juntos lá dentro.'); empSend(r, key); return; }
+  };
+}
+if (typeof empNpcTick === 'function' && typeof S !== 'undefined') {
+  const _entC8 = empNpcTick;
+  empNpcTick = function (n, now, dt) { const r = S.estate && S.estate.emp && S.estate.emp[n.emp];
+    if (r && r.stroll) { const q = S.players[r.stroll.by];
+      if (!q || now - r.stroll.t0 > 1800000) { r.stroll = null; n.goal = empTgt(empHome(r)); empSay(n, 'Vou voltando para casa.'); empSend(r, n.emp); return _entC8.apply(this, arguments); }
+      const d = (q.fl || 0) === (n.fl || 0) ? dist(n.x, n.y, q.x, q.y) : 99; if (d > 1.6) empGo(n, { x: q.x - 0.7, y: q.y + 0.5, fl: q.fl || 0, fb: q.fl ? q.fb : -1 }, d > 5 ? 2.2 : 1.5, dt); else { n.walk = false; n.dir = dirFromVecS(q.x - n.x, q.y - n.y); }
+      const bi = WORLD.bld[tileAt(q.x, q.y)], b = bi >= 0 ? BUILDINGS[bi] : null;
+      if (b && L8_STROLL.includes(b.kind) && WORLD.bld[tileAt(n.x, n.y)] === bi && !r.stroll.done) { r.stroll.acc += dt;
+        if (r.stroll.acc >= 90) { r.stroll.done = true; r.strollD = estDay(); empSay(n, ['Que lugar bonito... obrigado por me trazer.', 'Fazia tempo que eu não me divertia assim.', 'Podíamos vir mais vezes.'][Math.floor(Math.random() * 3)]); tell(q, 'O passeio com ' + r.n + ' foi um sucesso. Carinho +12.'); l8CarAdd(r, 12, n, n.emp); } }
+      return; }
+    if (r && r.off === estDay() && r.mode === 'home' && !r.meal && !r.massage && !n.task) { const H = empHome(r); if (H) { if ((n.fl || 0) !== (H.fl || 0) || dist(n.x, n.y, H.x, H.y) > 0.6) empGo(n, empTgt(H), 1.2, dt); else n.walk = false; } return; }   /* de folga: descansa em casa */
+    return _entC8.apply(this, arguments); };
+}
+if (typeof empSend === 'function' && typeof S !== 'undefined') { const _esC8 = empSend; empSend = function (r, key) { const o = _esC8.apply(this, arguments); try { const q = empOwnerP(key); if (q) Net.toOne(q.id, { t: 'empcar', car: Math.round(l8Car(r)), off: r.off === estDay() ? 1 : 0, stroll: r.stroll ? 1 : 0, g: r.g }); } catch (e) { } return o; }; }
+/* roda de afeto com a doméstica querida */
+if (typeof affNpcKind === 'function' && typeof S !== 'undefined') { const _akC8 = affNpcKind; affNpcKind = function (p, n) { const k = _akC8.apply(this, arguments); if (k) return k; try { if (n && !n.dead && !n.downed && n.emp && n.emp === estOwner(p)) { const r = S.estate.emp && S.estate.emp[n.emp]; if (r && l8Car(r) >= 60) return 'emp'; } } catch (e) { } return null; }; }
+if (typeof affNpcAsk === 'function' && typeof S !== 'undefined') { const _aaC8 = affNpcAsk; affNpcAsk = function (p, n, k) { if (affNpcKind(p, n) !== 'emp') return _aaC8.apply(this, arguments);
+  const r = S.estate.emp[n.emp], c = l8Car(r), ch = c >= 85 ? 1 : c >= 70 ? 0.85 : 0.65;
+  if (Math.random() >= ch) { empSay(n, ['Agora não... alguém pode ver.', 'Estou no meio do serviço.', 'Mais tarde, talvez.'][Math.floor(Math.random() * 3)]); tell(p, r.n + ' recusou desta vez.'); return; }
+  if (r.affD !== estDay()) { r.affD = estDay(); r.car = Math.min(100, c + 2); estateSave(); } empSay(n, ['Vem cá...', 'Achei que você nunca ia pedir.', 'Só um pouquinho, então.'][Math.floor(Math.random() * 3)]); affStart(p, n, k); }; }
+/* cliente: seção "Mimar" no menu de ordens */
+if (typeof progEvent === 'function' && typeof G !== 'undefined') { const _peC8 = progEvent; progEvent = function (m, now) { if (m.t === 'empcar') { G.empCar = m; return true; } return _peC8(m, now); }; }
+if (typeof empMenu === 'function' && typeof G !== 'undefined') { const _emnC8 = empMenu; empMenu = function () { _emnC8(); try {
+  const d = document.getElementById('empmenu'), L = d && d.querySelector('.lift-list'); if (!L || L.querySelector('[data-mimo]')) return; const C = G.empCar || { car: 10 }, ela = C.g === 'm' ? 'ele' : 'ela', Ela = C.g === 'm' ? 'Ele' : 'Ela';
+  const btn = (ic, t, sub, f) => { const b = document.createElement('button'); b.className = 'lift-btn'; b.dataset.mimo = 1; b.innerHTML = '<span class="lift-n">' + ic + '</span><span><b>' + t + '</b><br><small>' + sub + '</small></span>'; b.onclick = f; L.appendChild(b); };
+  const hd = document.createElement('div'); hd.dataset.mimo = 1; hd.style.cssText = 'padding:8px 6px 2px;font:700 14px Cinzel,serif;color:#e8a0b8';
+  hd.textContent = '💗 Mimar · carinho ' + C.car + '/100' + (C.car >= 60 ? ' · 💞 afeto liberado' : ' · com 60, a roda de afeto funciona com ' + ela) + (C.off ? ' · de folga hoje' : ''); L.appendChild(hd);
+  const send = (o, x) => { d.remove(); Net.send(Object.assign({ t: 'emp', a: 'mimo', o }, x || {})); };
+  btn('🎁', 'Dar um presente', 'Flores, doces, vestido ou colar (à venda na fruteira, na padaria, na Alfaiataria e na loja arcana).', () => { const gifts = Object.keys(L8_GIFT).filter(k => (G.me.inv || {})[k] > 0); d.remove(); const box = document.createElement('div'); box.className = 'aff-box'; box.id = 'l8gift';
+    box.innerHTML = '<div class="aff-h">🎁 Presente</div>' + (gifts.length ? '<div class="aff-row">' + gifts.map(k => '<button type="button" data-k="' + k + '">' + (LOOT[k].icon || '') + ' ' + LOOT[k].name + ' <small>(' + G.me.inv[k] + ')</small></button>').join('') + '</div>' : '<div class="aff-ft">Você não tem nada que sirva de presente. Compre flores na fruteira, doces na padaria, um vestido na Alfaiataria ou um colar na loja arcana.</div>') + '<div class="aff-row"><button type="button" data-x>Fechar</button></div>';
+    box.querySelectorAll('[data-k]').forEach(b => b.onclick = () => { box.remove(); Net.send({ t: 'emp', a: 'mimo', o: 'gift', k: b.dataset.k }); }); box.querySelector('[data-x]').onclick = () => box.remove(); document.body.appendChild(box); });
+  btn('🌴', 'Dar folga hoje', 'Não faz as tarefas até amanhã e descansa em casa.', () => send('off'));
+  btn('💰', 'Dar aumento', 'Salário 15% maior (pelo menos +2 por dia).', () => send('raise'));
+  btn('🍲', 'Elogiar a comida', 'Uma vez por dia.', () => send('talk', { s: 'food' }));
+  btn('🙏', 'Agradecer o trabalho', 'Uma vez por dia.', () => send('talk', { s: 'thanks' }));
+  btn('☕', 'Conversar um pouco', 'Uma vez por dia.', () => send('talk', { s: 'chat' }));
+  if (C.stroll) btn('🏠', 'Encerrar o passeio', Ela + ' volta para casa.', () => send('endstroll'));
+  else btn('🚶', 'Levar para passear', 'Vem com você: na taverna, nas Termas, no Clube ou na Casa de Veludo, depois de um tempo juntos o carinho sobe (uma vez por dia).', () => send('stroll'));
+} catch (e) { console.warn('mimar', e); } }; }
