@@ -274,7 +274,7 @@ function clientOnServer(m) {
 
 function applySnapshot(m, now) {
   G.chests = (m.ch || []).map(c => ({ id: c[0], x: c[1] / 100, y: c[2] / 100, open: !!c[3], mine: !!c[4] }));
-  G.corpses = (m.co || []).map(c => ({ id: c[0], type: MON_TYPES[c[1]], x: c[2] / 100, y: c[3] / 100, z: c[4], looted: !!c[5], ix: c[6] / 10, iy: c[7] / 10, lost: c[8] || 0, onBack: c[9] || null }));
+  if (m.co) G.corpses = (m.co || []).map(c => ({ id: c[0], type: MON_TYPES[c[1]], x: c[2] / 100, y: c[3] / 100, z: c[4], looted: !!c[5], ix: c[6] / 10, iy: c[7] / 10, lost: c[8] || 0, onBack: c[9] || null })); if (m.co && G.corpseDecals && G.corpseDecals.length) { const t = performance.now(); G.corpseDecals = G.corpseDecals.filter(d => d.until > t); G.corpses = G.corpses.concat(G.corpseDecals); }   /* corpos que viraram só desenho (js/lista14.js) */
   const seenP = new Set();
   for (let [id, x100, y100, z, dir, fl, hpPct, carrying, lifted, bb, lp, tow, stb, flx] of m.p) {
     seenP.add(id);

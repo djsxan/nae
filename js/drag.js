@@ -13,7 +13,7 @@ function grabCandidate() {
   if (best) return best;
   for (const id in G.npcs) { const n = G.npcs[id]; if (!(n.npDown || n.npDead) || n.onBackBy || n.dragged) continue; const d = dist(n.rx, n.ry, me.x, me.y); if (d < bd) { bd = d; best = { k: 'n', id, opts: ['arms', 'foot', 'back'] }; } }
   if (best) return best;
-  for (const c of G.corpses || []) { if (!c.looted || c.onBack) continue; const w = WEIGHT_C[c.type] ?? 3; if (w >= 3) continue; const d = dist(c.x, c.y, me.x, me.y); if (d < bd) { bd = d; best = { k: 'c', id: c.id, opts: w >= 2 ? ['arms', 'foot', 'back'] : ['arms', 'foot', 'back'] }; } }
+  for (const c of G.corpses || []) { if (!c.looted || c.onBack || c.decal) continue; const w = WEIGHT_C[c.type] ?? 3; if (w >= 3) continue; const d = dist(c.x, c.y, me.x, me.y); if (d < bd) { bd = d; best = { k: 'c', id: c.id, opts: w >= 2 ? ['arms', 'foot', 'back'] : ['arms', 'foot', 'back'] }; } }
   if (best) return best;
   bd = 1.6;
   for (const id in G.players) { const q = G.players[id]; if (q === me || !q.visible || q.downed || !q.bound || q.dragged) continue; const d = dist(q.rx, q.ry, me.x, me.y); if (d < bd) { bd = d; best = { k: 'p', id, opts: ['lead'], standing: true }; } }

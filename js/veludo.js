@@ -105,7 +105,7 @@ function velMsg(p, m) {
 
 // ---------------- CLIENTE ----------------
 if (typeof BUFF_NAMES !== 'undefined') BUFF_NAMES.cheer = 'Animado (+8% de experiência)';
-if (typeof NPC_LOOKS !== 'undefined' && typeof heroLook === 'function') {
+if (typeof NPC_LOOKS !== 'undefined' && typeof heroLook === 'function' && typeof tone === 'function') {
   const lady = (c1, c2, hair, skin, o) => () => Object.assign(heroLook('mage', 'adept', c1), { armor: 'robe', body: tone(c1), body2: tone(c2), accent: tone('#e2b74e'), trim: tone(c2), head: 'none', hairStyle: 'long', hair: tone(hair), skin: tone(skin), weapon: null, cape: false, capeTone: null, shield: null }, o || {});
   NPC_LOOKS.ysolde = lady('#6a1230', '#d8a83a', '#1a1014', '#e8c4a4', { hairStyle: 'bun', hS: 1.04, wS: 0.96, capeTone: tone('#3a0a1c'), cape: true });   /* ex-cortesã que venceu: vinho e ouro */
   NPC_LOOKS.vl_host = lady('#8a2a4a', '#f0d8b0', '#5a2a14', '#d8a880');
