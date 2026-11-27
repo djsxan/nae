@@ -658,6 +658,7 @@ function objSprite(o, x, y) {
     case O.GUILLOTINE: if (x !== STAGE.x) return natureSprite('guilp', 0); return natureSprite('guil', typeof guilState === 'function' ? guilState() : 0) || smallSprite('cart');
     case O.OAK: return natureSprite('oak', v & 1) || treeSprite(v, 1, 3);
     case O.OLIVE: return natureSprite('olive', v & 1) || treeSprite(v, 1, 3);
+    case O.GONDOLA: return natureSprite('gondola', 0) || treeSprite(v, 1, 3);
     case O.LIGHTHOUSE: return natureSprite('lighthouse', 0) || treeSprite(v, 1, 3);
     case O.BIRCH: return natureSprite('birch', v & 1) || treeSprite(v, 1, 1);
     case O.WILLOW: return natureSprite('willow', v & 1) || treeSprite(v, 1, 0);

@@ -102,3 +102,32 @@ if (typeof NPC_DIALOG !== 'undefined') {
     vv_vasilisa: { greet: 'Dobryy den! Peles quentes para as noites frias, e kvas fresquinho.', opts: [buy('cape_fur'), buy('kvass'), talk] },
     vv_amadou: { greet: 'I ni sogoma! Ouro do Sahel e manteiga de karité para as feridas.', opts: [buy('goldring'), buy('shea'), talk] },
     vv_fatou: { greet: 'Bem-vindo ao Celeiro. Aqui a vila guarda o grão para os tempos difíceis.', opts: [talk] } }); }
+// ============================================================
+//  ETAPA 3: os guardiões dentro dos marcos, as funções de cada marco e os pedidos (missões) dos moradores
+// ============================================================
+const VV_IN = { vv_ines: 'banhos', vv_dariush: 'bazar', vv_mei: 'cha', vv_bogdan: 'igreja', vv_fatou: 'celeiro', vv_wen: 'pagode' };
+const VV_Q = {
+  vv_shirin: { need: { queensilk: 1 }, gold: 180, item: ['carpet', 1], txt: 'Seda da Rainha-Aranha para o tear (1)' },
+  vv_lucia: { need: { hardwood: 5 }, gold: 120, txt: 'Madeira nobre para a gôndola (5)' },
+  vv_fatou: { need: { wheat: 10 }, gold: 60, item: ['shea', 1], txt: 'Trigo para o celeiro (10)' },
+  vv_vasilisa: { need: { boartusk: 4 }, gold: 40, item: ['cape_fur', 1], txt: 'Presas de javali para os botões das capas (4)' },
+  vv_wen: { need: { wispdust: 3 }, gold: 100, item: ['mooncake', 2], txt: 'Pó fantasma para o incenso do pagode (3)' },
+  vv_rafael: { need: { gem: 2 }, gold: 150, txt: 'Gemas brutas para o esmalte dos azulejos (2)' } };
+/* os guardiões dos marcos ficam dentro, no lugar da planta */
+if (typeof NPCS !== 'undefined' && typeof BUILDINGS !== 'undefined' && typeof MAP_W !== 'undefined' && MAP_W === 384) for (const id in VV_IN) { const b = BUILDINGS.find(q => q.vk === VV_IN[id]), d = NPCS.find(q => q.id === id); if (!b || !d) continue; const L = interiorLayout(b, 0).npc; if (!L) continue; const [x, y] = bLocal(b, L.i, L.j); d.x = x; d.y = y; delete d.route;
+  if (typeof G !== 'undefined' && G.npcs && G.npcs[id]) Object.assign(G.npcs[id], { x, y, rx: x, ry: y }); }
+if (typeof npcAction === 'function' && typeof S !== 'undefined') { const _naVV3 = npcAction; npcAction = function (p, m) { const d = m && VV_NPCS.find(q => q.id === m.n), sn = d && S.npcs && S.npcs[d.id];
+  if (!d || !sn || !['vvbath', 'vvwheat', 'vvserve', 'vvquest'].includes(m.a)) return _naVV3.apply(this, arguments); if (dist(p.x, p.y, sn.x, sn.y) > 3.5) { tell(p, 'Chegue mais perto para conversar.'); return; }
+  const say = text => Net.toOne(p.id, { t: 'npc', n: d.id, text }), now = now_();
+  if (m.a === 'vvbath' && d.id === 'vv_ines') { if (!canPay(p, 15)) { say('O banho de vapor custa 15 de ouro.'); return; } payCity(p, 15); p.cold = 0; p.infect = Math.max(0, (p.infect || 0) - 1); p.infT = 0; p.buffs.rested = Math.max(p.buffs.rested || 0, now) + 240000; if (typeof cstMaxOf === 'function') p.cst = cstMaxOf(p); sendStat(p); say('♨ Vapor de eucalipto, água morna e uma laranja no fim. Saia leve! (sem frio, menos febre, Bem descansado por 4 minutos)'); return; }
+  if (m.a === 'vvwheat' && d.id === 'vv_fatou') { const n = p.inv.wheat || 0; if (!n) { say('Traga trigo da fazenda: o celeiro compra por um preço justo.'); return; } const q = Math.min(n, 20), g = Math.round(q * LOOT.wheat.price * 1.5); p.inv.wheat -= q; if (p.inv.wheat <= 0) delete p.inv.wheat; p.gold = (p.gold || 0) + g; sendStat(p); say('🌾 ' + q + ' espigas guardadas. Aqui estão ' + g + ' de ouro. O celeiro agradece.'); return; }
+  if (m.a === 'vvserve' && d.id === 'vv_mei') { if (!p.sit) { say('Sente-se a uma das mesas que eu sirvo o chá.'); return; } if (!canPay(p, 10)) { say('A xícara servida custa 10 de ouro.'); return; } payCity(p, 10); p.water = Math.min(100, (p.water ?? 100) + 50); p.buffs.rested = Math.max(p.buffs.rested || 0, now) + 180000; sendStat(p); near(sn.x, sn.y, { t: 'anim', w: 'n', id: d.id, a: 'offer', tx: p.x, ty: p.y, ms: 1400 }); say('🍵 Mei Lin serve o chá com as duas mãos. Beba devagar. (Bem descansado por 3 minutos)'); return; }
+  if (m.a === 'vvquest') { const Q = VV_Q[d.id]; if (!Q) return; const day = estDay(); p.vvq = p.vvq || {}; if (p.vvq[d.id] === day) { say('Você já me ajudou hoje. Volte amanhã!'); return; }
+    const miss = Object.keys(Q.need).filter(k => (p.inv[k] || 0) < Q.need[k]); if (miss.length) { say('Preciso de: ' + Object.keys(Q.need).map(k => Q.need[k] + 'x ' + (LOOT[k] ? LOOT[k].name : k)).join(', ') + '. Você ainda não tem tudo.'); return; }
+    for (const k in Q.need) { p.inv[k] -= Q.need[k]; if (p.inv[k] <= 0) delete p.inv[k]; } p.gold = (p.gold || 0) + Q.gold; if (Q.item) p.inv[Q.item[0]] = (p.inv[Q.item[0]] || 0) + Q.item[1]; p.vvq[d.id] = day; sendStat(p);
+    say('Obrigado de coração! Aqui estão ' + Q.gold + ' de ouro' + (Q.item ? ' e ' + (Q.item[1] > 1 ? Q.item[1] + 'x ' : '') + LOOT[Q.item[0]].name : '') + '.'); near(sn.x, sn.y, { t: 'anim', w: 'n', id: d.id, a: 'cheer', ms: 1400 }); return; }
+  return _naVV3.apply(this, arguments); }; }
+if (typeof NPC_DIALOG !== 'undefined') { const add = (k, o) => { if (NPC_DIALOG[k]) NPC_DIALOG[k].opts.splice(NPC_DIALOG[k].opts.length - 1, 0, o); };
+  add('vv_ines', ['♨ Banho de vapor — 15 ouro', { a: 'vvbath' }]); NPC_DIALOG.vv_ines.greet = 'Bem-vindo aos Banhos do Pátio! Água morna, vapor de eucalipto e laranjas do nosso pátio.';
+  add('vv_fatou', ['🌾 Vender trigo ao celeiro', { a: 'vvwheat' }]); add('vv_mei', ['🍵 Pedir uma xícara servida à mesa — 10 ouro', { a: 'vvserve' }]);
+  for (const id in VV_Q) add(id, ['📜 Pedido: ' + VV_Q[id].txt, { a: 'vvquest' }]); }

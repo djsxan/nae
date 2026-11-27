@@ -15,7 +15,7 @@ const O = {
   STATUE: 37, BRAZIER: 38, DUMMY: 39, WATERFALL: 40, LOWWALL: 41, IVY: 42, ANVIL: 43, WEAPONRACK: 44, CART: 45, TABLE: 46, CAVE: 47, HOARD: 48, ARMORPILE: 49, RUINTOWER: 50, OAK: 51, BIRCH: 52, WILLOW: 53, FERN: 54, ROOTS: 55, SHROOMS: 56, BERRY: 57, HERB: 58, WHEAT: 67, WHEATSPROUT: 68, BOULDER: 59, GUILLOTINE: 60, STOOL: 61, STAGEFLOOR: 62, VITRINE: 63, FRUITCRATE: 64, WATERWHEEL: 65, NOTICEBOARD: 66,
 };
 O.SCAFFOLD = 69;   /* andaime das obras do lote */
-O.OLIVE = 70; O.LIGHTHOUSE = 71;   /* Arredores: oliveira e o Farol do Cabo */
+O.OLIVE = 70; O.LIGHTHOUSE = 71; O.GONDOLA = 72;   /* Arredores: oliveira e o Farol do Cabo */
 const BLOCKING = new Set([O.OLIVE, O.LIGHTHOUSE, O.SCAFFOLD, O.TREE, O.PINE, O.ROCK, O.FOUNTAIN, O.STUMP, O.DEADTREE, O.GRAVE, O.TENT,
   O.CAMPFIRE, O.FENCE, O.BARREL, O.CRATE, O.HAY, O.WELL, O.STALL, O.LOG, O.SPIKES,
   O.WALL, O.TOWER, O.PART, O.RUBBLEBIG, O.CAVE, O.HOARD, O.RUINTOWER, O.OAK, O.BIRCH, O.WILLOW, O.BOULDER, O.GUILLOTINE, O.STOOL, O.VITRINE, O.FRUITCRATE, O.WATERWHEEL, O.NOTICEBOARD, O.STATUE, O.BRAZIER, O.DUMMY, O.WATERFALL, O.LOWWALL, O.ANVIL, O.WEAPONRACK, O.CART, O.TABLE]);
@@ -488,6 +488,14 @@ function interiorLayoutBase(b, fl = 0) {
     if (wk === 'bakery') { put('stove', w - 2, 0); put('stove', w - 3, 0); put('display', 1, 0, { v: 0 }); }
     else if (wk === 'mill' || wk === 'wheat') { put('crate', w - 2, 0); put('hay', 1, 0); }
     else if (wk === 'alch') { put('stove', w - 2, 0); put('shelf', 1, 0); } else if (wk === 'mine') { put('anvil', w - 2, 1); put('rack', 1, 0); } else if (wk === 'saw' || wk === 'carp') { put('rack', 1, 0); put('crate', w - 1, h - 1); } else { put('crate', 1, 0); put('barrel', w - 1, h - 1); }
+  } else if (k === 'vila') {   /* Vila dos Viajantes: por dentro de cada marco (o guardião fica no lugar marcado com npcAt) */
+    const vk = b.vk;
+    if (vk === 'banhos') { put('ofuro', 0, 0, { w: 2, h: 2, block: false }); put('ofuro', w - 2, 0, { w: 2, h: 2, block: false }); put('pew', 0, 3, { w: 2, seat: 3 }); put('pew', w - 2, 3, { w: 2, seat: 3 }); put('plantpot', dc, 0, { block: false }); put('kilim', dc - 1, h - 3, { w: 2, h: 1, block: false }); npcAt(dc, 2); }
+    else if (vk === 'bazar') { put('counter', 0, 1, { w: 2 }); put('counter', w - 2, 1, { w: 2 }); put('kilim', 1, 3, { w: 2, h: 2, block: false }); put('kilim', w - 3, 4, { w: 2, h: 2, block: false }); put('baskets', 0, 4); put('baskets', w - 1, 3, { v: 1 }); put('crate', 0, h - 2); put('barrel', w - 1, h - 2); put('display', dc, 0, { v: 0 }); npcAt(dc, 2); }
+    else if (vk === 'cha') { put('counter', 0, 0, { w: 2 }); put('kakejiku', 3, 0, { block: false }); put('andon', w - 1, 0, { block: false }); put('table', 1, 2); put('chair', 0, 2, { seat: 1 }); put('chair', 2, 2, { seat: 5 }); put('table', w - 2, 3); put('chair', w - 1, 3, { seat: 5 }); put('byobu', w - 1, 1, { block: false }); put('ikebana', 0, h - 2, { block: false }); npcAt(1, 1); }
+    else if (vk === 'igreja') { put('altar', dc - 1, 0, { w: 3 }); put('candles', 0, 0); put('candles', w - 1, 0); put('pew', 0, 2, { w: 2, seat: 3 }); put('pew', w - 2, 2, { w: 2, seat: 3 }); put('pew', 0, 4, { w: 2, seat: 3 }); put('pew', w - 2, 4, { w: 2, seat: 3 }); npcAt(dc, 1); }
+    else if (vk === 'celeiro') { put('hay', 0, 0); put('hay', 1, 0); put('hay', 0, 1); put('baskets', w - 1, 0); put('crate', w - 2, 0); put('crate', w - 1, 1); put('barrel', 0, h - 2); put('barrel', w - 1, h - 2); put('baskets', 2, 0, { v: 1 }); npcAt(dc, 2); }
+    else if (vk === 'pagode') { put('altar', 0, 0, { w: 3 }); put('andon', 0, 1, { block: false }); put('andon', w - 1, 1, { block: false }); npcAt(1, 1); }
   } else if (k === 'house' && b.office === 'tattoo') {   // estúdio de tatuagem: a cadeira, a mesa das tintas, o quadro de desenhos e o baú do velho marinheiro
     npcAt(1, 1); put('tatchair', 2, 1, { seat: 7 }); put('inktable', 3, 1); put('flashwall', 1, 0, { w: 2, block: false }); put('anchorprop', 0, 0, { block: false, force: true }); put('crate', w - 1, h - 1); put('barrel', 0, h - 1); put('rug', 1, 2, { w: 2, block: false, force: true });
   } else if (k === 'house' && b.office === 'agency') {   // agência de empregos: balcão com a agenciadora, quadro de candidatos com retratos e banco de espera junto à fachada
@@ -831,7 +839,7 @@ const BASTIONS = TEST3D ? [] : [
 ];
 const RIVER_PTS = [[328, 114], [322, 146], [332, 176], [352, 198]];   /* Ribeiro do Véu: sai do poço da cachoeira da Garganta e vai ao mar do leste */
 // ---- ARREDORES DE NAE (mapa 384×384, Prancheta 27/11): regiões, mar, serra, rios, cachoeiras e lago em coordenadas do mapa novo ----
-const ARRON = !TEST3D && MAP_W === 384;
+const ARRON = !TEST3D && MAP_W === 384, VILA_GONDOLAS = [];
 const ARR = {
   regions: [   /* a ordem é a prioridade (a primeira que contém o ponto) */
     { id: 'serra', poly: [[0,0],[384,0],[384,40],[330,46],[290,30],[250,38],[210,26],[170,34],[130,24],[90,40],[50,52],[20,70],[0,80]] },
@@ -1401,6 +1409,7 @@ function generateWorld() {
     lane(C - 74, C - 34, C - 73, C + 30, T.COBBLE);   /* Rua do Cais (beira-rio, norte–sul) */
     lane(C - 91, C - 32, C - 91, C + 28);             /* viela do terraço do meio */
     lane(C - 104, C - 32, C - 104, C + 28);           /* viela do terraço alto */
+    VILA_GONDOLAS.length = 0; VILA_GONDOLAS.push([C - 69, C - 23], [C - 63, C - 22]);
     lane(C - 82, C - 6, C - 75, C - 2, T.COBBLE);     /* Praça do Mercado */
     lane(C - 108, C - 1, C - 59, C - 1); lane(C - 108, C + 2, C - 59, C + 2);   /* calçadas dos dois lados da estrada do oeste */
     /* canal veneziano do rio até a rua do cais, com ponte de madeira em arco na rua */
@@ -1658,6 +1667,7 @@ function generateWorld() {
     /* muros de arrimo dos terraços (com passagens nas ruas e a cada poucos passos) */
     for (const tx of [C - 76, C - 92]) for (let y = C - 34; y <= C + 30; y++) { if (Math.abs(y - C) <= 3) continue; const i = idx(tx, y); if (inb(tx, y) && bld[i] < 0 && !rdir[i] && ground[i] !== T.WATER) obj[i] = (y + 300) % 3 === 0 ? O.LOWWALL : O.FLOWERBED; }
     /* Praça do Mercado: fonte, bancos, lampiões e bancas */
+    for (const [gx, gy] of VILA_GONDOLAS) { const i = idx(gx, gy); if (inb(gx, gy) && ground[i] === T.WATER) obj[i] = O.GONDOLA; }   /* gôndolas paradas no canal */
     put(C - 79, C - 4, O.FOUNTAIN); put(C - 81, C - 6, O.BENCH); put(C - 76, C - 6, O.BENCH); put(C - 82, C - 2, O.STALL); put(C - 75, C - 2, O.STALL);
     for (let y = C - 32; y <= C + 28; y += 6) { put(C - 75, y, O.LAMP); put(C - 90, y + 3, O.LAMP); }
     /* andaluz: laranjeiras e vasos no pátio dos banhos */
@@ -1956,7 +1966,7 @@ function walkableTile(x, y, z = 0) {
   return g !== T.WATER && g !== T.CLIFF && !BLOCKING.has(WORLD.obj[i]) && !NPC_AT.has(i);
 }
 // objetos redondos: colidem só no tamanho real (círculo), não no tile inteiro
-const OBJ_R = { [O.OLIVE]: 0.3, [O.LIGHTHOUSE]: 0.55, [O.NOTICEBOARD]: 0.3, [O.WATERWHEEL]: 0.45, [O.TREE]: 0.38, [O.PINE]: 0.34, [O.OAK]: 0.44, [O.BIRCH]: 0.26, [O.WILLOW]: 0.4, [O.ROCK]: 0.34, [O.STUMP]: 0.24, [O.DEADTREE]: 0.3, [O.GRAVE]: 0.28, [O.CAMPFIRE]: 0.3,
+const OBJ_R = { [O.GONDOLA]: 0.4, [O.OLIVE]: 0.3, [O.LIGHTHOUSE]: 0.55, [O.NOTICEBOARD]: 0.3, [O.WATERWHEEL]: 0.45, [O.TREE]: 0.38, [O.PINE]: 0.34, [O.OAK]: 0.44, [O.BIRCH]: 0.26, [O.WILLOW]: 0.4, [O.ROCK]: 0.34, [O.STUMP]: 0.24, [O.DEADTREE]: 0.3, [O.GRAVE]: 0.28, [O.CAMPFIRE]: 0.3,
   [O.BARREL]: 0.28, [O.CRATE]: 0.32, [O.HOARD]: 0.5, [O.HAY]: 0.38, [O.BRAZIER]: 0.24, [O.DUMMY]: 0.22, [O.STATUE]: 0.4, [O.ANVIL]: 0.3, [O.WEAPONRACK]: 0.32, [O.WELL]: 0.46 };
 function solidTile(x, y, L) {
   if (!inBounds(x, y)) return true;
