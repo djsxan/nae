@@ -6,7 +6,7 @@
 const CM_DISTRICTS = [
   { n: 'Alto do Banco', x: -22, y: -24 }, { n: 'Rua Nova', x: -22, y: 11 }, { n: 'Centro', x: -3, y: 8 }, { n: 'Bairro do Mercado', x: 0, y: 24 },
   { n: 'Bairro Nobre', x: 22, y: -12 }, { n: 'Bairro da Guarda', x: 25, y: -27 }, { n: 'Castelo de Nae', x: -1, y: -17, big: 1 },
-  { n: 'Casas Nobres', x: 44, y: 24 }, { n: 'Largo da Catedral', x: 33, y: 12 }, { n: 'Rua dos Prazeres', x: 56, y: -2 }, { n: 'Vila do Oeste', x: -68, y: -20 },
+  { n: 'Casas Nobres', x: 44, y: 24 }, { n: 'Largo da Catedral', x: 33, y: 12 }, { n: 'Rua dos Prazeres', x: 56, y: -2 }, { n: 'Vila dos Viajantes', x: -68, y: -20 },
 ];
 const CM_STREETS = [
   { n: 'Avenida Real', a: [0.5, 9], b: [0.5, 30] }, { n: 'Rua do Mercado', a: [-30, 5.5], b: [-10, 5.5] }, { n: 'Rua do Mercado', a: [8, 5.5], b: [30, 5.5] },

@@ -1382,27 +1382,31 @@ function generateWorld() {
   street(KEEP.x0 - 2, KEEP.y0, KEEP.x0 - 1, KEEP.y1); street(KEEP.x1 + 1, KEEP.y0, KEEP.x1 + 1, KEEP.y1);   /* a viela do leste fica com 1 casa */
   street(KEEP.x0, KEEP.by + 1, KEEP.yx0 - 1, KEEP.y1); street(KEEP.yx1 + 1, KEEP.by + 1, KEEP.x1, KEEP.y1);   /* largos dos dois lados do pátio */
   for (let i = 0; i < bld.length; i++) if (bld[i] === -2) bld[i] = -1;   // marcas temporárias que sobraram (a imobiliária muda de lugar depois de sorteada)
-  // ---- vila do oeste (do outro lado do rio, na estrada que sai do portão oeste): casas espaçadas e oficinas ----
-  const HAM = { x0: CASTLE_OLD.x0 - 58, y0: C - 22, x1: CASTLE_OLD.x0 - 27, y1: C + 19, road: C };
+  // ---- Vila dos Viajantes (Prancheta da Vila, 27/11): seis povos do outro lado da ponte do Rio Velho; veneziano e chinês na beira do rio, andaluz e persa no terraço do meio, eslavo e saheliano no alto ----
+  /* a ordem dos prédios é a de sempre (os números salvos não mudam); os 7 novos entram no fim da lista */
+  const HAM = { x0: C - 108, y0: C - 36, x1: C - 59, y1: C + 31, road: C };
   if (!TEST3D) {
-    const hb = (x, y, kind, w, h, H, RH, name, ex) => BUILDINGS.push({ x, y, ...BH(kind, w, h, H, RH, name, { floors: 1, ...ex }) });
-    const X = d => CASTLE_OLD.x0 - d;   // x0 = 96 → vila entre x 38 e 69
-    hb(X(52), C - 7, 'house', 4, 4, 2.3, 2.4, '', { v: 1, door: 'S', ham: 1 });
-    hb(X(44), C - 7, 'house', 5, 4, 2.5, 2.5, '', { v: 3, door: 'S', ham: 1 });
-    hb(X(38), C - 8, 'workshop', 6, 5, 2.6, 2.4, 'Carpintaria da Vila', { wk: 'carp', door: 'S' });
-    hb(X(31), C - 8, 'workshop', 5, 5, 2.6, 2.6, 'Alambique do Rio', { wk: 'alch', door: 'S' });
-    hb(X(52), C + 4, 'house', 4, 4, 2.3, 2.4, '', { v: 0, door: 'N', ham: 1 });
-    hb(X(46), C + 4, 'house', 5, 4, 2.5, 2.5, '', { v: 2, door: 'N', ham: 1 });
-    hb(X(32), C + 3, 'workshop', 5, 5, 2.8, 2.4, 'Serraria do Rio', { wk: 'saw', door: 'N' });
-    hb(X(50), C + 11, 'workshop', 4, 3, 2.2, 2.2, 'Horta da Vila', { wk: 'farm', door: 'N' });
-    hb(X(48), C - 17, 'workshop', 4, 4, 2.4, 2.2, 'Mina da Pedreira', { wk: 'mine', door: 'S' });
-    for (let y = HAM.y0; y <= HAM.y1; y++) for (let x = HAM.x0; x <= HAM.x1; x++) { if (!inb(x, y)) continue; const i = idx(x, y); if (ground[i] === T.WATER || ground[i] === T.SHALLOW || ground[i] === T.CLIFF) continue; zone[i] = Z.VILLAGE; if (!rdir[i]) { obj[i] = O.NONE; if (ground[i] !== T.BRIDGE) ground[i] = T.GRASS; } }
-    const lane = (ax, ay, bx, by) => { for (let y = ay; y <= by; y++) for (let x = ax; x <= bx; x++) if (inb(x, y) && ground[idx(x, y)] !== T.WATER) { ground[idx(x, y)] = T.DIRT; rdir[idx(x, y)] = bx - ax > by - ay ? 1 : 2; } };
-    lane(X(56), C - 1, X(29), C - 1);    // calçada de terra dos dois lados da estrada
-    lane(X(56), C + 2, X(29), C + 2);
-    lane(X(48), C - 13, X(47), C - 3);   // trilha da mina
-    lane(X(40), C + 3, X(34), C + 7);    // pracinha
-    lane(X(49), C + 8, X(48), C + 10);   // trilha da horta
+    const hb = (x, y, kind, w, h, H, RH, name, ex) => BUILDINGS.push({ x, y, ...BH(kind, w, h, H, RH, name, { floors: 1, ...(kind === 'house' ? { ham: 1 } : {}), ...ex }) });
+    hb(C - 85, C - 21, 'house', 4, 4, 2.4, 1.2, '', { v: 1, door: 'E', cult: 'and' });   /* Casa 8: casa de pátio andaluza */
+    hb(C - 67, C - 10, 'house', 5, 4, 3.0, 0.9, '', { v: 3, door: 'W', cult: 'ven' });   /* Casa 9: casa de canal veneziana */
+    hb(C - 88, C + 19, 'workshop', 6, 5, 2.6, 1.6, 'Carpintaria da Vila', { wk: 'carp', door: 'E', cult: 'per' });   /* teares de tapete na frente */
+    hb(C - 67, C - 17, 'workshop', 5, 5, 3.0, 1.0, 'Alambique do Rio', { wk: 'alch', door: 'W', cult: 'ven' });   /* vidraria veneziana */
+    hb(C - 86, C + 13, 'house', 4, 4, 2.4, 1.0, '', { v: 0, door: 'E', cult: 'per' });   /* Casa 10: casa de cúpula persa */
+    hb(C - 102, C - 20, 'house', 5, 4, 2.4, 2.2, '', { v: 2, door: 'E', cult: 'esl' });   /* Casa 11: izbá eslava */
+    hb(C - 67, C - 30, 'workshop', 5, 5, 2.8, 1.4, 'Serraria do Rio', { wk: 'saw', door: 'W', cult: 'ven' });
+    hb(C - 69, C + 19, 'workshop', 4, 3, 2.2, 1.6, 'Horta da Vila', { wk: 'farm', door: 'N', cult: 'chi' });   /* jardim de chá */
+    hb(C - 102, C + 19, 'workshop', 4, 4, 2.4, 1.2, 'Mina da Pedreira', { wk: 'mine', door: 'E', cult: 'sah' });
+    for (let y = HAM.y0; y <= HAM.y1; y++) for (let x = HAM.x0; x <= HAM.x1; x++) { if (!inb(x, y)) continue; const i = idx(x, y); if (ground[i] === T.WATER || ground[i] === T.SHALLOW || ground[i] === T.CLIFF) continue; zone[i] = Z.VILLAGE; if (!rdir[i]) { obj[i] = O.NONE; ground[i] = vnoise(x / 4, y / 4, 641) > 0.62 ? T.DIRT : T.GRASS; } }
+    const lane = (ax, ay, bx, by, g) => { for (let y = ay; y <= by; y++) for (let x = ax; x <= bx; x++) if (inb(x, y) && ground[idx(x, y)] !== T.WATER) { ground[idx(x, y)] = g || T.DIRT; rdir[idx(x, y)] = bx - ax > by - ay ? 1 : 2; } };
+    lane(C - 74, C - 34, C - 73, C + 30, T.COBBLE);   /* Rua do Cais (beira-rio, norte–sul) */
+    lane(C - 91, C - 32, C - 91, C + 28);             /* viela do terraço do meio */
+    lane(C - 104, C - 32, C - 104, C + 28);           /* viela do terraço alto */
+    lane(C - 82, C - 6, C - 75, C - 2, T.COBBLE);     /* Praça do Mercado */
+    lane(C - 108, C - 1, C - 59, C - 1); lane(C - 108, C + 2, C - 59, C + 2);   /* calçadas dos dois lados da estrada do oeste */
+    /* canal veneziano do rio até a rua do cais, com ponte de madeira em arco na rua */
+    for (let y = C - 23; y <= C - 22; y++) for (let x = C - 79; x <= C - 52; x++) { if (!inb(x, y)) continue; const i = idx(x, y); if (bld[i] >= 0) continue; if (x >= C - 74 && x <= C - 73) { ground[i] = T.BRIDGE; rdir[i] = 2; } else { ground[i] = T.WATER; river[i] = 1; flow[i * 2] = 1; flow[i * 2 + 1] = 0; obj[i] = O.NONE; } }
+    /* cais da beira chinesa, de madeira sobre o rio */
+    for (const [cx0, cy0, cw] of [[C - 61, C + 7, 5], [C - 61, C + 15, 4]]) for (let x = cx0; x < cx0 + cw; x++) { const i = idx(x, cy0); if (inb(x, cy0)) { ground[i] = T.BRIDGE; rdir[i] = 1; obj[i] = O.NONE; } }
   }
   // pousada do outro lado da rua, atrás das lojas da taverna, porta para a rua (no fim da lista: não muda o número dos prédios salvos)
   if (!TEST3D) BUILDINGS.push({ x: C - 29, y: C + 24, ...BH('hotel', 7, 7, 2.3, 1.25, 'Pousada do Javali Magro', { floors: 1, door: 'E', dcol: 6 }) });   // 7x7, bem baixa (3 cabines), um passo mais longe da loja de elixir
@@ -1412,8 +1416,8 @@ function generateWorld() {
     { x: C + 13, y: C - 5, ...BH('manor', 6, 6, 4.8, 3.2, 'Casa Brisane', { door: 'E', v: 2 }) },
     { x: C + 26, y: C - 5, ...BH('manor', 6, 6, 4.6, 3.0, 'Casa Eldren', { door: 'W' }) });
   if (!TEST3D) BUILDINGS.push(   // fazenda e moinho na Vila do Oeste; padaria junto à praça do mercado
-    { x: C - 72, y: C - 21, ...BH('workshop', 5, 4, 2.6, 2.4, 'Fazenda do Trigo Dourado', { wk: 'wheat', door: 'S', floors: 1 }) },
-    { x: C - 65, y: C - 21, ...BH('workshop', 4, 4, 3.6, 2.6, 'Moinho do Vento Leste', { wk: 'mill', door: 'S', floors: 1 }) },
+    { x: C - 102, y: C - 14, ...BH('workshop', 5, 4, 2.6, 2.4, 'Fazenda do Trigo Dourado', { wk: 'wheat', door: 'E', floors: 1, cult: 'esl' }) },
+    { x: C - 101, y: C + 13, ...BH('workshop', 4, 4, 3.6, 2.6, 'Moinho do Vento Leste', { wk: 'mill', door: 'E', floors: 1, cult: 'sah' }) },
     { x: C + 4, y: C + 21, ...BH('workshop', 5, 4, 2.6, 1.9, 'Padaria da Praça', { wk: 'bakery', door: 'E', dcol: 2, floors: 1 }) });   // porta para a avenida da catedral   // casa nova na rua do banco, alinhada com as lojas   // porta direto na rua principal
   if (!TEST3D) BUILDINGS.push(   // pátio interno do castelo (no fim da lista: não muda o número dos prédios salvos)
     { x: C - 8, y: C - 9, ...BH('kstable', 4, 5, 2.4, 2.0, 'Estábulo Real', { floors: 1, door: 'E' }) },
@@ -1442,6 +1446,14 @@ function generateWorld() {
       { x: X0 + 17, y: C - 19, ...BH('baths', 13, 18, 4.2, 1.0, 'Termas de Aurora', { door: 'W', floors: 1, deco: 'thermae' }) },   /* 13 x 18: do Clube até perto da Casa de Veludo */
       { x: X0 + 17, y: C + 7, ...BH('velvet', 13, 12, 9.33, 1.2, 'Casa de Veludo', { door: 'W', floors: 4, deco: 'velvet', stairs: { 0: 'lift', 1: 'lift', 2: 'lift' } }) });
     BUILDINGS.push({ x: C - 11, y: C + 22, ...BH('house', 4, 4, 3.4, 2.0, 'Estúdio Âncora & Tinta', { v: 1, door: 'S', office: 'tattoo', floors: 1 }) });   /* estúdio de tatuagem, no lote ao lado do Estábulo (no fim da lista) */
+    BUILDINGS.push(   /* Vila dos Viajantes: os prédios novos (no fim da lista: não muda o número dos prédios salvos) */
+      { x: C - 85, y: C - 15, ...BH('house', 4, 4, 2.4, 1.2, '', { v: 1, door: 'E', cult: 'and', ham: 1, floors: 1 }) },
+      { x: C - 87, y: C - 30, ...BH('vila', 7, 6, 2.8, 1.6, 'Banhos do Pátio', { door: 'E', cult: 'and', vk: 'banhos', floors: 1 }) },
+      { x: C - 89, y: C + 5, ...BH('vila', 8, 6, 2.6, 1.8, 'Bazar das Cúpulas', { door: 'E', cult: 'per', vk: 'bazar', floors: 1 }) },
+      { x: C - 102, y: C - 29, ...BH('vila', 6, 7, 3.4, 3.0, 'Igreja das Cúpulas', { door: 'E', cult: 'esl', vk: 'igreja', floors: 1 }) },
+      { x: C - 102, y: C + 5, ...BH('vila', 6, 6, 3.0, 0.6, 'Celeiro de Adobe', { door: 'E', cult: 'sah', vk: 'celeiro', floors: 1 }) },
+      { x: C - 68, y: C + 5, ...BH('vila', 6, 5, 2.6, 1.6, 'Casa de Chá do Rio', { door: 'W', cult: 'chi', vk: 'cha', floors: 1 }) },
+      { x: C - 65, y: C + 13, ...BH('vila', 3, 3, 5.0, 0.8, 'Pagode da Garça', { door: 'W', cult: 'chi', vk: 'pagode', floors: 1 }) });
     for (let y = y0; y <= y1; y++) for (let x = X0; x <= X1; x++) used[idx(x, y)] = 1;
     HOUSE_SEATS.forEach((S1, k) => { const bx = X0 + 4 + k * 2.4 | 0, by = k % 2 ? C + 4 : C - 3; const i = idx(bx, by); if (bld[i] < 0) { obj[i] = O.BANNER; BANNER_HOUSE[i] = S1.id; } });   /* estandartes das casas na praça */
   }
@@ -1519,7 +1531,7 @@ function generateWorld() {
   const deco = (x, y, o) => { const i = idx(x, y); if (doorFree.has(i)) return; if (bld[i] < 0 && !stair[i] && !fl1[i] && !nearBld(x, y)) obj[i] = o; };
   const decoAny = (x, y, o) => { const i = idx(x, y); if (doorFree.has(i)) return; if (bld[i] < 0 && !stair[i] && !fl1[i]) obj[i] = o; };
   // campo de trigo da fazenda (Vila do Oeste)
-  for (let y = C - 16; y <= C - 11; y++) for (let x = C - 76; x <= C - 64; x++) { const i = idx(x, y); if (bld[i] >= 0 || rdir[i]) continue; ground[i] = T.DIRT; obj[i] = (x + y) % 7 === 0 ? O.WHEATSPROUT : O.WHEAT; }
+  for (let y = C - 16; y <= C - 10; y++) for (let x = C - 113; x <= C - 104; x++) { const i = idx(x, y); if (bld[i] >= 0 || rdir[i]) continue; ground[i] = T.DIRT; obj[i] = (x + y) % 7 === 0 ? O.WHEATSPROUT : O.WHEAT; }
   // avenida da Catedral: da porta (escadaria) até a praça do portão sul
   { const AX0 = C + 10, AX1 = C + 14, AY0 = C + 17, AY1 = C + 27, PX0 = C - 1, PX1 = C + 14, PY0 = C + 28, PY1 = C + 31, mid = C + 12;
     const pave = (x, y) => { const i = idx(x, y); if (bld[i] >= 0) return; obj[i] = O.NONE; if (rdir[i]) return; const d = Math.abs(x - mid); ground[i] = d === 0 ? T.FLOORSTONE : (d + y) % 2 ? T.STONE : T.FLOORSTONE; };
@@ -1640,26 +1652,26 @@ function generateWorld() {
     const r = R(x, y, 77);
     obj[i] = r < 0.025 ? O.TREE : r < 0.05 ? O.BUSH : r < 0.15 ? O.TALLGRASS : r < 0.22 ? O.FLOWER : O.NONE;
   }
-  if (!TEST3D) { // decoração da vila do oeste (depois dos bosques em volta, para nada nascer em cima)
-    const X = d => x0 - d, put = (x, y, o) => { if (!inb(x, y)) return; const i = idx(x, y); if (bld[i] >= 0 || doorFree.has(i) || ground[i] === T.WATER || ground[i] === T.SHALLOW) return; obj[i] = o; };
-    for (let y = HAM.y0; y <= HAM.y1; y++) for (let x = HAM.x0; x <= HAM.x1; x++) { if (!inb(x, y)) continue; const i = idx(x, y); if (zone[i] === Z.VILLAGE && bld[i] < 0 && (obj[i] === O.TREE || obj[i] === O.BUSH || obj[i] === O.ROCK)) obj[i] = O.NONE; }
-    put(X(37), C + 5, O.WELL); put(X(39), C + 3, O.BENCH); put(X(35), C + 7, O.BENCH);
-    for (let x = X(56); x <= X(30); x += 6) { put(x, C - 3, O.LAMP); put(x + 3, C + 3, O.LAMP); }
-    // quintais com cerca baixa e hortinhas atrás das casas
-    for (const [bx, by, w, back] of [[X(52), C - 7, 4, -1], [X(44), C - 7, 5, -1], [X(52), C + 4, 4, 1], [X(46), C + 4, 5, 1]]) { const fy = back < 0 ? by - 2 : by + 5; for (let x = bx - 1; x <= bx + w; x++) put(x, fy, O.FENCE); put(bx, fy - back, O.FLOWERBED); put(bx + w - 1, fy - back, O.CRATE); }
-    // serraria: toras empilhadas e a roda d'água no rio
-    for (const [x, y] of [[X(33), C + 9], [X(32), C + 9], [X(30), C + 9], [X(34), C + 3]]) put(x, y, O.LOG); put(X(28), C + 2, O.CART); put(X(27), C + 5, O.WATERWHEEL);
-    // carpintaria e alambique
-    put(X(39), C - 3, O.CRATE); put(X(32), C - 3, O.BARREL); put(X(26), C - 6, O.BARREL); put(X(39), C - 9, O.LOG);
-    // horta: canteiros cercados
-    for (let x = X(54); x <= X(40); x++) { put(x, C + 9, x === X(48) || x === X(49) ? O.NONE : O.FENCE); put(x, C + 18, O.FENCE); }
-    for (let y = C + 10; y <= C + 17; y++) { put(X(54), y, O.FENCE); put(X(40), y, O.FENCE); }
-    for (let y = C + 15; y <= C + 16; y++) for (let x = X(53); x <= X(41); x++) put(x, y, (x + y) % 3 ? O.HERB : O.FLOWERBED);
-    for (let x = X(46); x <= X(41); x++) put(x, C + 12, O.HERB);
-    put(X(53), C + 12, O.HAY); put(X(53), C + 10, O.BARREL);
-    // pedreira em volta da mina
-    for (const [dx, dy] of [[-3, -2], [-2, -3], [5, -2], [6, 0], [-3, 1], [5, 3], [-4, 3], [1, -3], [3, -3]]) put(X(48) + dx, C - 17 + dy, O.BOULDER);
-    put(X(46), C - 12, O.CART); put(X(49), C - 12, O.CRATE);
+  if (!TEST3D) { // decoração da Vila dos Viajantes (depois dos bosques em volta, para nada nascer em cima)
+    const put = (x, y, o) => { if (!inb(x, y)) return; const i = idx(x, y); if (bld[i] >= 0 || doorFree.has(i) || ground[i] === T.WATER || ground[i] === T.SHALLOW || ground[i] === T.BRIDGE) return; obj[i] = o; };
+    for (let y = HAM.y0; y <= HAM.y1; y++) for (let x = HAM.x0; x <= HAM.x1; x++) { if (!inb(x, y)) continue; const i = idx(x, y); if (zone[i] === Z.VILLAGE && bld[i] < 0 && (obj[i] === O.TREE || obj[i] === O.BUSH || obj[i] === O.ROCK || obj[i] === O.OAK || obj[i] === O.PINE || obj[i] === O.BIRCH)) obj[i] = O.NONE; }
+    /* muros de arrimo dos terraços (com passagens nas ruas e a cada poucos passos) */
+    for (const tx of [C - 76, C - 92]) for (let y = C - 34; y <= C + 30; y++) { if (Math.abs(y - C) <= 3) continue; const i = idx(tx, y); if (inb(tx, y) && bld[i] < 0 && !rdir[i] && ground[i] !== T.WATER) obj[i] = (y + 300) % 3 === 0 ? O.LOWWALL : O.FLOWERBED; }
+    /* Praça do Mercado: fonte, bancos, lampiões e bancas */
+    put(C - 79, C - 4, O.FOUNTAIN); put(C - 81, C - 6, O.BENCH); put(C - 76, C - 6, O.BENCH); put(C - 82, C - 2, O.STALL); put(C - 75, C - 2, O.STALL);
+    for (let y = C - 32; y <= C + 28; y += 6) { put(C - 75, y, O.LAMP); put(C - 90, y + 3, O.LAMP); }
+    /* andaluz: laranjeiras e vasos no pátio dos banhos */
+    for (const [x, y] of [[C - 89, C - 31], [C - 89, C - 26], [C - 79, C - 31], [C - 79, C - 26]]) put(x, y, O.TREE); for (const [x, y] of [[C - 80, C - 22], [C - 80, C - 16]]) put(x, y, O.FLOWERBED);
+    /* veneziano: toras e a roda d'água da serraria no rio, barris da vidraria */
+    for (const [x, y] of [[C - 62, C - 33], [C - 63, C - 33], [C - 61, C - 32]]) put(x, y, O.LOG); put(C - 61, C - 28, O.WATERWHEEL); put(C - 62, C - 18, O.BARREL); put(C - 62, C - 16, O.CRATE);
+    /* chinês: lanternas vermelhas no cais e canteiros de chá */
+    for (let x = C - 70; x <= C - 65; x++) { put(x, C + 23, x % 2 ? O.HERB : O.FLOWERBED); put(x, C + 24, O.HERB); }
+    /* persa: tapetes secando (caixotes e barris de especiarias) */
+    put(C - 81, C + 19, O.CRATE); put(C - 81, C + 21, O.BARREL); put(C - 82, C + 24, O.CRATE);
+    /* eslavo: feno, cerca e o campo de trigo ao lado */
+    put(C - 108, C - 19, O.HAY); put(C - 106, C - 19, O.HAY); for (let x = C - 113; x <= C - 104; x++) put(x, C - 18, O.FENCE);
+    /* saheliano: pedreira e pedras em volta da mina, carroça */
+    for (const [dx, dy] of [[-2, -1], [-2, 2], [-1, 5], [3, 5], [5, 4]]) put(C - 102 + dx, C + 19 + dy, O.BOULDER); put(C - 97, C + 25, O.CART); put(C - 95, C + 11, O.HAY);
   }
   if (STAGE.x >= 0) for (let yy = STAGE.y - 3; yy <= STAGE.y + 4; yy++) for (let xx = STAGE.x - 3; xx <= STAGE.x + 3; xx++) { const i2 = idx(xx, yy); if (obj[i2] === O.LAMP && Math.hypot(xx - STAGE.x, yy - STAGE.y - 0.5) < 3.2) obj[i2] = O.NONE; }
   for (const n of NPCS) obj[idx(Math.round(n.x), Math.round(n.y))] = O.NONE;
@@ -1808,12 +1820,13 @@ const STAFF_NAMES = {
 const SHOP_TYPE_BY_NAME = { 'Elixires da Lua Prateada': 'witch', 'Boticário de Elva': 'apoth', 'Arcanos & Varinhas': 'arcane', 'Alfaiataria Real': 'tailor', 'Pergaminhos & Mapas': 'scroll' };
 if (!TEST3D) {
   BUILDINGS.forEach((b, bi) => {
-    if (b.kind === 'workshop') NPCS.push({ id: 'st_' + b.wk, kind: 'st_' + b.wk, role: 'artisan', bi, name: STAFF_NAMES[b.wk], ...npcIn(b, { x: b.x + 1, y: b.y + 1 }) });
+    if (b.kind === 'workshop') { let sp = null; if (b.cult) { const L0 = interiorLayout(b, 0).npc; if (L0) { const [x, y] = bLocal(b, L0.i, L0.j); sp = { x, y }; } }   /* vila: o lugar do artesão vem da planta (as portas da vila não ficam no sul) */
+      NPCS.push({ id: 'st_' + b.wk, kind: 'st_' + b.wk, role: 'artisan', bi, name: STAFF_NAMES[b.wk], ...(sp || npcIn(b, { x: b.x + 1, y: b.y + 1 })) }); }
     if (b.kind === 'tower') { const L0 = interiorLayout(b, 0).npc || { i: 4, j: 5 }, [x, y] = bLocal(b, L0.i, L0.j); NPCS.push({ id: 'sxan', kind: 'inventor', bi, name: 'Sxan the Creator', x, y }); }   /* o inventor, atrás do balcão da loja da torre */
     if (b.kind === 'dojo') { const [x, y] = bLocal(b, 3, 1); NPCS.push({ id: 'st_dojo', kind: 'st_dojo', role: 'artisan', bi, name: STAFF_NAMES.dojo, x, y }); }   // o sensei, na frente do kamiza
     const st = b.kind === 'shop' && SHOP_TYPE_BY_NAME[b.name]; if (st) { b.shopType = st; NPCS.push({ id: 'st_' + st, kind: 'st_' + st, role: 'clerk', bi, name: STAFF_NAMES[st], ...npcIn(b, { x: b.x + 1, y: b.y + 1 }) }); }
   });
-  const sq = { x: CENTER - 32 - 37, y: CENTER + 4 };   // pracinha da vila do oeste (x0 - 37)
+  const sq = { x: CENTER - 79, y: CENTER - 3 };   // Praça do Mercado da Vila dos Viajantes
   NPCS.push({ id: 'supplier', kind: 'supplier', role: 'supplier', name: 'Jonas, o Entregador do Fornecedor', x: C + 3.6, y: C + 27 });   // espera as encomendas perto do portão principal
   [['courier1', 'Pip, o Mensageiro', -1.2, 0], ['courier2', 'Lia Ventura, a Mensageira', 1.2, -0.6], ['courier3', 'Tomé Passolargo, o Carroceiro', 1.6, 1.6]].forEach(([id, name, dx, dy]) => NPCS.push({ id, kind: id, role: 'courier', name, x: sq.x + dx, y: sq.y + dy }));
   [['courier4', 'courier1', 'Bento Pé-Ligeiro, o Mensageiro', -1.6, 1.4], ['courier5', 'courier2', 'Clara do Moinho, a Mensageira', 2.4, -0.2], ['courier6', 'courier3', 'Ruy Carreteiro, o Carroceiro', -2.2, -1.0]].forEach(([id, kind, name, dx, dy]) => NPCS.push({ id, kind, role: 'courier', name, x: sq.x + dx, y: sq.y + dy }));   // mais mensageiros

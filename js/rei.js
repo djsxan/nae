@@ -37,7 +37,7 @@ function rkMakeCases() { const H = hRec(), U = sucRec(), L = [], R = rkRec(), kh
   const pris = Object.values(S.players).find(p => p.kjail); if (pris) L.push({ k: 'pris', pid: pris.id, pn: pris.name, who: 'Grum, o carcereiro', t: 'Grum pergunta o que fazer com ' + pris.name + ', preso no calabouço.', o: [['Soltar ' + pris.name], ['Manter preso']], def: 1 });
   L.push({ k: 'faith', who: 'Irmã Lúmina', t: 'A Irmã Lúmina pede ouro para consertar o telhado da Catedral da Aurora.', o: [['Doar 300 do tesouro', 300], ['Negar']], def: 1 });
   if (R.tax > RK.taxHigh) L.push({ k: 'tax', who: 'A guilda dos mercadores', t: 'A guilda dos mercadores pede que o rei baixe os impostos de ' + R.tax + '%.', o: [['Baixar para 10%'], ['Manter']], def: 1 });
-  L.push({ k: 'harvest', who: 'Os camponeses da Vila do Oeste', t: 'Os camponeses da Vila do Oeste perderam a colheita para a geada e pedem ajuda.', o: [['Mandar 200 do tesouro', 200], ['Negar']], def: 1 });
+  L.push({ k: 'harvest', who: 'Os camponeses da Vila dos Viajantes', t: 'Os camponeses da Vila dos Viajantes perderam a colheita para a geada e pedem ajuda.', o: [['Mandar 200 do tesouro', 200], ['Negar']], def: 1 });
   const pri = { corwyn: 0, debt: 1, feud: 2, thief: 3, pris: 4, tax: 5, robbed: 6, faith: 7, harvest: 8 }; L.sort((a, b) => (pri[a.k] - pri[b.k]) + (Math.random() - 0.5) * 3); return L.slice(0, RK.cases).map((c, i) => Object.assign(c, { i, done: null })); }
 function rkResolve(c, o, byHand) { const H = hRec(), U = sucRec(), opt = c.o[o]; if (!opt || c.done != null) return 'Esse caso já foi decidido.'; if (opt[1] && !rkTr(opt[1])) return 'O tesouro não tem ' + opt[1] + ' de ouro.';
   const st = id => H.st[id], kn = sucKingName();

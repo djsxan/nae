@@ -23,8 +23,8 @@ const HERALDS = {
   moranthe: { house: 'Moranthe', field: '#33295a', field2: '#1d1630', metal: '#c9c2e8', charge: 'owl' }, thornvale: { house: 'Thornvale', field: '#21492f', field2: '#14301f', metal: '#e4dcc0', charge: 'boar' },
   solmire: { house: 'Solmire', field: '#4a3a22', field2: '#2b2216', metal: '#e8a33c', charge: 'eclipse' } };
 const HERALD = { house: 'Aurenfell', name: 'Casa Aurenfell', field: '#9a2a1c', field2: '#6e1d14', metal: '#f1cf6a', charge: 'tower', motto: 'A Luz Não se Curva' };
-const VERSION = 'v1.179.0';
-const VERSION_NAME = 'Nae · Porto';
+const VERSION = 'v1.180.0';
+const VERSION_NAME = 'Nae · Vila dos Viajantes';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -509,7 +509,7 @@ const CARVE = {
   wand_arcane: { need: { hardwood: 1, gem: 1 }, lv: 5, desc: 'Carvalho com uma gema na ponta: a melhor.' },
 };
 // reputação por grupo (-100 a 100), presentes que cada grupo gosta, títulos e vantagens
-const REP_G = { cidade: 'Moradores da cidade', vila: 'Vila do Oeste', nobres: 'Nobreza', guarda: 'Guarda', comerc: 'Comerciantes' };
+const REP_G = { cidade: 'Moradores da cidade', vila: 'Vila dos Viajantes', nobres: 'Nobreza', guarda: 'Guarda', comerc: 'Comerciantes' };
 const REP_LIKES = { guarda: ['bread', 'cookedmeat', 'stew', 'venison'], nobres: ['wand', 'wand_fine', 'wand_arcane', 'gem', 'pie'], comerc: ['map', 'herb', 'gem', 'flaxraw'], vila: ['bread', 'apple', 'berries', 'stew'], cidade: ['pie', 'apple', 'bread', 'tea'],
   smith: ['ore', 'gem', 'hardwood'], innkeeper: ['venison', 'pork', 'berries'], fruit: ['apple', 'berries', 'herb'], priest: ['herb', 'tea', 'bread'], broker: ['map', 'gem'], tailor: ['flaxraw', 'gem'], st_witch: ['herb', 'silverleaf', 'gem'] };
 const REP_TITLES = [[90, 'Herói de Nae'], [75, 'Honrado'], [60, 'Respeitado'], [45, 'Cidadão'], [30, 'Suspeito'], [15, 'Mal-visto'], [0, 'Odiado']];
