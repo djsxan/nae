@@ -407,7 +407,7 @@ window.FACE = { style: 'old', expr: 'n' };
      o.bump(y,a,x,z) → deslocamento radial; o.shade(y,a,x,z) → escurecimento 0..1 (cor nos vértices); o.keep(y,a,x,z) → só esses triângulos */
   function tubeG(K, S, o = {}) {
     K = K.map(k => [k[0], k[1], k[2], k[3] || 0]);
-    const M = o.M || 28, N = o.N || 30, y0 = K[0][0], y1 = K[K.length - 1][0], pos = [], col = [], keep = [], idx = [], ex = o.sq || 0, off = o.off || 0;
+    const lod = window.VN_LOD || 1, M = Math.max(10, Math.round((o.M || 28) * lod)), N = Math.max(8, Math.round((o.N || 30) * lod)), y0 = K[0][0], y1 = K[K.length - 1][0], pos = [], col = [], keep = [], idx = [], ex = o.sq || 0, off = o.off || 0;
     const put = (x, y, z, d, k, pc0) => { pos.push(x * S, y * S, z * S); const c = 1 - Math.min(0.6, d); let pc = pc0, w = 1; if (pc0 && pc0.c) { pc = pc0.c; w = pc0.w; }
       if (o.base || pc) { const Bs = o.base || pc, sk = [Bs.r * c * (1 + 0.05 * d), Bs.g * c * (1 - 0.12 * d), Bs.b * c * (1 - 0.22 * d)]; if (pc && w > 0) { const cc = 1 - Math.min(0.4, d * 0.6), sw = [pc.r * cc, pc.g * cc, pc.b * cc]; col.push(sk[0] + (sw[0] - sk[0]) * w, sk[1] + (sw[1] - sk[1]) * w, sk[2] + (sw[2] - sk[2]) * w); } else col.push(sk[0], sk[1], sk[2]); }
       else col.push(c * (1 + 0.05 * d), c * (1 - 0.12 * d), c * (1 - 0.22 * d)); keep.push(k); };
@@ -469,7 +469,8 @@ window.FACE = { style: 'old', expr: 'n' };
         b += (fem ? 0.003 : 0.008) * (0.3 + mus) * g2(x, y, sx * 0.032, -0.2, 0.02, 0.09) * bk;
         if (fem) b -= 0.004 * g2(x, y, sx * 0.03, -0.27, 0.012, 0.012) * bk; }
       b -= (fem ? 0.006 : 0.007) * g2(x, y, 0, -0.02, 0.011, 0.3) * bk;
-      return (b * (P.dm == null ? 1 : P.dm) + bb0 * (P.bb == null ? 1 : P.bb)) * Math.min(1, Math.max(0, (y + 0.3) / 0.07)) + (y < -0.27 ? -0.004 * Math.min(1, (-0.27 - y) / 0.03) : 0); };
+      if (P.ar === 'plate') { b += 0.008 * g2(x, y, 0, 0.02, 0.011, 0.22) * fr; for (const yl of [-0.205, -0.255]) b -= 0.003 * g2(0, y, 0, yl, 1, 0.004); }
+      return (b * (P.dm == null ? 1 : P.dm) + (P.ar === 'plate' ? b - b + (0.008 * g2(x, y, 0, 0.02, 0.011, 0.22) * fr) : 0) + bb0 * (P.bb == null ? 1 : P.bb)) * Math.min(1, Math.max(0, (y + 0.3) / 0.07)) + (y < -0.27 ? -0.004 * Math.min(1, (-0.27 - y) / 0.03) : 0); };
     const shade = (y, a, x, z) => { let d = 0; const s = Math.sin(a), fr = Math.max(0, s), bk = Math.max(0, -s), sd = Math.abs(Math.cos(a));
       if (fem) for (const sx of [-1, 1]) { d += 0.55 * (0.5 + B.size) * g2(x, y, sx * (sep + br * 0.12), bcy - bD * 0.92, br * 0.75, 0.011) * fr; d += 0.18 * capF(x, y, sx * (sep + br * 0.12), bcy - bD * 0.35, br * 0.9, br * 0.4, bD * 0.7, 1) * fr; }
       if (fem) d += 0.45 * B.size * g2(x, y, 0, bcy, 0.012, br * 0.7) * fr;
@@ -478,11 +479,13 @@ window.FACE = { style: 'old', expr: 'n' };
       else d += 0.12 * absD * g2(x, y, 0, -0.1, 0.008, 0.14) * fr;
       d += 0.2 * g2(x, y, 0, -0.02, 0.012, 0.3) * bk;
       for (const sx of [-1, 1]) d += 0.14 * g2(x, y, sx * 0.17, 0.14, 0.03, 0.04) * sd;   /* axilas */
-      return d * (P.sm == null ? 1 : P.sm); };
+      if (P.ar === 'plate') { d += 0.22 * (g2(0, y, 0, -0.205, 1, 0.004) + g2(0, y, 0, -0.255, 1, 0.004)); d -= 0.12 * g2(x, y, 0, 0.0, 0.012, 0.2) * fr; }
+      if (P.ar === 'leather') { d += 0.35 * Math.exp(-(((sd - 0.985) / 0.008) ** 2)) + 0.22 * g2(0, y, 0, 0.17, 1, 0.003) * (0.3 + fr); }   /* placas: lâminas embaixo e quilha clara; couro: costuras dos lados e do peito */
+      return d * (P.sm == null ? 1 : P.sm) + (P.ar === 'plate' || P.ar === 'leather' ? 0 : 0); };
     return { K, bump, shade, br, bcy, bD, sep };
   }
   const torsoG = (S, P, k, base, swim) => G('torso' + S + k + (base ? base.getHexString() : '') + (swim ? swim.getHexString() : ''), () => { const T = torsoSpec(P); const bandY = T.bcy - T.bD * 0.85;
-    const paint = swim && P.fem ? (y, a, x) => { let w = Math.max(0, Math.min(1, (0.012 - Math.abs(y - bandY)) / 0.005)); if (Math.sin(a) > 0) for (const sx of [-1, 1]) { const q = capF(x, y, sx * (T.sep + T.br * 0.12), T.bcy, T.br * 1.02, T.br * 1.05, T.bD * 1.02, 1); w = Math.max(w, Math.min(1, q / 0.1)); if (y > T.bcy && y < 0.25) w = Math.max(w, Math.max(0, Math.min(1, (0.008 - Math.abs(x - sx * T.sep * 0.95)) / 0.004))); } return swimP(swim, w); } : null;
+    const paint = swim && P.fem ? (y, a, x) => { let w = Math.max(0, Math.min(1, (0.012 - Math.abs(y - bandY)) / 0.005)); if (Math.sin(a) > 0) for (const sx of [-1, 1]) { const q = capF(x, y, sx * (T.sep + T.br * 0.12), T.bcy, T.br * 1.02, T.br * 1.05, T.bD * 1.02, 1); w = Math.max(w, Math.min(1, q / 0.1)); if (y > T.bcy && y < 0.25) w = Math.max(w, Math.max(0, Math.min(1, (0.008 - Math.abs(x - sx * T.sep * 0.95)) / 0.004))); } return lingTorso(P, T, y, a, x, swimP(swim, w)); } : null;
     return tubeG(T.K, S, { bump: T.bump, shade: T.shade, base, paint, N: 80, M: 72, sq: P.fem ? 0.015 : 0.03 }); });
   /* biquíni: as taças seguem o seio, faixa embaixo e alças até o ombro */
   const bikiniTopG = (S, P, k) => G('bkt' + S + k, () => { const T = torsoSpec(P); const bandY = T.bcy - T.bD * 0.85;
@@ -496,12 +499,27 @@ window.FACE = { style: 'old', expr: 'n' };
   const swimBack = (ax, y) => { const top = -0.01 + 0.035 * ax, cr = -0.155; if (y > top + 0.01 || y < cr - 0.01) return 0; const t = Math.max(0, Math.min(1, (top - y) / (top - cr))), wb = 1 - 0.9 * Math.pow(t, 0.55); const a = (top - y) / 0.006, b = (wb - ax) / 0.04, c = (y - cr) / 0.006; return Math.max(0, Math.min(1, 0.5 + a * 0.5)) * Math.max(0, Math.min(1, 0.5 + b * 0.5)) * Math.max(0, Math.min(1, 0.5 + c * 0.5)); };
   const swimW = (fem, front, ax, y) => { if (fem && !front) return swimBack(ax, y); const e = fem ? 0.008 : 0.006, a = (swimTop(fem, front, ax) - y) / e, b = (y - swimLeg(fem, front, ax)) / e; return Math.max(0, Math.min(1, 0.5 + a * 0.5)) * Math.max(0, Math.min(1, 0.5 + b * 0.5)); };
   const swimP = (c, w) => w > 0.01 ? { c, w } : null;
+  const LCM = new Map(), lcol = h => LCM.get(h) || (LCM.set(h, new THREE.Color(h).convertSRGBToLinear()), LCM.get(h));
+  const cl = v => Math.max(0, Math.min(1, v));
+  function lingTorso(P, T, y, a, x, sw) { const g = P.ling; if (!g) return sw; const c1 = lcol(g.c), c2 = lcol(g.c2), fr = Math.sin(a) > 0;
+    if (g.t === 'corset') { const top = T.bcy - T.bD * 0.8; if (y < top + 0.006 && y > -0.32) { const lace = fr && Math.abs(Math.abs(x) - 0.012) < 0.0028, bone = Math.abs(Math.cos(a)) > 0.97 || (fr && Math.abs(Math.abs(x) - 0.06) < 0.0025); return { c: lace ? c2 : bone ? c2 : c1, w: cl((top + 0.006 - y) / 0.006) }; } }
+    if (g.t === 'qipao') { const key = fr && capF(x, y, 0, T.bcy + 0.035, 0.03, 0.05, 0.055, 1) > 0.02; if (!key && y < 0.258) return { c: y > 0.236 || (fr && Math.abs(x - 0.05 * (0.236 - y) / 0.1) < 0.003 && y > 0.14) ? c2 : c1, w: cl((0.258 - y) / 0.005) }; }
+    return sw; }
+  function lingPelvis(P, y, a, x, sw) { const g = P.ling; if (!g) return sw; const c1 = lcol(g.c), c2 = lcol(g.c2);
+    if (g.t === 'corset' && y < -0.012 && y > -0.05) return { c: c2, w: cl(Math.min(-0.012 - y, y + 0.05) / 0.004) };
+    if (g.t === 'qipao') return { c: c1, w: 1 };
+    return sw; }
+  function lingLeg(P, y, a, x, sw, calf) { const g = P.ling; if (!g || !g.st) return sw; const c2 = lcol(g.c2), fr = Math.sin(a) > 0;
+    if (calf) return { c: c2, w: 0.8 };
+    if (y < -0.2) return { c: c2, w: y > -0.226 ? 1 : 0.8 };
+    if (y < -0.03 && Math.abs(x) < 0.0045 && (fr || g.t === 'corset')) return { c: c2, w: 1 };   /* cinta-liga: alças na frente e atrás até a meia */
+    return sw; }
   /* ---------- quadril (coordenadas da junta da coluna) ---------- */
   function pelvisSpec(P) {
     const { fem, fat, hip, mus } = P, U = P.butt;
     const K = fem ? [[0.045, 0.11 + 0.016 * fat + 0.008 * hip, 0.074 + 0.01 * fat, 0.007], [0.0, 0.128 + 0.018 * fat + 0.012 * hip, 0.083 + 0.011 * fat, 0.002], [-0.04, 0.168 + 0.02 * hip + 0.012 * fat, 0.092 + 0.01 * fat, -0.004], [-0.08, 0.18 + 0.02 * hip + 0.01 * fat, 0.096 + 0.008 * fat, -0.009], [-0.115, 0.181 + 0.018 * hip + 0.008 * fat, 0.093, -0.012], [-0.14, 0.172 + 0.014 * hip + 0.006 * fat, 0.086, -0.015], [-0.162, 0.13 + 0.01 * hip, 0.072, -0.019], [-0.176, 0.07, 0.056, -0.02], [-0.186, 0.026, 0.028, -0.016], [-0.192, 0.006, 0.006, -0.01]]   /* perfil redondo: lombar → glúteo mais saliente perto de −0,09 → dobra */
-                  : [[0.03, 0.146 + 0.02 * fat, 0.1 + 0.018 * fat, 0], [0.0, 0.154 + 0.022 * fat, 0.106 + 0.02 * fat, 0], [-0.1, 0.16 + 0.018 * fat + 0.006 * hip, 0.108 + 0.016 * fat, 0.004 * fat], [-0.22, 0.166 + 0.012 * fat + 0.008 * hip, 0.11, -0.004], [-0.32, 0.16, 0.104, 0], [-0.37, 0.15, 0.096, 0], [-0.4, 0.09, 0.07, 0]];
-    const bs = fem ? 0.066 + 0.01 * hip : 0.06, ur = fem ? 0.078 + 0.014 * U.size : 0.08, uh = fem ? 0.012 + 0.024 * U.size + 0.004 * fat : 0.016 + 0.02 * mus, uy = (fem ? -0.08 - 0.014 * (1 - U.lift) : -0.225 - 0.02 * (1 - U.lift)), uU = ur * (fem ? 1.05 : 1.45), uD = ur * (fem ? 1.0 + 0.08 * (1 - U.lift) : 1.1 + 0.1 * (1 - U.lift)), uX = ur * 1.15, up = fem ? 0.9 + 0.35 * U.round : 1.45 + 0.45 * U.round;
+                  : [[0.03, 0.146 + 0.02 * fat, 0.1 + 0.018 * fat, 0], [0.0, 0.152 + 0.022 * fat, 0.104 + 0.02 * fat, 0.0], [-0.05, 0.158 + 0.018 * fat + 0.006 * hip, 0.104 + 0.016 * fat, -0.004 + 0.004 * fat], [-0.1, 0.158 + 0.012 * fat + 0.006 * hip, 0.1 + 0.008 * fat, -0.008], [-0.14, 0.136 + 0.006 * hip, 0.09, -0.01], [-0.165, 0.088, 0.068, -0.01], [-0.18, 0.034, 0.032, -0.006], [-0.186, 0.006, 0.006, -0.004]];
+    const bs = fem ? 0.066 + 0.01 * hip : 0.06, ur = fem ? 0.078 + 0.014 * U.size : 0.08, uh = fem ? 0.012 + 0.024 * U.size + 0.004 * fat : 0.016 + 0.02 * mus, uy = (fem ? -0.08 - 0.014 * (1 - U.lift) : -0.085 - 0.01 * (1 - U.lift)), uU = ur * (fem ? 1.05 : 1.15), uD = ur * (fem ? 1.0 + 0.08 * (1 - U.lift) : 0.95 + 0.06 * (1 - U.lift)), uX = ur * 1.15, up = fem ? 0.9 + 0.35 * U.round : 1.45 + 0.45 * U.round;
     const GT = 0.012, GF = -0.176 - 0.008 * (1 - U.lift), GP = 0.6 - 0.14 * U.lift, GE = 0.5 + 0.25 * (1 - U.round), GA = 0.02 + 0.055 * U.size + 0.008 * fat;   /* perfil do glúteo: topo, dobra, pico, arredondado, volume */
     const bump = (y, a, x, z) => { let b = 0; const s = Math.sin(a), fr = Math.max(0, s), bk = Math.max(0, -s);
       let bu0 = 0; if (fem) { const t = (GT - y) / (GT - GF); if (t > 0 && t < 1) { const f = t < GP ? 0.5 - 0.5 * Math.cos(PI * t / GP) : Math.pow(Math.max(0, 1 - ((t - GP) / (1 - GP)) ** 2), GE); const ax = Math.abs(x), dx = ax > bs ? (ax - bs) / (uX * 1.05) : (bs - ax) / (bs * 2.2); bu0 = GA * f * Math.exp(-dx * dx * 1.2) * Math.pow(bk, 0.5); } }
@@ -513,12 +531,14 @@ window.FACE = { style: 'old', expr: 'n' };
     const shade = (y, a, x, z) => { let d = 0; const bk = Math.max(0, -Math.sin(a));
       for (const sx of [-1, 1]) d += 0.45 * (fem ? 0.5 + U.size : 0.4) * g2(x, y, sx * bs, fem ? GF + 0.012 : uy - uD * 0.92, uX * 0.75, 0.011) * bk;
       if (y < -0.1) d += 0.28 * g2(x, y, 0, uy - 0.05, 0.008, 0.09) * bk;
+      if (P.ar === 'plate') for (const yl of [-0.01, -0.055, -0.1]) d += 0.3 * g2(0, y, 0, yl, 1, 0.0035);
+      if (P.ar === 'leather') d += 0.3 * Math.exp(-(((Math.abs(Math.cos(a)) - 0.985) / 0.008) ** 2));
       return d * (P.sm == null ? 1 : P.sm); };
     return { K, bump, shade };
   }
-  const pelvisG = (S, P, k, base, swim) => G('pelv' + S + k + (base ? base.getHexString() : '') + (swim ? swim.getHexString() : ''), () => { const T = pelvisSpec(P);
-    const paint = swim ? (y, a, x) => swimP(swim, swimW(P.fem, Math.sin(a) > 0, Math.min(1, Math.abs(x) / 0.17), y)) : null;
-    return tubeG(T.K, S, { bump: T.bump, shade: T.shade, base, paint, N: P.fem ? 110 : 70, M: P.fem ? 144 : 84, sq: 0.04 }); });
+  const pelvisG = (S, P, k, base, swim, pant) => G('pelv' + S + k + (base ? base.getHexString() : '') + (swim ? swim.getHexString() : '') + (pant ? 'p' + pant.getHexString() : ''), () => { const T = pelvisSpec(P);
+    const paint = swim ? (y, a, x) => lingPelvis(P, y, a, x, swimP(swim, swimW(P.fem, Math.sin(a) > 0, Math.min(1, Math.abs(x) / 0.17), y))) : pant ? (y) => swimP(pant, Math.max(0, Math.min(1, (-0.1 - y) / 0.008 + 0.5))) : null;   /* com roupa: a túnica acaba no quadril e a calça aparece embaixo */
+    return tubeG(T.K, S, { bump: T.bump, shade: T.shade, base, paint, N: 110, M: 144, sq: 0.04 }); });
   const bottomG = (S, P, k) => G('bot' + S + k, () => { const T = pelvisSpec(P);
     return tubeG(T.K, S, { bump: T.bump, off: 0.005, N: 34, M: 44, sq: 0.04, keep: P.fem ? (y, a, x) => { const s = Math.sin(a); return s > 0 ? y < -0.11 - 0.1 * Math.min(1, Math.abs(x) / 0.17) : y < -0.1 - 0.04 * Math.min(1, Math.abs(x) / 0.17); } : (y) => y < -0.065 }); });
 
@@ -533,7 +553,7 @@ window.FACE = { style: 'old', expr: 'n' };
     const bump = (y, a) => (P.fem ? 0.003 : 0.008) * (0.2 + m) * g2(0, y, 0, -0.05, 1, 0.05) * Math.max(0, Math.cos(a + 0.6));
     return tubeG([[0.035, 0, 0], [0.015, 0.046 * F, 0.042 * F], [-0.05, (0.052 + 0.004 * m) * F, 0.045 * F], [-0.14, 0.042 * F, 0.036 * F], [-0.22, 0.031 * F, 0.027 * F], [-0.255, 0.029 * F, 0.025 * F], [-0.28, 0, 0]], S, { bump, N: 26, M: 22 }); });
   const thighG = (S, P, side, k, base, swim) => G('th' + S + k + side + (base ? base.getHexString() : '') + (swim ? swim.getHexString() : ''), () => { const { fem, fat: f, thigh: t } = P, m = P.mus * P.dm, inn = -side;
-    const top = fem ? 0.084 + 0.01 * t + 0.01 * f : 0.08 + 0.006 * m + 0.006 * f;
+    const top = fem ? 0.084 + 0.01 * t + 0.01 * f : 0.082 + 0.008 * m + 0.006 * f;
     const bump = (y, a, x, z) => { const s = Math.sin(a), fr = Math.max(0, s), bk = Math.max(0, -s); let b = 0;
       b += (fem ? 0.004 : 0.01) * (0.2 + m) * g2(x, y, inn * 0.035, -0.33, 0.03, 0.05) * fr;   /* vasto medial */
       b += (fem ? 0.003 : 0.007) * (0.2 + m) * g2(x, y, -inn * 0.05, -0.16, 0.03, 0.1);       /* vasto lateral */
@@ -541,15 +561,15 @@ window.FACE = { style: 'old', expr: 'n' };
       if (fem) { b += (0.004 + 0.008 * f) * g2(x, y, -inn * 0.06, -0.08, 0.035, 0.06); b += (0.012 + 0.016 * P.butt.size) * capF(x, y, inn * 0.014, -0.1, 0.08, 0.06, 0.07, 1.2) * Math.pow(bk, 0.6); }   /* a parte de baixo do glúteo continua sobre o alto da coxa até a dobra */
       return b; };
     const shade = (y, a, x) => 0.1 * (0.3 + m) * g2(x, y, inn * 0.01, -0.25, 0.012, 0.1) * Math.max(0, Math.sin(a)) * P.sm;
-    const paint = swim ? (y, a, x) => { const xs = x + side * 0.1, ys = y - 0.02; return swimP(swim, swimW(fem, Math.sin(a) > 0, Math.min(1, Math.abs(xs) / 0.17), ys)); } : null;
+    const paint = swim ? (y, a, x) => { const xs = x + side * 0.1, ys = y - 0.02; return lingLeg(P, y, a, x, swimP(swim, swimW(fem, Math.sin(a) > 0, Math.min(1, Math.abs(xs) / 0.17), ys)), false); } : null;
     const K = fem ? [[0.02, 0, 0], [-0.02, top * 0.6, top * 0.66], [-0.06, top * 0.76, top * 0.8, -0.012], [-0.09, top * 0.86, top * 0.88, -0.013], [-0.115, top * 0.93, top * 0.93, -0.008], [-0.15, top, top * 0.96, 0.004], [-0.2, top * 0.96, top * 0.92, 0.005], [-0.26, top * 0.86, top * 0.86, 0.006], [-0.36, 0.064, 0.066, 0.002], [-0.43, 0.054, 0.056, 0.002], [-0.47, 0.049, 0.05, 0.002], [-0.5, 0.032, 0.034], [-0.515, 0, 0]]
-      : [[0.0, 0, 0], [-0.02, top * 0.36, top * 0.42], [-0.1, top * 0.5, top * 0.6, 0.004], [-0.24, top * 0.78, 0.082 + 0.004 * f, 0.006], [-0.34, top, 0.082 + 0.004 * f, 0.006], [-0.36, 0.06 + 0.012 * f, 0.062, 0.002], [-0.43, 0.055, 0.058], [-0.47, 0.05, 0.051], [-0.5, 0.032, 0.034], [-0.515, 0, 0]];
-    return tubeG(K, S, { bump, shade, base, paint, N: fem ? 72 : 40, M: fem ? 64 : 30 }); });
-  const calfG = (S, P, k) => G('ca' + S + k, () => { const m = P.mus * P.dm;
+      : [[0.02, 0, 0], [-0.02, top * 0.62, top * 0.66], [-0.06, top * 0.8, top * 0.84, -0.008], [-0.1, top * 0.92, top * 0.93, -0.006], [-0.16, top, top * 0.97, 0.002], [-0.24, top * 0.98, 0.082 + 0.004 * f, 0.006], [-0.34, top * 0.9, 0.08 + 0.004 * f, 0.006], [-0.36, 0.06 + 0.012 * f, 0.062, 0.002], [-0.43, 0.055, 0.058], [-0.47, 0.05, 0.051], [-0.5, 0.032, 0.034], [-0.515, 0, 0]];
+    return tubeG(K, S, { bump, shade, base, paint, N: 72, M: 64 }); });
+  const calfG = (S, P, k, base) => G('ca' + S + k + (base ? base.getHexString() : ''), () => { const m = P.mus * P.dm;
     const bump = (y, a, x, z) => { const bk = Math.max(0, -Math.sin(a)); let b = 0; for (const sx of [-1, 1]) b += (P.fem ? 0.005 : 0.009) * (0.3 + m) * g2(x, y, sx * 0.02, -0.1, 0.025, 0.05) * bk; return b; };
     const shade = (y, a) => 0.12 * g2(0, y, 0, -0.17, 1, 0.03) * Math.max(0, -Math.sin(a)) * P.sm;
     return tubeG(P.fem ? [[0.045, 0, 0], [0.025, 0.042, 0.044], [0.0, 0.052, 0.054, 0.002], [-0.06, 0.052, 0.06, -0.008], [-0.12, 0.048, 0.056, -0.009], [-0.2, 0.039, 0.042, -0.004], [-0.3, 0.031, 0.033], [-0.37, 0.029, 0.031], [-0.4, 0, 0]]
-      : [[0.045, 0, 0], [0.025, 0.045, 0.047], [0.0, 0.055, 0.057], [-0.07, 0.057, 0.062, -0.008], [-0.14, 0.052, 0.056, -0.006], [-0.28, 0.039, 0.041], [-0.37, 0.035, 0.037], [-0.4, 0, 0]], S, { bump, shade, N: 44, M: 32 }); });
+      : [[0.045, 0, 0], [0.025, 0.045, 0.047], [0.0, 0.055, 0.057], [-0.07, 0.057, 0.062, -0.008], [-0.14, 0.052, 0.056, -0.006], [-0.28, 0.039, 0.041], [-0.37, 0.035, 0.037], [-0.4, 0, 0]], S, { bump, shade, N: 44, M: 32, base, paint: base && P.ling ? (y, a, x) => lingLeg(P, y, a, x, null, true) : null }); });
   const bootG = (S) => G('bt' + S, () => tubeG([[-0.15, 0.0, 0.0], [-0.16, 0.066, 0.07, -0.004], [-0.19, 0.064, 0.068, -0.006], [-0.3, 0.052, 0.056, -0.002], [-0.42, 0.05, 0.054], [-0.445, 0.0, 0.0]], S, { N: 20 }));
   const footG = (S) => G('ft' + S, () => { const g = new THREE.SphereGeometry(1, 24, 14), Pp = g.attributes.position;
     for (let i = 0; i < Pp.count; i++) { let x = Pp.getX(i), y = Pp.getY(i), z = Pp.getZ(i); const t = (z + 1) / 2; x *= 0.05 * (0.85 + 0.25 * Math.sin(PI * Math.min(1, t * 1.15))); y = (y < -0.35 ? -0.35 : y) * 0.05 * (1.15 - 0.55 * t); z *= 0.118; Pp.setXYZ(i, x * S, (y + 0.012) * S, (z + 0.045) * S); }
@@ -574,8 +594,8 @@ window.FACE = { style: 'old', expr: 'n' };
     const on = window.FACE && (FACE.style === 'C' || L.newLook) && FACE.body !== false;
     if (!on) return _bh.apply(this, arguments);
     const P = bodyParams(L);
-    { const bareX = L.armor === 'bare', plate = L.armor === 'plate', rb = L.armor === 'robe'; P.dm = bareX ? 1 : plate ? 0.25 : 0.35; P.sm = bareX ? 1 : plate ? 0.1 : 0.3; P.bm = bareX ? 1 : rb ? 0 : 0.35; P.bb = bareX ? 1 : plate ? 0.3 : 0.9; }
-    const PK = JSON.stringify(P);
+    { const bareX = L.armor === 'bare', plate = L.armor === 'plate', rb = L.armor === 'robe'; P.dm = bareX ? 1 : plate ? 0 : L.armor === 'leather' ? 0.15 : 0.08; P.sm = bareX ? 1 : plate ? 0.04 : 0.12; P.bm = bareX ? 1 : rb ? 0 : plate ? 0.3 : 0.6; P.bb = bareX ? 1 : plate ? 0.35 : 0.85;   /* sob a roupa: músculos quase somem, o volume do busto e do glúteo fica */ }
+    P.ar = L.armor; if (L.ling && L.armor === 'bare' && P.fem) P.ling = L.ling; const PK = JSON.stringify(P);
     /* tom de pele: quem não tem um tom próprio (o padrão dos heróis ou L.skinAuto) recebe um da paleta pela semente */
     const L2 = Object.assign(Object.create(Object.getPrototypeOf(L)), L);
     if (L.skinAuto) L2.skin = SKIN[P.skin];
@@ -586,7 +606,7 @@ window.FACE = { style: 'old', expr: 'n' };
     const swim = bare ? new THREE.Color(hx(L.trunks || '#2a3a5a')).convertSRGBToLinear() : null;
     const torso = R.chest.children.find(o => capR(o, 0.17 * S)); if (torso) { const base = torso.material.color.clone(); setG(torso, torsoG(S, P, PK, base, fem ? swim : null), false); torso.material = vcMat(torso.userData.mat0, true); }
     if (fem) for (const o of R.chest.children) if (o.geometry && o.geometry.type === 'SphereGeometry' && Math.abs(o.geometry.parameters.radius - 0.07 * S) < 1e-5 && o.position.z > 0.08 * S) o.visible = false;
-    const belly = R.spine.children.find(o => capR(o, 0.14 * S)); if (belly) { const base = belly.material.color.clone(); setG(belly, pelvisG(S, P, PK, base, swim), false); belly.material = vcMat(belly.userData.mat0, true); if (robe) belly.scale.set(0.9, 1, 0.9); }
+    const belly = R.spine.children.find(o => capR(o, 0.14 * S)); if (belly) { const base = belly.material.color.clone(); const pant = !swim && !robe && L.armor !== 'plate' && L.legs ? new THREE.Color(hx(L.legs)).convertSRGBToLinear() : null; setG(belly, pelvisG(S, P, PK, base, swim, pant), false); belly.material = vcMat(belly.userData.mat0, true); if (robe) belly.scale.set(0.9, 1, 0.9); }
     for (const o of R.spine.children) { const g = o.geometry; if (g && g.type === 'CylinderGeometry' && Math.abs(g.parameters.radiusTop - 0.165 * S) < 1e-5) { if (robe) o.scale.set(0.182 / 0.165, 1, 0.15 / 0.165); else o.scale.set(((fem ? 0.152 : 0.17) + 0.02 * P.fat) / 0.165, 1, ((fem ? 0.108 : 0.116) + 0.02 * P.fat) / 0.165); } if (g && g.type === 'BoxGeometry' && Math.abs(o.position.y + 0.06 * S) < 1e-5) o.position.z = ((fem ? 0.1 : 0.118) + 0.02 * P.fat) * S; }
     if (fem) for (const o of R.spine.children) if (capR(o, 0.15 * S) && Math.abs(o.position.y + 0.25 * S) < 1e-5) o.visible = false;
     for (const o of R.chest.children) { const g = o.geometry; if (g && g.type === 'BoxGeometry' && o.position.z > 0.11 * S && o.position.z < 0.16 * S) o.position.z = Math.max(o.position.z, ((fem ? 0.112 + 0.05 * P.bust.size : 0.14) + 0.01 * P.fat) * S) + (Math.abs(o.position.y - 0.06 * S) < 1e-5 ? 0.012 * S : 0); }
@@ -611,7 +631,7 @@ window.FACE = { style: 'old', expr: 'n' };
     /* pernas */
     for (const [Lg, side] of [[R.LA, -1], [R.LB, 1]]) {
       const th = Lg.hp.children.find(o => capR(o, 0.075 * S)); if (th) { const base = th.material.color.clone(); setG(th, thighG(S, P, side, PK, base, swim), false); th.material = vcMat(th.userData.mat0, true); }
-      const ca = Lg.kn.children.find(o => capR(o, 0.062 * S)); if (ca) setG(ca, calfG(S, P, PK), true);
+      const ca = Lg.kn.children.find(o => capR(o, 0.062 * S)); if (ca) { if (P.ling && P.ling.st && bare) { const base = ca.material.color.clone(); setG(ca, calfG(S, P, PK, base), false); ca.material = vcMat(ca.userData.mat0, true); } else setG(ca, calfG(S, P, PK), true); }
       const bt = Lg.kn.children.find(o => capR(o, 0.068 * S)); if (bt) { if (bare) bt.visible = false; else setG(bt, bootG(S), false); }
       if (bare) for (const o of Lg.hp.children) { const g = o.geometry; if (g && g.type === 'CylinderGeometry' && Math.abs(g.parameters.radiusTop - 0.088 * S) < 1e-5) o.visible = false; }   /* pernas da sunga antiga */
       { const knee = new THREE.Mesh(G('knee' + S, () => new THREE.SphereGeometry(0.047 * S, 12, 10)), m0(th || ca)); knee.position.set(0, 0.004 * S, 0.004 * S); Lg.kn.add(knee);
@@ -620,12 +640,165 @@ window.FACE = { style: 'old', expr: 'n' };
     }
     R._body = P;
     return R; };
+  window.BODYK = { tubeG, torsoSpec, pelvisSpec, thighG, bodyParams, capF, g2, lerpK, G, vcMat, setG, capR, m0, hx };
 })();
 
+;
+/* PROTÓTIPO das roupas sobre o corpo novo (etapa 4). Carregar DEPOIS de proto_body.js (usa window.BODYK).
+   Os mesmos modelos de hoje, moldados ao corpo de cada personagem:
+   - manto/vestido e saiote: caem do ponto mais largo do quadril (o tecido não entra nas curvas), alargam até a barra
+     e ganham dobras que crescem para baixo; a barra dourada acompanha a borda;
+   - cintos, faixas e obis: abraçam o corpo pela parte mais saliente da faixa;
+   - colete (frente da camisa), tabardo e avental: painéis que seguem o peito e pendem do busto;
+   - capa: inclina para passar por trás do glúteo. */
+(function () {
+  const BK = window.BODYK; if (!BK) return;
+  const { torsoSpec, pelvisSpec, lerpK, G, vcMat, setG, hx } = BK, PI = Math.PI;
+  const NA = 96;   /* ângulos usados para amostrar o corpo */
+
+  /* pontos da superfície do corpo (coordenadas da coluna) numa altura y: tronco e quadril, mais as coxas abaixo da virilha */
+  function bodyPts(P, y, legs) {
+    const out = [], T = torsoSpec(P), Q = pelvisSpec(P);
+    const ring = (K, bump, yy, sq, dy) => { if (yy > K[0][0] || yy < K[K.length - 1][0]) return; const [rx, rz, zc] = lerpK(K, yy);
+      for (let j = 0; j < NA; j++) { const a = j / NA * 2 * PI, c = Math.cos(a), s = Math.sin(a), q = 1 + sq * Math.abs(c * s) * 2; let x = rx * c * q, z = rz * s * q; const b = bump(yy, a, x, z), rr = Math.hypot(x, z) || 1; x += x / rr * b; z += z / rr * b; out.push([x, z + zc]); } };
+    ring(T.K, T.bump, y - 0.28, P.fem ? 0.015 : 0.03); ring(Q.K, Q.bump, y, 0.04);
+    if (legs && y < -0.05) { const top = P.fem ? 0.084 + 0.01 * P.thigh + 0.01 * P.fat : 0.082 + 0.008 * P.mus + 0.006 * P.fat, k = Math.min(1, (-0.05 - y) / 0.1), r = top * (0.75 + 0.3 * k);
+      for (const sx of [-1, 1]) for (let j = 0; j < 32; j++) { const a = j / 32 * 2 * PI; out.push([sx * 0.1 + r * Math.cos(a), r * 0.97 * Math.sin(a) - 0.004]); } }
+    return out;
+  }
+  /* raio máximo do corpo por ângulo em volta de (0, zc), suavizado (o tecido não acompanha sulcos) */
+  function polarMax(pts, zc, M) {
+    const r = new Float32Array(M); for (const [x, z] of pts) { const a = Math.atan2(z - zc, x), j = ((Math.round(a / (2 * PI) * M) % M) + M) % M, d = Math.hypot(x, z - zc); if (d > r[j]) r[j] = d; }
+    for (let j = 0; j < M; j++) if (!r[j]) { let k = 1; while (k < M && !r[(j + k) % M] && !r[(j - k + M) % M]) k++; r[j] = Math.max(r[(j + k) % M], r[(j - k + M) % M]); }
+    const m = new Float32Array(M); for (let j = 0; j < M; j++) { let v = 0; for (let k = -3; k <= 3; k++) v = Math.max(v, r[(j + k + M) % M]); m[j] = v; }
+    const o = new Float32Array(M); for (let j = 0; j < M; j++) { let v = 0; for (let k = -3; k <= 3; k++) v += m[(j + k + M) % M]; o[j] = v / 7; } return o;
+  }
+  /* malha em grade (linhas de cima para baixo, colunas em volta); fn(i, j) → [x, y, z, sombra] */
+  function gridG(NR, NC, wrap, fn, S, skip) {
+    const pos = [], col = [], idx = [], C = wrap ? NC : NC + 1;
+    for (let i = 0; i <= NR; i++) for (let j = 0; j < C; j++) { const [x, y, z, d] = fn(i, j); pos.push(x * S, y * S, z * S); const c = 1 - Math.min(0.55, d || 0); col.push(c * (1 + 0.04 * (d || 0)), c, c * (1 - 0.08 * (d || 0))); }
+    for (let i = 0; i < NR; i++) for (let j = 0; j < (wrap ? NC : NC); j++) { const a = i * C + j, b = i * C + (j + 1) % C, c2 = a + C, d = b + C; if (!wrap && j === NC) continue; if (skip && skip(i, j)) continue; idx.push(a, b, c2, b, d, c2); }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute('color', new THREE.Float32BufferAttribute(col, 3)); g.setIndex(idx); g.computeVertexNormals(); return g;
+  }
+
+  /* saia/manto: de y0 até y1 (coluna); o raio cai do mais largo acima (pende), alarga com 'fl' e ganha 'nf' dobras */
+  function skirtProfile(P, y0, y1, o) {
+    const lod = window.VN_LOD || 1, M = Math.round((o.M || 120) * lod / 4) * 4, NR = Math.round((o.N || 60) * lod), zc = o.zc != null ? o.zc : -0.008, rows = [];
+    let prev = null; for (let i = 0; i <= NR; i++) { const y = y0 + (y1 - y0) * i / NR, r = polarMax(bodyPts(P, y, true), zc, M);
+      const cur = new Float32Array(M); for (let j = 0; j < M; j++) cur[j] = Math.max(r[j] + (o.clear || 0.012), prev ? prev[j] : 0);
+      rows.push({ y, r: cur }); prev = cur; }
+    /* alargamento a partir do ponto mais largo do quadril */
+    let yH = y0, best = 0; for (const R of rows) { let w = 0; for (let j = 0; j < M; j++) w += R.r[j]; if (w > best) { best = w; yH = R.y; } }
+    for (const R of rows) { const t = Math.max(0, (yH - R.y) / (yH - y1 || 1)), f = (o.fl || 0) * Math.max(0, yH - R.y) * (0.6 + 0.4 * t);
+      for (let j = 0; j < M; j++) { const a = j / M * 2 * PI, side = 0.75 + 0.25 * Math.abs(Math.cos(a)); R.r[j] += f * side; } R.t = t; }
+    return { rows, M, NR, zc, yH };
+  }
+  function skirtG(P, y0, y1, o, S, dy, zs, skip) {
+    const sp = skirtProfile(P, y0, y1, o), nf = o.nf || 12, amp = o.amp || 0.012, ph = o.ph || 0.3;
+    return { sp, g: gridG(sp.NR, sp.M, true, (i, j) => { const R = sp.rows[i], a = j / sp.M * 2 * PI, t = R.t, w = 0.5 - 0.5 * Math.cos(nf * a + ph + 0.6 * Math.sin(3 * a)), r = R.r[j] + amp * Math.pow(t, 1.2) * (w - 0.35) + (o.wave || 0) * t * t * Math.sin(5 * a + 1);
+      return [r * Math.cos(a), R.y + (dy || 0), (sp.zc + r * Math.sin(a)) / (zs || 1), 0.32 * Math.pow(t, 1.1) * (1 - w) + (o.top && i < 3 ? 0.1 * (3 - i) / 3 : 0)]; }, S, skip ? (i, j) => skip(sp.rows[i], j / sp.M * 2 * PI, i) : null) };
+  }
+  /* barra que acompanha a borda de baixo de uma saia: tubo fino em volta da elipse final */
+  function hemG(sp, S, rad, dy, zs, rotX) {
+    const R = sp.rows[sp.rows.length - 1], pts = []; for (let j = 0; j <= sp.M; j++) { const a = (j % sp.M) / sp.M * 2 * PI, r = R.r[j % sp.M] + rad * 0.6; pts.push(rotX ? new THREE.Vector3(r * Math.cos(a) * S, (sp.zc + r * Math.sin(a)) / zs * S, 0) : new THREE.Vector3(r * Math.cos(a) * S, (R.y + dy) * S, (sp.zc + r * Math.sin(a)) / zs * S)); }
+    return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, true), sp.M, rad * S, 6, true);
+  }
+  /* faixa (cinto, obi): em volta do corpo na altura yc, pelo ponto mais saliente da faixa */
+  function bandG(P, yc, h, off, S) { const M = 96, zc = -0.004; let r = new Float32Array(M); for (let k = 0; k <= 4; k++) { const rr = polarMax(bodyPts(P, yc - h / 2 + h * k / 4, false), zc, M); for (let j = 0; j < M; j++) r[j] = Math.max(r[j], rr[j]); }
+    return gridG(3, M, true, (i, j) => { const a = j / M * 2 * PI, y = yc + h / 2 - h * i / 3, rr = r[j] + off + (i === 0 || i === 3 ? -0.002 : 0); return [rr * Math.cos(a), y, zc + rr * Math.sin(a), i === 3 ? 0.18 : 0]; }, S); }
+  /* painel da frente (colete, tabardo, avental): de yT a yB, meia-largura w(y); pende do busto para baixo */
+  function panelG(P, yT, yB, w, off, S, extra) {
+    const NR = Math.round(48 * (window.VN_LOD || 1)), NC = Math.round(24 * (window.VN_LOD || 1)), zc = -0.004, M = 144, rows = []; let prev = null;
+    for (let i = 0; i <= NR; i++) { const y = yT + (yB - yT) * i / NR, r = polarMax(bodyPts(P, y, true), zc, M), ww = w(y), row = [];
+      for (let j = 0; j <= NC; j++) { const x = -ww + 2 * ww * j / NC; let z = 0; for (let k = 0; k < M; k++) { const a = k / M * 2 * PI; if (Math.sin(a) <= 0) continue; const px = r[k] * Math.cos(a); if (Math.abs(px - x) < 0.012) z = Math.max(z, zc + r[k] * Math.sin(a)); }
+        if (extra) z = Math.max(z, extra(x, y)); if (prev) z = Math.max(z, prev[j] - 0.0); row.push(z); }
+      rows.push({ y, ww, row }); prev = row; }
+    return gridG(NR, NC, false, (i, j) => { const R = rows[i], jj = NC - j, x = -R.ww + 2 * R.ww * jj / NC, e = Math.abs(jj / NC - 0.5) * 2; return [x, R.y, R.row[jj] + off - 0.002 * e * e, 0.08 * e * e]; }, S);
+  }
+  const ofType = (o, t) => o && o.geometry && o.geometry.type === t;
+  const near = (a, b) => Math.abs(a - b) < 1e-4;
+
+  const _bh = buildHumanoid;
+  buildHumanoid = function (L, opts = {}) {
+    const R = _bh.apply(this, arguments); const P = R._body; if (!P) return R;
+    const S = opts.scale || 1, robe = L.armor === 'robe', bare = L.armor === 'bare';
+    try {
+      /* manto/vestido: a malha nova fica no mesmo objeto (o laço de animação continua mexendo nela) */
+      if (R.robe && !bare) { const fur = !!(L.furisode || L.kimonoC), zs = 0.82;
+        const { sp, g } = skirtG(P, -0.04, -0.86, { fl: fur ? 0.02 : P.fem ? 0.16 : 0.13, nf: fur ? 8 : 13, amp: fur ? 0.006 : 0.013, clear: 0.013, top: 1, wave: fur ? 0 : 0.004 }, S, 0.04, zs);
+        R.robe.geometry = g; R.robe.material = vcMat(R.robe.material, false); R.robeW = 1; R._robeSp = sp;
+        if (R.hem) R.hem.geometry = G('rhem' + JSON.stringify(P) + fur + S, () => hemG(sp, S, 0.016, 0, zs, true)); }
+      /* saiote feminino (de batalha, por cima da calça) e a barra dourada */
+      const sk = R.spine.children.find(o => ofType(o, 'CylinderGeometry') && near(o.geometry.parameters.radiusTop, 0.17 * S) && near(o.geometry.parameters.radiusBottom, 0.255 * S));
+      if (sk) { const { sp, g } = skirtG(P, -0.1, -0.43, { fl: 0.3, nf: 11, amp: 0.01, clear: 0.012 }, S); setG(sk, g, false); sk.material = vcMat(sk.material, false);
+        const hm = R.spine.children.find(o => ofType(o, 'CylinderGeometry') && near(o.geometry.parameters.radiusTop, 0.257 * S)); if (hm) { setG(hm, hemG(sp, S, 0.011, 0, 1, false), false); } R._skirtSp = sp; }
+      /* faixas em volta do corpo: cinto, obi, laço do avental, faixa do gi, cós da roupa de banho */
+      const bandR = [0.165, 0.172, 0.178, 0.185, 0.188];
+      for (const o of R.spine.children) { const g = o.geometry; if (!ofType(o, 'CylinderGeometry')) continue; const p = g.parameters; if (!near(p.radiusTop, p.radiusBottom) || p.height > 0.2) continue; const k = bandR.findIndex(r => near(p.radiusTop, r * S)); if (k < 0) continue;
+        if (robe && k === 0) { const y = o.position.y / S; setG(o, bandG(P, y, p.height / S, 0.022, S), false); o.position.y = 0; continue; }
+        const y = o.position.y / S; setG(o, bandG(P, y, p.height / S, 0.006 + 0.003 * k, S), false); }
+      /* fivela e peças da frente da cintura: na superfície da faixa */
+      for (const o of R.spine.children) { if (!ofType(o, 'BoxGeometry')) continue; const y = o.position.y / S; if (y < -0.12 || y > 0.0 || o.position.z <= 0) continue; const r = polarMax(bodyPts(P, y, false), -0.004, 96); o.position.z = (-0.004 + r[24] + 0.012 + (robe ? 0.016 : 0)) * S; }
+      /* colete: a frente da camisa vira um painel no peito */
+      if (L.armor === 'vest') { const ap = R.chest.children.find(o => ofType(o, 'BoxGeometry') && near(o.geometry.parameters.width, 0.22 * S) && near(o.geometry.parameters.height, 0.5 * S));
+        if (ap) { const g = panelG(P, 0.4, -0.08, y => 0.07 + 0.025 * Math.max(0, Math.min(1, (y + 0.08) / 0.4)), 0.004, S); setG(ap, g, false); ap.position.y = -0.28 * S; ap.material = vcMat(ap.material, false); } }
+      /* tabardo da armadura e o emblema */
+      if (L.armor === 'plate') { const tab = R.chest.children.find(o => ofType(o, 'BoxGeometry') && near(o.geometry.parameters.width, 0.16 * S) && near(o.geometry.parameters.height, 0.5 * S));
+        if (tab) { const g = panelG(P, 0.45, -0.3, y => 0.078 + (y < -0.05 ? 0.012 * (-0.05 - y) / 0.25 : 0), 0.008, S); setG(tab, g, false); tab.position.y = -0.28 * S; tab.material = vcMat(tab.material, false);
+          const em = R.chest.children.find(o => ofType(o, 'BoxGeometry') && near(o.geometry.parameters.width, 0.07 * S)); if (em) { const r = polarMax(bodyPts(P, 0.34, true), -0.004, 96); em.position.z = (-0.004 + r[24] + 0.016) * S; } } }
+      /* avental: peitilho e saia seguindo o corpo (ou o manto) */
+      if (L.apron) { const am = R.chest.children.find(o => ofType(o, 'BoxGeometry') && near(o.geometry.parameters.width, 0.2 * S) && near(o.geometry.parameters.height, 0.2 * S));
+        if (am) { setG(am, panelG(P, 0.39, 0.16, () => 0.085, 0.007, S), false); am.position.y = -0.28 * S; am.material = vcMat(am.material, false); }
+        const ask = R.spine.children.find(o => ofType(o, 'BoxGeometry') && near(o.geometry.parameters.width, 0.3 * S) && near(o.geometry.parameters.height, 0.42 * S));
+        if (ask) { const sp = R._robeSp || R._skirtSp, robeZ = sp ? (x, y) => { const yy = robe ? y : y; const rr = sp.rows.find(q => q.y <= yy) || sp.rows[sp.rows.length - 1]; let best = 0; for (let j = 0; j < sp.M; j++) { const a = j / sp.M * 2 * PI, px = rr.r[j] * Math.cos(a); if (Math.sin(a) > 0 && Math.abs(px - x) < 0.015) best = Math.max(best, sp.zc + rr.r[j] * Math.sin(a) + 0.006); } return best; } : null;
+          setG(ask, panelG(P, -0.06, -0.5, y => 0.13 + 0.05 * Math.max(0, (-0.06 - y) / 0.44), 0.008, S, robeZ), false); ask.material = vcMat(ask.material, false); }
+        for (const o of R.spine.children) if (ofType(o, 'SphereGeometry') && o.position.z < -0.1 * S && Math.abs(o.position.y + 0.08 * S) < 1e-4) { const r = polarMax(bodyPts(P, -0.08, false), -0.004, 96); o.position.z = (-0.004 - r[72] - 0.02 - (robe ? 0.02 : 0)) * S; } }
+      /* lingerie da Casa de Veludo: saia transparente com fendas, robe aberto, saia do qipao, cinto dourado e gargantilha */
+      const g = P.ling; if (g) { const col = h => new THREE.Color(h).convertSRGBToLinear(), sheer = (h, op) => new THREE.MeshStandardMaterial({ color: col(h), transparent: true, opacity: op, side: THREE.DoubleSide, depthWrite: false, roughness: 0.55, vertexColors: true });
+        const gold = new THREE.MeshStandardMaterial({ color: col('#e2b74e'), metalness: 0.85, roughness: 0.3 });
+        const add = (parent, geo, m) => { const o = new THREE.Mesh(geo, m); parent.add(o); return o; };
+        const angD = (a, b) => { let d = Math.abs(a - b) % (2 * PI); return d > PI ? 2 * PI - d : d; };
+        if (g.t === 'harem' || g.t === 'dance') { const front = PI / 2;
+          const { g: sg } = skirtG(P, -0.11, -0.84, { fl: 0.14, nf: 9, amp: 0.016, clear: 0.01 }, S, 0, 1, (row, a) => row.y < -0.2 && (angD(a, front - 0.75) < 0.12 || angD(a, front + 0.75) < 0.12 || angD(a, front) < (g.t === 'dance' ? 0.0 : 0.1)));
+          add(R.spine, sg, sheer(g.c2 || g.c, 0.42)); add(R.spine, bandG(P, -0.105, 0.026, 0.006, S), gold);
+          for (let k = 0; k < 9; k++) { const a = front - 0.9 + k * 0.225, r = polarMax(bodyPts(P, -0.12, false), -0.004, 96)[Math.round(a / (2 * PI) * 96) % 96] + 0.008; const c = add(R.spine, new THREE.CylinderGeometry(0.011 * S, 0.011 * S, 0.003 * S, 10), gold); c.position.set(r * Math.cos(a) * S, -0.135 * S, (-0.004 + r * Math.sin(a)) * S); c.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), new THREE.Vector3(Math.cos(a), 0, Math.sin(a))); } }
+        if (g.t === 'robe') { const front = PI / 2; const { g: rg } = skirtG(P, 0.46, -0.84, { fl: 0.12, nf: 11, amp: 0.012, clear: 0.014 }, S, 0, 1, (row, a) => angD(a, front) < 0.42 + 0.25 * Math.max(0, Math.min(1, (0.2 - row.y) / 0.3)));
+          add(R.spine, rg, sheer(g.c, 0.36)); }
+        if (g.t === 'qipao') { const { sp, g: qg } = skirtG(P, -0.12, -0.33, { fl: 0.06, nf: 7, amp: 0.006, clear: 0.008 }, S, 0, 1, (row, a) => row.y < -0.19 && (angD(a, 0) < 0.13 || angD(a, PI) < 0.13));
+          add(R.spine, qg, new THREE.MeshStandardMaterial({ color: col(g.c), roughness: 0.35, metalness: 0.1, vertexColors: true, side: THREE.DoubleSide })); add(R.spine, hemG(sp, S, 0.005, 0, 1, false), gold); }
+        if (R.neckJ) { const ch = add(R.neckJ, new THREE.TorusGeometry(0.05 * S * (P.fem ? 0.86 : 1) + 0.004 * S, 0.0055 * S, 6, 28), new THREE.MeshStandardMaterial({ color: col(g.c2), roughness: 0.6 })); ch.rotation.x = PI / 2; ch.position.y = 0.035 * S; ch.scale.set(1, 1.04, 1);
+          const gem = add(R.neckJ, new THREE.SphereGeometry(0.007 * S, 10, 8), gold); gem.position.set(0, 0.028 * S, 0.049 * S); } }
+      /* capa: inclina para trás para passar pelo glúteo */
+      if (R.cape) { let back = 0; for (const y of [-0.05, -0.08, -0.11, -0.14]) { const r = polarMax(bodyPts(P, y, false), 0, 96); back = Math.max(back, r[72]); } const need = back + 0.02 - 0.13, dy = 0.24 + 0.3 + 0.1; if (need > 0) R.cape.rotation.x = Math.max(R.cape.rotation.x, Math.atan(need / dy)); }
+    } catch (e) { console.warn('roupas novas', e); }
+    return R;
+  };
+  window.CLOTHK = { bodyPts, polarMax, skirtProfile, panelG, bandG };
+})();
+
+;
+/* Ligações do visual novo com o jogo. */
+/* teste: ?visual=novo liga o visual novo para todos os personagens neste navegador (VISUAL_NOVO, em config.js), com menos polígonos nas qualidades baixas */
+if (typeof VISUAL_NOVO !== 'undefined' && VISUAL_NOVO) { FACE.style = 'C'; FACE.hair = true; FACE.body = true; window.VN_LOD = [0.3, 0.42, 0.55][typeof VISUAL_Q !== 'undefined' ? VISUAL_Q : 2]; }
 /* TESTE: moças da Casa de Veludo de biquíni com o visual novo (rosto, cabelo e corpo); a cor do biquíni vem da roupa de cada uma */
 (function () {
   const GIRLS = new Set(['vl_comp1', 'vl_comp2', 'vl_comp3', 'vl_comp4', 'vl_dancer1', 'vl_dancer2']);
+  const LING = { vl_comp1: { t: 'corset', c: '#8a1a34', c2: '#120c10', st: 1, sw: '#120c10' }, vl_comp2: { t: 'robe', c: '#6a3a9a', c2: '#2a1438', st: 1, sw: '#2a1438' }, vl_comp3: { t: 'qipao', c: '#16705a', c2: '#e2b74e', sw: '#16705a' }, vl_comp4: { t: 'harem', c: '#d4a52a', c2: '#7a1a3a', sw: '#d4a52a' },
+    vl_dancer1: { t: 'dance', c: '#1a5a8a', c2: '#3a8ac8', sw: '#1a5a8a' }, vl_dancer2: { t: 'dance', c: '#c87a1a', c2: '#e8a040', sw: '#c87a1a' } };
   const hexOf = h => (h && h.hex) || (typeof h === 'string' ? h : '#b03a5a');
   if (typeof npcLookOf === 'function') { const _nl = npcLookOf; npcLookOf = function (kind, nid) { const L = _nl(kind, nid); if (!GIRLS.has(kind)) return L;
-    return Object.assign(L, { newLook: true, seed: nid || kind, armor: 'bare', trunks: hexOf(L.body), barefoot: true, cape: false, weapon: null, shield: null, quiver: false }); }; }
+    Object.assign(L, { newLook: true, seed: nid || kind, armor: 'bare', trunks: hexOf(L.body), barefoot: true, cape: false, weapon: null, shield: null, quiver: false });
+    if (typeof VISUAL_NOVO !== 'undefined' && VISUAL_NOVO && LING[kind]) { const q = LING[kind]; L.ling = q; L.trunks = q.sw || q.c; }   /* com o visual novo ligado: as roupas sensuais da casa */
+    return L; }; }
+})();
+/* visual novo ligado: cada NPC com corpo único (semente = id) e a família nobre com o mesmo tom de pele (pequenas diferenças entre parentes);
+   quem casou com alguém da casa (cônjuges), guardas e criados mantêm a própria pele */
+(function () {
+  if (typeof VISUAL_NOVO === 'undefined' || !VISUAL_NOVO || typeof npcLookOf !== 'function') return;
+  const HOUSE = { valcarne: '#e4bea4', solmire: '#cf9e7b', thornvale: '#b07d5a', draemor: '#815538', moranthe: '#553626' }, ROYAL = '#dbae8f';
+  const hs = s => { let h = 2166136261; for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); } return (h >>> 0) / 4294967296; };
+  const vary = (hex, key) => { const c = new THREE.Color(hex), k = 0.95 + 0.1 * hs(key), t = (hs(key + 'w') - 0.5) * 0.03; c.r = Math.min(1, c.r * k + t); c.g = Math.min(1, c.g * k); c.b = Math.min(1, c.b * k - t); return '#' + c.getHexString(); };
+  const _nl = npcLookOf; npcLookOf = function (kind, nid) { const L = _nl(kind, nid); try { if (L.seed == null) L.seed = nid || kind;
+    const m = /^(?:hh|hb)_(?:lord|heir|young|child)_([a-z]+)$/.exec(String(kind)); let base = m && HOUSE[m[1]]; if (/^k_(king|prince|princess|rchild|ryoung)$/.test(String(kind))) base = ROYAL;
+    if (base) { const h = vary(base, String(nid || kind)); L.skin = typeof tone === 'function' ? tone(h) : h; } } catch (e) { } return L; };
 })();

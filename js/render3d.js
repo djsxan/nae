@@ -7,7 +7,7 @@
 // ============================================================
 const R3 = { ok: false };
 const U = 25;          // unidades de arte do mundo por metro do modelo (1 tile ≈ 2 m)
-const PXU = 2.6;        // pixels da imagem por unidade de arte
+const PXU = typeof VISUAL_NOVO !== 'undefined' && VISUAL_NOVO ? [2.6, 3.4, 4.4][VISUAL_Q] : 2.6;        // pixels da imagem por unidade de arte (o visual novo pede mais nitidez)
 const FRAME_W = 66, FRAME_H = 84, FOOT_Y = 71;  // quadro em unidades de arte (pés em FOOT_Y)
 
 (function init3D() {
