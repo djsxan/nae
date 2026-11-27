@@ -463,6 +463,7 @@ function drawHeroEntity(ctx, e, sx, sy, now) {
   }
   if (R3.ok && e.sleepB && !e.downed) {   // deitado na cama, dormindo
     const pr = e.massageUntil > performance.now(), P = { dir: pr ? ((e.dir || 0) + 4) % 8 : (e.dir || 0), walk: -1, down: true, bed: 1, nowp: 1, lost: e.lost || 0, pro: e.pro || 0, prone: pr ? 1 : 0 };   /* de bruços o corpo tomba para o outro lado: gira para a cabeça ficar no travesseiro */   /* massagem: de bruços */
+    if (typeof camaSleepDraw === 'function' && camaSleepDraw(ctx, e, sx, sy, now, pr)) return;   /* lista 11: a cabeça no travesseiro (js/cama.js) */
     const s = !e.isNpc && typeof massageSprite === 'function' ? massageSprite(e, P.dir, pr) : e.isNpc ? npcSprite3D(e.kind, (P.nid = e.id, P)) : heroSprite3D(e.cls, e.skin, e.color, P);   /* na cama, sempre de sunga */
     ctx.imageSmoothingEnabled = true; pblit(ctx, s, sx, sy - 11); if (typeof drawZzz === 'function') drawZzz(ctx, sx, sy - 26, now); e._spr = null; return;
   }

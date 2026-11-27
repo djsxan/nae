@@ -1393,8 +1393,8 @@ function generateWorld() {
     }
   });
   BUILDINGS.forEach((b, bi) => { if (b.deco !== 'velvet' || b.lot) return; for (let fl = 1; fl < floorsOf(b); fl++) { let n = 0; for (const f of interiorLayout(b, fl).F.slice().sort((a, c) => a.i - c.i)) {   /* quartos da Casa de Veludo: camas com dono por noite, bancos das galerias */
-    if (f.t === 'vmoonbed') { const [x, y] = localToWorld(b, f.i + 1.5, f.j + 1), [x0, y0] = localToWorld(b, f.i + 1.5, f.j + 0.3), [x1, y1] = localToWorld(b, f.i + 1.5, f.j + 1.7); BEDS.push({ x, y, dx: x1 - x0, dy: y1 - y0, bi, fl, vlRoom: 'suite' }); }
-    if (f.t === 'vbed') { n++; const [x, y] = localToWorld(b, f.i + 1, f.j + 1), [x0, y0] = localToWorld(b, f.i + 1, f.j + 0.3), [x1, y1] = localToWorld(b, f.i + 1, f.j + 1.7); BEDS.push({ x, y, dx: x1 - x0, dy: y1 - y0, bi, fl, vlRoom: String(fl * 100 + n) }); }
+    if (f.t === 'vmoonbed') { const [x, y] = localToWorld(b, f.i + 1.5, f.j + 1), [x0, y0] = localToWorld(b, f.i + 1.5, f.j + 0.3), [x1, y1] = localToWorld(b, f.i + 1.5, f.j + 1.7); BEDS.push({ x, y, dx: x1 - x0, dy: y1 - y0, bi, fl, vlRoom: 'suite', t: 'vmoonbed', w: f.w || 3, h: f.h || 2 }); }
+    if (f.t === 'vbed') { n++; const [x, y] = localToWorld(b, f.i + 1, f.j + 1), [x0, y0] = localToWorld(b, f.i + 1, f.j + 0.3), [x1, y1] = localToWorld(b, f.i + 1, f.j + 1.7); BEDS.push({ x, y, dx: x1 - x0, dy: y1 - y0, bi, fl, vlRoom: String(fl * 100 + n), t: 'vbed', w: f.w || 2, h: f.h || 2 }); }
     if (f.seats) for (const [u, v2, d] of f.seats) { const [x, y] = localToWorld(b, u, v2); seats.push({ x, y, dir: bDir(b, d), h: 0.3, bi, fl }); }
     if (f.seat) { const [x, y] = localToWorld(b, f.i + f.w / 2, f.j + f.h / 2); seats.push({ x, y, dir: bDir(b, f.seat), h: 0.3, bi, fl }); } }
     if (fl === 3) for (const [u, v2, d] of [[5.85, 12.3, 1], [7.15, 12.3, 5]]) { const [x, y] = localToWorld(b, u, v2); seats.push({ x, y, dir: bDir(b, d), h: 0.3, bi, fl }); } } });   /* cadeiras da varanda da suíte */
@@ -1406,14 +1406,14 @@ function generateWorld() {
     for (const n of NPCS) { if (n.x != null) { const p = fix(n.x, n.y, true); if (p) { n.x = p[0]; n.y = p[1]; } } for (const k of ['route', 'patrol']) if (n[k]) n[k] = n[k].map(q => fix(q[0], q[1]) || q); if (n.stall) n.stall = fix(n.stall[0], n.stall[1]) || n.stall; } }
   BUILDINGS.forEach((b, bi) => { if (b.kind !== 'tower') return; const [A0, D0] = bDims(b), fl = TOWER_APT_FL; APTS.push({ key: TOWER_APT, name: 'Apartamento de luxo', bi, fl, u0: 0, u1: A0, v0: 0, v1: D0, tower: 1 });   /* o andar inteiro (o elevador abre dentro dele) */
     for (const f of interiorLayout(b, fl).F) { const cx = f.i + f.w / 2, cz = f.j + f.h / 2, [x, y] = localToWorld(b, cx, cz);
-      if (f.t === 'platbed') { const [x0, y0] = localToWorld(b, cx, f.j + 0.3), [x1, y1] = localToWorld(b, cx, f.j + f.h - 0.3); BEDS.push({ x, y, dx: x1 - x0, dy: y1 - y0, bi, fl, apt: TOWER_APT }); }
+      if (f.t === 'platbed') { const [x0, y0] = localToWorld(b, cx, f.j + 0.3), [x1, y1] = localToWorld(b, cx, f.j + f.h - 0.3); BEDS.push({ x, y, dx: x1 - x0, dy: y1 - y0, bi, fl, apt: TOWER_APT, t: f.t, w: f.w || 1, h: f.h || 1 }); }
       if (f.t === 'chest') APT_CHESTS.unshift({ x, y, bi, fl, apt: TOWER_APT });
       if (f.t === 'stove') { const [sx, sy] = localToWorld(b, cx - 0.95, cz), [fx, fy] = localToWorld(b, cx - 0.2, cz); KITCHENS.push({ x, y, bi, fl, sx, sy, fx, fy, k: 'stove' }); } } });   /* lista 8: fogão no apartamento de luxo */
   BUILDINGS.forEach((b, bi) => { if (b.kind !== 'dojo') return; const nF = floorsOf(b);   /* apartamentos: futon/cama, tansu e irori dos andares de cima */
     for (let fl = 1; fl < nF; fl++) { const top = fl === nF - 1, list = top ? [{ key: fl + '01', name: 'Suíte ' + fl + '01', u0: 0, u1: 6, suite: 1 }] : [{ key: fl + '01', name: 'Apto ' + fl + '01', u0: 3, u1: 6 }, { key: fl + '02', name: 'Apto ' + fl + '02', u0: 0, u1: 3 }];
       for (const a of list) APTS.push({ ...a, bi, fl, v0: 0, v1: bDims(b)[1] });
       for (const f of interiorLayout(b, fl).F) { const cx = f.i + f.w / 2, cz = f.j + f.h / 2, [x, y] = localToWorld(b, cx, cz), A = aptAt(bi, fl, x, y); if (!A) continue;
-        if (f.t === 'futon' || f.t === 'platbed') { const [x0, y0] = localToWorld(b, cx, f.j + 0.3), [x1, y1] = localToWorld(b, cx, f.j + f.h - 0.3); BEDS.push({ x, y, dx: x1 - x0, dy: y1 - y0, bi, fl, apt: A.key }); }
+        if (f.t === 'futon' || f.t === 'platbed') { const [x0, y0] = localToWorld(b, cx, f.j + 0.3), [x1, y1] = localToWorld(b, cx, f.j + f.h - 0.3); BEDS.push({ x, y, dx: x1 - x0, dy: y1 - y0, bi, fl, apt: A.key, t: f.t, w: f.w || 1, h: f.h || 1 }); }
         if (f.t === 'tansu') APT_CHESTS.push({ x, y, bi, fl, apt: A.key }); if (f.t === 'chest' || f.t === 'suitechest') APT_CHESTS.unshift({ x, y, bi, fl, apt: A.key });   /* a suíte tem um armário-baú ao lado da cama */
         if (f.t === 'zaisu') { const R = [[0, 1], [1, 0], [0, -1], [-1, 0]][f.v || 0], [x, y] = localToWorld(b, cx + (f.ox || 0), cz), [tx, ty] = localToWorld(b, cx + (f.ox || 0) + R[0], cz + R[1]); seats.push({ x, y, dir: vecDir8(tx - x, ty - y), h: 0.1, bi, fl, low: 1 }); }   /* almofada: senta no chão, virado para a mesinha */
         if (f.t === 'irori' || f.t === 'jkitchen') { const [sx, sy] = localToWorld(b, cx, f.j - 0.5), [fx, fy] = localToWorld(b, cx, f.j + 0.2); KITCHENS.push({ x, y, bi, fl, sx, sy, fx, fy, k: f.t }); }   /* de pé do lado de dentro, de frente para a bancada */
@@ -1639,11 +1639,11 @@ function placeFurniture(b, bi, f, obj, seats, idx) {
     if (f.t === 'chest') { const [x, y] = bLocal(b, f.i, f.j); Q.chest = { x, y }; }
     if (f.t === 'cabindoor') { const [x, y] = bLocal(b, f.i, f.j); Q.door = [x, y]; Q.di = y * MAP_W + x; Q.spot = bLocal(b, f.adj[0], f.adj[1]); Q.tiles = new Set(f.inner.map(([i, j]) => { const [tx, ty] = bLocal(b, i, j); return ty * MAP_W + tx; })); HOTEL_DOORS.set(Q.di, f.cab); }
   }
-  if (f.t === 'cot' || f.t === 'futon') { const [px, py] = bLocal(b, f.i, f.j), [fx, fy] = bLocal(b, f.i, f.j + f.h - 1); BEDS.push({ x: (px + fx) / 2, y: (py + fy) / 2, dx: fx - px, dy: fy - py, bi }); }
+  if (f.t === 'cot' || f.t === 'futon') { const [px, py] = bLocal(b, f.i, f.j), [fx, fy] = bLocal(b, f.i, f.j + f.h - 1); BEDS.push({ x: (px + fx) / 2, y: (py + fy) / 2, dx: fx - px, dy: fy - py, bi, t: f.t, w: f.w || 1, h: f.h || 1 }); }
   if (f.t === 'stove') { const [x, y] = bLocal(b, f.i, f.j); KITCHENS.push({ x, y, bi, k: 'stove' }); }
   if (f.t === 'makiwara' || f.t === 'mokujin') { const [x, y] = bLocal(b, f.i, f.j), side = f.i === 0 ? 1 : -1, [fx, fy] = bLocal(b, f.i + side, f.j); DUMMIES.push({ x, y, bi, t: f.t, fx, fy }); }
   if (f.t === 'chest' && (b.kind === 'house' || b.kind === 'manor') && !b.office) { const [x, y] = bLocal(b, f.i, f.j); CHESTS.push({ x, y, bi }); }
-  if (f.t === 'bed') { const [px, py] = bLocal(b, f.i + (f.w - 1) / 2, f.j), [fx, fy] = bLocal(b, f.i + (f.w - 1) / 2, f.j + f.h - 1); BEDS.push({ x: (px + fx) / 2, y: (py + fy) / 2, dx: fx - px, dy: fy - py, bi }); }
+  if (f.t === 'bed') { const [px, py] = bLocal(b, f.i + (f.w - 1) / 2, f.j), [fx, fy] = bLocal(b, f.i + (f.w - 1) / 2, f.j + f.h - 1); BEDS.push({ x: (px + fx) / 2, y: (py + fy) / 2, dx: fx - px, dy: fy - py, bi, t: 'bed', w: f.w || 1, h: f.h || 1 }); }
   for (let a = 0; a < f.w; a++) for (let c = 0; c < f.h; c++) { const [x, y] = bLocal(b, f.i + a, f.j + c); if (f.block) obj[idx(x, y)] = O.PART; }
   if (f.seats) for (const [u, v2, d] of f.seats) { const [x, y] = localToWorld(b, u, v2); seats.push({ x, y, dir: bDir(b, d), h: 0.3, bi, vb: f.c }); }   /* reservados da Casa de Veludo: lugares em volta da mesa */
   if (!f.seat) return;
