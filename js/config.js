@@ -23,8 +23,8 @@ const HERALDS = {
   moranthe: { house: 'Moranthe', field: '#33295a', field2: '#1d1630', metal: '#c9c2e8', charge: 'owl' }, thornvale: { house: 'Thornvale', field: '#21492f', field2: '#14301f', metal: '#e4dcc0', charge: 'boar' },
   solmire: { house: 'Solmire', field: '#4a3a22', field2: '#2b2216', metal: '#e8a33c', charge: 'eclipse' } };
 const HERALD = { house: 'Aurenfell', name: 'Casa Aurenfell', field: '#9a2a1c', field2: '#6e1d14', metal: '#f1cf6a', charge: 'tower', motto: 'A Luz Não se Curva' };
-const VERSION = 'v1.156.0';
-const VERSION_NAME = 'Nae · Ombreiras';
+const VERSION = 'v1.157.0';
+const VERSION_NAME = 'Nae · Visual Novo';
 
 const PLAYER_SPEED = 2.7;          // tiles por segundo (1 tile ≈ 2 m)
 // configurações do jogador (menu de pausa)
@@ -35,7 +35,7 @@ const SET = (() => { const d = { quality: 'auto', bright: 1, zoom: 1, chat: 'fad
 const QLEVELS = [{ n: 'Mínima', dpr: 0.7 }, { n: 'Muito baixa', dpr: 0.85 }, { n: 'Baixa', dpr: 1 }, { n: 'Média', dpr: 1.25 }, { n: 'Alta', dpr: 1.5 }, { n: 'Ultra', dpr: 2 }];
 const QFIXED = { low: 2, med: 3, high: 5 };
 /* visual novo (rosto, cabelo, corpo e roupas) em teste: liga só neste navegador com ?visual=novo e desliga com ?visual=antigo */
-const VISUAL_NOVO = (() => { try { const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('visual') : null; if (q === 'novo') localStorage.setItem('naeVisual', '1'); else if (q === 'antigo') localStorage.removeItem('naeVisual'); return localStorage.getItem('naeVisual') === '1'; } catch (e) { return false; } })();
+const VISUAL_NOVO = (() => { try { const q = typeof location !== 'undefined' ? new URLSearchParams(location.search).get('visual') : null; if (q === 'antigo') localStorage.setItem('naeVisual', '0'); else if (q === 'novo') localStorage.removeItem('naeVisual'); return localStorage.getItem('naeVisual') !== '0'; } catch (e) { return true; } })();   /* visual novo ligado para todos desde a v1.157.0; ?visual=antigo desliga neste navegador, ?visual=novo religa */
 const VISUAL_Q = (() => { const q = SET && SET.quality; return q === 'low' ? 0 : q === 'med' ? 1 : 2; })();   /* 0 baixa, 1 média, 2 alta/automática */
 function saveSettings() { try { localStorage.setItem('nae-settings', JSON.stringify(SET)); } catch (e) { } }
 const STAIR_N = 5;                 // escadas: 5 tiles de rampa até o alto da muralha

@@ -786,7 +786,7 @@ window.FACE = { style: 'old', expr: 'n' };
 
 ;
 /* Ligações do visual novo com o jogo. */
-/* teste: ?visual=novo liga o visual novo para todos os personagens neste navegador (VISUAL_NOVO, em config.js), com menos polígonos nas qualidades baixas */
+/* visual novo para todos os personagens (VISUAL_NOVO em config.js, ligado desde a v1.157.0; ?visual=antigo desliga), com menos polígonos nas qualidades baixas */
 if (typeof VISUAL_NOVO !== 'undefined' && VISUAL_NOVO) { FACE.style = 'C'; FACE.hair = true; FACE.body = true; window.VN_LOD = [0.3, 0.42, 0.55][typeof VISUAL_Q !== 'undefined' ? VISUAL_Q : 2]; }
 /* TESTE: moças da Casa de Veludo de biquíni com o visual novo (rosto, cabelo e corpo); a cor do biquíni vem da roupa de cada uma */
 (function () {
