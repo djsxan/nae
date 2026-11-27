@@ -665,7 +665,7 @@ function interiorLayoutBase(b, fl = 0) {
     put('vlift', 11, 2, { w: 2, h: 2, block: false, force: true }); put('vvoid', 3, 3, { w: 7, h: 6, force: true });
     put('vwardrobe', 0, 0, { w: 2, h: 1 }); put('vnight', 4, 0); put('vmoonbed', 5, 0, { w: 3, h: 2 }); put('vnight', 8, 0); put('vdivan', 9, 0, { w: 2, h: 1 }); put('vvanity', 12, 0);
     put('vgramo', 0, 3); put('vsofa', 0, 5, { h: 2, v: 1, seats: [[0.45, 5.6, 1], [0.45, 6.4, 1]] }); put('varm', 1, 4, { seat: 7 }); put('vtea', 1, 6, { c: 3 }); put('varm', 1, 8, { seat: 3 }); put('vplant', 0, 9);
-    put('vscreen', 10, 5, { c: 3 }); put('vtub', 11, 6, { w: 2, h: 2 }); put('vwash', 12, 9); put('vplant', 12, 10); put('vside', 3, 10); put('vside', 9, 10);
+    put('vscreen', 10, 5, { c: 3 }); put('vtub', 10, 6, { w: 3, h: 3 }); put('vwash', 12, 9); put('vplant', 12, 10); put('vside', 3, 10); put('vside', 9, 10);
     for (const [i, j, w, h, c] of [[5, 9, 3, 2, 0], [4, 0, 1, 1, 1]]) if (w > 1) put('vrug', i, j, { w, h, block: false, force: true, c });
   } else if (k === 'velvet' && fl > 0) {   /* Casa de Veludo, 1º e 2º andar: quartos 1 a 3 ao norte (cortina na entrada), galerias em volta do vão, elevador no leste */
     put('vlift', 11, 2, { w: 2, h: 2, block: false, force: true }); put('vvoid', 3, 3, { w: 7, h: 6, force: true });
