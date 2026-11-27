@@ -3,7 +3,7 @@
 //  mesma semente). Tem 2 andares: 0 = chão, 1 = muralhas/torres.
 // ============================================================
 const TEST3D = typeof window !== 'undefined' && !!window.TEST3D;   // bairro de teste em 3D
-const MAP_W = TEST3D ? 80 : 256, MAP_H = TEST3D ? 80 : 256, CENTER = TEST3D ? 40 : 128, SAFE_R = 38;
+const MAP_W = TEST3D ? 80 : 384, MAP_H = TEST3D ? 80 : 384, CENTER = TEST3D ? 40 : 192, SAFE_R = 38;
 const C = CENTER;
 
 const T = { WATER: 0, SAND: 1, GRASS: 2, FOREST: 3, STONE: 4, DIRT: 5, BRIDGE: 6, COBBLE: 7, SWAMP: 8, DEAD: 9, SHALLOW: 10, CLIFF: 11, FLOORSTONE: 12 };
@@ -64,16 +64,20 @@ const gatherOf = o => { for (const k in GATHER) if (O[k] === o) return GATHER[k]
 const STAGE = { x: -1, y: -1 };   // cadafalso da guilhotina (centro do tablado 3x3)   // camas do térreo (onde dá para deitar e dormir): { x, y, dx, dy (travesseiro -> pés), bi }
 const DIRS8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [1, -1], [-1, 1], [-1, -1]];
 
-const Z = { VILLAGE: 0, FIELDS: 1, FOREST: 2, SWAMP: 3, BONES: 4, ORCS: 5, WILD: 6, OUTSKIRTS: 7 };
+const Z = { VILLAGE: 0, FIELDS: 1, FOREST: 2, SWAMP: 3, BONES: 4, ORCS: 5, WILD: 6, OUTSKIRTS: 7, OLIVE: 8, CORK: 9, MOUNT: 10, OLD: 11 };
 const ZONES = [
   { name: 'Cidadela de Nae', stars: 0, mons: [] },
   { name: 'Campos de Nae', stars: 1, mons: ['rat', 'deer', 'deer', 'boar'] },
-  { name: 'Bosque Sombrio', stars: 2, mons: ['wolf', 'wolf', 'spider', 'deer', 'boar'] },
-  { name: 'Pântano Pútrido', stars: 2, mons: ['toad', 'toad', 'rat'] },
-  { name: 'Colinas de Ossos', stars: 3, mons: ['spider', 'rat', 'wolf'] },
-  { name: 'Terras do Oeste', stars: 3, mons: ['boar', 'wolf', 'deer'] },
-  { name: 'Terras Selvagens', stars: 4, mons: ['wolf', 'boar', 'deer', 'spider'] },
+  { name: 'Pinhal do Norte', stars: 2, mons: ['wolf', 'wolf', 'spider', 'deer', 'boar'] },
+  { name: 'Salinas Podres', stars: 2, mons: ['toad', 'toad', 'rat', 'slime'] },
+  { name: 'Colinas da Necrópole', stars: 4, mons: ['spider', 'wolf', 'skeleton'] },
+  { name: 'Terras do Oeste', stars: 3, mons: ['boar', 'wolf', 'goblin'] },
+  { name: 'Pico Cinzento', stars: 4, mons: ['wolf', 'spider', 'spider'] },
   { name: 'Arredores de Nae', stars: 0, mons: [] },
+  { name: 'Olivais e Vinhas', stars: 1, mons: ['rat', 'deer', 'boar'] },
+  { name: 'Bosque dos Sobreiros', stars: 2, mons: ['boar', 'boar', 'deer', 'wolf'] },
+  { name: 'Serra do Norte', stars: 3, mons: ['wolf', 'wolf', 'spider', 'boar'] },
+  { name: 'Mata Antiga', stars: 4, mons: ['wolf', 'spider', 'boar', 'deer'] },
 ];
 
 function hash2(x, y, s) {
@@ -102,6 +106,7 @@ function zoneOf(x, y) {
   if (!TEST3D && dx > 0 && dx - 0.5 <= SAFE_R + 1.5 + EAST_EXT && Math.abs(dy - 0.5) <= SAFE_R + 1.5) return Z.VILLAGE;   /* bairro das Casas Nobres */
   if (!TEST3D && dy > 0 && dy - 0.5 <= SAFE_R + 1.5 + SOUTH_EXT && dx >= -(SAFE_R + 1.5) && dx - 0.5 <= SAFE_R + 1.5 + EAST_EXT) return Z.VILLAGE;   /* faixa sul nova (Prancheta 25/11, 16h) */
   if (!TEST3D && dy < 0 && dy >= -(SAFE_R + 1.5 + NORTH_EXT) && dx >= -(SAFE_R + 1.5) && dx - 0.5 <= SAFE_R + 1.5 + EAST_EXT) return Z.VILLAGE;   /* faixa norte nova (Prancheta 25/11) */
+  if (ARRON) return arrZone(x, y);   /* mapa de 384: zonas pelas regiões da Prancheta dos Arredores */
   const d = Math.hypot(dx, dy) + (vnoise(x / 12, y / 12, 55) - 0.5) * 10;
   if (d < 62) return Z.OUTSKIRTS;
   if (d < 82) return Z.FIELDS;
@@ -808,21 +813,72 @@ if (TEST3D) {
   );
 }
 const TEMPLE_SPAWN = TEST3D ? { x: 40, y: 44 } : (() => { const b = BUILDINGS[0], [dx, dy] = doorTile(b), v = DOOR_V[b.door || 'S']; return { x: dx + v[0] * 2.2, y: dy + v[1] * 2.2 }; })();
-const MOUNTAIN = TEST3D ? { x: -100, y: -100, r: 1 } : { x: 50, y: 52, r: 20 };
+const MOUNTAIN = TEST3D ? { x: -100, y: -100, r: 1 } : { x: 336, y: 104, r: 7 };   /* a rocha da Garganta do Troll, na Mata Antiga */
 // ---------- bastiões: lugares onde os inimigos se concentram (o resto do mundo é da fauna) ----------
 const bpos = (a, d) => { const r = d * Math.SQRT2; return { x: Math.round(CENTER + r * (Math.cos(a) + Math.sin(a)) / 2), y: Math.round(CENTER + r * (Math.sin(a) - Math.cos(a)) / 2) }; };
 const CAVE_POS = (() => { const dx = CENTER - MOUNTAIN.x, dy = CENTER - MOUNTAIN.y, l = Math.hypot(dx, dy); return { x: Math.round(MOUNTAIN.x + dx / l * (MOUNTAIN.r + 1)), y: Math.round(MOUNTAIN.y + dy / l * (MOUNTAIN.r + 1)), ux: dx / l, uy: dy / l }; })();
 const BASTIONS = TEST3D ? [] : [
-  { id: 'orc', name: 'Acampamento Orc', kind: 'camp', ...bpos(Math.PI, 92), r: 9, mons: { orc: 5, goblin: 6 }, boss: 'orcchief', patrol: ['goblin', 'goblin', 'orc'] },
-  { id: 'crypt', name: 'Cripta das Colinas', kind: 'crypt', ...bpos(Math.PI / 2, 92), r: 9, mons: { skeleton: 9 }, boss: 'cryptlord', patrol: ['skeleton', 'skeleton'] },
-  { id: 'fort', name: 'Fortim dos Desertores', kind: 'fort', ...bpos(-Math.PI / 2 + 0.6, 90), r: 9, mons: { bandit: 6, deserter: 4 }, boss: 'deserterchief', patrol: ['bandit', 'bandit', 'deserter'] },
-  { id: 'pools', name: 'Poças do Pântano', kind: 'pools', ...bpos(0, 92), r: 9, mons: { slime: 7 }, boss: 'elderslime', night: { wisp: 4 } },
+  { id: 'orc', name: 'Acampamento Orc', kind: 'camp', x: 38, y: 216, r: 9, mons: { orc: 5, goblin: 6 }, boss: 'orcchief', patrol: ['goblin', 'goblin', 'orc'] },
+  { id: 'crypt', name: 'Necrópole dos Primeiros Reis', kind: 'crypt', x: 40, y: 110, r: 9, mons: { skeleton: 9 }, boss: 'cryptlord', patrol: ['skeleton', 'skeleton'] },
+  { id: 'fort', name: 'Torre dos Desertores', kind: 'fort', x: 312, y: 176, r: 9, mons: { bandit: 6, deserter: 4 }, boss: 'deserterchief', patrol: ['bandit', 'bandit', 'deserter'] },
+  { id: 'pools', name: 'Salinas Podres', kind: 'pools', x: 92, y: 322, r: 9, mons: { slime: 7 }, boss: 'elderslime', night: { wisp: 4 } },
   // TEMPORÁRIO (testes do combate): acampamento de bandidos logo depois do portão sul, repovoa rápido
-  { id: 'test', name: 'Acampamento de Bandidos (teste)', kind: 'testcamp', x: CENTER + 12, y: CENTER + 45, r: 6, mons: { bandit: 6, goblin: 4 }, fast: 15000, temp: true },   // dobrado (pedido do jogador)
-  { id: 'dragon', name: 'Covil do Dragão', kind: 'dragon', ...bpos(Math.PI / 4, 110), r: 9, mons: {}, boss: 'dragon', respawn: 1800000 },
-  { id: 'cave', name: 'Caverna do Troll', kind: 'cave', x: CAVE_POS.x + Math.round(CAVE_POS.ux * 6), y: CAVE_POS.y + Math.round(CAVE_POS.uy * 6), r: 6, mons: {}, boss: 'troll' },
+  { id: 'mine', name: 'Mina de Prata Abandonada', kind: 'mine', x: 240, y: 54, r: 8, mons: { spider: 9 }, patrol: ['spider', 'spider'] },
+  { id: 'cove', name: 'Enseada dos Contrabandistas', kind: 'cove', x: 334, y: 282, r: 8, mons: { bandit: 6, deserter: 3 }, patrol: ['bandit', 'bandit'] },
+  { id: 'dragon', name: 'Covil do Dragão', kind: 'dragon', x: 338, y: 58, r: 9, mons: {}, boss: 'dragon', respawn: 1800000 },
+  { id: 'cave', name: 'Garganta do Troll', kind: 'cave', x: CAVE_POS.x + Math.round(CAVE_POS.ux * 6), y: CAVE_POS.y + Math.round(CAVE_POS.uy * 6), r: 6, mons: {}, boss: 'troll' },
 ];
-const RIVER_PTS = [[70, 74], [76, 100], [72, 128], [80, 172], [112, 198], [152, 214], [192, 234], [234, 254]];
+const RIVER_PTS = [[328, 114], [322, 146], [332, 176], [352, 198]];   /* Ribeiro do Véu: sai do poço da cachoeira da Garganta e vai ao mar do leste */
+// ---- ARREDORES DE NAE (mapa 384×384, Prancheta 27/11): regiões, mar, serra, rios, cachoeiras e lago em coordenadas do mapa novo ----
+const ARRON = !TEST3D && MAP_W === 384;
+const ARR = {
+  regions: [   /* a ordem é a prioridade (a primeira que contém o ponto) */
+    { id: 'serra', poly: [[0,0],[384,0],[384,40],[330,46],[290,30],[250,38],[210,26],[170,34],[130,24],[90,40],[50,52],[20,70],[0,80]] },
+    { id: 'vulcao', circ: [338, 58, 24] },
+    { id: 'mata', poly: [[296,70],[342,84],[366,122],[352,170],[322,160],[302,122]] },
+    { id: 'colinas', poly: [[16,90],[70,86],[82,142],[52,172],[14,162]] },
+    { id: 'pinhal', poly: [[60,62],[130,44],[210,36],[270,46],[296,72],[286,108],[240,116],[214,122],[176,120],[132,104],[86,96]] },
+    { id: 'sobreiros', poly: [[286,150],[322,166],[346,200],[338,250],[312,276],[288,258],[282,204]] },
+    { id: 'salinas', poly: [[60,302],[120,292],[152,322],[130,350],[80,346],[40,336]] },
+    { id: 'oeste', poly: [[10,172],[62,172],[100,206],[106,282],[62,300],[10,290]] },
+    { id: 'olival', poly: [[140,250],[272,250],[300,290],[252,324],[182,334],[140,310]] } ],
+  sea: [[0,384],[0,352],[40,354],[90,344],[130,356],[170,346],[210,334],[250,330],[290,320],[320,302],[340,272],[352,232],[350,192],[360,152],[372,112],[384,92],[384,384]],
+  rivers: [
+    { name: 'Rio Claro', w: 1.9, pts: [[212,37],[208,60],[218,86],[206,110],[214,141]] },
+    { name: 'Canal do Fosso', w: 1.6, pts: [[278,238],[298,262],[318,298],[328,308]] },
+    { name: 'Rio Velho', w: 2.4, pts: [[96,118],[118,126],[134,138],[140,164],[136,192],[144,236],[176,262],[216,278],[256,298],[300,322]] },
+    { name: 'Braço das Salinas', w: 1.5, pts: [[144,236],[126,272],[104,304],[94,326]] } ],
+  falls: [{ x: 212, y: 37, kind: 'serra' }, { x: 108, y: 125, kind: 'ledge' }],
+  lake: { x: 88, y: 116, rx: 15, ry: 10 },
+  roads: [ [[213,141],[212,96],[236,62]], [[330,193],[332,226],[336,270]], [[110,186],[96,140],[90,126],[46,114]] ] };
+function arrPoly(P, x, y) { let ins = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) { const [xi, yi] = P[i], [xj, yj] = P[j]; if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) ins = !ins; } return ins; }
+function arrJit(x, y, a) { return [x + (vnoise(x / 9, y / 9, 71) - 0.5) * a, y + (vnoise(x / 9, y / 9, 72) - 0.5) * a]; }
+function arrRegion(x, y) { const [jx, jy] = arrJit(x, y, 12); for (const R of ARR.regions) { if (R.circ ? Math.hypot(jx - R.circ[0], jy - R.circ[1]) < R.circ[2] : arrPoly(R.poly, jx, jy)) return R.id; } return null; }
+function arrSeaAt(x, y) { const [jx, jy] = arrJit(x, y, 9); return arrPoly(ARR.sea, jx, jy); }
+/* 0 = água, 1 = praia, 2 = terra */
+function arrSeaK(x, y) { if (x < 2 || y < 2 || x > MAP_W - 3 || y > MAP_H - 3) return arrSeaAt(x, y) ? 0 : 2; if (arrSeaAt(x, y)) return 0; for (const [dx, dy] of [[2.5, 0], [-2.5, 0], [0, 2.5], [0, -2.5]]) if (arrSeaAt(x + dx, y + dy)) return 1; return 2; }
+function arrWallDist(x, y) { return Math.hypot(Math.max(CASTLE.x0 - x, 0, x - CITY_X1), Math.max(CASTLE.y0 - y, 0, y - CASTLE.y1)); }
+function arrZone(x, y) { const dw = arrWallDist(x, y) + (vnoise(x / 12, y / 12, 55) - 0.5) * 8; if (dw < 20) return Z.OUTSKIRTS;
+  switch (arrRegion(x, y)) { case 'olival': return Z.OLIVE; case 'oeste': return x < 66 ? Z.ORCS : Z.FIELDS; case 'pinhal': return Z.FOREST; case 'sobreiros': return Z.CORK; case 'salinas': return Z.SWAMP; case 'colinas': return Z.BONES; case 'serra': return Z.MOUNT; case 'mata': return Z.OLD; case 'vulcao': return Z.WILD; }
+  return dw < 70 ? Z.FIELDS : Z.WILD; }
+const arrZv = z => z === Z.OLIVE ? Z.FIELDS : z === Z.CORK ? Z.FOREST : z === Z.MOUNT ? Z.WILD : z === Z.OLD ? Z.FOREST : z;   /* vegetação: as zonas novas usam as regras das parecidas */
+function arrCurve(P) { const out = []; for (let k = 0; k < P.length - 1; k++) { const p0 = P[Math.max(0, k - 1)], p1 = P[k], p2 = P[k + 1], p3 = P[Math.min(P.length - 1, k + 2)]; for (let t = 0; t < 1; t += 0.04) out.push([catmull(p0[0], p1[0], p2[0], p3[0], t), catmull(p0[1], p1[1], p2[1], p3[1], t)]); } out.push(P[P.length - 1]); return out; }
+/* serra (penhascos), lago, rios e cachoeiras do mapa novo */
+function arrWater(W) { const { ground, obj, height, flow, river, idx, inb } = W;
+  for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) { const i = idx(x, y); if (ground[i] === T.WATER || ground[i] === T.SAND) continue; const [jx, jy] = arrJit(x, y, 10);   /* serra: sobe em degraus para o norte */
+    if (!arrPoly(ARR.regions[0].poly, jx, jy)) continue; let dep = 0; for (const s of [4, 9, 15, 22]) if (arrPoly(ARR.regions[0].poly, jx, jy + s)) dep++;
+    if (dep >= 1) { ground[i] = T.CLIFF; height[i] = Math.min(4, dep); obj[i] = O.NONE; } else ground[i] = vnoise(x / 5, y / 5, 73) > 0.5 ? T.STONE : T.DIRT; }
+  const L = ARR.lake; for (let y = L.y - L.ry - 2; y <= L.y + L.ry + 2; y++) for (let x = L.x - L.rx - 2; x <= L.x + L.rx + 2; x++) { if (!inb(x, y)) continue; const e = ((x - L.x) / L.rx) ** 2 + ((y - L.y) / L.ry) ** 2 + (vnoise(x / 4, y / 4, 74) - 0.5) * 0.3, i = idx(x, y); if (e < 1) { ground[i] = T.WATER; obj[i] = O.NONE; height[i] = 0; } else if (e < 1.35 && ground[i] !== T.CLIFF) ground[i] = T.SAND; }
+  for (const R of ARR.rivers) { const pts = arrCurve(R.pts); pts.forEach(([px, py], k) => { const nx = pts[Math.min(pts.length - 1, k + 1)], fx = nx[0] - px, fy = nx[1] - py, fl = Math.hypot(fx, fy) || 1, w = R.w + vnoise(k / 6, R.w * 10, 82) * 1.0;
+    for (let yy = Math.floor(py - 4); yy <= py + 4; yy++) for (let xx = Math.floor(px - 4); xx <= px + 4; xx++) { if (!inb(xx, yy) || Math.hypot(xx - px, yy - py) > w) continue; const i = idx(xx, yy); if (ground[i] === T.CLIFF) continue; ground[i] = T.WATER; river[i] = 1; flow[i * 2] = fx / fl; flow[i * 2 + 1] = fy / fl; obj[i] = O.NONE; height[i] = 0; } }); }
+  for (const F of ARR.falls) { if (F.kind === 'ledge') { for (let t = -4; t <= 4; t++) for (const dy of [0, 1]) { const x = F.x + t, y = F.y + dy, i = idx(x, y); if (!inb(x, y)) continue; ground[i] = T.CLIFF; height[i] = 2 + (dy ? 0 : 1); obj[i] = O.NONE; } const i = idx(F.x, F.y); obj[i] = O.WATERFALL; height[i] = 3; const j = idx(F.x + 1, F.y); obj[j] = O.WATERFALL; height[j] = 3; continue; }
+    for (let s = 0; s < 12; s++) { const x = F.x, y = F.y - s, i = idx(x, y); if (ground[i] !== T.CLIFF) { ground[i] = T.WATER; river[i] = 1; flow[i * 2] = 0; flow[i * 2 + 1] = 1; obj[i] = O.NONE; continue; } for (const ax of [0, 1]) { const j = idx(x + ax, y); if (ground[j] === T.CLIFF) { obj[j] = O.WATERFALL; height[j] = Math.max(3, height[j]); } } break; } } }
+/* olivais em fileiras e vinhas entre elas */
+const ARR_NAT = new Set([O.NONE, O.TALLGRASS, O.FLOWER, O.BUSH, O.TREE, O.OAK, O.PINE, O.BIRCH, O.FERN, O.BERRY, O.LOG, O.ROOTS, O.ROCK, O.MUSHROOM, O.SHROOMS, O.HERB, O.BOULDER, O.STUMP, O.WILLOW]);
+function arrOlives(W) { const { ground, obj, zone, idx } = W; for (let y = 2; y < MAP_H - 2; y++) for (let x = 2; x < MAP_W - 2; x++) { const i = idx(x, y); if (zone[i] !== Z.OLIVE || ground[i] === T.WATER || ground[i] === T.SAND || ground[i] === T.CLIFF || W.river[i]) continue;
+  const o = obj[i]; if (!ARR_NAT.has(o)) continue; const r = hash2(x, y, 975);
+  const rw = (y + 1000) % 7, cl = (x + (Math.floor(y / 7) % 2) * 3 + 1000) % 6; if (rw === 0 && cl === 0) obj[i] = r < 0.9 ? O.TREE : O.NONE; else if (rw === 3 && x % 2 === 0) obj[i] = r < 0.75 ? O.BUSH : O.NONE; else obj[i] = r < 0.05 ? O.FLOWER : r < 0.09 ? O.TALLGRASS : O.NONE; if (rw === 3 || rw === 4) ground[i] = r < 0.7 ? T.DIRT : ground[i]; else if (ground[i] === T.FOREST) ground[i] = T.GRASS; } }
+
 
 function catmull(p0, p1, p2, p3, t) {
   const t2 = t * t, t3 = t2 * t;
@@ -859,8 +915,10 @@ function generateWorld() {
     zone[i] = z;
     const n1 = fbm(x / 12, y / 12, 99), n2 = fbm(x / 8, y / 8, 31);
     let g;
-    if (h < 0.35 || x < 2 || y < 2 || x > MAP_W - 3 || y > MAP_H - 3) g = T.WATER;
-    else if (h < 0.385) g = T.SAND;
+    const sk = ARRON ? arrSeaK(x, y) : (h < 0.35 || x < 2 || y < 2 || x > MAP_W - 3 || y > MAP_H - 3) ? 0 : h < 0.385 ? 1 : 2;
+    if (sk === 0) g = T.WATER;
+    else if (sk === 1) g = T.SAND;
+    else if (ARRON && z === Z.WILD && arrRegion(x, y) === 'vulcao') g = n2 > 0.45 ? T.STONE : T.DEAD;   /* cinza e rocha do Pico Cinzento */
     else switch (z) {
       case Z.OUTSKIRTS: g = vnoise(x / 6, y / 6, 333) > 0.68 ? T.DEAD : n1 > 0.7 ? T.FOREST : T.GRASS; break;
       case Z.FIELDS: g = n1 > 0.64 ? T.FOREST : T.GRASS; break;
@@ -869,6 +927,10 @@ function generateWorld() {
       case Z.BONES: g = n2 > 0.6 ? T.DIRT : T.DEAD; break;
       case Z.ORCS: g = n1 > 0.5 ? T.DIRT : (n2 > 0.5 ? T.DEAD : T.GRASS); break;
       case Z.WILD: g = n2 > 0.7 ? T.STONE : n1 > 0.55 ? T.FOREST : T.GRASS; break;
+      case Z.OLIVE: g = n1 > 0.82 ? T.FOREST : T.GRASS; break;
+      case Z.CORK: g = n1 > 0.45 ? T.FOREST : T.GRASS; break;
+      case Z.MOUNT: g = n2 > 0.55 ? T.STONE : n1 > 0.6 ? T.FOREST : T.DIRT; break;
+      case Z.OLD: g = n1 > 0.3 ? T.FOREST : T.GRASS; break;
       default: g = T.GRASS;
     }
     if (z === Z.VILLAGE) g = T.GRASS;
@@ -931,9 +993,10 @@ function generateWorld() {
     }
   }
 
+  if (ARRON) arrWater({ ground, obj, height, flow, river, idx, inb });   /* serra, lago, Rio Claro, Rio Velho, canal do fosso e cachoeiras */
   // vegetação e objetos por zona
   for (let y = 0; y < MAP_H; y++) for (let x = 0; x < MAP_W; x++) {
-    const i = idx(x, y), g = ground[i], z = zone[i], r = R(x, y, 4242);
+    const i = idx(x, y), g = ground[i], z = arrZv(zone[i]), r = R(x, y, 4242);
     if (obj[i] !== O.NONE || g === T.CLIFF || z === Z.VILLAGE) continue;
     let o = O.NONE;
     if (g === T.WATER) { if (!river[i] && ((z === Z.SWAMP && r < 0.12) || (z === Z.FIELDS && r < 0.02))) o = O.LILY; }
@@ -975,7 +1038,7 @@ function generateWorld() {
   {
     const TREES = new Set([O.TREE, O.PINE, O.OAK, O.BIRCH, O.WILLOW, O.DEADTREE]);
     for (let y = 2; y < MAP_H - 2; y++) for (let x = 2; x < MAP_W - 2; x++) {
-      const i = idx(x, y), g = ground[i], z = zone[i];
+      const i = idx(x, y), g = ground[i], z = arrZv(zone[i]);
       if (g === T.CLIFF || g === T.WATER || g === T.SHALLOW || g === T.SAND || g === T.BRIDGE || z === Z.VILLAGE || z === Z.OUTSKIRTS || river[i]) continue;
       if (Math.hypot(x - MOUNTAIN.x, y - MOUNTAIN.y) < MOUNTAIN.r + 1) continue;
       const clr = vnoise(x / 16, y / 16, 951), trail = Math.abs(vnoise(x / 24, y / 24, 952) - 0.5) < 0.022, grove = vnoise(x / 11, y / 11, 953), sp = vnoise(x / 9, y / 9, 954), r = R(x, y, 955), r2 = R(x, y, 956);
@@ -1008,6 +1071,7 @@ function generateWorld() {
     }
     // árvores e pedregulhos nunca encostados pelos lados (sempre dá para passar); nas diagonais pode
     for (let y = 1; y < MAP_H - 1; y++) for (let x = 1; x < MAP_W - 1; x++) { const i = idx(x, y); if (!TREES.has(obj[i]) && obj[i] !== O.BOULDER) continue; for (const [dx, dy] of [[1, 0], [0, 1]]) { const j = idx(x + dx, y + dy); if (TREES.has(obj[j]) || obj[j] === O.BOULDER) obj[j] = O.FERN; } }
+    if (ARRON) arrOlives({ ground, obj, zone, river, idx });   /* olivais em fileiras e vinhas */
     // riachos sinuosos com juncos nas margens
     for (let c = 0; c < 9; c++) {
       let x = 20 + Math.floor(R(c, 1, 960) * (MAP_W - 40)), y = 20 + Math.floor(R(c, 2, 960) * (MAP_H - 40)), a = R(c, 3, 960) * 6.28;
@@ -1039,7 +1103,7 @@ function generateWorld() {
       if (B.kind === 'cave' && ground[i] === T.CLIFF) continue;   // não come a montanha
       height[i] = 0; obj[i] = O.NONE; river[i] = 0;
       const n = hash2(x, y, 901);
-      ground[i] = B.kind === 'camp' ? (n < 0.7 ? T.DIRT : T.GRASS) : B.kind === 'crypt' ? (n < 0.55 ? T.DEAD : T.DIRT) : B.kind === 'fort' ? (n < 0.5 ? T.DIRT : n < 0.8 ? T.COBBLE : T.GRASS) : B.kind === 'pools' ? (n < 0.75 ? T.SWAMP : T.GRASS) : (n < 0.6 ? T.STONE : T.DIRT);
+      ground[i] = B.kind === 'mine' ? (n < 0.6 ? T.STONE : T.DIRT) : B.kind === 'cove' ? (n < 0.6 ? T.SAND : T.STONE) : B.kind === 'camp' ? (n < 0.7 ? T.DIRT : T.GRASS) : B.kind === 'crypt' ? (n < 0.55 ? T.DEAD : T.DIRT) : B.kind === 'fort' ? (n < 0.5 ? T.DIRT : n < 0.8 ? T.COBBLE : T.GRASS) : B.kind === 'pools' ? (n < 0.75 ? T.SWAMP : T.GRASS) : (n < 0.6 ? T.STONE : T.DIRT);
     }
     const put = (dx, dy, o) => { const x = B.x + dx, y = B.y + dy; if (x < 1 || y < 1 || x >= MAP_W - 1 || y >= MAP_H - 1) return; const i = idx(x, y); if (ground[i] !== T.WATER && ground[i] !== T.CLIFF) obj[i] = o; };
     const angGap = (a, c, w) => Math.abs(((a - c) % (Math.PI * 2) + Math.PI * 3) % (Math.PI * 2) - Math.PI) < w;
@@ -1111,6 +1175,12 @@ function generateWorld() {
         if (ground[i] === T.WATER) continue; ground[i] = hash2(X, Y, 918) < 0.8 ? T.COBBLE : T.DIRT; obj[i] = O.NONE; height[i] = 0;
         for (const side of [-2, 2]) { if (q !== 0) continue; const k2 = idx(X + sy * side, Y + sx * side); if (ground[k2] === T.WATER) continue; obj[k2] = (j - 6 - STAIR_N) % 4 === 1 ? ((j >> 2) % 2 ? O.TORCH : O.BANNER) : obj[k2] === O.DEADTREE ? O.NONE : obj[k2]; }
       }
+} else if (B.kind === 'mine' || B.kind === 'cove') {   /* gruta numa rocha nos fundos, de frente para a cidade */
+      const back = toC + Math.PI, cx0 = Math.round(Math.cos(back) * 5), cy0 = Math.round(Math.sin(back) * 5);
+      for (let y = -4; y <= 4; y++) for (let x = -4; x <= 4; x++) { const d = Math.hypot(x, y) + (H(x, y, 930) - 0.5) * 1.2; if (d > 3.6) continue; const i = idx(B.x + cx0 + x, B.y + cy0 + y); ground[i] = T.CLIFF; height[i] = d < 1.6 ? 3 : 2; obj[i] = O.NONE; }
+      { const ex = Math.round(Math.cos(back) * 2), ey = Math.round(Math.sin(back) * 2), i = idx(B.x + ex, B.y + ey); ground[i] = T.STONE; height[i] = 0; obj[i] = O.CAVE; }
+      if (B.kind === 'mine') { put(-2, 2, O.CART); put(2, 2, O.CRATE); put(3, 1, O.CRATE); put(-3, 0, O.LOG); put(-3, 1, O.LOG); put(1, 4, O.RUBBLE); put(-1, 4, O.RUBBLE); put(0, 3, O.TORCH); for (let k = 0; k < 8; k++) { const x = Math.round((H(k, 6, 931) - 0.5) * 12), y = Math.round((H(k, 7, 931) - 0.5) * 12); if (Math.hypot(x, y) > 3 && Math.hypot(x, y) < 7) put(x, y, H(k, 8, 931) < 0.5 ? O.BONES : O.ROCK); } }
+      else { put(-2, 2, O.CRATE); put(-3, 2, O.CRATE); put(2, 2, O.BARREL); put(3, 1, O.BARREL); put(0, 3, O.CAMPFIRE); put(-1, -2, O.TENT); put(3, 3, O.CART); for (let k = 0; k < 6; k++) { const x = Math.round((H(k, 6, 932) - 0.5) * 12), y = Math.round((H(k, 7, 932) - 0.5) * 12); if (Math.hypot(x, y) > 3 && Math.hypot(x, y) < 7) put(x, y, O.ROCK); } }
     } else if (B.kind === 'cave') {
       { const i = idx(CAVE_POS.x, CAVE_POS.y); ground[i] = T.STONE; height[i] = 0; obj[i] = O.CAVE; }
       for (let y = -Rr; y <= Rr; y++) for (let x = -Rr; x <= Rr; x++) { const d = Math.hypot(x, y), i = idx(B.x + x, B.y + y); if (d < 2 || d > Rr || obj[i] !== O.NONE || ground[i] === T.CLIFF) continue; const h = H(x, y, 912); obj[i] = h < 0.12 ? O.BONES : h < 0.17 ? O.ROCK : h < 0.2 ? O.RUBBLE : O.NONE; }
@@ -1154,6 +1224,7 @@ function generateWorld() {
   { const L = lastLand(x1 + RG, C, 1, 0); for (let k = 1; k <= L; k++) for (let w = 0; w <= 1; w++) road(x1 + RG + k, C + w, 1); }
   { const L = lastLand(x0 - RG, C, -1, 0); for (let k = 1; k <= L; k++) for (let w = 0; w <= 1; w++) road(x0 - RG - k, C + w, 1); }
   for (let x = x0 - RG; x < x0; x++) for (let y = C + 4; y <= C + 7; y++) road(x, y, 1, 1);
+  if (ARRON) for (const P of ARR.roads) { const pts = arrCurve(P); for (let k = 0; k < pts.length; k++) { const [px, py] = pts[k], n = pts[Math.min(pts.length - 1, k + 1)], dir = Math.abs(n[0] - px) >= Math.abs(n[1] - py) ? 1 : 2; for (const [ox, oy] of [[0, 0], [1, 0], [0, 1]]) road(Math.round(px) + ox, Math.round(py) + oy, dir); } }   /* trilhas: à mina, à enseada, ao lago e à necrópole */
 
   // chão da cidade: calçamento com canteiros de grama
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) set(x, y, vnoise(x / 5, y / 5, 610) > 0.7 ? T.GRASS : T.COBBLE, O.NONE);

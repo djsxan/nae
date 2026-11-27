@@ -14,7 +14,7 @@ function weatherS() {   /* chuva igual à que os jogadores veem (mesma fórmula)
   const ov = (typeof WTs === 'function' ? WTs().rain : null); if (ov != null) return { rain: ov };
   const t = Date.now() / 1000; return { rain: Math.max(0, Math.min(1, (Math.sin(t / 260) + Math.sin(t / 97) * 0.4 - 0.75) * 2.2)) };
 }
-const MAX_MON = typeof TEST3D !== 'undefined' && TEST3D ? 10 : 320;
+const MAX_MON = typeof TEST3D !== 'undefined' && TEST3D ? 10 : 480;
 
 const RUMORS = [
   'Os lenhadores evitam o Bosque Sombrio depois do pôr do sol. Os lobos de lá caçam em bando.',
@@ -3277,9 +3277,14 @@ const SALARY = { shop: 6, workshop: 8, bank: 30, hotel: 6 }, SAFE_CAP = 500, WS_
 const estOwner = p => String(p.name || '').trim().toLowerCase() + '|' + p.cls + (p.uid ? '#' + p.uid : '');   // heróis novos têm código único: não herdam casa, negócios nem banco de um herói antigo
 const estDay = () => Math.floor(gameNow() / ESTATE_DAY_MS);
 const isBizProp = P => P && (P.kind === 'shop' || P.kind === 'workshop' || P.kind === 'bank' || P.kind === 'hotel') && P.npc !== 'a Guarda' && !(P.kind === 'workshop' && P.npc && !P.wk);
+/* mapa de 256 → 384: anda 64 casas em x e y tudo o que tem posição do mundo (decoração e móveis usam a planta do prédio e ficam como estão) */
+function estShift384(o, depth) { depth = depth || 0; if (!o || typeof o !== 'object' || depth > 12) return; if (Array.isArray(o)) { for (const v of o) estShift384(v, depth + 1); return; }
+  if (typeof o.x === 'number' && typeof o.y === 'number' && o.x >= 0 && o.x <= 256 && o.y >= 0 && o.y <= 256) { o.x += 64; o.y += 64; }
+  for (const k in o) { if (k === 'deco' || k === 'mob') continue; const v = o[k]; if (v && typeof v === 'object') estShift384(v, depth + 1); } }
 function estateLoad() {
   if (S.estate) return S.estate; S.estate = { r: {}, lost: {} };
   try { const j = hsGet(ESTATE_KEY); if (j && j.r) { S.estate = Object.assign({}, j, { r: j.r, lost: j.lost || {}, hotel: j.hotel || {}, npcb: j.npcb || {}, npcm: j.npcm || {}, tub: j.tub || {}, emp: j.emp || {}, seg: j.seg || {}, empN: j.empN || 0, clk: j.clk || 0 });   /* tudo o que foi salvo volta (casas, coroa, casamentos, linhagens, segredos...); antes só estes campos voltavam */ if (j.clk && !SIMCLK.real) simSet(Date.now() + j.clk, 1, false); for (const pid in S.estate.r) { const P = PROPS_BY[pid]; if (!P || (P.kind !== 'house' && !isBizProp(P))) { const r0 = S.estate.r[pid]; if (r0 && r0.owner && r0.chest && Object.keys(r0.chest).length) S.estate.lost[r0.owner] = Object.assign(S.estate.lost[r0.owner] || {}, r0.chest); delete S.estate.r[pid]; } }   /* imóvel que deixou de existir (a Casa 2 virou a agência): o baú volta para o dono */ } } catch (e) { }
+  if (MAP_W === 384 && !S.estate.map384) { estShift384(S.estate); S.estate.map384 = 1; try { hsSet(ESTATE_KEY, S.estate); } catch (e) { } }   /* mundo salvo no mapa de 256: tudo o que tem posição anda 64 casas (a cidade foi para o centro do mapa de 384) */
   for (const pid in S.estate.r) bizLinkBank(S.estate.r[pid]);
   S.estateL = estateLocks(); return S.estate;
 }
