@@ -469,6 +469,7 @@ function interiorLayoutBase(b, fl = 0) {
     put('bed', 0, 0, { w: 2, h: 2, v: 1 }); put('fireplace', w - 2, 0); put('shelf', 2, 0); put('chest', 3, 0);
     if (put('table', w - 3, 2, { w: 2 })) { put('chair', w - 4, 2, { seat: 1 }); put('chair', w - 1, 2, { seat: 5 }); }
     put('mirror', 0, 3, { block: false }); put('rug', 1, 2, { w: 2, h: 2, v: 9, block: false });
+    for (const [i, j, fi, fj] of [[w - 1, 3, w - 2, 3], [w - 1, 4, w - 2, 4], [0, 4, 1, 4], [w - 1, 1, w - 2, 1], [4, 0, 4, 1]]) if (can(i, j) && can(fi, fj)) { put('stove', i, j); taken.add(key(fi, fj)); break; }   /* lista 8: o casarão também tem fogão */
   } else if (k === 'fruithouse') {   // casa da fruteira: cestos e caixotes de fruta, mesa de separar, geleias, réstias penduradas, fogão com tacho de doce
     put('bed', 0, 0, { h: 2 }); put('stove', 2, 0); taken.add(key(2, 1)); put('jamshelf', 3, 0); put('fruitcrate', 4, 0, { v: 0 });
     put('baskets', 1, 0); put('sorttable', 3, 2, { w: 2 }); put('fruitcrate', 4, 3, { v: 1 }); put('baskets', 0, 3, { v: 1 });
@@ -507,7 +508,7 @@ function interiorLayoutBase(b, fl = 0) {
     } else if (fl === 3) {   /* casa do Sxan: escrivaninha, cama, estante e projetos */
       put('desk', 2, 0, { w: 2 }); put('chest', 5, 0); put('bed', 6, 1, { h: 2 }); put('blueprints', 7, 2, { h: 2, v: 3, block: false }); put('bookwall', 7, 4, { h: 2, v: 3 }); put('armchair', 1, 5); put('steamclock', 2, 7, { v: 2 }); put('rug', 1, 3, { w: 2, h: 2, block: false, force: true });
     } else if (fl === 4) {   /* apartamento de luxo: cama grande, baú, lareira e poltronas */
-      put('fireplace', 2, 0, { w: 2 }); put('chest', 4, 0); put('platbed', 5, 1, { w: 2, h: 2, block: false }); put('armchair', 1, 2); put('armchair', 1, 4); put('chandelier', 2, 5, { block: false }); put('mirror', 7, 3, { v: 3 }); put('plantpot', 6, 6, { block: false }); put('nrug', 5, 5, { w: 2, h: 1, block: false, force: true });
+      put('fireplace', 2, 0, { w: 2 }); put('chest', 4, 0); put('platbed', 5, 1, { w: 2, h: 2, block: false }); put('armchair', 1, 2); put('armchair', 1, 4); put('chandelier', 2, 5, { block: false }); put('mirror', 7, 3, { v: 3 }); put('stove', 7, 4, { v: 3 }); put('table', 4, 6); put('plantpot', 6, 6, { block: false }); put('nrug', 5, 5, { w: 2, h: 1, block: false, force: true });
     } else {   /* observatório no telhado: o grande telescópio e o mapa do céu */
       put('bigscope', 5, 1, { w: 2, h: 2 }); put('starrug', 1, 3, { w: 2, h: 2, block: false }); put('orb', 2, 1); put('mapframe', 7, 4, { v: 3, block: false }); put('armchair', 6, 5); put('steamclock', 7, 3, { v: 3 });
     }
@@ -1406,7 +1407,8 @@ function generateWorld() {
   BUILDINGS.forEach((b, bi) => { if (b.kind !== 'tower') return; const [A0, D0] = bDims(b), fl = TOWER_APT_FL; APTS.push({ key: TOWER_APT, name: 'Apartamento de luxo', bi, fl, u0: 0, u1: A0, v0: 0, v1: D0, tower: 1 });   /* o andar inteiro (o elevador abre dentro dele) */
     for (const f of interiorLayout(b, fl).F) { const cx = f.i + f.w / 2, cz = f.j + f.h / 2, [x, y] = localToWorld(b, cx, cz);
       if (f.t === 'platbed') { const [x0, y0] = localToWorld(b, cx, f.j + 0.3), [x1, y1] = localToWorld(b, cx, f.j + f.h - 0.3); BEDS.push({ x, y, dx: x1 - x0, dy: y1 - y0, bi, fl, apt: TOWER_APT }); }
-      if (f.t === 'chest') APT_CHESTS.unshift({ x, y, bi, fl, apt: TOWER_APT }); } });
+      if (f.t === 'chest') APT_CHESTS.unshift({ x, y, bi, fl, apt: TOWER_APT });
+      if (f.t === 'stove') { const [sx, sy] = localToWorld(b, cx - 0.95, cz), [fx, fy] = localToWorld(b, cx - 0.2, cz); KITCHENS.push({ x, y, bi, fl, sx, sy, fx, fy, k: 'stove' }); } } });   /* lista 8: fogão no apartamento de luxo */
   BUILDINGS.forEach((b, bi) => { if (b.kind !== 'dojo') return; const nF = floorsOf(b);   /* apartamentos: futon/cama, tansu e irori dos andares de cima */
     for (let fl = 1; fl < nF; fl++) { const top = fl === nF - 1, list = top ? [{ key: fl + '01', name: 'Suíte ' + fl + '01', u0: 0, u1: 6, suite: 1 }] : [{ key: fl + '01', name: 'Apto ' + fl + '01', u0: 3, u1: 6 }, { key: fl + '02', name: 'Apto ' + fl + '02', u0: 0, u1: 3 }];
       for (const a of list) APTS.push({ ...a, bi, fl, v0: 0, v1: bDims(b)[1] });
