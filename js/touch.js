@@ -20,7 +20,7 @@ function tMouse(type, button) { const s = tAimScreen() || [innerWidth / 2, inner
   const c = document.getElementById('game'); c.dispatchEvent(new MouseEvent(type, { button, buttons: type === 'mousedown' ? 1 << button : 0, clientX: s[0], clientY: s[1], bubbles: true })); if (type === 'mouseup') window.dispatchEvent(new MouseEvent('mouseup', { button, clientX: s[0], clientY: s[1] })); }
 const T_BTNS = [   /* id, rótulo, ação: 'k:tecla' (segurar), 'm:botão do mouse' (segurar), 'tap:tecla' */
   ['tb-atk', '⚔', 'm:0', 'Atacar (segure para carregar)'], ['tb-def', '🛡', 'm:2', 'Defender / mirar o escudo'], ['tb-f', 'F', 'tap:f', 'Interagir, falar, pegar'],
-  ['tb-g', '🗡', 'tap:g', 'Sacar / guardar a arma'], ['tb-run', '🏃', 'toggle:shift', 'Correr (liga e desliga)'], ['tb-r', 'R', 'tap:r', 'Auto-ataque (arqueiro e mago) · golpe de escudo (cavaleiro) · desarmado: empurrar, voadora correndo, corda por trás'],
+  ['tb-g', '🗡', 'tap:g', 'Sacar / guardar a arma'], ['tb-run', '🏃', 'toggle:shift', 'Correr (liga e desliga)'], ['tb-r', 'R', 'tap:r', 'Auto-ataque (arqueiro e mago) · golpe de escudo (cavaleiro)'], ['tb-push', '🤚', 'tap:p', 'Empurrar (correndo: forte ou voadora; por trás de quem está parado: corda no pé)'],
   ['tb-x', '◎', 'tap: ', 'Trocar de alvo'], ['tb-kick', '🦶', 'm:3', 'Chute'],
 ];
 const T_TOP = [['tb-tab', '☰', 'tap:tab', 'Menu do jogo (TAB)'], ['tb-map', '🗺', 'tap:m', 'Mapa'], ['tb-emo', '☺', 'tap:t', 'Emoções e meditar'], ['tb-k', '✦', 'tap:k', 'Talentos / grimório'], ['tb-chat', '💬', 'chat', 'Chat'], ['tb-v', '🛏', 'tap:v', 'Deitar / levantar']];

@@ -1,13 +1,13 @@
 // ============================================================
 //  FUNDAR UMA CASA (parte I): o jogador com título de Lorde, um casarão próprio no bairro nobre,
-//  5.000 de ouro e o apoio de duas casas (favor 30) funda a sua casa: nome, lema, cores e brasão
+//  5.000 de ouro (desde 28/11 sem precisar do apoio de outras casas) funda a sua casa: nome, lema, cores e brasão
 //  de uma lista. A casa nova entra na disputa (aba Casas, Voz do Povo, fim da linha de sangue),
 //  ganha criado e dois guardas com as cores dela, estandartes e o brasão sobre a porta; outros
 //  jogadores juram lealdade a ela; renda diária pelo prestígio e homens de armas (poder).
 //  As casas de jogador ficam num registro próprio (PH_BY), fora da lista das cinco casas NPC:
 //  não viram alvo de campanhas, tramas, invasões nem rebeliões automáticas.
 // ============================================================
-const PH = { cost: 5000, favor: 30, need: 2, title: 3, menCost: 300, menPow: 5, chestCost: 500, chestGold: 5, incomeMul: 2, vowDay: 1, st: { prestige: 30, power: 15, gold: 20, crown: 10 } };
+const PH = { cost: 5000, favor: 30, need: 0, title: 3, menCost: 300, menPow: 5, chestCost: 500, chestGold: 5, incomeMul: 2, vowDay: 1, st: { prestige: 30, power: 15, gold: 20, crown: 10 } };
 const PH_CHARGES = [['wolf', 'Lobo', '🐺'], ['stag', 'Cervo', '🦌'], ['lion', 'Leão', '🦁'], ['tower', 'Torre', '🏰'], ['sword', 'Espada', '🗡️'], ['raven', 'Corvo', '🐦'], ['rose', 'Rosa', '🌹'], ['moon', 'Lua', '🌙'], ['sun', 'Sol', '☀️'], ['tree', 'Árvore', '🌳'], ['fish', 'Peixe', '🐟'], ['axe', 'Machado', '🪓']];
 const PH_FIELDS = ['#7a1a14', '#a8321e', '#1b2a5a', '#2a5a8a', '#1f4a2a', '#3a6a2a', '#3a2458', '#8a2a4a', '#18181c', '#5a3a1a', '#6a6a72', '#e8e2d0'];
 const PH_METALS = ['#f1cf6a', '#d9dde2', '#f4efe2', '#c0392b', '#1a1a1a', '#e8a33c', '#7ab8e8', '#9ad08a'];
@@ -55,7 +55,7 @@ function phFound(p, m) { const k = estOwner(p), R = phRec(), q = phReq(p);
   const H = hRec(); H.st[h.id] = Object.assign({ rel: {} }, PH.st); const C = crownRec(); if (C.vow[k]) delete C.vow[k]; H.vow[k] = h.id; H.favor[k] = H.favor[k] || {}; H.favor[k][h.id] = 100;
   for (const hn of q.sup) { const o = HOUSES.find(x => x.n === hn); if (o) hRel(o.id, h.id, 20); }
   (S.phDone = S.phDone || {})[h.id] = 1; phReg(h); estateSave(); sendStat(p); Net.toAll(phMsgAll());
-  sys('⚜ Nasce uma casa nobre: ' + p.name + ' fundou a ' + n + ' — “' + motto + '”. O conselho aceitou a casa com o apoio de ' + q.sup.slice(0, 3).join(' e ') + '.'); hNews('Lorde ' + p.name + ' fundou a ' + n + ' no ' + man.n + '. A casa entra no fim da linha de sangue.');
+  sys('⚜ Nasce uma casa nobre: ' + p.name + ' fundou a ' + n + ' — “' + motto + '”. ' + (q.sup.length ? 'O conselho aceitou a casa com o apoio de ' + q.sup.slice(0, 3).join(' e ') + '.' : 'O conselho registrou a casa.')); hNews('Lorde ' + p.name + ' fundou a ' + n + ' no ' + man.n + '. A casa entra no fim da linha de sangue.');
   Net.toOne(p.id, Object.assign({ t: 'phmenu' }, phReq(p))); }
 /* criado e dois guardas na porta da sede */
 const PH_ROLES = ['serv', 'guard', 'guard'];
@@ -129,7 +129,7 @@ function phFoundPanel(m) { if (typeof velPanel !== 'function') return; const ok 
   const req = '<div class="vel-sub">O que o conselho exige</div><div style="font-size:13px;line-height:1.4">' + ok(m.lorde, 'O título de <b>Lorde</b> da coroa' + (m.lorde ? '' : m.dama ? ' — o seu pedido à Dama pode suprir o favor que falta: peça o título numa audiência.' : ' (peça numa audiência no castelo).')) +
     ok(m.manors.length, m.manors.length ? 'Um casarão próprio no bairro nobre: <b>' + m.manors.map(x => x.n).join(', ') + '</b>' : 'Um casarão <b>comprado</b> no bairro nobre' + (m.full ? ' (todos já são sedes de casas)' : ' (na imobiliária)')) +
     ok(m.gold >= m.cost, '<b>' + m.cost.toLocaleString('pt-BR') + '</b> de ouro (você tem ' + m.gold.toLocaleString('pt-BR') + ' no banco e na bolsa)') +
-    ok(m.sup.length >= m.need, 'O apoio de <b>' + m.need + ' casas</b> no conselho (favor ' + m.favor + ' com elas)' + (m.sup.length ? ': ' + m.sup.join(', ') : ': nenhuma ainda')) + '</div>';
+    (m.need ? ok(m.sup.length >= m.need, 'O apoio de <b>' + m.need + ' casas</b> no conselho (favor ' + m.favor + ' com elas)' + (m.sup.length ? ': ' + m.sup.join(', ') : ': nenhuma ainda')) : '') + '</div>';
   const sw = (L, nm) => '<div style="display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 8px">' + L.map((c, i) => '<button data-' + nm + '="' + c + '" style="width:26px;height:26px;border-radius:6px;border:2px solid ' + (i === 0 ? '#fff' : 'rgba(255,255,255,.25)') + ';background:' + c + ';cursor:pointer"></button>').join('') + '</div>';
   const html = req + '<div class="vel-sub">O brasão</div><div style="display:flex;gap:14px;flex-wrap:wrap;align-items:flex-start"><div style="text-align:center"><canvas id="ph-prev" width="128" height="160" style="width:112px;height:140px"></canvas><canvas id="ph-ban" width="64" height="192" style="width:40px;height:120px;margin-left:6px"></canvas></div><div style="flex:1;min-width:220px">' +
     '<input id="ph-n" maxlength="22" placeholder="Nome (Casa …)" style="width:100%;box-sizing:border-box;padding:7px 9px;margin-bottom:6px;border-radius:7px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.35);color:inherit"><input id="ph-mo" maxlength="40" placeholder="Lema" style="width:100%;box-sizing:border-box;padding:7px 9px;border-radius:7px;border:1px solid rgba(255,255,255,.25);background:rgba(0,0,0,.35);color:inherit">' +

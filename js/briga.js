@@ -1,8 +1,8 @@
 // ============================================================
 //  BRIGA DE RUA (lista 15, 28/11): empurrão, empurrão correndo, voadora, banda e corda no pé.
-//  Desarmado (G guarda a arma): R empurra (correndo, empurra forte e derruba); correndo com a pessoa a alguns passos,
-//  R é a voadora; por trás de alguém parado, R amarra uma corda no pé (gasta uma Corda) e a pessoa cai quando andar;
-//  C (esquiva) colado em alguém dá a banda com a perna. Com a arma na mão, R e C fazem o de sempre.
+//  P empurra (correndo, empurra forte e derruba); correndo com a pessoa a alguns passos, P é a voadora; por trás de
+//  alguém parado, P amarra uma corda no pé (gasta uma Corda) e a pessoa cai quando andar. Desarmado, C (esquiva) colado
+//  em alguém dá a banda com a perna. (Até a 1.190 era o R, que é a tecla do ataque automático.)
 //  Vale em jogadores e NPCs, com consequência: quem cai é "desordem" para as sentinelas que virem, os guardas
 //  avisam no primeiro empurrão, e o povo xinga e às vezes revida.
 // ============================================================
@@ -33,7 +33,7 @@ function brgHit(p, k, q, d, fall, now) { const a = Math.atan2(q.y - p.y, q.x - p
   if (k === 'p') { if (q.dev) return; q._hitBy = { k: 'p', id: p.id, t: now }; if (d > 0) Net.toOne(q.id, { t: 'push', a, d }); if (fall) knockPlayer(q, p, now); else near(q.x, q.y, { t: 'anim', w: 'p', id: q.id, a: 'hurt', ms: 400 });
     tell(q, p.name + (fall ? ' derrubou você!' : ' empurrou você!')); if (fall && !(p.duel && p.duel === q.duel)) witnessCrime(p, p.x, p.y, 'brawl'); }
   else { if (d > 0) brgShoveNpc(q, a, d); if (fall) { brgKoNpc(q, p, now); witnessCrime(p, p.x, p.y, 'brawl'); } else near(q.x, q.y, { t: 'anim', w: 'n', id: q.id, a: 'hurt', ms: 400 }); q.faceT = null; brgReact(q, p, fall, now); } }
-function brgMsg(p, m) { const now = now_(), a0 = String(m.a || ''); if (!BRG.cd[a0] || !p.sheathed || p.downed || p.sit || p.sleep != null || p.aff || now < (p.knockUntil || 0) || p.carrying || p.carriedBy) return;
+function brgMsg(p, m) { const now = now_(), a0 = String(m.a || ''); if (!BRG.cd[a0] || (a0 === 'trip' && !p.sheathed) || p.downed || p.sit || p.sleep != null || p.aff || now < (p.knockUntil || 0) || p.carrying || p.carriedBy) return;
   p._brCd = p._brCd || {}; if (now < (p._brCd[a0] || 0)) return; p._brCd[a0] = now + BRG.cd[a0];
   const run = !!m.run && !!p.running; if (a0 === 'kick' && !run) { p._brCd[a0] = 0; return; }
   const q = m.id != null ? brgEnt(m.k, m.id) : null, ok = q && q !== p && !q.dead && !q.downed && (q.fl || 0) === (p.fl || 0) && dist(p.x, p.y, q.x, q.y) <= BRG.reach[a0] + (run ? 0.5 : 0) && !(m.k === 'n' && (String(q.kind || '').startsWith('ent_') || q.sitting || q.sleeping || q.onBack || q.dz || /^vl_lift/.test(q.id)));
@@ -77,8 +77,8 @@ function brgPick(reach) { const me = G.me; if (!me) return null; const [fx, fy] 
   return best; }
 /* teclado: só desarmado. R empurra / voadora / corda conforme a situação; C (esquiva) colado em alguém dá a banda */
 if (typeof window !== 'undefined' && typeof G !== 'undefined') window.addEventListener('keydown', ev => {
-  try { const k = (ev.key || '').toLowerCase(); if ((k !== 'r' && k !== 'c') || ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey) return; const t = ev.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
-    if (!G.started || !G.me || !G.me.shea || G.me.downed || G.me.sit || G.me.sleep || G.me.aff || G.training || G.me.bathing || G.me.medit) return; if (document.querySelector('.gpanel.lift-panel, .vel-panel, #gmenu.on')) return;
+  try { const k = (ev.key || '').toLowerCase(); if ((k !== 'p' && k !== 'c') || ev.repeat || ev.ctrlKey || ev.metaKey || ev.altKey) return; const t = ev.target; if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (!G.started || !G.me || (k === 'c' && !G.me.shea) || G.me.downed || G.me.sit || G.me.sleep || G.me.aff || G.training || G.me.bathing || G.me.medit) return; if (document.querySelector('.gpanel.lift-panel, .vel-panel, #gmenu.on')) return;
     const run = !!(G.me.running && G.me.walking);
     if (k === 'c') { const tg = brgPick(BRG.reach.trip); if (tg) Net.send({ t: 'brawl', a: 'trip', run: 0, k: tg.k, id: tg.id }); return; }   /* a esquiva continua; a banda vai junto */
     let a = 'push', tg = brgPick(run ? BRG.reach.kick + 0.5 : BRG.reach.push);

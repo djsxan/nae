@@ -35,7 +35,9 @@ function hPost(def, n) {   /* posição do morador agora */
   if (!(n.hrole === 'serv' && (n.callDoor || 0) > now_()) && typeof thNoblePost === 'function') { const T = thNoblePost(n); if (T) return T; }   /* hora do banho nas Termas (menos o criado chamado à porta) */
   const b = hSeatB(n.house); if (!b) return null; const h = empHour(); let P = h >= 7 && h < 21 ? def[1] : def[2]; if (n.hrole === 'serv' && (n.callDoor || 0) > now_()) P = ['door', 0];   /* chamado pelo guarda: espera na porta */
   if (P[0] === 'door') { const d = doorOf(b), [dx, dy] = doorTile(b), v = DOOR_V[b.door || 'S'], ox = v[0] ? 0 : P[1] * 1.2, oy = v[1] ? 0 : P[1] * 1.2; return { x: dx + v[0] * 1.6 + ox + 0.5, y: dy + v[1] * 1.6 + oy + 0.5, fl: 0, out: 1 }; }
-  if (P[0] === 'plaza') { const k = HOUSES.findIndex(x => x.id === n.house); return { x: CASTLE.x1 + 8 + (k % 3) * 2.2, y: CENTER - 1.5 + Math.floor(k / 3) * 3.5, fl: 0, out: 1 }; }
+  if (P[0] === 'plaza') { const k = HOUSES.findIndex(x => x.id === n.house), tb = typeof thermaeBi === 'function' ? BUILDINGS[thermaeBi()] : null;   /* lista 16: o lugar antigo da praça caiu na porta das Termas; agora os herdeiros passeiam no pátio de dentro delas */
+    if (tb) { const [x, y] = localToWorld(tb, 4.2 + (k % 3) * 1.6, 9 + Math.floor(k / 3) * 2.2); return { x, y, fl: 0, out: 1 }; }
+    return { x: CASTLE.x1 + 8 + (k % 3) * 2.2, y: CENTER - 1.5 + Math.floor(k / 3) * 3.5, fl: 0, out: 1 }; }
   const fl = Math.min(P[0], floorsOf(b) - 1), [x, y] = b.deco === 'seat' ? seatPt(b, fl, P[1], P[2]) : localToWorld(b, P[1], P[2]); return { x, y, fl }; }
 function hSpawnAll() {
   for (const h of HOUSES) { const b = hSeatB(h.id); if (!b) continue; HROLES.forEach((R0, i) => { const id = 'h_' + h.id + '_' + i; if (S.npcs[id]) return; const role = R0[0];
