@@ -21,7 +21,7 @@ function dormPlan() {
   put(['jailer', 'executioner'], 12, 0, true); put(['fruit'], 14, 0);
   put(['noble1', 'gardener'], 15, 0); put(['noble2'], 39, 0);
   put(['agent', 'cand1'], 17, 0); put(['cand2', 'cand3', 'cand4'], 17, 1); put(['supplier'], 17, 2);
-  put(['priest'], 21, 0); put(['smith', 'st_bakery'], 22, 0); put(['tailor', 'tattooist'], 25, 0);
+  put(['priest'], 21, 0); put(['smith', 'st_bakery'], 22, 0); put(['tailor'], 25, 0); put(['tattooist'], 61, 0);   /* vila romana (28/11): a tatuadora mora na 4ª casa */
   put(['merchant'], 1, 1); put(['innkeeper', 'tavmaid'], 3, 1); put(['st_witch'], 19, 1); put(['broker'], 24, 1);
   put(['st_dojo'], 36, 0, true); put(['hotelkeeper'], 35, 0, true); put(['st_wheat'], 40, 0, true); put(['st_mill'], 41, 0, true);
   /* lugar de cada um: a ordem da lista dentro do mesmo andar */

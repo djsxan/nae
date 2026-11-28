@@ -72,7 +72,7 @@ function trSmugTable() { const bi = BUILDINGS.findIndex(b => b.kind === 'tavern'
   const F = interiorLayout(b, 1).F, occ = new Set(); for (const q of F) for (let a = 0; a < (q.w || 1); a++) for (let c = 0; c < (q.h || 1); c++) occ.add((q.i + a) + ',' + (q.j + c));
   const pew = F.find(q => q.t === 'pew' && q.seat) || null, tab = pew && F.find(q => q.t === 'table' && q.j === pew.j - 1 && Math.abs(q.i - pew.i) <= 1); if (!pew) return null;
   const [x, y] = bLocal(b, pew.i, pew.j), [tx, ty] = tab ? bLocal(b, tab.i, tab.j) : [x, y - 1], [w, h] = bDims(b), free = [];
-  for (const [a, c] of [[pew.i + (pew.w || 1), pew.j], [pew.i - 1, pew.j], [pew.i + (pew.w || 1), pew.j - 1], [pew.i - 1, pew.j - 1], [pew.i, pew.j + 1], [pew.i + 1, pew.j + 1]]) if (a >= 0 && c >= 0 && a < w && c < h && !occ.has(a + ',' + c)) free.push(bLocal(b, a, c));
+  for (const [a, c] of [[pew.i + (pew.w || 1), pew.j], [pew.i - 1, pew.j], [pew.i + (pew.w || 1), pew.j - 1], [pew.i - 1, pew.j - 1], [pew.i, pew.j + 1], [pew.i + 1, pew.j + 1], [pew.i + (pew.w || 1) + 1, pew.j], [pew.i - 2, pew.j], [pew.i - 1, pew.j + 1], [pew.i + (pew.w || 1), pew.j + 1], [pew.i, pew.j + 2], [pew.i + 1, pew.j + 2]]) if (a >= 0 && c >= 0 && a < w && c < h && !occ.has(a + ',' + c)) free.push(bLocal(b, a, c));
   return { bi, x, y, dir: dirFromVecS(tx - x, ty - y), thugs: free.slice(0, 2) }; }
 function trSmug() { const h = empHour(), on = h >= TR.smugH[0] || h < TR.smugH[1], n = S.npcs.tr_smug, T = trSmugTable();
   if (on && !n) { let v; if (T) v = { id: 'tr_smug', kind: 'k_smug', name: 'Vesper, o Contrabandista', transient: true, court: 'smug', x: T.x, y: T.y, z: 0, fl: 1, fb: T.bi, hp: 200, maxHp: 200, downed: null, dead: false, dir: T.dir, sitting: true };

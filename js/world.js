@@ -122,17 +122,17 @@ function zoneOf(x, y) {
 }
 
 // ---------- cidade de Nae (coordenadas relativas ao centro) ----------
-const NORTH_EXT = 12;   /* a muralha norte avançou mais 12 casas (Prancheta 25/11) */
+const NORTH_EXT = 14;   /* a muralha norte avançou mais 12 casas (Prancheta 25/11) e mais 2 (Prancheta 28/11) */
 const SOUTH_EXT = 4;   /* a muralha sul desceu 4 casas (Prancheta 25/11, 16h) */
 const CASTLE = { x0: C - 36, y0: C - 36 - NORTH_EXT, x1: C + 37, y1: C + 37 + SOUTH_EXT };   /* muralha maior (Prancheta 24/11 e 25/11) */
 const CASTLE_OLD = { x0: C - 32, y0: C - 32, x1: C + 33, y1: C + 33 };   /* contorno antigo: o sorteio das casas e a vila do oeste continuam usando, para os prédios não mudarem */   // muralha externa (o sorteio da cidade usa este contorno)
-const EAST_EXT = 44, CITY_X1 = CASTLE.x1 + EAST_EXT;   // a muralha leste avançou 16 casas (Casas Nobres) e mais 15 (rua nova: Clube, Termas e Casa de Veludo)
+const EAST_EXT = 55, CITY_X1 = CASTLE.x1 + EAST_EXT;   // a muralha leste avançou 16 casas (Casas Nobres) e mais 15 (rua nova: Clube, Termas e Casa de Veludo)
 const BANNER_HOUSE = {};   /* estandarte de casa: índice do tile -> casa */
 const HOUSE_SEATS = [   /* sedes das casas rivais: casarões com jardim murado, de frente para a rua do bairro */
   { id: 'valcarne', name: 'Casa Valcarne', y: -28 }, { id: 'draemor', name: 'Casa Draemor', y: -18 }, { id: 'moranthe', name: 'Casa Moranthe', y: -10 },
   { id: 'thornvale', name: 'Casa Thornvale', y: 8 }, { id: 'solmire', name: 'Casa Solmire', y: 18 }];
 /* replanejamento da cidade (Prancheta, 23/11): [prédio, x, y relativos ao centro, largura, profundidade, porta, coluna da porta] */
-const CITY_RELAYOUT = [[0, 43, 7, 13, 13, 'S', 6], [3, -15, 10, 9, 7, 'E', 3], [4, 12, 7, 8, 6, 'E', 3], [5, -15, 25, 10, 5, 'S', 5], [7, -22, -8, 5, 5, 'S', 2], [8, -22, 10, 5, 4, 'E', 2], [11, -29, -45, 11, 20, 'S', 5], [12, 12, 14, 8, 5, 'S', 4], [13, -16, -8, 4, 12, 'S', 2], [14, -29, 16, 5, 4, 'S', 2], [15, 70, -34, 8, 8, 'S', 3], [16, 26, -21, 9, 15, 'E', 8], [17, 23, 26, 6, 5, 'S', 3], [18, 13, -19, 7, 10, 'E', 5], [20, -21, -14, 5, 4, 'S', 2], [21, 37, 26, 4, 5, 'S', 2], [22, 32, 26, 4, 5, 'S', 1], [23, 7, -45, 11, 9, 'S', 5], [24, 7, 22, 7, 6, 'S', 3], [25, 42, 26, 4, 5, 'S', 1], [35, -29, 22, 9, 9, 'E', 4], [37, 13, -32, 8, 8, 'E', 3], [38, 13, -5, 7, 7, 'S', 3], [39, 26, -5, 9, 7, 'S', 4], [42, -13, 19, 5, 4, 'E', 2], [45, 21, -45, 11, 9, 'S', 5], [46, 60, 25, 12, 9, 'S', 6], [47, 65, 10, 13, 8, 'S', 6], [48, 35, -45, 10, 9, 'S', 4], [49, 26, 7, 9, 12, 'S', 3], [50, 50, -45, 19, 9, 'S', 3], [51, 43, -21, 13, 20, 'S', 6], [52, 65, -21, 13, 11, 'S', 6], [53, 16, 22, 4, 6, 'S', 1]];
+const CITY_RELAYOUT = [[0,42,8,13,13,"S",6],[3,-15,10,9,13,"E",6],[4,12,7,8,7,"E",3],[5,80,28,8,9,"S",4],[6,-30,10,5,5,"N",2],[7,-22,-8,10,5,"S",1],[8,-22,10,5,5,"E",2],[11,-30,-45,13,25,"S",6],[12,12,14,8,6,"S",4],[13,-16,-1,4,5,"S",2],[14,-30,16,5,4,"S",2],[15,80,-45,8,9,"S",4],[16,26,-21,9,15,"E",8],[17,13,-45,7,9,"E",6],[18,13,-21,7,14,"E",7],[19,-22,16,5,4,"S",2],[20,-22,-15,8,5,"S",1],[21,42,28,5,4,"E",2],[22,42,33,5,4,"E",1],[23,26,28,9,9,"S",4],[24,12,28,8,5,"S",4],[25,50,28,5,4,"W",2],[35,80,8,8,13,"E",6],[37,13,-33,8,8,"E",3],[38,13,-5,7,7,"S",3],[39,26,-5,9,7,"S",4],[42,-15,23,9,5,"E",2],[45,26,-45,9,9,"S",4],[46,62,28,13,9,"S",6],[47,62,8,13,13,"S",6],[48,62,-45,13,9,"S",6],[49,26,7,9,13,"S",4],[50,42,-45,13,9,"S",6],[51,42,-21,13,20,"S",6],[52,62,-21,13,11,"S",6],[53,80,-31,8,5,"S",4]];   /* Prancheta 28/11 (6º replanejamento): guildas, vila romana, muralha maior */
 const CITY_LOTS = [16];   /* a Casa Aldren virou o lote vazio do bairro nobre */
 const KEEP = { x0: C - 13, y0: C - 30, x1: C + 11, y1: C - 3, by: C - 12, yx0: C - 11, yx1: C + 9 };   // castelo: corpo ao norte (até by) e pátio mais estreito ao sul (yx0..yx1)
 const KEEP_OLD = { x0: C - 9, y0: C - 22, x1: C + 10, y1: C - 3 };   // contorno antigo: só para o sorteio das casas continuar igual
@@ -563,7 +563,7 @@ function interiorLayoutBase(b, fl = 0) {
   } else if (k === 'shop' && b.v === 6) {   // Elixires da Lua Prateada
     npcAt(dc, 0); for (let i = 0; i < w; i++) if (i !== dc) put('shelf', i, 0, { v: 7 });   // estantes de frascos brilhando
     put('counter', 1, 1, { w: dc - 1, v: 6 }); if (w - 2 - dc >= 1) put('counter', dc + 1, 1, { w: w - 2 - dc, v: 6 });
-    put('still', 0, h - 2); put('orb', w - 1, h - 2); put('cauldron', w - 1, 2); put('spellbooks', 0, 2); put('garlic', 1, 2, { block: false, v: 2 }); put('starrug', dc - 1, 2, { w: 3, h: 2, block: false });
+    put('still', 0, h >= 5 ? h - 2 : h - 1); put('orb', w - 1, h - 2); put('cauldron', w - 1, 2); put('spellbooks', 0, 2);   /* na loja de 4 de fundo o alambique vai para o canto da frente */ put('garlic', 1, 2, { block: false, v: 2 }); put('starrug', dc - 1, 2, { w: 3, h: 2, block: false });
   } else if (k === 'shop' && b.blank) {   // loja vazia (à espera de um dono): prateleiras no fundo e um balcão
     for (let i = 0; i < w; i++) if (i !== dc) put('shelf', i, 0, { v: b.v });
   } else if (k === 'shop') {
@@ -1239,7 +1239,7 @@ function generateWorld() {
   // leste e oeste: saem do anel
   { const L = lastLand(x1 + RG, C, 1, 0); for (let k = 1; k <= L; k++) for (let w = 0; w <= 1; w++) road(x1 + RG + k, C + w, 1); }
   { const L = lastLand(x0 - RG, C, -1, 0); for (let k = 1; k <= L; k++) for (let w = 0; w <= 1; w++) road(x0 - RG - k, C + w, 1); }
-  for (let x = x0 - RG; x < x0; x++) for (let y = C + 4; y <= C + 7; y++) road(x, y, 1, 1);
+  for (let x = x0 - RG; x < x0; x++) for (let y = C + 5; y <= C + 8; y++) road(x, y, 1, 1);
   if (ARRON) for (const P of ARR.roads) { const pts = arrCurve(P); for (let k = 0; k < pts.length; k++) { const [px, py] = pts[k], n = pts[Math.min(pts.length - 1, k + 1)], dir = Math.abs(n[0] - px) >= Math.abs(n[1] - py) ? 1 : 2; for (const [ox, oy] of [[0, 0], [1, 0], [0, 1]]) road(Math.round(px) + ox, Math.round(py) + oy, dir); } }   /* trilhas: à mina, à enseada, ao lago e à necrópole */
   if (ARRON) arrPort({ ground, obj, rdir, idx, inb, C, y1 });   /* Porto de Nae (cais no fim da estrada sul) e o Farol do Cabo */
 
@@ -1253,11 +1253,11 @@ function generateWorld() {
   for (const t of sideT) { towers.push([C + t, y0], [C + t, y1 - 1], [x0, C + t], [x1 - 1, C + t]); }
   for (const ty of [C - 32, C - 43]) if (ty > y0 + 2) towers.push([x0, ty], [x1 - 1, ty]);   /* torres no trecho novo dos lados */
   towers.push([C - 2, y0], [C + 2, y0]);                                   // portão norte (secundário)
-  towers.push([x0, C + 2], [x0, C + 8]);                                   // portão oeste (rua nova)
+  towers.push([x0, C + 3], [x0, C + 9]);                                   // portão oeste (rua nova)
   const gateTowers = [[C - 3, y1 - 1], [C + 3, y1 - 1]];                    // portão principal: torres altas (as duas encostadas no portão)
   towers.push(...gateTowers);
   const inTower = (x, y) => towers.some(([tx, ty]) => x >= tx && x <= tx + 1 && y >= ty && y <= ty + 1);
-  const isGate = (x, y) => (y === y1 && x >= C - 1 && x <= C + 2) || (y === y0 && (x === C || x === C + 1)) || (x === x0 && y >= C + 4 && y <= C + 7);
+  const isGate = (x, y) => (y === y1 && x >= C - 1 && x <= C + 2) || (y === y0 && (x === C || x === C + 1)) || (x === x0 && y >= C + 5 && y <= C + 8);
   for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
     if (!(x === x0 || x === x1 || y === y0 || y === y1) || inTower(x, y)) continue;
     const i = idx(x, y);
@@ -1267,14 +1267,14 @@ function generateWorld() {
   }
   const addGate = (gx0, gx1, gy, out, kind) => { const gi = gates.length; gates.push({ x0: gx0, x1: gx1, y: gy, out, kind }); for (let x = gx0; x <= gx1; x++) gateId[idx(x, gy)] = gi; };
   addGate(C - 1, C + 2, y1, 1, 'main'); addGate(C, C + 1, y0, -1, 'small');
-  { const gi = gates.length; gates.push({ x0, x1: x0, y0: C + 4, y: C + 7, out: 1, kind: 'west', vert: 1 }); for (let y = C + 4; y <= C + 7; y++) gateId[idx(x0, y)] = gi; }   // portão oeste (vertical)
+  { const gi = gates.length; gates.push({ x0, x1: x0, y0: C + 5, y: C + 8, out: 1, kind: 'west', vert: 1 }); for (let y = C + 5; y <= C + 8; y++) gateId[idx(x0, y)] = gi; }   // portão oeste (vertical)
   for (const [tx, ty] of towers) {
     for (let y = ty; y <= ty + 1; y++) for (let x = tx; x <= tx + 1; x++) { set(x, y, T.FLOORSTONE, O.PART); fl1[idx(x, y)] = 1; }
     obj[idx(tx + 1, ty + 1)] = O.TOWER;
     tvar[idx(tx + 1, ty + 1)] = Math.floor(R(tx, ty, 2) * 3);
     toff[idx(tx + 1, ty + 1)] = ((tx === x0 ? -1 : tx === x1 - 1 ? 1 : 0) + 1) * 3 + ((ty === y0 ? -1 : ty === y1 - 1 ? 1 : 0) + 1);
   }
-  for (const [tx, ty] of [[x0, C + 2], [x0, C + 8]]) tvar[idx(tx + 1, ty + 1)] = 3;
+  for (const [tx, ty] of [[x0, C + 3], [x0, C + 9]]) tvar[idx(tx + 1, ty + 1)] = 3;
   for (const [tx, ty] of gateTowers) { tvar[idx(tx + 1, ty + 1)] = 3; for (let y = ty; y <= ty + 1; y++) for (let x = tx; x <= tx + 1; x++) fl1[idx(x, y)] = 0; }
   reserve(x0, y0, x1, y0 + 1); reserve(x0, y1 - 1, x1, y1); reserve(x0, y0, x0 + 1, y1); reserve(x1 - 1, y0, x1, y1);
 
@@ -1318,7 +1318,7 @@ function generateWorld() {
   street(KEEP_OLD.x0 - 2, KEEP_OLD.y0 - 2, KEEP_OLD.x1 + 2, KEEP_OLD.y0 - 1); street(KEEP_OLD.x0 - 2, KEEP_OLD.y1 + 1, KEEP_OLD.x1 + 2, KEEP_OLD.y1 + 2); // anel do castelo antigo (só para o sorteio das casas)
   street(KEEP_OLD.x0 - 2, KEEP_OLD.y0, KEEP_OLD.x0 - 1, KEEP_OLD.y1); street(KEEP_OLD.x1 + 1, KEEP_OLD.y0, KEEP_OLD.x1 + 2, KEEP_OLD.y1);
   street(x0 + 2, C + 5, x1 - 2, C + 6);                    // rua do mercado (leste-oeste)
-  street(x0 + 1, C + 4, C - 8, C + 7);                     // rua nova (larga) até o portão oeste
+  street(x0 + 1, C + 4, C - 8, C + 8);                     // rua nova (larga) até o portão oeste
   street(x0 + 2, C + 8, C - 8, C + 9);                     // ... com 6 tiles de largura depois do portão
   reserve(C - 18, C + 20, C - 8, C + 21); reserve(C + 7, C + 10, C + 17, C + 22);
   reserve(C + 12, C - 24, x1 - 2, C + 15);   // bairro nobre
@@ -1432,7 +1432,7 @@ function generateWorld() {
     { x: C - 8, y: C - 9, ...BH('kstable', 4, 5, 2.4, 2.0, 'Estábulo Real', { floors: 1, door: 'E' }) },
     { x: C + 4, y: C - 9, ...BH('kguard', 4, 5, 3.0, 1.8, 'Casa da Guarda', { floors: 1, door: 'W', gen: { x: C + 6, y: C - 9, w: 4, h: 5, door: 'W' } }) });
   if (!TEST3D) { /* ---- bairro das Casas Nobres: a muralha leste avança EAST_EXT casas ---- */
-    const X0 = x1, X1 = CITY_X1, RGe = 7, gy0 = C - 1, gy1 = C + 2;
+    const X0 = x1, X1 = CITY_X1, RGe = 7, gy0 = C + 3, gy1 = C + 6;
     for (let y = y0 - RGe - 1; y <= y1 + RGe + 1; y++) for (let x = X0 - 1; x <= X1 + RGe + 2; x++) { if (!inb(x, y)) continue; const i = idx(x, y); if (bld[i] >= 0) continue;
       const inside = x >= X0 && x <= X1 && y >= y0 && y <= y1, ring = (x >= X1 + RGe - 1 && x <= X1 + RGe) || ((y === y0 - RGe || y === y0 - RGe + 1 || y === y1 + RGe || y === y1 + RGe - 1) && x > X0), moat = !inside && ((x >= X1 + 3 && x <= X1 + 4 && y >= y0 - 4 && y <= y1 + 4) || ((y >= y0 - 4 && y <= y0 - 3) || (y >= y1 + 3 && y <= y1 + 4)) && x >= X0 && x <= X1 + 4);
       if (x < X0 && !(obj[i] === O.WALL || obj[i] === O.PART || obj[i] === O.TOWER)) continue;
@@ -1445,8 +1445,8 @@ function generateWorld() {
     { const gi = gates.length; gates.push({ x0: X1, x1: X1, y0: gy0, y: gy1, out: -1, kind: 'east', vert: 1 }); for (let y = gy0; y <= gy1; y++) gateId[idx(X1, y)] = gi; }   /* portão leste */
     const tw = [[X1 - 1, y0, 1, -1], [X1 - 1, y1 - 1, 1, 1], [X1 - 1, gy0 - 2, 1, 0], [X1 - 1, gy1 + 1, 1, 0], [X1 - 1, C - 21, 1, 0], [X1 - 1, C + 12, 1, 0], [X1 - 1, C + 22, 1, 0], [X1 - 1, C - 11, 1, 0], [X0 + 7, y0, 0, -1], [X0 + 7, y1 - 1, 0, 1], [X0 + 21, y0, 0, -1], [X0 + 21, y1 - 1, 0, 1]];
     for (const [tx, ty, sx, sy] of tw) { for (let y = ty; y <= ty + 1; y++) for (let x = tx; x <= tx + 1; x++) { const i = idx(x, y); obj[i] = O.PART; fl1[i] = 1; ground[i] = T.FLOORSTONE; } obj[idx(tx + 1, ty + 1)] = O.TOWER; tvar[idx(tx + 1, ty + 1)] = (ty === gy0 - 2 || ty === gy1 + 1) ? 3 : Math.floor(R(tx, ty, 2) * 3); toff[idx(tx + 1, ty + 1)] = (sx + 1) * 3 + (sy + 1); }
-    for (let x = X1 + 1; x <= X1 + RGe; x++) for (let y = C; y <= C + 1; y++) { const i = idx(x, y); ground[i] = ground[i] === T.WATER ? T.BRIDGE : T.COBBLE; rdir[i] = 1; obj[i] = O.NONE; }   /* estrada do portão até o anel */
-    for (let x = X0 + 1; x < X1; x++) for (let y = C; y <= C + 1; y++) { const i = idx(x, y); ground[i] = T.FLOORSTONE; rdir[i] = 1; }   /* avenida das Casas: do portão até a rua da muralha velha */
+    for (let x = X1 + 1; x <= X1 + RGe; x++) for (let y = C + 4; y <= C + 5; y++) { const i = idx(x, y); ground[i] = ground[i] === T.WATER ? T.BRIDGE : T.COBBLE; rdir[i] = 1; obj[i] = O.NONE; }   /* estrada do portão até o anel */
+    for (let x = X0 + 1; x < X1; x++) for (let y = C + 4; y <= C + 5; y++) { const i = idx(x, y); ground[i] = T.FLOORSTONE; rdir[i] = 1; }   /* avenida das Casas: do portão até a rua da muralha velha */
     for (let y = y0 + 2; y <= y1 - 2; y++) for (let x = X0 + 1; x <= X0 + 2; x++) { const i = idx(x, y); ground[i] = T.COBBLE; rdir[i] = 2; }   /* rua do bairro, ao longo das casas */
     for (let y = y0 + 2; y <= y1 - 2; y++) for (let x = X0 + 15; x <= X0 + 16; x++) { const i = idx(x, y); ground[i] = T.COBBLE; rdir[i] = 2; }   /* rua nova, atrás dos casarões */
     for (let y = C - 3; y <= C + 4; y++) for (let x = X0 + 3; x <= X0 + 14; x++) { const i = idx(x, y); if (rdir[i]) continue; ground[i] = (x + y) % 3 ? T.FLOORSTONE : T.STONE; }   /* praça das Casas */
@@ -1463,6 +1463,12 @@ function generateWorld() {
       { x: C - 102, y: C + 5, ...BH('vila', 6, 6, 3.0, 0.6, 'Celeiro de Adobe', { door: 'E', cult: 'sah', vk: 'celeiro', floors: 1 }) },
       { x: C - 68, y: C + 5, ...BH('vila', 6, 5, 2.6, 1.6, 'Casa de Chá do Rio', { door: 'W', cult: 'chi', vk: 'cha', floors: 1 }) },
       { x: C - 65, y: C + 13, ...BH('vila', 3, 3, 5.0, 0.8, 'Pagode da Garça', { door: 'W', cult: 'chi', vk: 'pagode', floors: 1 }) });
+    BUILDINGS.push(   /* Prancheta 28/11: 4ª casa da vila romana e as obras (guildas e café), no fim da lista */
+      { x: C + 50, y: C + 33, ...BH('house', 5, 4, 2.4, 1.2, '', { v: 1, door: 'W', dcol: 1, cult: 'and', floors: 1 }) },
+      { x: C + 80, y: C - 21, ...BH('site', 8, 11, 0.1, 0, 'Obra: Guilda dos Arqueiros', { lot: 1, door: 'S', dcol: 3, floors: 1 }) },
+      { x: C - 30, y: C + 24, ...BH('site', 13, 12, 0.1, 0, 'Obra: Escola de Magia', { lot: 1, door: 'E', dcol: 8, floors: 1 }) },
+      { x: C + 42, y: C - 31, ...BH('site', 13, 5, 0.1, 0, 'Obra: Café', { lot: 1, door: 'E', dcol: 2, floors: 1 }) });
+    for (let x = X0 + 1; x <= X1; x++) for (let y = C + 4; y <= C + 5; y++) { const i = idx(x, y); if (bld[i] >= 0 || obj[i] === O.WALL || obj[i] === O.PART || obj[i] === O.TOWER) continue; obj[i] = O.NONE; ground[i] = T.FLOORSTONE; rdir[i] = 1; }   /* a avenida até o portão leste novo */
     for (let y = y0; y <= y1; y++) for (let x = X0; x <= X1; x++) used[idx(x, y)] = 1;
     HOUSE_SEATS.forEach((S1, k) => { const bx = X0 + 4 + k * 2.4 | 0, by = k % 2 ? C + 4 : C - 3; const i = idx(bx, by); if (bld[i] < 0) { obj[i] = O.BANNER; BANNER_HOUSE[i] = S1.id; } });   /* estandartes das casas na praça */
   }
@@ -1475,6 +1481,7 @@ function generateWorld() {
   if (!TEST3D) for (const [bi, rx, ry, w, h, door, dc] of CITY_RELAYOUT) { const b = BUILDINGS[bi]; if (!b) continue; if (b.w !== w || b.h !== h) delete b.arch; delete b.gen; b._old = { x: b.x, y: b.y, w: b.w, h: b.h }; Object.assign(b, { x: C + rx, y: C + ry, w, h, door, dcol: dc }); if (b.deco === 'seat') { delete b._d2; b.seatMirror = door === 'S' ? 1 : 0; b.seatSide = door === 'S' ? 'R' : door === 'E' ? 'L' : null; const A2 = door === 'S' || door === 'N' ? w : h;   /* a porta dos fundos e a hera ficam numa parede que a câmera vê (leste ou sul) */
       b.door2L = door === 'S' ? [A2 - 1, 2, 'E'] : door === 'E' ? [0, 2, 'S'] : [Math.floor(seatMapU(b, 1.5)), 0, 'E']; } }
   if (!TEST3D) { const b = BUILDINGS.find(q => q.name === 'Casa Lorvan'); if (b) { delete b.arch; delete b.gen; delete b.seat; Object.assign(b, { kind: 'tower', deco: 'steam', name: 'Torre do Inventor', floors: 6, stairs: ['clift', 'clift', 'clift', 'clift', 'clift'], tower: 1, round: 1, H: 14.4, RH: 2.6, wall: Math.round(14.4 * 19.6), roof: Math.round(2.6 * 19.6) }); } }   /* a Casa Lorvan virou a Torre do Inventor (Sxan the Creator) */
+  if (!TEST3D) for (const bi of [21, 22, 25]) if (BUILDINGS[bi]) Object.assign(BUILDINGS[bi], { cult: 'and', v: 1 });   /* vila romana (Prancheta 28/11) */
   if (!TEST3D) for (const bi of CITY_LOTS) { const b = BUILDINGS[bi]; if (!b) continue; delete b.seat; b._lotPend = 1; }   /* o lote nasce construído (casarão comum) e vira terreno vazio no fim do arquivo: lotPrepare guarda as duas versões para a obra */   /* terreno vazio cercado: fica na lista (os índices dos prédios salvos não mudam), mas não é desenhado nem mobiliado */
   BUILDINGS.forEach((b, bi) => {
     if (b.lot) { const [dx, dy] = doorTile(b); for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { const i = idx(x, y), edge = x === b.x || y === b.y || x === b.x + b.w - 1 || y === b.y + b.h - 1; ground[i] = (x * 7 + y * 3) % 5 ? T.DIRT : T.GRASS; obj[i] = edge && !(Math.abs(x - dx) + Math.abs(y - dy) <= 1 && (x === dx || y === dy)) ? O.LOWWALL : O.NONE; used[i] = 1; rdir[i] = 0; } return; }
@@ -1707,15 +1714,13 @@ function generateWorld() {
       for (let y = Y0 + 3; y < Y1; y += 3) for (const x of [X0, X1]) put(x, y, (k++ % 2) ? O.FLOWERBED : O.BUSH); }
   }
   if (!TEST3D) { /* Largo das Estátuas (Prancheta 25/11, 16h): as cinco estátuas do antigo portão da avenida nobre, em cruz, com bancos virados para a do meio */
-    const X0 = C + 41, Y0 = C + 31, X1 = C + 51, Y1 = C + 38, cx = C + 46, cy = C + 35, solidO = o => o === O.WALL || o === O.PART || o === O.TOWER || o === O.GATE;
+    const X0 = C + 47, Y0 = C + 27, X1 = C + 49, Y1 = C + 37, cx = C + 48, cy = C + 32, solidO = o => o === O.WALL || o === O.PART || o === O.TOWER || o === O.GATE;
     const dn = new Set(); for (const b of BUILDINGS) { if (b.ham) continue; const [dx, dy] = doorTile(b); for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) dn.add(idx(dx + a, dy + c)); }
     for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) { const i = idx(x, y); if (bld[i] >= 0 || solidO(obj[i])) continue; const r = Math.max(Math.abs(x - cx), Math.abs(y - cy)); ground[i] = r <= 1 ? T.STONE : r === 2 ? T.FLOORSTONE : ((x + y) % 2 ? T.FLOORSTONE : T.COBBLE); obj[i] = O.NONE; rdir[i] = 0; }
     const put = (x, y, o) => { const i = idx(x, y); if (bld[i] >= 0 || solidO(obj[i]) || dn.has(i)) return; obj[i] = o; if (o === O.BENCH) seats.push({ x, y, dir: 7, h: 0.45, bi: -1 }); };
-    for (const [dx, dy] of [[0, 0], [-3, -2], [3, -2], [-3, 2], [3, 2]]) put(cx + dx, cy + dy, O.STATUE);
-    for (const [dx, dy] of [[-1, -2], [1, -2], [-1, 2], [1, 2]]) put(cx + dx, cy + dy, O.BENCH);
-    for (const [dx, dy] of [[-2, 0], [2, 0], [0, -1], [0, 1]]) put(cx + dx, cy + dy, O.FLOWERBED);
-    for (const [x, y] of [[X0, Y0 + 2], [X1, Y0 + 2], [X0, Y1], [X1, Y1]]) put(x, y, O.LAMP);
-    for (const x of [X0 + 1, X1 - 1]) for (const y of [Y0 + 4, Y0 + 5]) put(x, y, O.BUSH); }
+    put(cx, cy, O.FOUNTAIN); for (const [dx, dy] of [[-1, -3], [1, -3], [-1, 3], [1, 3]]) put(cx + dx, cy + dy, O.STATUE);   /* átrio romano: chafariz e estátuas */
+    for (const [x, y] of [[X0, Y0], [X1, Y0], [X0, Y1], [X1, Y1]]) put(x, y, O.LAMP);
+    for (const x of [C + 42, C + 44, C + 46, C + 50, C + 52, C + 54]) put(x, cy, O.FLOWERBED); }
   for (const b of BUILDINGS) { if (!b.lot) continue; const [dx, dy] = doorTile(b);   /* o lote vazio por último: as passagens de decoração do bairro limpam e enfeitam a área */
     for (let y = b.y; y < b.y + b.h; y++) for (let x = b.x; x < b.x + b.w; x++) { const i = idx(x, y), edge = x === b.x || y === b.y || x === b.x + b.w - 1 || y === b.y + b.h - 1; ground[i] = (x * 7 + y * 3) % 5 ? T.DIRT : T.GRASS; obj[i] = edge && !(Math.abs(x - dx) + Math.abs(y - dy) <= 1 && (x === dx || y === dy)) ? O.LOWWALL : O.NONE; rdir[i] = 0; } }
   if (!TEST3D) { /* árvores da cidade (Prancheta 25/11, 20h31): nenhuma árvore a menos de 2 casas de um prédio (a copa entra na fachada) nem na frente de uma porta */
