@@ -3,23 +3,23 @@
 //  Personagem novo chega a Nae como plebeu: roupa simples, só punhos e briga de rua, sem árvore de habilidades.
 //  Junta dinheiro com trabalhos pequenos, compra a arma básica da vocação (espada ou arco na forja do Hrodgar,
 //  cajado na Arcanos & Varinhas, 150 de ouro) e paga a matrícula (250) ao mestre da guilda:
-//    Cavaleiros no Quartel da Guarda · Arqueiros na Casa da Guarda · Magos na Arcanos & Varinhas.
+//    Cavaleiros no Quartel da Guarda · Arqueiros no Pavilhão dos Arqueiros · Magos na Escola de Magia do Círculo (desde 28/11).
 //  A matrícula dá a roupa básica, a arma básica e libera a árvore. Quem já tinha vocação continua membro.
 //  Salvo no navegador como "nome|plebeu" até entrar numa guilda; depois vira "nome|vocação".
 // ============================================================
 const GUILD = { arm: 150, fee: 250,
   g: { knight: { n: 'Guilda dos Cavaleiros', b: 'Quartel da Guarda', item: 'arm_sword', id: 'gd_knight', name: 'Sor Bertrand, Mestre de Armas', look: ['knight', 'iron', '#5a5a64', '#c8a040'] },
-       archer: { n: 'Guilda dos Arqueiros', b: 'Casa da Guarda', item: 'arm_bow', id: 'gd_archer', name: 'Mestra Ilsa, das Flechas', look: ['archer', 'scout~f', '#2a5a2a', '#c8a060'] },
-       mage: { n: 'Círculo dos Magos', b: 'Arcanos & Varinhas', item: 'arm_staff', id: 'gd_mage', name: 'Mestre Aurelian, do Círculo', look: ['mage', 'adept', '#2a2a6a', '#d8c070'] } } };
+       archer: { n: 'Guilda dos Arqueiros', b: 'Pavilhão dos Arqueiros', item: 'arm_bow', id: 'gd_archer', name: 'Mestra Ilsa, das Flechas', look: ['archer', 'scout~f', '#2a5a2a', '#c8a060'] },
+       mage: { n: 'Círculo dos Magos', b: 'Escola de Magia do Círculo', item: 'arm_staff', id: 'gd_mage', name: 'Mestre Aurelian, do Círculo', look: ['mage', 'adept', '#2a2a6a', '#d8c070'] } } };
 if (typeof LOOT !== 'undefined') Object.assign(LOOT, {
   arm_sword: { name: 'Espada de treino', price: 150, icon: '🗡️', color: '#b8bcc4', desc: 'A arma básica do cavaleiro. Leve ao Sor Bertrand, no Quartel da Guarda, com a matrícula.' },
-  arm_bow: { name: 'Arco simples', price: 150, icon: '🏹', color: '#a07a4a', desc: 'A arma básica do arqueiro. Leve à Mestra Ilsa, na Casa da Guarda, com a matrícula.' },
-  arm_staff: { name: 'Cajado de aprendiz', price: 150, icon: '🪄', color: '#8a6ad0', desc: 'A arma básica do mago. Leve ao Mestre Aurelian, na Arcanos & Varinhas, com a matrícula.' } });
+  arm_bow: { name: 'Arco simples', price: 150, icon: '🏹', color: '#a07a4a', desc: 'A arma básica do arqueiro. Leve à Mestra Ilsa, no Pavilhão dos Arqueiros, com a matrícula.' },
+  arm_staff: { name: 'Cajado de aprendiz', price: 150, icon: '🪄', color: '#8a6ad0', desc: 'A arma básica do mago. Leve ao Mestre Aurelian, na Escola de Magia, com a matrícula.' } });
 const gdPleb = p => !!p && p.voc === 0;
 
 /* os mestres: dentro do prédio da guilda, no lugar livre mais perto do meio */
 if (typeof NPCS !== 'undefined' && typeof BUILDINGS !== 'undefined' && typeof bldTiles === 'function') for (const cls in GUILD.g) { const G0 = GUILD.g[cls]; if (NPCS.some(q => q.id === G0.id)) continue; const bi = BUILDINGS.findIndex(b => b.name === G0.b); if (bi < 0) continue;
-  const b = BUILDINGS[bi], T = bldTiles(bi), cx = b.x + b.w / 2, cy = b.y + b.h / 2; if (!T.length) continue; T.sort((a, c) => Math.hypot(a[0] - cx, a[1] - cy) - Math.hypot(c[0] - cx, c[1] - cy)); const [x, y] = T[Math.min(1, T.length - 1)];
+  const b = BUILDINGS[bi], T = bldTiles(bi), cx = b.x + b.w / 2, cy = b.y + b.h / 2, LN = (typeof interiorLayout === 'function' ? interiorLayout(b, 0) : {}).npc; if (!T.length) continue; T.sort((a, c) => Math.hypot(a[0] - cx, a[1] - cy) - Math.hypot(c[0] - cx, c[1] - cy)); const [x, y] = LN ? bLocal(b, LN.i, LN.j) : T[Math.min(1, T.length - 1)];   /* na planta: o lugar do mestre (M) */
   const def = { id: G0.id, name: G0.name, kind: G0.id, x: x + 0.5, y: y + 0.5, bi }; G0.bi = bi; NPCS.push(def);
   if (typeof G !== 'undefined' && G.npcs && typeof mkEnt === 'function' && !G.npcs[G0.id]) G.npcs[G0.id] = mkEnt({ ...def, isNpc: true, visible: true, dir: 0 }); }
 
@@ -29,7 +29,7 @@ function gdMakePleb(p) { p.voc = 0; p.cls = 'knight'; p.outfit = 'cas'; p.sheath
 if (typeof hostOnClient === 'function' && typeof S !== 'undefined') { const _hoGd = hostOnClient; hostOnClient = function (from, m) {
   const p0 = S.players[from];
   if (m && p0 && gdPleb(p0)) {   /* o plebeu não tem arma, roupa de vocação nem árvore */
-    if (m.t === 'sheathe') { tell(p0, 'Você ainda não tem arma de vocação: por enquanto, só os punhos. Entre numa guilda (Quartel da Guarda, Casa da Guarda ou Arcanos & Varinhas).'); return; }
+    if (m.t === 'sheathe') { tell(p0, 'Você ainda não tem arma de vocação: por enquanto, só os punhos. Entre numa guilda (Quartel da Guarda, Pavilhão dos Arqueiros ou Escola de Magia).'); return; }
     if (m.t === 'roupa' && m.a === 'wear') { tell(p0, 'Plebeu só tem a roupa do corpo. A roupa de vocação vem com a guilda.'); return; }
     if (m.t === 'tlearn') { tell(p0, 'A árvore de habilidades abre quando você entrar numa guilda.'); return; } }
   const r = _hoGd.apply(this, arguments);
@@ -44,7 +44,7 @@ if (typeof npcAction === 'function' && typeof S !== 'undefined') { const _naGd =
   const G0 = GUILD.g[cls], sn = S.npcs[G0.id]; if (!sn || sn.dead || sn.downed) return; if (dist(p.x, p.y, sn.x, sn.y) > 3.5) { tell(p, 'Chegue mais perto para conversar.'); return; } const say = text => Net.toOne(p.id, { t: 'npc', n: G0.id, text });
   if (m.a === 'gdtalk') { say(cls === 'knight' ? 'Aqui se aprende a aguentar o golpe e devolver em dobro. Escudo, espada e disciplina. Um dia esta casa vai ensinar as artes avançadas.' : cls === 'archer' ? 'O arco pede paciência: respirar, mirar, soltar. Da muralha, um bom arqueiro vale dez espadas. Um dia vamos ensinar os tiros de mestre aqui.' : 'Os cinco elementos respondem a quem estuda. Fogo, Ar, Terra, Luz e Água. Um dia este círculo vai ensinar os rituais maiores.'); return; }
   if (m.a === 'gdjoin') { if (!gdPleb(p)) { say(p.cls === cls ? 'Você já é dos nossos. Treine e volte quando a academia abrir as artes avançadas.' : 'Você já pertence a outra guilda.'); return; }
-    if (!(p.inv[G0.item] > 0)) { say('Primeiro a arma: ' + LOOT[G0.item].name + ' (' + GUILD.arm + ' de ouro, ' + (G0.item === 'arm_staff' ? 'aqui no balcão da Arcanos & Varinhas' : 'na forja do Hrodgar') + '). Depois a matrícula, ' + GUILD.fee + '.'); return; }
+    if (!(p.inv[G0.item] > 0)) { say('Primeiro a arma: ' + LOOT[G0.item].name + ' (' + GUILD.arm + ' de ouro, ' + (G0.item === 'arm_staff' ? 'no balcão da Arcanos & Varinhas' : 'na forja do Hrodgar') + '). Depois a matrícula, ' + GUILD.fee + '.'); return; }
     if (!canPay(p, GUILD.fee)) { say('A matrícula é ' + GUILD.fee + ' de ouro. Volte quando tiver.'); return; }
     payCity(p, GUILD.fee); p.inv[G0.item]--; if (p.inv[G0.item] <= 0) delete p.inv[G0.item];
     const SP = skinParts(p.skin); p.cls = cls; p.voc = 1; p.skin = skinJoin(SKINS[cls][0].id, SP.fem, SP.tats, SP.body); p.outfit = null; p.tree = cleanTree(cls, p.lvl, {}); p.maxHp = maxHpOf(p); p.maxMp = maxMpOf(p); p.hp = p.maxHp; p.mp = p.maxMp; p.sheathed = true;
@@ -79,7 +79,7 @@ if (typeof clientOnServer === 'function' && typeof G !== 'undefined') { const _c
   return _coGd.apply(this, arguments); }; }
 /* árvore: o plebeu vê o caminho até a guilda */
 if (typeof updateTree === 'function' && typeof G !== 'undefined') { const _utGd = updateTree; updateTree = function () { if (!(G.me && G.me.voc === 0)) return _utGd.apply(this, arguments); const t = $('tree'); if (!t) return;
-  t.innerHTML = '<div class="gp-note" style="padding:14px;line-height:1.5"><b>🧺 Você ainda é plebeu.</b><br>A árvore de habilidades abre quando você entrar numa guilda.<br><br>1. Junte ouro com biscates no quadro do chafariz (sacos no porto, baias do estábulo, olivais, recados, água, caixas, entregas) e turnos nas oficinas.<br>2. Compre a arma básica: <b>Espada de treino</b> ou <b>Arco simples</b> na forja do Hrodgar, <b>Cajado de aprendiz</b> na Arcanos & Varinhas (' + GUILD.arm + ' de ouro).<br>3. Pague a matrícula (' + GUILD.fee + ') ao mestre:<br>· Cavaleiros: <b>Sor Bertrand</b>, no Quartel da Guarda<br>· Arqueiros: <b>Mestra Ilsa</b>, na Casa da Guarda<br>· Magos: <b>Mestre Aurelian</b>, na Arcanos & Varinhas</div>'; }; }
+  t.innerHTML = '<div class="gp-note" style="padding:14px;line-height:1.5"><b>🧺 Você ainda é plebeu.</b><br>A árvore de habilidades abre quando você entrar numa guilda.<br><br>1. Junte ouro com biscates no quadro do chafariz (sacos no porto, baias do estábulo, olivais, recados, água, caixas, entregas) e turnos nas oficinas.<br>2. Compre a arma básica: <b>Espada de treino</b> ou <b>Arco simples</b> na forja do Hrodgar, <b>Cajado de aprendiz</b> na Arcanos & Varinhas (' + GUILD.arm + ' de ouro).<br>3. Pague a matrícula (' + GUILD.fee + ') ao mestre:<br>· Cavaleiros: <b>Sor Bertrand</b>, no Quartel da Guarda<br>· Arqueiros: <b>Mestra Ilsa</b>, no Pavilhão dos Arqueiros (leste)<br>· Magos: <b>Mestre Aurelian</b>, na Escola de Magia (sudoeste)</div>'; }; }
 /* tela inicial: avisa que o personagem novo chega como plebeu */
 if (typeof document !== 'undefined' && typeof G !== 'undefined') setInterval(() => { try { if (G.started) return; const el = $('saved-info'), nm = $('name') && $('name').value.trim(); if (!el || !nm) return; const has = loadChars()[_ckGdKey(nm, chosenClass)], pl = gdPlebSave(nm);
   const txt = has ? null : pl ? 'Continuar: ' + pl.name + ', plebeu nível ' + (pl.lvl || 1) + ' (' + (pl.gold || 0) + ' ouro)' : 'Novo personagem: ' + nm + ' chega a Nae como plebeu. A vocação vem depois, numa guilda.'; if (txt && el.textContent !== txt) el.textContent = txt; } catch (e) { } }, 500);

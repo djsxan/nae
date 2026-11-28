@@ -15,7 +15,7 @@ const O = {
   STATUE: 37, BRAZIER: 38, DUMMY: 39, WATERFALL: 40, LOWWALL: 41, IVY: 42, ANVIL: 43, WEAPONRACK: 44, CART: 45, TABLE: 46, CAVE: 47, HOARD: 48, ARMORPILE: 49, RUINTOWER: 50, OAK: 51, BIRCH: 52, WILLOW: 53, FERN: 54, ROOTS: 55, SHROOMS: 56, BERRY: 57, HERB: 58, WHEAT: 67, WHEATSPROUT: 68, BOULDER: 59, GUILLOTINE: 60, STOOL: 61, STAGEFLOOR: 62, VITRINE: 63, FRUITCRATE: 64, WATERWHEEL: 65, NOTICEBOARD: 66,
 };
 O.SCAFFOLD = 69;   /* andaime das obras do lote */
-O.OLIVE = 70; O.LIGHTHOUSE = 71; O.GONDOLA = 72;   /* Arredores: oliveira e o Farol do Cabo */
+O.OLIVE = 70; O.LIGHTHOUSE = 71; O.GONDOLA = 72; O.ARCHTARGET = 73;   /* Arredores: oliveira e o Farol do Cabo */
 const BLOCKING = new Set([O.OLIVE, O.LIGHTHOUSE, O.SCAFFOLD, O.TREE, O.PINE, O.ROCK, O.FOUNTAIN, O.STUMP, O.DEADTREE, O.GRAVE, O.TENT,
   O.CAMPFIRE, O.FENCE, O.BARREL, O.CRATE, O.HAY, O.WELL, O.STALL, O.LOG, O.SPIKES,
   O.WALL, O.TOWER, O.PART, O.RUBBLEBIG, O.CAVE, O.HOARD, O.RUINTOWER, O.OAK, O.BIRCH, O.WILLOW, O.BOULDER, O.GUILLOTINE, O.STOOL, O.VITRINE, O.FRUITCRATE, O.WATERWHEEL, O.NOTICEBOARD, O.STATUE, O.BRAZIER, O.DUMMY, O.WATERFALL, O.LOWWALL, O.ANVIL, O.WEAPONRACK, O.CART, O.TABLE]);
@@ -132,8 +132,9 @@ const HOUSE_SEATS = [   /* sedes das casas rivais: casarões com jardim murado, 
   { id: 'valcarne', name: 'Casa Valcarne', y: -28 }, { id: 'draemor', name: 'Casa Draemor', y: -18 }, { id: 'moranthe', name: 'Casa Moranthe', y: -10 },
   { id: 'thornvale', name: 'Casa Thornvale', y: 8 }, { id: 'solmire', name: 'Casa Solmire', y: 18 }];
 /* replanejamento da cidade (Prancheta, 23/11): [prédio, x, y relativos ao centro, largura, profundidade, porta, coluna da porta] */
-const CITY_RELAYOUT = [[0,42,8,13,13,"S",6],[3,-15,10,9,13,"E",6],[4,12,7,8,7,"E",3],[5,80,28,8,9,"S",4],[6,-30,10,5,5,"N",2],[7,-22,-8,10,5,"S",1],[8,-22,10,5,5,"E",2],[11,-30,-45,13,25,"S",6],[12,12,14,8,6,"S",4],[13,-16,-1,4,5,"S",2],[14,-30,16,5,4,"S",2],[15,80,-45,8,9,"S",4],[16,26,-21,9,15,"E",8],[17,13,-45,7,9,"E",6],[18,13,-21,7,14,"E",7],[19,-22,16,5,4,"S",2],[20,-22,-15,8,5,"S",1],[21,42,28,5,4,"E",2],[22,42,33,5,4,"E",1],[23,26,28,9,9,"S",4],[24,12,28,8,5,"S",4],[25,50,28,5,4,"W",2],[35,80,8,8,13,"E",6],[37,13,-33,8,8,"E",3],[38,13,-5,7,7,"S",3],[39,26,-5,9,7,"S",4],[42,-15,23,9,5,"E",2],[45,26,-45,9,9,"S",4],[46,62,28,13,9,"S",6],[47,62,8,13,13,"S",6],[48,62,-45,13,9,"S",6],[49,26,7,9,13,"S",4],[50,42,-45,13,9,"S",6],[51,42,-21,13,20,"S",6],[52,62,-21,13,11,"S",6],[53,80,-31,8,5,"S",4]];   /* Prancheta 28/11 (6º replanejamento): guildas, vila romana, muralha maior */
-const CITY_LOTS = [16];   /* a Casa Aldren virou o lote vazio do bairro nobre */
+const CITY_RELAYOUT = [[0,42,8,13,13,"S",6],[3,-15,10,9,13,"E",6],[4,12,7,8,7,"E",3],[5,80,28,8,9,"S",4],[6,-30,10,5,5,"N",2],[7,-22,-8,10,5,"S",1],[8,-22,10,5,5,"E",2],[11,-30,-45,13,25,"S",6],[12,12,14,8,6,"S",4],[13,-16,-1,4,5,"S",2],[14,-30,16,5,4,"S",2],[15,80,-45,8,9,"S",4],[16,26,-21,9,15,"E",8],[17,13,-45,7,9,"E",2],[18,13,-21,7,14,"E",7],[19,-22,16,5,4,"S",2],[20,-22,-15,8,5,"S",1],[21,42,28,5,4,"E",2],[22,42,33,5,4,"E",1],[23,26,28,9,9,"S",4],[24,12,28,8,5,"S",4],[25,50,28,5,4,"W",2],[35,80,8,8,13,"E",6],[37,13,-33,8,8,"E",4],[38,13,-5,7,7,"S",3],[39,26,-5,9,7,"S",4],[42,-15,23,9,5,"E",2],[45,26,-45,9,9,"S",4],[46,62,28,13,9,"S",6],[47,62,8,13,13,"S",6],[48,62,-45,13,9,"S",6],[49,26,7,9,13,"S",4],[50,42,-45,13,9,"S",6],[51,42,-21,13,20,"S",6],[52,62,-21,13,11,"S",6],[53,80,-31,8,5,"S",4]];   /* Prancheta 28/11 (6º replanejamento): guildas, vila romana, muralha maior */
+const CITY_LOTS = [16];
+const GPLAN = {"school":{"0":["#############","#EE.AAMAA#..#","#........#S.#","#.TTTTTT.#..#","#.BBBBBB.#..#","#........|..#","#.BBBBBB.#S.#","#.TTTTTT.#..#","#........|..D","#C......C#S.#","#........#..#","#############"],"1":["#############","#EE.LLLLL#ZZ#","#........#L.#","#.L.L.L.L#L.#","#.L.L.L.L#..#","#........=..#","#####.#######","#.A.........#","#...........#","#.TT.TT.TT..#","#.TT.TT.TT..#","#############"],"2":["#############","#EE.F.#..Q..#","#.....#.PPP.#","#.HH..|QPPPQ#","#.UUU.#.PPP.#","#.HH..#Q...Q#","######.######","#bb.bb.bb.bb#","#...........#","#bb.bb.bb.bb#","#.....C.....#","#############"],"3":["#############","#EE.L#..O..O#","#....#.YYY..#","#.A..|.YYY..#","#.HH.#.YYY..#","#L..L#..O..O#","#####.#######","#...........#","#.v.v.v.v.v.#","#...........#","#.v.v.v.v.v.#","#############"],"-1":["#############","#EE.X.X.X#$$#","#........#..#","#.T.T.T.T|..#","#........#$$#","#.T.T.T.T####","#...........#","#LLLL...KKKK#","#...........#","#LLLL...KKKK#","#....C......#","#############"]},"archery":{"0":["########","#RRF..A#","#T..M..#","###..###"]},"field":["+l....G+","+l.....+","+l....G+","+l.....+","+l....G+","+B.....+","+++D++++"]};   /* plantas aprovadas em 28/11 (Escola de Magia e Campo dos Arqueiros), no desenho do mundo: norte em cima, 1 letra = 1 casa */   /* a Casa Aldren virou o lote vazio do bairro nobre */
 const KEEP = { x0: C - 13, y0: C - 30, x1: C + 11, y1: C - 3, by: C - 12, yx0: C - 11, yx1: C + 9 };   // castelo: corpo ao norte (até by) e pátio mais estreito ao sul (yx0..yx1)
 const KEEP_OLD = { x0: C - 9, y0: C - 22, x1: C + 10, y1: C - 3 };   // contorno antigo: só para o sorteio das casas continuar igual
 const inKeep = (x, y) => y >= KEEP.y0 && y <= KEEP.y1 && (y <= KEEP.by ? x >= KEEP.x0 && x <= KEEP.x1 : x >= KEEP.yx0 && x <= KEEP.yx1);       // castelo central
@@ -212,6 +213,7 @@ const doorOf = b => { const [x, y] = doorTile(b), v = DOOR_V[b.door || 'S']; ret
 // 'ext' (externa: sobe por fora, pela parede do lado que a câmera vê, até uma porta no andar de cima). trig = onde se pisa lá em cima para descer
 function stairKind(b, f) { return (b.stairs && b.stairs[f]) || 'wall'; }
 function stairSpec(b, f) {
+  if (b.kind === 'school' && b.cellar) { const c = b.cellar; return { kind: 'spiral', one: 1, L: c, U: c, dv: [0, 0], entry: [c[0], c[1] + 1], arrive: [c[0], c[1] + 1], trig: c }; }   /* Escola de Magia: a mesma escada em caracol no canto noroeste, do porão ao 3º andar */
   { const E = intEditB(b), o = E && E.st && E.st[f]; if (o && o.kind !== 'ext') { const lift = o.kind === 'lift' || o.kind === 'clift', one = lift || o.kind === 'ladder' || o.kind === 'spiral'; return { kind: o.kind, one: one ? 1 : undefined, lift: lift ? 1 : undefined, cab2: lift ? 1 : undefined, L: o.L, U: o.U, dv: [o.U[0] - o.L[0], o.U[1] - o.L[1]], entry: o.entry, arrive: o.arrive, trig: one ? o.L : o.U }; } }   /* escada movida no editor */
   const [A, D] = bDims(b), k = stairKind(b, f);
   if (b.kind === 'castle' && f < 0) return f === -1 ? { kind: 'wall', L: [1, 3], U: [1, 2], dv: [0, -1], entry: [1, 4], arrive: [1, 1], trig: [1, 2] } : { kind: 'wall', L: [3, 4], U: [3, 3], dv: [0, -1], entry: [3, 5], arrive: [3, 2], trig: [3, 3] };   /* corredor oeste: desce em vaivém até a cripta (chega no corredor aberto, não atrás da escada) */
@@ -440,7 +442,7 @@ function interiorLayoutBase(b, fl = 0) {
       sp('bed', 5, 0, { h: 2 }); sp('chest', 6, 0); sp('rack', 6, 4); if (sp('table', 4, 6)) sp('chair', 5, 6, { seat: 5 }); sp('rug', 4, 2, { w: 2, block: false }); }   /* quarto do herdeiro */
     return { F, npc: null };
   }
-  if (fl < 0 && k !== 'velvet') {   // porão: o cofre do banco (ouro, barras e baús) ou a adega (barris e caixotes); velas para iluminar
+  if (fl < 0 && k !== 'velvet' && k !== 'school') {   // porão: o cofre do banco (ouro, barras e baús) ou a adega (barris e caixotes); velas para iluminar
     if (k === 'bank') { put('goldsacks', 0, 0); put('goldbars', 1, 0); put('chest', 2, 0); put('goldbars', 4, 0); put('goldsacks', 5, 0); put('chest', 6, 0); put('goldsacks', 7, 0); for (let j = 3; j < h - 1; j += 2) { put('chest', 0, j); put('goldbars', w - 1, j); } put('goldsacks', 0, h - 1); put('goldbars', w - 1, h - 1); put('candles', 2, h - 1); put('candles', w - 3, h - 1); put('rug', 2, 4, { w: Math.max(1, w - 4), h: 3, block: false }); }
     else { for (let i = 0; i < w; i++) put('barrel', i, 0); for (let j = 2; j < h; j++) { put(j % 2 ? 'barrel' : 'crate', 0, j); put(j % 2 ? 'crate' : 'barrel', w - 1, j); } put('table', Math.floor(w / 2), h - 2); put('candles', Math.floor(w / 2) - 1, h - 1); put('hay', w - 2, h - 1); }
     return { F, npc: null };
@@ -450,7 +452,7 @@ function interiorLayoutBase(b, fl = 0) {
     put('orb', 0, 0); put('spellbooks', 1, 0); for (const i of [2, 3]) put('shelf', i, 0, { v: 7 }); put('telescope', w - 3, 2); put('starrug', 1, 1, { w: 3, h: 2, block: false }); put('still', 0, h - 1); put('cauldron', 0, 2);
     return { F, npc: null };
   }
-  if (fl > 0 && k !== 'dojo' && k !== 'tower' && k !== 'velvet') {   /* o prédio do dojô tem os andares de apartamentos próprios */
+  if (fl > 0 && k !== 'dojo' && k !== 'tower' && k !== 'velvet' && k !== 'school') {   /* o prédio do dojô tem os andares de apartamentos próprios */
     // andares de cima: quartos, depósitos e aposentos
     if (k === 'castle') { put('bed', 2, 0, { w: 2, h: 2, v: 1 }); put('chest', 4, 0); put('shelf', 5, 0); put('shelf', 6, 0); put('fireplace', w - 3, 0); if (put('table', 6, 4, { w: 2 })) { put('chair', 5, 4); put('chair', 8, 4); } put('banner', 0, 3); put('banner', 0, 6); put('candles', w - 1, 3); put('rug', 4, 3, { w: 4, h: 3, block: false }); }
     else if (k === 'tavern' && fl === 1) {   // mezanino: a sala de cima, com mesas, barris, garrafas nas paredes, réstias, lustres e o corrimão no lado aberto
@@ -488,6 +490,13 @@ function interiorLayoutBase(b, fl = 0) {
     if (wk === 'bakery') { put('stove', w - 2, 0); put('stove', w - 3, 0); put('display', 1, 0, { v: 0 }); }
     else if (wk === 'mill' || wk === 'wheat') { put('crate', w - 2, 0); put('hay', 1, 0); }
     else if (wk === 'alch') { put('stove', w - 2, 0); put('shelf', 1, 0); } else if (wk === 'mine') { put('anvil', w - 2, 1); put('rack', 1, 0); } else if (wk === 'saw' || wk === 'carp') { put('rack', 1, 0); put('crate', w - 1, h - 1); } else { put('crate', 1, 0); put('barrel', w - 1, h - 1); }
+  } else if ((k === 'school' || k === 'archery') && GPLAN[k] && GPLAN[k][fl]) {   /* plantas aprovadas: cada letra vira um móvel na casa certa (o desenho é do mundo; aqui se converte para o quadro do prédio) */
+    const PL = GPLAN[k][fl], W0 = b.w, H0 = b.h, wd = (dx, dy) => { const tv = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 1 : 5) : (dy > 0 ? 7 : 3); for (const d of [1, 3, 5, 7]) if (bDir(b, d) === tv) return d; return 7; };
+    for (let j = 0; j < h; j++) for (let i = 0; i < w; i++) { const [x, y] = bLocal(b, i, j), X = x - b.x, Y = y - b.y, ch = (PL[Y] || '')[X]; if (!ch) continue; const ring = X === 0 || Y === 0 || X === W0 - 1 || Y === H0 - 1;
+      if (ch === '#') { if (!ring) put('iwall', i, j); } else if (ch === '=') put('bars', i, j); else if (ch === 'L') put('shelf', i, j, { v: 7 }); else if (ch === 'Z') put('shelf', i, j, { v: 2 }); else if (ch === 'T') put(k === 'archery' ? 'carvebench' : 'table', i, j);
+      else if (ch === 'B') put('pew', i, j, { seat: wd(0, (PL[Y - 1] || '')[X] === 'T' ? -1 : 1) }); else if (ch === 'A') put('desk', i, j); else if (ch === 'M') npcAt(i, j); else if (ch === 'S') put('wstatue', i, j); else if (ch === 'C') put('candles', i, j); else if (ch === 'H') put('chair', i, j, { seat: wd(0, -1) });
+      else if (ch === 'U') put('rug', i, j, { block: false }); else if (ch === 'F') put('fireplace', i, j); else if (ch === 'P') put('pentag', i, j, { block: false }); else if (ch === 'Q') put('elemaltar', i, j); else if (ch === 'b') put('cot', i, j); else if (ch === 'O') put('telescope', i, j);
+      else if (ch === 'Y') put('starrug', i, j, { block: false }); else if (ch === 'v') put('owlperch', i, j); else if (ch === 'X') put('cauldron', i, j); else if (ch === '$') put('chest', i, j); else if (ch === 'K') put('barrel', i, j); else if (ch === 'R') put('bowrack', i, j); }
   } else if (k === 'vila') {   /* Vila dos Viajantes: por dentro de cada marco (o guardião fica no lugar marcado com npcAt) */
     const vk = b.vk;
     if (vk === 'banhos') { put('ofuro', 0, 0, { w: 2, h: 2, block: false }); put('ofuro', w - 2, 0, { w: 2, h: 2, block: false }); put('pew', 0, 3, { w: 2, seat: 3 }); put('pew', w - 2, 3, { w: 2, seat: 3 }); put('plantpot', dc, 0, { block: false }); put('kilim', dc - 1, h - 3, { w: 2, h: 1, block: false }); npcAt(dc, 2); }
@@ -1465,8 +1474,8 @@ function generateWorld() {
       { x: C - 65, y: C + 13, ...BH('vila', 3, 3, 5.0, 0.8, 'Pagode da Garça', { door: 'W', cult: 'chi', vk: 'pagode', floors: 1 }) });
     BUILDINGS.push(   /* Prancheta 28/11: 4ª casa da vila romana e as obras (guildas e café), no fim da lista */
       { x: C + 50, y: C + 33, ...BH('house', 5, 4, 2.4, 1.2, '', { v: 1, door: 'W', dcol: 1, cult: 'and', floors: 1 }) },
-      { x: C + 80, y: C - 21, ...BH('site', 8, 11, 0.1, 0, 'Obra: Guilda dos Arqueiros', { lot: 1, door: 'S', dcol: 3, floors: 1 }) },
-      { x: C - 30, y: C + 24, ...BH('site', 13, 12, 0.1, 0, 'Obra: Escola de Magia', { lot: 1, door: 'E', dcol: 8, floors: 1 }) },
+      { x: C + 80, y: C - 21, ...BH('archery', 8, 4, 2.6, 1.8, 'Pavilhão dos Arqueiros', { door: 'S', dcol: 3, floors: 1 }) },
+      { x: C - 30, y: C + 24, ...BH('school', 13, 12, 7.8, 3.2, 'Escola de Magia do Círculo', { door: 'E', dcol: 3, floors: 4, stairs: { 0: 'spiral', 1: 'spiral', 2: 'spiral' }, cellar: [10, 1] }) },
       { x: C + 42, y: C - 31, ...BH('site', 13, 5, 0.1, 0, 'Obra: Café', { lot: 1, door: 'E', dcol: 2, floors: 1 }) });
     for (let x = X0 + 1; x <= X1; x++) for (let y = C + 4; y <= C + 5; y++) { const i = idx(x, y); if (bld[i] >= 0 || obj[i] === O.WALL || obj[i] === O.PART || obj[i] === O.TOWER) continue; obj[i] = O.NONE; ground[i] = T.FLOORSTONE; rdir[i] = 1; }   /* a avenida até o portão leste novo */
     for (let y = y0; y <= y1; y++) for (let x = X0; x <= X1; x++) used[idx(x, y)] = 1;
@@ -1718,7 +1727,8 @@ function generateWorld() {
     const dn = new Set(); for (const b of BUILDINGS) { if (b.ham) continue; const [dx, dy] = doorTile(b); for (let a = -1; a <= 1; a++) for (let c = -1; c <= 1; c++) dn.add(idx(dx + a, dy + c)); }
     for (let y = Y0; y <= Y1; y++) for (let x = X0; x <= X1; x++) { const i = idx(x, y); if (bld[i] >= 0 || solidO(obj[i])) continue; const r = Math.max(Math.abs(x - cx), Math.abs(y - cy)); ground[i] = r <= 1 ? T.STONE : r === 2 ? T.FLOORSTONE : ((x + y) % 2 ? T.FLOORSTONE : T.COBBLE); obj[i] = O.NONE; rdir[i] = 0; }
     const put = (x, y, o) => { const i = idx(x, y); if (bld[i] >= 0 || solidO(obj[i]) || dn.has(i)) return; obj[i] = o; if (o === O.BENCH) seats.push({ x, y, dir: 7, h: 0.45, bi: -1 }); };
-    put(cx, cy, O.FOUNTAIN); for (const [dx, dy] of [[-1, -3], [1, -3], [-1, 3], [1, 3]]) put(cx + dx, cy + dy, O.STATUE);   /* átrio romano: chafariz e estátuas */
+    put(cx, cy, O.FOUNTAIN); for (const [dx, dy] of [[-1, -3], [1, -3], [-1, 3], [1, 3]]) put(cx + dx, cy + dy, O.STATUE);
+    { const FX = C + 80, FY = C - 17; GPLAN.field.forEach((r, yy) => [...r].forEach((ch, xx) => { const x = FX + xx, y = FY + yy, i = idx(x, y); if (!inb(x, y) || bld[i] >= 0) return; obj[i] = O.NONE; rdir[i] = 0; ground[i] = ch === 'l' ? T.FLOORSTONE : ch === 'D' ? T.COBBLE : T.GRASS; if (ch === '+') obj[i] = O.FENCE; else if (ch === 'G') obj[i] = O.ARCHTARGET; else if (ch === 'B') { obj[i] = O.BENCH; seats.push({ x, y, dir: 1, h: 0.45, bi: -1 }); } })); }   /* Campo dos Arqueiros (planta aprovada 28/11) */   /* átrio romano: chafariz e estátuas */
     for (const [x, y] of [[X0, Y0], [X1, Y0], [X0, Y1], [X1, Y1]]) put(x, y, O.LAMP);
     for (const x of [C + 42, C + 44, C + 46, C + 50, C + 52, C + 54]) put(x, cy, O.FLOWERBED); }
   for (const b of BUILDINGS) { if (!b.lot) continue; const [dx, dy] = doorTile(b);   /* o lote vazio por último: as passagens de decoração do bairro limpam e enfeitam a área */
@@ -1971,7 +1981,7 @@ function walkableTile(x, y, z = 0) {
   return g !== T.WATER && g !== T.CLIFF && !BLOCKING.has(WORLD.obj[i]) && !NPC_AT.has(i);
 }
 // objetos redondos: colidem só no tamanho real (círculo), não no tile inteiro
-const OBJ_R = { [O.GONDOLA]: 0.4, [O.OLIVE]: 0.3, [O.LIGHTHOUSE]: 0.55, [O.NOTICEBOARD]: 0.3, [O.WATERWHEEL]: 0.45, [O.TREE]: 0.38, [O.PINE]: 0.34, [O.OAK]: 0.44, [O.BIRCH]: 0.26, [O.WILLOW]: 0.4, [O.ROCK]: 0.34, [O.STUMP]: 0.24, [O.DEADTREE]: 0.3, [O.GRAVE]: 0.28, [O.CAMPFIRE]: 0.3,
+const OBJ_R = { [O.ARCHTARGET]: 0.35, [O.GONDOLA]: 0.4, [O.OLIVE]: 0.3, [O.LIGHTHOUSE]: 0.55, [O.NOTICEBOARD]: 0.3, [O.WATERWHEEL]: 0.45, [O.TREE]: 0.38, [O.PINE]: 0.34, [O.OAK]: 0.44, [O.BIRCH]: 0.26, [O.WILLOW]: 0.4, [O.ROCK]: 0.34, [O.STUMP]: 0.24, [O.DEADTREE]: 0.3, [O.GRAVE]: 0.28, [O.CAMPFIRE]: 0.3,
   [O.BARREL]: 0.28, [O.CRATE]: 0.32, [O.HOARD]: 0.5, [O.HAY]: 0.38, [O.BRAZIER]: 0.24, [O.DUMMY]: 0.22, [O.STATUE]: 0.4, [O.ANVIL]: 0.3, [O.WEAPONRACK]: 0.32, [O.WELL]: 0.46 };
 function solidTile(x, y, L) {
   if (!inBounds(x, y)) return true;
