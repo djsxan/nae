@@ -1481,6 +1481,46 @@ function generateWorld() {
     for (let y = y0; y <= y1; y++) for (let x = X0; x <= X1; x++) used[idx(x, y)] = 1;
     HOUSE_SEATS.forEach((S1, k) => { const bx = X0 + 4 + k * 2.4 | 0, by = k % 2 ? C + 4 : C - 3; const i = idx(bx, by); if (bld[i] < 0) { obj[i] = O.BANNER; BANNER_HOUSE[i] = S1.id; } });   /* estandartes das casas na praça */
   }
+  if (!TEST3D) { /* ---- MURALHA NOVA (Prancheta 28/11): cantos curvos, lados que ondulam para fora, 3 casas de espessura, caminho de ronda em cima, torres e rampas por dentro ---- */
+    const OX0 = x0, OY0 = y0, OX1 = CITY_X1, OY1 = y1, RC = 9, TH = 3, inKp = (x, y) => x >= KEEP.x0 - 3 && x <= KEEP.x1 + 3 && y >= KEEP.y0 - 3 && y <= KEEP.y1 + 3;
+    const depth = (x, y) => { const dx = Math.max(OX0 + RC - x, 0, x - (OX1 - RC)), dy = Math.max(OY0 + RC - y, 0, y - (OY1 - RC)); if (dx > 0 && dy > 0) return RC - Math.hypot(dx, dy); return Math.min(x - OX0, OX1 - x, y - OY0, OY1 - y); };
+    const gateT = []; for (let y = OY0; y <= OY1; y++) for (let x = OX0; x <= OX1; x++) { const i = idx(x, y); if (obj[i] === O.GATE && !inKp(x, y)) gateT.push([x, y]); }
+    const nearGate = (x, y, r) => gateT.some(([gx, gy]) => Math.abs(gx - x) <= r && Math.abs(gy - y) <= r);
+    /* ondulação: em trechos longos, longe de portões e cantos, a muralha avança 1 casa para fora */
+    const off = (x, y) => { if (nearGate(x, y, 7)) return 0; const onH = y - OY0 < 4 || OY1 - y < 4, t = onH ? x : y, lo = onH ? OX0 + RC + 4 : OY0 + RC + 4, hi = onH ? OX1 - RC - 4 : OY1 - RC - 4; if (t < lo || t > hi) return 0; return Math.sin((t - lo) / 7) > 0.55 ? 1 : 0; };
+    const nrm = (x, y) => { const dx = Math.max(OX0 + RC - x, 0, x - (OX1 - RC)), dy = Math.max(OY0 + RC - y, 0, y - (OY1 - RC)); if (dx > 0 && dy > 0) { const sx = x < OX0 + RC ? -1 : 1, sy = y < OY0 + RC ? -1 : 1; return dx >= dy ? (sx > 0 ? 1 : 2) : (sy > 0 ? 3 : 4); } const m = Math.min(x - OX0, OX1 - x, y - OY0, OY1 - y); return m === x - OX0 ? 2 : m === OX1 - x ? 1 : m === y - OY0 ? 4 : 3; };
+    /* tira a muralha velha (menos portões e o castelo) e limpa os cantos que ficaram de fora */
+    for (let y = OY0 - 1; y <= OY1 + 1; y++) for (let x = OX0 - 1; x <= OX1 + 1; x++) { if (!inb(x, y) || inKp(x, y)) continue; const i = idx(x, y), o = obj[i], d = depth(x, y);
+      if ((o === O.WALL || o === O.PART || o === O.TOWER) && d < 4) { obj[i] = O.NONE; fl1[i] = 0; wdir[i] = 0; tvar[i] = 0; toff[i] = 4; ground[i] = T.COBBLE; }
+      if (o !== O.GATE && d < -1 && x >= OX0 && x <= OX1 && y >= OY0 && y <= OY1) { obj[i] = O.NONE; fl1[i] = 0; rdir[i] = 0; ground[i] = T.GRASS; } }
+    /* a muralha nova: 3 casas de largura, toda andável por cima */
+    for (let y = OY0 - 1; y <= OY1 + 1; y++) for (let x = OX0 - 1; x <= OX1 + 1; x++) { if (!inb(x, y) || inKp(x, y)) continue; const i = idx(x, y), d = depth(x, y), f = off(x, y); if (d < -f - 0.5 || d >= TH - f - 0.5 || obj[i] === O.GATE) continue;
+      obj[i] = O.WALL; fl1[i] = 1; ground[i] = T.FLOORSTONE; rdir[i] = 0; wdir[i] = nrm(x, y); }
+    /* só a borda de fora tem ameias; as casas de dentro são o chão do caminho de ronda (wdir 9) */
+    for (let y = OY0 - 1; y <= OY1 + 1; y++) for (let x = OX0 - 1; x <= OX1 + 1; x++) { if (!inb(x, y)) continue; const i = idx(x, y); if (obj[i] !== O.WALL || inKp(x, y)) continue; const outer = [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([a, c]) => { const j = idx(x + a, y + c), o2 = obj[j]; return o2 !== O.WALL && o2 !== O.PART && o2 !== O.TOWER && o2 !== O.GATE && depth(x + a, y + c) < depth(x, y); }); if (!outer) wdir[i] = 9; }
+    /* portões: a passagem atravessa as 3 casas */
+    for (const [gx, gy] of gateT) { const n = nrm(gx, gy), v = { 1: [-1, 0], 2: [1, 0], 3: [0, -1], 4: [0, 1] }[n]; for (let k = 1; k <= TH; k++) { const x = gx + v[0] * k, y = gy + v[1] * k, i = idx(x, y); if (obj[i] === O.WALL) { obj[i] = O.NONE; fl1[i] = 0; wdir[i] = 0; ground[i] = T.FLOORSTONE; } } }
+    /* torres 2x2 na face de fora: ao lado dos portões, no meio de cada canto curvo e a cada ~16 casas */
+    const towerAt = (tx, ty, tall) => { for (let y = ty; y <= ty + 1; y++) for (let x = tx; x <= tx + 1; x++) { const i = idx(x, y); if (!inb(x, y) || obj[i] === O.GATE) return; } const n = nrm(tx, ty), sx = n === 1 ? 1 : n === 2 ? -1 : 0, sy = n === 3 ? 1 : n === 4 ? -1 : 0;
+      for (let y = ty; y <= ty + 1; y++) for (let x = tx; x <= tx + 1; x++) { const i = idx(x, y); obj[i] = O.PART; fl1[i] = 1; ground[i] = T.FLOORSTONE; } const a = idx(tx + 1, ty + 1); obj[a] = O.TOWER; tvar[a] = tall ? 3 : (tx * 7 + ty * 3) % 3; toff[a] = (sx + 1) * 3 + (sy + 1); };
+    const placed = []; const tryT = (x, y, tall) => { if (placed.some(([a, b]) => Math.abs(a - x) < 5 && Math.abs(b - y) < 5)) return; placed.push([x, y]); towerAt(x, y, tall); };
+    { const byGate = {}; for (const [gx, gy] of gateT) { const n = nrm(gx, gy), k = n <= 2 ? 'v' + gx : 'h' + gy; (byGate[k] = byGate[k] || []).push([gx, gy, n]); }
+      for (const k in byGate) { const L = byGate[k], n = L[0][2]; if (n <= 2) { const ys = L.map(q => q[1]), gx = L[0][0], tx = n === 1 ? gx - 1 : gx; tryT(tx, Math.min(...ys) - 2, true); tryT(tx, Math.max(...ys) + 1, true); } else { const xs = L.map(q => q[0]), gy = L[0][1], ty = n === 3 ? gy - 1 : gy; tryT(Math.min(...xs) - 2, ty, true); tryT(Math.max(...xs) + 1, ty, true); } } }
+    for (const [cx, cy, sx, sy] of [[OX0 + RC, OY0 + RC, -1, -1], [OX1 - RC, OY0 + RC, 1, -1], [OX0 + RC, OY1 - RC, -1, 1], [OX1 - RC, OY1 - RC, 1, 1]]) { const r = RC - 1, x = Math.round(cx + sx * r * Math.SQRT1_2) - (sx > 0 ? 1 : 0), y = Math.round(cy + sy * r * Math.SQRT1_2) - (sy > 0 ? 1 : 0); tryT(x, y, false); }
+    for (let x = OX0 + RC + 6; x <= OX1 - RC - 6; x += 16) { tryT(x, OY0, false); tryT(x, OY1 - 1, false); }
+    for (let y = OY0 + RC + 6; y <= OY1 - RC - 6; y += 16) { tryT(OX0, y, false); tryT(OX1 - 1, y, false); }
+    /* rampas por dentro: sobem até o caminho de ronda, perto de cada portão (5 degraus, de frente para a muralha) */
+    const busy = (x, y) => BUILDINGS.some(b => !b.lot && x >= b.x - 1 && x <= b.x + b.w && y >= b.y - 1 && y <= b.y + b.h) || obj[idx(x, y)] === O.GATE || obj[idx(x, y)] === O.WALL || obj[idx(x, y)] === O.PART || ground[idx(x, y)] === T.WATER;
+    for (const [gx, gy] of gateT.filter((g, k, a) => !a.slice(0, k).some(h => Math.abs(h[0] - g[0]) + Math.abs(h[1] - g[1]) <= 4))) { const n = nrm(gx, gy), inV = { 1: [-1, 0], 2: [1, 0], 3: [0, -1], 4: [0, 1] }[n], along = n <= 2 ? [0, 1] : [1, 0], sdir = { 1: 1, 2: 2, 3: 3, 4: 4 }[n];
+      let done = false; for (const o0 of [4, -4, 5, -5, 6, -6, 8, -8, 10, -10, 12, -12, 14, -14, 16, -16]) { if (done) break; const bx = gx + along[0] * o0 + inV[0] * TH, by = gy + along[1] * o0 + inV[1] * TH; const T5 = []; for (let k = 0; k < STAIR_N; k++) T5.push([bx + inV[0] * k, by + inV[1] * k]); if (obj[idx(bx - inV[0], by - inV[1])] !== O.WALL || T5.some(([x, y]) => !inb(x, y) || busy(x, y))) continue;
+        T5.forEach(([x, y], k) => { const i = idx(x, y); obj[i] = O.STAIRS; stair[i] = sdir; stairK[i] = STAIR_N - 1 - k; fl1[i] = 3; ground[i] = T.FLOORSTONE; rdir[i] = 0; }); done = true; }
+      if (!done) { /* sem espaço de frente: a rampa corre encostada na muralha, ao lado do portão, e termina num patamar colado ao caminho de ronda */
+        const span = gateT.filter(h => Math.abs(h[0] - gx) + Math.abs(h[1] - gy) <= 4).map(h => along[0] ? h[0] : h[1]), lo = Math.min(...span), hi = Math.max(...span);
+        for (const sg of [-1, 1]) { if (done) break; const base = sg < 0 ? lo - 2 : hi + 2, at = (u) => along[0] ? [u, gy + inV[1] * TH] : [gx + inV[0] * TH, u], land = at(base), T5 = []; for (let k = 0; k < STAIR_N; k++) T5.push(at(base + sg * (k + 1)));
+          if ([land, ...T5].some(([x, y]) => !inb(x, y) || busy(x, y)) || obj[idx(land[0] - inV[0], land[1] - inV[1])] !== O.WALL) continue;
+          const li = idx(land[0], land[1]); obj[li] = O.WALL; fl1[li] = 1; wdir[li] = 9; ground[li] = T.FLOORSTONE; rdir[li] = 0;
+          const d2 = along[0] ? (sg < 0 ? 1 : 2) : (sg < 0 ? 3 : 4); T5.forEach(([x, y], k) => { const i = idx(x, y); obj[i] = O.STAIRS; stair[i] = d2; stairK[i] = STAIR_N - 1 - k; fl1[i] = 3; ground[i] = T.FLOORSTONE; rdir[i] = 0; }); done = true; } } }
+  }
   { const S0 = { 'Empório do Borin': { 0: 'ladder' }, 'Pergaminhos & Mapas': { 0: 'spiral' }, 'Imobiliária Chave de Bronze': { 0: 'ext' }, 'Casa Morvane': { 0: 'spiral', 1: 'ladder' }, 'Elixires da Lua Prateada': { 0: 'spiral' } };   // escadas: o resto usa a de parede
     for (const b of BUILDINGS) { if (S0[b.name]) b.stairs = S0[b.name]; else if (b.kind === 'manor' && !b.seat) b.stairs = { 1: 'ladder' }; }
     const CEL = { 'Ronco do Dragão': [2, 0], 'Banco de Nae': [3, 1], 'Casa de Veludo': [0, 8] }; for (const b of BUILDINGS) if (CEL[b.name]) b.cellar = CEL[b.name]; }   // porões: adega atrás do balcão da taverna, cofre embaixo do banco   // casarões: o sótão é pelo alçapão

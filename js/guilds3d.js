@@ -83,3 +83,6 @@ function mArchTarget() { const g = grp(), wd = smat('wood', '#5a3a20', { bump: 1
   for (const [x, y] of [[0.06, 0.95], [-0.12, 0.82], [0.15, 0.78]]) g.add(mk(new THREE.CylinderGeometry(0.008, 0.008, 0.32, 4).rotateX(Math.PI / 2 - 0.2).translate(x, y, 0.28), wd));
   return g; }
 if (typeof NATURE !== 'undefined') NATURE.archtarget = [mArchTarget, 1.0];
+
+/* muralha grossa (28/11): as casas de dentro (wdir 9) são o chão do caminho de ronda, sem ameias nem sapata */
+if (typeof mWall === 'function') { const _mwG = mWall; mWall = function (v, low, ivy, od, ends) { if (od === 9 && !low) { const o = grp(), H = WALL_H, capM = smat('stoneblock', '#b0a998', { bump: 1 }); o.add(gwall(1, H - 0.08, 1, 0, (H - 0.08) / 2, 0, 'brick', '#a29c90', H, v, 1, 1.4)); o.add(wbox(1, 0.08, 1, 0, H - 0.04, 0, capM, 1)); return o; } return _mwG.apply(this, arguments); }; }
