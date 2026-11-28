@@ -7,7 +7,7 @@
 //  Segredos: guardados por jogador em S.estate.vel.sec (até 12).
 // ============================================================
 const CLUB_FEE = 30, CLUB_BETS = [20, 50, 100, 200, 300], CLUB_MAXDAY = 12, CLUB_HOURS = [19, 21];
-const VL_WINE = 15, VL_COMPANY = 60, VL_SECRET = 80, VL_SELL = 40, VL_SHOW = [20, 24], VL_HOURS = [21, 24], VL_SHOW_SECS = 20, SEC_MAX = 12;
+const VL_WINE = 15, VL_COMPANY = 60, VL_SECRET = 80, VL_SELL = 40, VL_SHOW = [20, 24], VL_HOURS = [21, 24], VL_OPEN = [18, 12], VL_SHOW_SECS = 20, SEC_MAX = 12;
 const CLUB_SPOTS = [[4.5, 3.5], [2.5, 3.5], [5.5, 5.5], [4.5, 6.5], [6.5, 3.5]], VL_SPOTS = [[1.5, 3.0], [1.5, 6.0], [10.5, 3.0], [10.5, 6.0], [2.5, 6.5]];
 const VEL_STAFF = [
   { id: 'cl_anselmo', b: 'club', kind: 'butler', name: 'Anselmo, o Mordomo do Clube', at: [2.5, 6.6], menu: 'club' },

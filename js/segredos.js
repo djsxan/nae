@@ -51,7 +51,7 @@ function secRoutine(hid) { const h = HOUSE_BY[hid], k = HOUSES.findIndex(x => x.
   L.push(h.lord + ': de dia no térreo do casarão, à noite no 1º andar.');
   if ((d + k) % 3 === 0) L.push('Hoje o lorde e o herdeiro vão às Termas das ' + THERMAE_HOURS[0] + 'h às ' + THERMAE_HOURS[1] + 'h.');
   if ((d + k) % 2 === 0) L.push('Hoje o lorde joga no Clube do Cervo de Prata das ' + CLUB_HOURS[0] + 'h às ' + CLUB_HOURS[1] + 'h.');
-  if ((d + k) % 3 === 1) L.push('Hoje o lorde vai à Casa de Veludo das ' + VL_HOURS[0] + 'h à meia-noite.');
+  if ((d + k) % 3 === 1) L.push('Hoje o lorde vai à Casa de Veludo às ' + VL_HOURS[0] + 'h, e às vezes só sai de madrugada.');
   L.push('O herdeiro passa o dia na praça do castelo e dorme no 2º andar. A esposa não sai do 1º andar. O criado fica no térreo; os dois guardas, na porta.');
   if (typeof tatClient === 'function') { const C = tatClient(), n = C && C.id && S.npcs[C.id]; if (n && n.house === hid && !C.done) L.push('Hoje ' + n.name.split(',')[0] + ' vai ao estúdio de tatuagem entre ' + TAT_NPC_H[0] + 'h e ' + TAT_NPC_H[1] + 'h.'); }
   return L; }

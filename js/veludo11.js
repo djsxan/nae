@@ -48,7 +48,7 @@ if (typeof affTick === 'function' && typeof S !== 'undefined') { const _atV11 = 
 // ---------------- CLIENTE ----------------
 /* trava de direção: um "virar" longo vale até acabar */
 if (typeof updateNpcMotion === 'function' && typeof G !== 'undefined') { const _umV11 = updateNpcMotion; updateNpcMotion = function (now, dt) { _umV11.apply(this, arguments); const t = performance.now();
-  for (const id in G.npcs) { const e = G.npcs[id], A = e.anim; if (A && A.a === 'face' && A.tx != null && (A.ms || 0) > 1000 && (!e._lk || e._lk.t0 !== A.t0)) e._lk = { tx: A.tx, ty: A.ty, until: A.t0 + A.ms, t0: A.t0 }; if (e._lk) { if (t > e._lk.until || e.walking) e._lk = null; else e.dir = dirFromVec(e._lk.tx - e.rx, e._lk.ty - e.ry, e.dir); } } }; }
+  for (const id in G.npcs) { const e = G.npcs[id], A = e.anim; if (A && A.a === 'face' && A.tx != null && (A.ms || 0) > 1000 && (!e._lk || e._lk.t0 !== A.t0)) e._lk = { tx: A.tx, ty: A.ty, until: A.t0 + A.ms, t0: A.t0, s: t }; if (e._lk) { if (t > e._lk.until || (e.walking && t - (e._lk.s || 0) > 1800)) e._lk = null; else if (!e.walking) e.dir = dirFromVec(e._lk.tx - e.rx, e._lk.ty - e.ry, e.dir); } } }; }
 /* botões da mesa → anel de dentro da roda */
 if (typeof document !== 'undefined' && typeof G !== 'undefined') { const st = document.createElement('style'); st.textContent = 'button.vl-tray{display:none !important}'; document.head.appendChild(st); }
 if (typeof emoteList === 'function' && typeof G !== 'undefined') { const _elV11 = emoteList; emoteList = function () { const L = _elV11.apply(this, arguments); if (typeof document === 'undefined') return L; const extra = [];
