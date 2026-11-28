@@ -391,7 +391,7 @@ function interiorLayoutBase(b, fl = 0) {
   };
   let npc = null;
   const npcAt = (i, j) => { for (const d of [0, -1, 1, -2, 2]) if (can(i + d, j)) { taken.add(key(i + d, j)); npc = { i: i + d, j }; return; } };
-  { const E = intEdit(b, fl); if (E) { for (const q of E.F || []) { const o = Object.assign({}, q, { w: q.w || 1, h: q.h || 1, v: q.v || 0, block: q.t === 'iwall' || !!q.b }); delete o.b; delete o.lock; F.push(o); }   /* guarda os campos de mecânica (cab, adj, inner, wp, ox...) */ return { F, npc: E.npc ? { i: E.npc.i, j: E.npc.j } : null }; } }   /* planta do editor de interiores: as escadas já foram postas acima */
+  { const E = fl < 0 && b.kind === 'manor' ? null : intEdit(b, fl); if (E) { for (const q of E.F || []) { const o = Object.assign({}, q, { w: q.w || 1, h: q.h || 1, v: q.v || 0, block: q.t === 'iwall' || !!q.b }); delete o.b; delete o.lock; F.push(o); }   /* guarda os campos de mecânica (cab, adj, inner, wp, ox...) */ return { F, npc: E.npc ? { i: E.npc.i, j: E.npc.j } : null }; } }   /* planta do editor de interiores: as escadas já foram postas acima */
   const k = b.kind;
   if (k === 'castle') {   /* Castelo de Nae: cada andar com os seus cômodos */
     if (fl === 0) { put('swordthrone', 8, 0, { w: 3, h: 2, seat: 7 }); put('rug', 9, 2, { w: 2, h: 15, v: 9, block: false, force: true });
@@ -426,7 +426,7 @@ function interiorLayoutBase(b, fl = 0) {
       for (const c of [12, 16]) { put('bars', c, 11, { v: 0 }); put('celldoor', c + 1, 11, { v: 0, block: false }); put('bars', c + 2, 11, { v: 0 }); put('cot', c, 14, { h: 2 }); put('bucket', c + 1, 15, { block: false }); } for (const j of [10, 13, 16]) put('candles', 4, j); }
     return { F, npc: null };
   }
-  if (k === 'manor' && b.deco === 'seat') {
+  if (k === 'manor' && b.deco === 'seat' && fl >= 0) {   /* o porão (sala do tesouro) segue a regra geral lá embaixo */
     const sp = (t, i, j, o) => { const ow = (o && o.w) || 1, ii = b.seatMirror ? Math.floor(seatMapU(b, i + ow - 0.5)) : Math.floor(seatMapU(b, i + 0.5)), o2 = o && b.seatMirror && o.seat ? Object.assign({}, o, { seat: { 1: 5, 5: 1 }[o.seat] || o.seat }) : o; return put(t, ii, Math.floor(seatMapV(b, fl, j + 0.5)), o2); };   /* posição da planta de 7 x 8 */
     if (fl === 0 && b.door2L) { const [di, dj] = b.door2L; taken.add(key(di, dj)); taken.add(key(di + (di === 0 ? 1 : di >= seatDims(b).A - 1 ? -1 : 0), dj + (dj === 0 ? 1 : 0))); }   /* a porta dos fundos fica livre */   /* casarão de uma casa nobre: um salão, cozinha e quarto do criado no térreo; escritório e quarto do casal no 1º; herdeiro e depósito no sótão */
     if (fl === 0) { for (const q of [[1, 0], [1, 1], [1, 2]]) taken.add(key(Math.floor(seatMapU(b, q[0] + 0.5)), Math.floor(seatMapV(b, fl, q[1] + 0.5))));   /* passagem da porta dos fundos */
@@ -444,6 +444,11 @@ function interiorLayoutBase(b, fl = 0) {
     return { F, npc: null };
   }
   if (fl < 0 && k !== 'velvet' && k !== 'school') {   // porão: o cofre do banco (ouro, barras e baús) ou a adega (barris e caixotes); velas para iluminar
+    if (k === 'manor') {   /* sala do tesouro do casarão (lista 16): ouro, barras e baús nas paredes, o cofre-forte no meio, tapete e velas */
+      put('goldsacks', 0, 0); put('goldbars', 1, 0); put('chest', 2, 0); put('goldbars', w - 3, 0); put('goldsacks', w - 2, 0);
+      for (let j = 2; j < h - 1; j += 2) { put('chest', 0, j); put(j % 4 ? 'goldbars' : 'goldsacks', w - 1, j); }
+      put('strongbox', Math.floor(w / 2), Math.floor(h / 2) - 1); put('rug', Math.floor(w / 2) - 1, Math.floor(h / 2), { w: 3, h: 2, block: false }); put('candles', 1, h - 1); put('candles', w - 2, h - 1); put('banner', 0, 1);
+      return { F, npc: null }; }
     if (k === 'bank') { put('goldsacks', 0, 0); put('goldbars', 1, 0); put('chest', 2, 0); put('goldbars', 4, 0); put('goldsacks', 5, 0); put('chest', 6, 0); put('goldsacks', 7, 0); for (let j = 3; j < h - 1; j += 2) { put('chest', 0, j); put('goldbars', w - 1, j); } put('goldsacks', 0, h - 1); put('goldbars', w - 1, h - 1); put('candles', 2, h - 1); put('candles', w - 3, h - 1); put('rug', 2, 4, { w: Math.max(1, w - 4), h: 3, block: false }); }
     else { for (let i = 0; i < w; i++) put('barrel', i, 0); for (let j = 2; j < h; j++) { put(j % 2 ? 'barrel' : 'crate', 0, j); put(j % 2 ? 'crate' : 'barrel', w - 1, j); } put('table', Math.floor(w / 2), h - 2); put('candles', Math.floor(w / 2) - 1, h - 1); put('hay', w - 2, h - 1); }
     return { F, npc: null };
@@ -595,6 +600,12 @@ function interiorLayoutBase(b, fl = 0) {
     put('forge', 0, 0, { w: 2 }); npcAt(3, 1); put('anvil', 4, 1); put('barrel', 4, 0);
     for (let j = 0; j < 3; j++) put('rack', w - 1, j);
     put('trough', 0, 2, { w: 2 });
+  } else if (k === 'tavern' && w >= 11 && h >= 8) {   // Ronco do Dragão no lote grande (lista 16): balcão comprido no fundo, lareira enorme, palco, mesas compridas e uma redonda
+    npcAt(1, 0); put('taps', 0, 0); put('bottles', 3, 0); put('bottles', 4, 0); put('bar', 0, 1, { w: 2 }); put('champs', 5, 1, { block: false });   /* a ponta do balcão fica aberta: o taverneiro sai por ali */
+    put('hearth', w - 1, 2, { h: 2 }); put('stage', w - 3, h - 1, { w: 2, block: false }); put('wheel', 5, 3, { block: false }); put('wheel', 9, 5, { block: false }); put('beamlamp', 2, 5, { block: false }); put('beamlamp', 10, 1, { block: false });
+    for (const [i, j] of [[3, 3], [7, 3], [2, 6], [8, 6]]) if (put('table', i, j, { w: 2 })) put('pew', i, j + 1, { w: 2, seat: 3 });
+    if (put('table', w - 3, 3)) { put('chair', w - 4, 3, { seat: 1 }); put('chair', w - 2, 3, { seat: 5 }); }
+    put('barrel', 0, 4); put('barrel', 0, 5); put('crate', 0, h - 2); put('barrel', w - 1, 0); put('hay', w - 1, h - 2);
   } else if (k === 'tavern' && w === 7 && h >= 6) {   // taverna-celeiro: barris com torneiras e balcão, lareira enorme na parede da direita, palco do bardo, lustre de roda, mesas e bancos
     npcAt(1, 0); put('taps', 0, 0); put('bar', 0, 1, { w: 2 }); put('bottles', 6, 0); put('champs', 6, 1, { block: false });
     put('hearth', w - 1, 2, { h: 2 }); put('stage', w - 2, h - 1, { w: 2, block: false }); put('wheel', 3, 2, { block: false }); put('beamlamp', 5, 1, { block: false });
@@ -1540,6 +1551,7 @@ function generateWorld() {
   if (!TEST3D) for (const [bi, rx, ry, w, h, door, dc] of CITY_RELAYOUT) { const b = BUILDINGS[bi]; if (!b) continue; if (b.w !== w || b.h !== h) delete b.arch; delete b.gen; b._old = { x: b.x, y: b.y, w: b.w, h: b.h }; Object.assign(b, { x: C + rx, y: C + ry, w, h, door, dcol: dc }); if (b.deco === 'seat') { delete b._d2; b.seatMirror = door === 'S' ? 1 : 0; b.seatSide = door === 'S' ? 'R' : door === 'E' ? 'L' : null; const A2 = door === 'S' || door === 'N' ? w : h;   /* a porta dos fundos e a hera ficam numa parede que a câmera vê (leste ou sul) */
       b.door2L = door === 'S' ? [A2 - 1, 2, 'E'] : door === 'E' ? [0, 2, 'S'] : [Math.floor(seatMapU(b, 1.5)), 0, 'E']; } }
   if (!TEST3D) { const b = BUILDINGS.find(q => q.name === 'Casa Lorvan'); if (b) { delete b.arch; delete b.gen; delete b.seat; Object.assign(b, { kind: 'tower', deco: 'steam', name: 'Torre do Inventor', floors: 6, stairs: ['clift', 'clift', 'clift', 'clift', 'clift'], tower: 1, round: 1, H: 14.4, RH: 2.6, wall: Math.round(14.4 * 19.6), roof: Math.round(2.6 * 19.6) }); } }   /* a Casa Lorvan virou a Torre do Inventor (Sxan the Creator) */
+  if (!TEST3D) for (const b of BUILDINGS) if (b.kind === 'manor' && !b.cellar && !CITY_LOTS.includes(BUILDINGS.indexOf(b))) b.cellar = [bDims(b)[0] - 1, 1];   /* todo casarão tem porão com a sala do tesouro (lista 16) */
   if (!TEST3D && BUILDINGS[23]) { delete BUILDINGS[23].arch; Object.assign(BUILDINGS[23], { kind: 'shop', name: 'Armaria da Muralha', v: 21, floors: 1, H: 3.2, RH: 1.6 }); }   /* a Casa 23 virou a loja de armas (Prancheta 28/11) */
   if (!TEST3D) for (const bi of [21, 22, 25]) if (BUILDINGS[bi]) Object.assign(BUILDINGS[bi], { cult: 'rom', v: 1, H: 2.4, RH: 1.0 });   /* vila romana (Prancheta 28/11) */
   if (!TEST3D) for (const bi of CITY_LOTS) { const b = BUILDINGS[bi]; if (!b) continue; delete b.seat; b._lotPend = 1; }   /* o lote nasce construído (casarão comum) e vira terreno vazio no fim do arquivo: lotPrepare guarda as duas versões para a obra */   /* terreno vazio cercado: fica na lista (os índices dos prédios salvos não mudam), mas não é desenhado nem mobiliado */

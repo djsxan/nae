@@ -99,3 +99,13 @@ function gdRoman(b, night) { const o = vBase(b), w = b.w, h = b.h, { H, RH } = b
   return o; }
 if (typeof VILA_3D !== 'undefined') VILA_3D.rom = gdRoman;
 if (typeof VILA_STYLE !== 'undefined') VILA_STYLE.rom = { wall: '#e2c08a', roof: '#b4532e', tex: 'plaster', roofTex: 'slate', trim: '#9a3a2a' };
+/* Ronco do Dragão no lote grande (lista 16): a fachada comprida ganha empena saliente sobre a porta (com a janela redonda grande), águas-furtadas e chaminé de pedra */
+if (typeof mBuilding === 'function') { const _mbT = mBuilding; mBuilding = function (b, night) { const o = _mbT.apply(this, arguments);
+  try { if (b && b.kind === 'tavern' && b.w >= 11) { const w = b.w, h = b.h, { H, RH } = bldDims(b), dX = doorCol(b) + 0.5, roofM = smat('slate', '#4a3a30', { bump: 0.9 }), plank = smat('oldplank', '#6e4a2e', { bump: 1.2 }), wood = smat('wood', '#3a2618', { bump: 1.2 }), stone = smat('stoneblock', '#8a8274', { bump: 1.6 });
+      const gw = 4.6, gd = 2.6, gRH = RH * 0.85, sub = grp(); vGable(sub, gw, gd, 0, gRH, roofM, 0.22, 'z'); sub.position.set(dX - gw / 2, H, h - gd + 0.45); o.add(sub);
+      const tri = new THREE.Shape(); tri.moveTo(-gw / 2, 0); tri.lineTo(gw / 2, 0); tri.lineTo(0, gRH); tri.closePath(); o.add(mk(new THREE.ShapeGeometry(tri).translate(dX, H, h + 0.46), plank));
+      o.add(wbox(gw + 0.1, 0.12, 0.12, dX, H, h + 0.47, wood, 1)); const rw = roundWin(Math.min(0.62, gRH * 0.38), night, true); rw.position.set(dX, H + gRH * 0.4, h + 0.5); o.add(rw);
+      for (const x of [1.7, w - 1.7]) { if (Math.abs(x - dX) < gw / 2 + 0.8) continue; const z = h - 1.0, base = H + RH * (1.0 / (h / 2)) - 0.1, dm = grp(); dm.add(wbox(1.0, 0.8, 0.9, 0.5, 0.4, 0.45, plank, 1)); vGable(dm, 1.0, 0.9, 0.8, 0.5, roofM, 0.12, 'z'); const r2 = roundWin(0.24, night, false); r2.position.set(0.5, 0.42, 0.92); dm.add(r2); dm.position.set(x - 0.5, base, z - 0.45); o.add(dm); }
+      o.add(wbox(0.7, RH + 1.4, 0.7, w - 0.9, H + (RH + 1.4) / 2 - 0.2, h * 0.32, stone, 1)); o.add(wbox(0.86, 0.14, 0.86, w - 0.9, H + RH + 1.2, h * 0.32, stone, 1));
+      if (night) o.add(mk(new THREE.SphereGeometry(0.12, 8, 6).translate(w - 0.9, H + RH + 1.4, h * 0.32), smat(null, '#ff9040', { emissive: '#ff6a20', ei: 1.4 }))); } } catch (e) { console.warn('taverna', e); }
+  return o; }; }
