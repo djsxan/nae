@@ -1,23 +1,64 @@
-/* Muralha histórica (lista 16, item 1) — PROTÓTIPO: só liga com ?muralha=nova
-   Trecho do portão sul: bar de York com barbacã, ronda coberta (estilo Rothenburg) e torres quadradas de telhado alto. */
-const MUR_PROTO = typeof location !== 'undefined' && /[?&]muralha=nova/.test(location.search);
-const MUR = { k: new Uint8Array(MAP_W * MAP_H), barb: null };   /* k: 1 ronda coberta · 2 muro da barbacã · 3 muro da barbacã com o arco de fora */
-if (MUR_PROTO && !TEST3D) (function murTiles() {
-  const W = WORLD, idx = (x, y) => y * MAP_W + x, gi = W.gates.findIndex(g => g.kind === 'main'); if (gi < 0) return;
-  const gt = W.gates[gi], y1 = gt.y, gx0 = gt.x0, gx1 = gt.x1; gt.bar = 1;
-  const setT = (x, y, o, fl, wd) => { const i = idx(x, y); W.obj[i] = o; W.fl1[i] = fl; if (wd !== undefined) W.wdir[i] = wd; W.ground[i] = W.ground[i] === T.WATER ? T.WATER : T.FLOORSTONE; W.rdir[i] = 0; };
-  /* torres do portão: viram o corpo do bar (o modelo do portão desenha tudo) */
-  for (const tx of [gx0 - 2, gx1 + 1]) for (let y = y1 - 1; y <= y1; y++) for (let x = tx; x <= tx + 1; x++) setT(x, y, O.PART, 0);
-  /* barbacã: dois muros saindo 2 casas (até a ponte do fosso) para fora, o arco de fora preso no muro leste */
-  for (let y = y1 + 1; y <= y1 + 2; y++) { setT(gx0 - 1, y, O.WALL, 0, 2); setT(gx1 + 1, y, O.WALL, 0, 1); MUR.k[idx(gx0 - 1, y)] = 2; MUR.k[idx(gx1 + 1, y)] = y === y1 + 2 ? 3 : 2; for (let x = gx0; x <= gx1; x++) { const i = idx(x, y); if (W.obj[i] !== O.NONE && W.obj[i] !== O.GATE) W.obj[i] = O.NONE; W.ground[i] = T.FLOORSTONE; W.rdir[i] = 2; } }
-  MUR.barb = { gi, x0: gx0, x1: gx1, y1 };
-  /* torres quadradas para fora (as duas redondas mais perto do portão saem) */
-  const sq = []; for (let x = gx0 - 16; x <= gx1 + 16; x++) { const i = idx(x, y1); if (W.obj[i] === O.TOWER && Math.abs(x - (gx0 + gx1) / 2) > 4) sq.push(x - 1); }
-  for (const tx of sq) { for (let y = y1 - 1; y <= y1 - 1; y++) for (let x = tx; x <= tx + 1; x++) { setT(x, y, O.NONE, 0, 0); W.ground[idx(x, y)] = T.COBBLE; }
-    for (let x = tx; x <= tx + 1; x++) { setT(x, y1, O.PART, 1); setT(x, y1 + 1, O.PART, 1); }
-    const a = idx(tx + 1, y1 + 1); W.obj[a] = O.TOWER; W.tvar[a] = 6; W.toff[a] = 0; }
-  /* ronda coberta: 12 casas de cada lado do portão */
-  for (let x = gx0 - 14; x <= gx1 + 14; x++) { const i = idx(x, y1); if (W.obj[i] === O.WALL) { MUR.k[i] = 1; W.wdir[i] = 3; } }
+/* Muralha histórica (lista 16, item 1): a volta toda no estilo York/Rothenburg, na mesma linha de antes.
+   · os 4 portões viram bars (casa de porta de 3 andares com torrinhas) com barbacã de 2 casas para fora
+   · torres quadradas de telhado alto saindo para fora; torres grandes nos 4 cantos
+   · dobras de 2 casas para fora no norte e no sul; postigos no norte (na ponte velha) e no oeste
+   · ronda coberta 12 casas de cada lado dos portões; fosso seco no norte e no leste (água no oeste e no sul)
+   · ?muralha=antiga volta para a muralha de antes */
+const MUR_ON = typeof location === 'undefined' || !/[?&]muralha=antiga/.test(location.search);
+const MUR_PROTO = MUR_ON;   /* (nome antigo, usado pelas ligações abaixo) */
+const MUR = { k: new Uint8Array(MAP_W * MAP_H), arch: {} };   /* k: 1 ronda coberta · 2 muro da barbacã · 3 muro da barbacã com o arco · 4/5 postigo (horizontal/vertical) */
+if (MUR_ON && !TEST3D) (function murTiles() {
+  const W = WORLD, C = CENTER, idx = (x, y) => y * MAP_W + x, G = k => W.gates.find(g => g.kind === k);
+  const gS = G('main'), gN = G('small'), gW = G('west'), gE = G('east'); if (!gS || !gN || !gW || !gE) return;
+  const x0 = gW.x0, X1 = gE.x0, y0 = gN.y, y1 = gS.y;
+  const grd = (x, y, g) => { const i = idx(x, y); W.obj[i] = O.NONE; W.fl1[i] = 0; W.wdir[i] = 0; W.tvar[i] = 0; W.toff[i] = 4; W.ground[i] = g || T.COBBLE; W.rdir[i] = 0; MUR.k[i] = 0; };
+  const wall = (x, y, wd, fl = 1) => { const i = idx(x, y); W.obj[i] = O.WALL; W.fl1[i] = fl; W.wdir[i] = wd; W.ground[i] = T.FLOORSTONE; W.rdir[i] = 0; MUR.k[i] = 0; };
+  const part = (x, y, fl = 1) => { const i = idx(x, y); W.obj[i] = O.PART; W.fl1[i] = fl; W.ground[i] = T.FLOORSTONE; W.rdir[i] = 0; MUR.k[i] = 0; };
+  const tower = (ax, ay, v, off = 0) => { const i = idx(ax, ay); W.obj[i] = O.TOWER; W.tvar[i] = v; W.toff[i] = off; W.fl1[i] = 1; };
+  const isT = (x, y) => { const o = W.obj[idx(x, y)]; return o === O.TOWER || o === O.PART; };
+  /* 1. fosso seco no norte e no leste */
+  for (let y = y0 - 6; y <= y1 + 6; y++) for (let x = x0 - 6; x <= X1 + 6; x++) { const i = idx(x, y); if (W.ground[i] !== T.WATER) continue; if ((y <= y0 - 2 && y >= y0 - 6) || (x >= X1 + 2 && x <= X1 + 6)) { W.ground[i] = T.DIRT; W.river[i] = 0; W.flow[i * 2] = 0; W.flow[i * 2 + 1] = 0; } }
+  /* 2. as torres redondas antigas da volta (não as do castelo) */
+  const old = []; for (let y = y0; y <= y1; y++) for (let x = x0; x <= X1; x++) { if (W.obj[idx(x, y)] !== O.TOWER) continue; if (!(x <= x0 + 1 || x >= X1 - 1 || y <= y0 + 1 || y >= y1 - 1)) continue; old.push([x, y]); }
+  const lineOf = (bx, by) => (by <= y0 + 1 && by - 1 <= y0) ? 'N' : (by >= y1 - 1 && by - 1 >= y1 - 2 && by >= y1) ? 'S' : (bx <= x0 + 1) ? 'W' : 'E';
+  for (const [ax, ay] of old) for (let y = ay - 1; y <= ay; y++) for (let x = ax - 1; x <= ax; x++) { const onN = y === y0, onS = y === y1, onW = x === x0, onE = x === X1; if (onN || onS || onW || onE) wall(x, y, onN ? 4 : onS ? 3 : onW ? 2 : 1); else grd(x, y); }   /* tira todas; a linha do muro volta a ser muro */
+  /* 3. dobras de 2 casas para fora: norte (x 26..56) e sul (x 14..52) */
+  const bulge = (xa, xb, yl, dy, wd) => { const yn = yl + dy * 2; for (let x = xa + 1; x < xb; x++) { grd(x, yl); grd(x, yl + dy); } for (let x = xa; x <= xb; x++) wall(x, yn, wd); for (const [x, w2] of [[xa, 2], [xb, 1]]) for (let k = 0; k <= 1; k++) wall(x, yl + dy * k, w2); return yn; };
+  const NBx = [C + 26, C + 56], SBx = [C + 14, C + 52], yN2 = bulge(NBx[0], NBx[1], y0, -1, 4), yS2 = bulge(SBx[0], SBx[1], y1, 1, 3);
+  /* 4. torres novas: quadradas, saindo para fora, nos mesmos lugares das antigas (fora dos portões e das dobras) */
+  const nearGate = (g, a, b) => Math.max(a, g.x0 - 3) <= Math.min(b, g.x1 + 3);
+  const nearGateV = (g, a, b) => Math.max(a, g.y0 - 3) <= Math.min(b, g.y + 3);
+  const sqT = (cells, ax, ay, v) => { for (const [x, y] of cells) part(x, y); tower(ax, ay, v, 0); };
+  const corner = new Set(); for (const [cx, cy] of [[x0, y0], [X1, y0], [x0, y1], [X1, y1]]) { for (let y = cy - 1; y <= cy + 1; y++) for (let x = cx - 1; x <= cx + 1; x++) { part(x, y); corner.add(idx(x, y)); } tower(cx, cy, 8, 4); }   /* torres grandes dos cantos */
+  for (const [ax, ay] of old) { const tx = ax - 1, ty = ay - 1;
+    if ([[tx, ty], [ax, ay]].some(([x, y]) => corner.has(idx(x, y)) || Math.abs(x - x0) + Math.abs(y - y0) < 4 || Math.abs(x - X1) + Math.abs(y - y0) < 4 || Math.abs(x - x0) + Math.abs(y - y1) < 4 || Math.abs(x - X1) + Math.abs(y - y1) < 4)) continue;
+    if (ty <= y0 + 1 && ty >= y0) { if (nearGate(gN, tx, ax) || (tx >= NBx[0] - 1 && ax <= NBx[1] + 1)) continue; sqT([[tx, y0 - 1], [ax, y0 - 1], [tx, y0], [ax, y0]], ax, y0, 6); }
+    else if (ay >= y1 - 1 && ay <= y1) { if (nearGate(gS, tx, ax) || (tx >= SBx[0] - 1 && ax <= SBx[1] + 1)) continue; sqT([[tx, y1], [ax, y1], [tx, y1 + 1], [ax, y1 + 1]], ax, y1 + 1, 6); }
+    else if (tx <= x0 + 1 && tx >= x0) { if (nearGateV(gW, ty, ay)) continue; sqT([[x0 - 1, ty], [x0 - 1, ay], [x0, ty], [x0, ay]], x0, ay, 7); }
+    else if (ax >= X1 - 1 && ax <= X1) { if (nearGateV(gE, ty, ay)) continue; sqT([[X1, ty], [X1, ay], [X1 + 1, ty], [X1 + 1, ay]], X1 + 1, ay, 7); } }
+  /* torres das dobras: nas quinas de fora e no meio (no sul, para dentro: a água encosta no muro) */
+  for (const x of [NBx[0], Math.round((NBx[0] + NBx[1]) / 2), NBx[1]]) sqT([[x - 1, yN2 - 1], [x, yN2 - 1], [x - 1, yN2], [x, yN2]], x, yN2, 6);
+  for (const x of [SBx[0], Math.round((SBx[0] + SBx[1]) / 2), SBx[1]]) sqT([[x - 1, yS2 - 1], [x, yS2 - 1], [x - 1, yS2], [x, yS2]], x, yS2, 6);
+  /* 5. os quatro bars com barbacã */
+  const barb = (cells, walls, anchor, arch) => { for (const [x, y, rd] of cells) { const i = idx(x, y); if (W.obj[i] !== O.GATE) W.obj[i] = O.NONE; W.fl1[i] = 0; W.ground[i] = W.ground[i] === T.BRIDGE ? T.BRIDGE : T.FLOORSTONE; W.rdir[i] = rd; MUR.k[i] = 0; } for (const [x, y, wd] of walls) { wall(x, y, wd, 0); MUR.k[idx(x, y)] = 2; } MUR.k[idx(anchor[0], anchor[1])] = 3; MUR.arch[idx(anchor[0], anchor[1])] = arch; };
+  { const g = gS; g.bar = 1; for (const tx of [g.x0 - 2, g.x1 + 1]) for (let y = y1 - 1; y <= y1; y++) for (let x = tx; x <= tx + 1; x++) part(x, y, 0);
+    const cells = [], walls = []; for (let y = y1 + 1; y <= y1 + 2; y++) { for (let x = g.x0; x <= g.x1; x++) cells.push([x, y, 2]); walls.push([g.x0 - 1, y, 2], [g.x1 + 1, y, 1]); } barb(cells, walls, [g.x1 + 1, y1 + 2], { n: g.x1 - g.x0 + 1, rot: 0, od: 1 }); }
+  { const g = gN; g.bar = 1; for (const tx of [g.x0 - 2, g.x1 + 1]) for (let y = y0; y <= y0 + 1; y++) for (let x = tx; x <= tx + 1; x++) part(x, y, 0);
+    const cells = [], walls = []; for (let y = y0 - 2; y <= y0 - 1; y++) { for (let x = g.x0; x <= g.x1; x++) cells.push([x, y, 2]); walls.push([g.x0 - 1, y, 2], [g.x1 + 1, y, 1]); } barb(cells, walls, [g.x0 - 1, y0 - 2], { n: g.x1 - g.x0 + 1, rot: Math.PI, od: 2 }); }
+  { const g = gW; g.bar = 1; for (const ty of [g.y0 - 2, g.y + 1]) for (let y = ty; y <= ty + 1; y++) for (let x = x0; x <= x0 + 1; x++) part(x, y, 0);
+    const cells = [], walls = []; for (let x = x0 - 2; x <= x0 - 1; x++) { for (let y = g.y0; y <= g.y; y++) cells.push([x, y, 1]); walls.push([x, g.y0 - 1, 4], [x, g.y + 1, 3]); } barb(cells, walls, [x0 - 2, g.y + 1], { n: g.y - g.y0 + 1, rot: -Math.PI / 2, od: 3 }); }
+  { const g = gE; g.bar = 1; for (const ty of [g.y0 - 2, g.y + 1]) for (let y = ty; y <= ty + 1; y++) for (let x = X1 - 1; x <= X1; x++) part(x, y, 0);
+    const cells = [], walls = []; for (let x = X1 + 1; x <= X1 + 2; x++) { for (let y = g.y0; y <= g.y; y++) cells.push([x, y, 1]); walls.push([x, g.y0 - 1, 4], [x, g.y + 1, 3]); } barb(cells, walls, [X1 + 2, g.y + 1], { n: g.y - g.y0 + 1, rot: -Math.PI / 2, od: 3 }); }   /* preso no muro sul: o arco cresce para cima no quadro (não sai da borda) */
+  /* 6. postigos: norte na ponte velha (x +21) e oeste (y +30), com ponte nova sobre a água */
+  { const x = C + 21, i = idx(x, y0); W.obj[i] = O.GATE; W.fl1[i] = 0; W.ground[i] = T.FLOORSTONE; MUR.k[i] = 4; for (let y = y0 - 2; y <= y0 - 1; y++) { const j = idx(x, y); if (W.obj[j] === O.PART || W.obj[j] === O.TOWER) continue; W.obj[j] = O.NONE; W.ground[j] = T.COBBLE; W.rdir[j] = 2; } }
+  { const y = C + 30, i = idx(x0, y); W.obj[i] = O.GATE; W.fl1[i] = 0; W.ground[i] = T.FLOORSTONE; MUR.k[i] = 5; for (let x = x0 - 3; x <= x0 - 1; x++) { const j = idx(x, y); W.obj[j] = O.NONE; W.ground[j] = W.ground[j] === T.WATER ? T.BRIDGE : T.COBBLE; W.rdir[j] = 1; } }
+  /* 7. ronda coberta: 12 casas de cada lado dos portões */
+  const cov = (x, y, wd) => { const i = idx(x, y); if (W.obj[i] === O.WALL && !MUR.k[i]) { MUR.k[i] = 1; W.wdir[i] = wd; } };
+  for (let x = gS.x0 - 14; x <= gS.x1 + 14; x++) cov(x, y1, 3);
+  for (let x = gN.x0 - 14; x <= gN.x1 + 14; x++) cov(x, y0, 4);
+  for (let y = gW.y0 - 14; y <= gW.y + 14; y++) cov(x0, y, 2);
+  for (let y = gE.y0 - 14; y <= gE.y + 14; y++) cov(X1, y, 1);
+  MUR.box = { x0, X1, y0, y1, yN2, yS2 };
 })();
 
 /* ---------- modelos ---------- */
@@ -40,13 +81,13 @@ function murCovWall(od, e) {   /* muro com ronda coberta: parapeito alto com set
   return o;
 }
 function murSqTower(v) {   /* torre quadrada de telhado alto (Rothenburg), 2x2, saliente para fora */
-  const o = grp(), H = WALL_H, HT = H * 1.75, w = 1.9, alongX = v === 6;
+  const o = grp(), H = WALL_H, big = v === 8, HT = H * (big ? 2.05 : 1.75), w = big ? 2.75 : 1.9, alongX = v !== 7;
   const st = smat('brick', '#a29c90', { bump: 1.4 }), capM = smat('stoneblock', '#b0a998', { bump: 1 }), roofM = smat('slate', '#a04a2e', { bump: 1.4 }), dark = smat(null, '#151311'), wd = DWOOD();
   o.add(gwall(w, HT, w, 0, HT / 2, 0, 'brick', '#a29c90', HT, 31, 1, 1.4));
   o.add(wbox(w + 0.16, 0.6, w + 0.16, 0, 0.3, 0, smat('stoneblock', '#8a857a', { bump: 1.4 }), 1.2));   /* sapata */
   for (const y of [H - 0.1, HT - 0.05]) o.add(wbox(w + 0.08, 0.1, w + 0.08, 0, y, 0, capM, 1.2));          /* cordões */
   /* passagem da ronda: portinhas nos dois lados do muro */
-  for (const sd of [-1, 1]) { const [x, z] = alongX ? [sd * (w / 2 + 0.005), -0.35] : [-0.35, sd * (w / 2 + 0.005)]; o.add(wbox(alongX ? 0.02 : 0.5, 0.95, alongX ? 0.5 : 0.02, x, H + 0.48, z, dark)); }
+  for (const sd of (big ? [] : [-1, 1])) { const [x, z] = alongX ? [sd * (w / 2 + 0.005), -0.35] : [-0.35, sd * (w / 2 + 0.005)]; o.add(wbox(alongX ? 0.02 : 0.5, 0.95, alongX ? 0.5 : 0.02, x, H + 0.48, z, dark)); }
   /* seteiras e janelinhas nas três faces de fora */
   for (const [fx, fz] of [[0, 1], [1, 0], [-1, 0]]) { const fx2 = alongX ? fx : fz, fz2 = alongX ? fz : fx;
     for (const [t, y, hh] of [[0, 1.4, 0.5], [0, 3.0, 0.5], [0, H + 1.6, 0.4]]) { const px = fx2 * (w / 2 + 0.01) + (fx2 ? 0 : t), pz = fz2 * (w / 2 + 0.01) + (fz2 ? 0 : t); o.add(wbox(fx2 ? 0.02 : 0.09, hh, fz2 ? 0.02 : 0.09, px, y, pz, dark)); }
@@ -70,6 +111,7 @@ function murMerlons(o, x0, x1, z0, z1, y, m, sides) {   /* ameias ao longo de um
   if (sides.includes('r')) for (let z = z0 + 0.2; z <= z1 - 0.15; z += 0.5) put(x1 - 0.1, z, 0.2, 0.28);
 }
 function murBar(gt, f, pc) {   /* bar de York: casa de porta retangular de 3 andares sobre o arco, torrinhas redondas nos cantos */
+  if (gt.vert) { const o = murBar(Object.assign({}, gt, { vert: 0, x0: 0, x1: gt.y - gt.y0 }), f, pc); o.rotation.y = -Math.PI / 2; return grp(o); }   /* portões do oeste e do leste: o mesmo bar, girado */
   const o = mGateHouse0(Object.assign({}, gt, { kind: 'main' }), f, pc), n = gt.x1 - gt.x0 + 1, L = -(n - 0.5), z = gt.out;
   const XL = L - 2, XR = 2.5, ZF = 0.5, ZB = -1.5, gh = 6.4, HB = 8.8, spring = 2.9;
   const st = smat('brick', '#aaa395', { bump: 1.4 }), capM = smat('stoneblock', '#b8b1a0', { bump: 1 }), dark = smat(null, '#151311'), lit = smat(null, '#ffd890', { emissive: '#7a5a20', ei: 0.35 });
@@ -103,8 +145,8 @@ function murBar(gt, f, pc) {   /* bar de York: casa de porta retangular de 3 and
   o.add(mk(new THREE.PlaneGeometry(0.7, 0.42, 4, 1).translate(cx + 0.36, HB + 1.08, Z(ZB + 0.9)), smat('cloth', '#7a1a1c', { side: THREE.DoubleSide })));
   return o;
 }
-function murBarbArch() {   /* arco de fora da barbacã, preso no muro leste: vai por cima da passagem de 4 casas */
-  const o = grp(), H = WALL_H, x0 = -4.5, x1 = -0.5, sp = 2.1, cx = (x0 + x1) / 2, rx = (x1 - x0) / 2, ry = 1.0;
+function murBarbArch(n, rot, od) {   /* arco de fora da barbacã, preso num dos muros dela: vai por cima da passagem de n casas (rot gira para o lado do portão) */
+  const a = grp(), o = grp(), H = WALL_H, x0 = -(n + 0.5), x1 = -0.5, sp = 2.1, cx = (x0 + x1) / 2, rx = (x1 - x0) / 2, ry = 1.0;
   const st = smat('brick', '#a29c90', { bump: 1.4 }), capM = smat('stoneblock', '#b0a998', { bump: 1 });
   const sh = new THREE.Shape(); sh.moveTo(x0, sp); sh.lineTo(x0, H); sh.lineTo(x1, H); sh.lineTo(x1, sp);
   for (let k = 1; k <= 18; k++) { const t = k / 18 * Math.PI; sh.lineTo(cx + rx * Math.cos(t), sp + ry * Math.sin(t)); }
@@ -112,20 +154,21 @@ function murBarbArch() {   /* arco de fora da barbacã, preso no muro leste: vai
   for (let k = 0; k <= 10; k++) { const t = k / 10 * Math.PI, m = mk(new THREE.BoxGeometry(0.2, 0.3, 0.06), capM); m.position.set(cx + (rx + 0.1) * Math.cos(t), sp + (ry + 0.1) * Math.sin(t), 0.52); m.rotation.z = t - Math.PI / 2; o.add(m); }
   o.add(wbox(x1 - x0, 0.08, 0.76, cx, H + 0.04, 0.15, capM, 1));
   const mer = grp(); murMerlons(mer, x0, x1, -0.2, 0.5, H + 0.08, capM, 'f'); o.add(mer);
-  o.add(mWall(1, false, false, 1, 0));
-  return o;
+  o.rotation.y = rot || 0; a.add(o); a.add(mWall(1, false, false, od || 1, 0));
+  return a;
 }
 
 /* ---------- ligações com o desenho ---------- */
 if (MUR_PROTO) {
   var mGateHouse0 = mGateHouse;
   mGateHouse = function (gt, f, pc) { return gt && gt.bar ? murBar(gt, f, pc) : mGateHouse0(gt, f, pc); };
-  const mTower0 = mTower; mTower = function (v, off) { return v === 6 || v === 7 ? murSqTower(v) : mTower0(v, off); };
+  const mTower0 = mTower; mTower = function (v, off) { return v >= 6 && v <= 8 ? murSqTower(v) : mTower0(v, off); };
   const objS0 = objSprite;
   objSprite = function (o, x, y) {
     const i = y * MAP_W + x, k = MUR.k[i];
     if (k && o === O.WALL && typeof scen3 === 'function') { const od = WORLD.wdir[i], isT = j => WORLD.obj[j] === O.PART || WORLD.obj[j] === O.TOWER, ax = od === 3 || od === 4, e = (isT(ax ? i - 1 : i - MAP_W) ? 1 : 0) | (isT(ax ? i + 1 : i + MAP_W) ? 2 : 0);
-      const s = scen3('mur|' + k + '|' + od + '|' + e, () => k === 1 ? murCovWall(od, e) : k === 3 ? murBarbArch() : mWall(1, false, false, od, e)); if (s) return s; }
+      const A = MUR.arch[i] || {}; const s = scen3('mur|' + k + '|' + od + '|' + e + '|' + (A.n || 0) + '|' + (A.rot || 0).toFixed(2), () => k === 1 ? murCovWall(od, e) : k === 3 ? murBarbArch(A.n || 4, A.rot || 0, A.od || od) : mWall(1, false, false, od, e)); if (s) return s; }
+    if ((k === 4 || k === 5) && o === O.GATE) return gateSprite(k === 4);   /* postigo: arco pequeno na muralha */
     return objS0(o, x, y); };
 }
 
