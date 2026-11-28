@@ -86,3 +86,16 @@ if (typeof NATURE !== 'undefined') NATURE.archtarget = [mArchTarget, 1.0];
 
 /* muralha grossa (28/11): as casas de dentro (wdir 9) são o chão do caminho de ronda, sem ameias nem sapata */
 if (typeof mWall === 'function') { const _mwG = mWall; mWall = function (v, low, ivy, od, ends) { if (od === 9 && !low) { const o = grp(), H = WALL_H, capM = smat('stoneblock', '#b0a998', { bump: 1 }); o.add(gwall(1, H - 0.08, 1, 0, (H - 0.08) / 2, 0, 'brick', '#a29c90', H, v, 1, 1.4)); o.add(wbox(1, 0.08, 1, 0, H - 0.04, 0, capM, 1)); return o; } return _mwG.apply(this, arguments); }; }
+
+/* vila romana (lista 16): casas de reboco ocre em fileira, telhados de telha baixos e contínuos, pórtico de colunas para o pátio */
+function gdRoman(b, night) { const o = vBase(b), w = b.w, h = b.h, { H, RH } = bldDims(b), dX = vDX(b);
+  const ocre = smat('plaster', '#e2c08a', { bump: 0.4 }), ver = smat(null, '#9a3a2a', { rough: 0.8 }), telha = smat('slate', '#b4532e', { bump: 0.7 }), col = smat(null, '#efe8da', { rough: 0.6 }), wood = smat('wood', '#5a3420', { bump: 1 }), gl = vG(night);
+  o.add(wbox(w, H, h, w / 2, H / 2, h / 2, ocre, 1)); o.add(wbox(w + 0.02, 0.45, h + 0.02, w / 2, 0.225, h / 2, ver, 1));
+  vGable(o, w, h, H, RH, telha, 0.25, 'x');   /* a cumeeira corre ao longo da fileira: as casas vizinhas formam um telhado só */
+  vDoorF(o, dX, h, 0.8, 1.35, wood, {});
+  for (let x = 0.7; x < w - 0.4; x += 1.4) if (Math.abs(x - dX) > 1.4) { vWinF(o, x, 1.25, 0, 'F', 0.4, 0.42, wood, gl, {}); }
+  for (const s of [-1, 1]) { const x = dX + s * 0.95; o.add(mk(new THREE.CylinderGeometry(0.09, 0.1, H * 0.82, 10).translate(x, H * 0.41, h + 0.55), col)); o.add(wbox(0.26, 0.08, 0.26, x, H * 0.84, h + 0.55, col)); o.add(wbox(0.26, 0.08, 0.26, x, 0.04, h + 0.55, col)); }
+  { const r = wbox(2.6, 0.08, 0.8, dX, H * 0.86 + 0.1, h + 0.42, telha, 1); r.rotation.x = 0.22; o.add(r); }   /* telhadinho do pórtico */
+  return o; }
+if (typeof VILA_3D !== 'undefined') VILA_3D.rom = gdRoman;
+if (typeof VILA_STYLE !== 'undefined') VILA_STYLE.rom = { wall: '#e2c08a', roof: '#b4532e', tex: 'plaster', roofTex: 'slate', trim: '#9a3a2a' };
