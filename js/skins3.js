@@ -85,3 +85,16 @@ if (typeof buildShield === 'function') {
     if (L.shield === 'kite' && L.shieldMark === 'dragon3') { const r = mat('#b8201a', 'cloth'); for (const [x, y] of [[-0.06, 0.1], [0, 0.13], [0.06, 0.1]]) g.add(mesh(sphG(0.03 * S), r, x * S, y * S, 0.045 * S)); g.add(mesh(boxG(0.18 * S, 0.05 * S, 0.01 * S), r, 0, 0.0, 0.045 * S)); }
     return g; };
 }
+
+/* ---------- teste (pedido 28/11): no Ateliê Real do Mestre Aurélio todos os trajes saem de graça ---------- */
+if (typeof SKINS2_ON !== 'undefined' && SKINS2_ON) {
+  if (typeof NPC_DIALOG !== 'undefined' && NPC_DIALOG.tailor) NPC_DIALOG.tailor.opts.unshift(['Vestir o próximo traje (teste, grátis)', { skfree: 1 }], ['Vestir o traje anterior (teste, grátis)', { skfree: -1 }]);
+  if (typeof hostOnClient === 'function') { const _hocF = hostOnClient; hostOnClient = function (from, m) {
+    if (m && m.t === 'npc' && m.skfree) { const p = S.players[from], n = S.npcs[m.n]; if (!p || !n || n.kind !== 'tailor' || Math.hypot(n.x - p.x, n.y - p.y) > 5) return;
+      const list = SKINS[p.cls] || [], SP = skinParts(p.skin), i0 = list.findIndex(s => s.id === SP.base), s = list[(((i0 < 0 ? 0 : i0) + (m.skfree > 0 ? 1 : -1)) % list.length + list.length) % list.length]; if (!s) return;
+      if (s.price) { const own = p.ownSk || (p.ownSk = []); if (!own.includes(s.id)) own.push(s.id); }
+      p.skin = skinJoin(s.id, SP.fem, SP.tats, SP.body); Net.toAll({ t: 'pinfo', p: pinfo(p) }); Net.toOne(p.id, { t: 'skown', id: s.id, keep: s.price ? 1 : 0 });
+      tell(p, 'Traje ' + (list.indexOf(s) + 1) + ' de ' + list.length + ': ' + s.name + ' (' + s.rarity + ').'); return; }
+    return _hocF.apply(this, arguments); }; }
+  if (typeof progEvent === 'function') { const _peF = progEvent; progEvent = function (m, now) { if (m && m.t === 'skown' && m.keep === 0) { if (G.me) { const SP = skinParts(G.me.skin); G.me.skin = skinJoin(m.id, SP.fem, SP.tats, SP.body); } if (typeof saveChar === 'function') saveChar(); return; } return _peF.apply(this, arguments); }; }
+}
