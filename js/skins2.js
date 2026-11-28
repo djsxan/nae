@@ -25,7 +25,7 @@ const SKINS2 = {
 };
 const SKINS2_ON = typeof location === 'undefined' || !/[?&]skins=antigas/.test(location.search);
 if (SKINS2_ON) { for (const cls in SKINS2) SKINS[cls].push(...SKINS2[cls]); SKIN_LVL.push(1, 1, 15, 30, 1); }   /* mesma ordem nas três vocações */
-const SKIN_PRICE = id => { for (const c in SKINS2) { const s = SKINS2[c].find(q => q.id === id); if (s) return s.price || 0; } return 0; };
+const SKIN_PRICE = id => { for (const c in SKINS) { const s = SKINS[c].find(q => q.id === id); if (s) return s.price || 0; } return 0; };
 
 /* ---------- o visual de cada skin ---------- */
 const _hl2 = heroLook;
@@ -91,8 +91,8 @@ if (typeof buildShield === 'function') {
       g.add(mesh(sphG(0.06 * S), ir, 0, 0.012 * S, 0)); for (let q = 0; q < 8; q++) { const a = q / 8 * Math.PI * 2; g.add(mesh(sphG(0.012 * S), ir, Math.cos(a) * 0.2 * S, 0.016 * S, Math.sin(a) * 0.2 * S)); }
       if (L.shieldMark === 'sun') g.add(mesh(cylG(0.13 * S, 0.13 * S, 0.034 * S, 16), mat('#d8a83a', 'gold'), 0, 0, 0));
       if (L.shieldMark === 'wolf') { const wm = mat('#d8d8d4', 'cloth'); g.add(mesh(cylG(0.14 * S, 0.14 * S, 0.032 * S, 20), mat('#3a3a40', 'cloth'), 0, 0, 0)); const hd = mesh(sphG(0.06 * S), wm, 0, 0.02 * S, -0.02 * S); hd.scale.set(1, 0.4, 1.1); g.add(hd); for (const s of [-1, 1]) { const e = mesh(coneG(0.025 * S, 0.06 * S, 4), wm, s * 0.04 * S, 0.02 * S, -0.08 * S); e.rotation.x = -Math.PI / 2; g.add(e); } }
-      g.children.forEach(c => { c.rotation.x += Math.PI / 2; });
-      return g; }
+      g.rotation.x = Math.PI / 2; const outer = new THREE.Group(); outer.add(g); outer.userData.inner = g;   /* o disco inteiro de pé, virado para a frente */
+      return outer; }
     const g = _bs2(L, S, accM, trimM);
     if (L.shieldC && L.shield === 'kite') { g.children[0].material = mat(L.shieldC, 'metal'); if (L.shieldMark === 'tree') { const wm = mat('#ecebe6', 'cloth'); g.add(mesh(boxG(0.015 * S, 0.22 * S, 0.01 * S), wm, 0, -0.02 * S, 0.045 * S)); for (const [x, y, r] of [[0, 0.1, 0.04], [-0.05, 0.06, 0.03], [0.05, 0.06, 0.03]]) g.add(mesh(sphG(r * S), wm, x * S, y * S, 0.04 * S)); } }
     return g; };
@@ -126,7 +126,7 @@ if (SKINS2_ON) {
     const _hoc2 = hostOnClient; hostOnClient = function (from, m) {
       if (m && m.t === 'npc' && m.skbuy) { const p = S.players[from], n = S.npcs[m.n]; if (!p || !n || n.kind !== 'st_tailor' || Math.hypot(n.x - p.x, n.y - p.y) > 4) return;
         if (p.voc === 0) { tell(p, 'Os trajes lendários são das guildas. Entre numa guilda primeiro.'); return; }
-        const s = (SKINS2[p.cls] || []).find(q => q.price); if (!s) return; const SP = skinParts(p.skin), own = p.ownSk || (p.ownSk = []);
+        const list = (SKINS[p.cls] || []).filter(q => q.price), s = list[((m.skbuy | 0) || 1) - 1] || list[0]; if (!s) return; const SP = skinParts(p.skin), own = p.ownSk || (p.ownSk = []);
         if (SP.base === s.id) { tell(p, 'Você já está vestindo o ' + s.name + '.'); return; }
         if (!own.includes(s.id)) { if ((p.gold | 0) < s.price) { tell(p, 'O ' + s.name + ' custa ' + s.price + ' de ouro. Você tem ' + (p.gold | 0) + '.'); return; } p.gold -= s.price; own.push(s.id); sendStat(p); }
         Net.toOne(p.id, { t: 'scene', k: 'fit' });
@@ -139,13 +139,13 @@ if (SKINS2_ON) {
     if (!b._skw) { b._skw = 1; const oc = b.onclick; b.onclick = ev => { if (!skOwned().includes(s.id)) { ev.stopPropagation(); showToast('Este traje se compra na Alfaiataria Real, em Nae: ' + s.price + ' de ouro.'); return; } return oc && oc.call(b, ev); }; } });
     const cur = SKINS[cls] && SKINS[cls].find(q => q.id === chosenSkin[cls]); if (cur && cur.price && !skOwned().includes(cur.id)) chosenSkin[cls] = SKINS[cls][0].id; }); };
   /* o lobby já foi montado antes deste arquivo: põe os botões das skins novas nos cartões */
-  const skAddButtons = () => { document.querySelectorAll('.class-card').forEach(card => { const cls = card.dataset.cls, box = card.querySelector('.skins'); if (!box || !SKINS2[cls]) return;
-    for (const s of SKINS2[cls]) { if (box.querySelector('[data-sid="' + s.id + '"]')) continue; const si = SKINS[cls].indexOf(s); if (si < 0) continue; const b = document.createElement('button');
+  const skAddButtons = () => { document.querySelectorAll('.class-card').forEach(card => { const cls = card.dataset.cls, box = card.querySelector('.skins'); if (!box || !SKINS[cls]) return;
+    for (const s of SKINS[cls].slice(3)) { if (box.querySelector('[data-sid="' + s.id + '"]')) continue; const si = SKINS[cls].indexOf(s); if (si < 0) continue; const b = document.createElement('button');
       b.className = 'skin ' + s.rarity.toLowerCase().replace('á', 'a').replace('ê', 'e') + (chosenSkin[cls] === s.id ? ' sel' : ''); b.dataset.si = si; b.dataset.sid = s.id; b.dataset.lvl = 'nv. ' + SKIN_LVL[si]; b.textContent = s.name; b.dataset.tip = s.name + '\nRaridade: ' + s.rarity + (SKIN_LVL[si] > 1 ? '\nLibera no nível ' + SKIN_LVL[si] : '');
       b.onclick = ev => { ev.stopPropagation(); if (lobbyLvl(cls) < SKIN_LVL[si]) { showToast('Esta skin libera no nível ' + SKIN_LVL[si] + '.'); return; } chosenSkin[cls] = s.id; chosenClass = cls; for (const el of box.children) el.classList.toggle('sel', el === b); selectClass(cls); };
       box.appendChild(b); } }); skLobbyFix(); if (typeof refreshSkinLocks === 'function') refreshSkinLocks(); };
   if (document.readyState !== 'loading') skAddButtons(); else document.addEventListener('DOMContentLoaded', skAddButtons);
-  window.skLobbyFix = skLobbyFix;
+  window.skLobbyFix = skLobbyFix; window.skAddButtons = skAddButtons;
   if (typeof buildLobby === 'function') { const _bl = buildLobby; buildLobby = function () { const r = _bl.apply(this, arguments); skLobbyFix(); return r; }; }
   if (typeof refreshSkinLocks === 'function') { const _rl = refreshSkinLocks; refreshSkinLocks = function () { const r = _rl.apply(this, arguments); skLobbyFix(); return r; }; }
 }
