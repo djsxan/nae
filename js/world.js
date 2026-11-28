@@ -134,6 +134,7 @@ const HOUSE_SEATS = [   /* sedes das casas rivais: casarões com jardim murado, 
 /* replanejamento da cidade (Prancheta, 23/11): [prédio, x, y relativos ao centro, largura, profundidade, porta, coluna da porta] */
 const CITY_RELAYOUT = [[0,42,8,13,13,"S",6],[3,-15,10,9,13,"E",6],[4,12,7,8,7,"E",3],[5,80,28,8,9,"S",4],[6,-30,10,5,5,"N",2],[7,-22,-8,10,5,"S",1],[8,-22,10,5,5,"E",2],[11,-30,-45,13,25,"S",6],[12,12,14,8,6,"S",4],[13,-16,-1,4,5,"S",2],[14,-30,16,5,4,"S",2],[15,80,-45,8,9,"S",4],[16,26,-21,9,15,"E",8],[17,13,-45,7,9,"E",2],[18,13,-21,7,14,"E",7],[19,-22,16,5,4,"S",2],[20,-22,-15,8,5,"S",1],[21,42,28,5,4,"E",2],[22,42,33,5,4,"E",1],[23,26,28,9,9,"S",4],[24,12,28,8,5,"S",4],[25,50,28,5,4,"W",2],[35,80,8,8,13,"E",6],[37,13,-33,8,8,"E",4],[38,13,-5,7,7,"S",3],[39,26,-5,9,7,"S",4],[42,-15,23,9,5,"E",2],[45,26,-45,9,9,"S",4],[46,62,28,13,9,"S",6],[47,62,8,13,13,"S",6],[48,62,-45,13,9,"S",6],[49,26,7,9,13,"S",4],[50,42,-45,13,9,"S",6],[51,42,-21,13,20,"S",6],[52,62,-21,13,11,"S",6],[53,80,-31,8,5,"S",4]];   /* Prancheta 28/11 (6º replanejamento): guildas, vila romana, muralha maior */
 const CITY_LOTS = [16];
+const WALL_NEW = false;   /* a muralha grossa da v1.189 ficou desligada (28/11): o usuário vai desenhar a muralha na Prancheta */
 const GPLAN = {"school":{"0":["#############","#EE.AAMAA#..#","#........#S.#","#.TTTTTT.#..#","#.BBBBBB.#..#","#........|..#","#.BBBBBB.#S.#","#.TTTTTT.#..#","#........|..D","#C......C#S.#","#........#..#","#############"],"1":["#############","#EE.LLLLL#ZZ#","#........#L.#","#.L.L.L.L#L.#","#.L.L.L.L#..#","#........=..#","#####.#######","#.A.........#","#...........#","#.TT.TT.TT..#","#.TT.TT.TT..#","#############"],"2":["#############","#EE.F.#..Q..#","#.....#.PPP.#","#.HH..|QPPPQ#","#.UUU.#.PPP.#","#.HH..#Q...Q#","######.######","#bb.bb.bb.bb#","#...........#","#bb.bb.bb.bb#","#.....C.....#","#############"],"3":["#############","#EE.L#..O..O#","#....#.YYY..#","#.A..|.YYY..#","#.HH.#.YYY..#","#L..L#..O..O#","#####.#######","#...........#","#.v.v.v.v.v.#","#...........#","#.v.v.v.v.v.#","#############"],"-1":["#############","#EE.X.X.X#$$#","#........#..#","#.T.T.T.T|..#","#........#$$#","#.T.T.T.T####","#...........#","#LLLL...KKKK#","#...........#","#LLLL...KKKK#","#....C......#","#############"]},"archery":{"0":["########","#RRF..A#","#T..M..#","###..###"]},"field":["+l....G+","+l.....+","+l....G+","+l.....+","+l....G+","+B.....+","+++D++++"]};   /* plantas aprovadas em 28/11 (Escola de Magia e Campo dos Arqueiros), no desenho do mundo: norte em cima, 1 letra = 1 casa */   /* a Casa Aldren virou o lote vazio do bairro nobre */
 const KEEP = { x0: C - 13, y0: C - 30, x1: C + 11, y1: C - 3, by: C - 12, yx0: C - 11, yx1: C + 9 };   // castelo: corpo ao norte (até by) e pátio mais estreito ao sul (yx0..yx1)
 const KEEP_OLD = { x0: C - 9, y0: C - 22, x1: C + 10, y1: C - 3 };   // contorno antigo: só para o sorteio das casas continuar igual
@@ -569,6 +570,15 @@ function interiorLayoutBase(b, fl = 0) {
     if (dc - 1 >= 1) put('sewtable', 1, 1, { w: dc - 1 }); if (w - 2 - dc >= 1) put('counter', dc + 1, 1, { w: w - 2 - dc, v: 3 });
     if (h >= 5) { put('fitstool', dc, 2, { block: false }); put('gown', 0, 2); put('mannequin2', 0, 3, { v: 1 }); put('mannequin2', 1, 3, { v: 0 }); put('mannequin2', w - 2, 3, { v: 2 }); }
     else { put('gown', 0, 2); put('fitstool', 1, 2, { block: false }); put('mannequin2', w - 2, 2, { v: 1 }); }
+  } else if (k === 'shop' && b.v === 21) {   // Armaria da Muralha: armas nas paredes, vitrine no meio, balcão e o armeiro
+    for (let i = 0; i < w; i++) if (i !== dc) put(i % 3 === 1 ? 'bokkenrack' : 'rack', i, 0);
+    npcAt(dc, 1); if (dc - 1 >= 1) put('counter', 1, 2, { w: dc - 1, v: 3 }); if (w - 2 - dc >= 1) put('counter', dc + 1, 2, { w: w - 2 - dc, v: 3 });
+    put('anvil', 0, 1); put('barrel', w - 1, 1); put('rack', 2, 4); put('bokkenrack', w - 3, 4); put('rack', 0, 3); put('bokkenrack', 0, 5); put('rack', w - 1, 3); put('bokkenrack', w - 1, 5);
+    put('rug', dc - 1, 5, { w: 3, h: 2, block: false }); put('crate', 0, h - 2); put('barrel', w - 1, h - 2);
+  } else if (k === 'shop' && b.v === 22) {   // Café Gourmet: balcão com a barista no fundo, mesinhas com cadeiras pelo salão comprido
+    npcAt(Math.floor(w / 2), 0); put('stove', 0, 0); put('bottles', w - 1, 0); put('counter', 0, 1, { w: Math.max(1, w - 1), v: 3 });   /* a ponta fica aberta: a barista entra e sai */
+    for (let j = 3; j < h - 2; j += 3) for (const i of [0, w - 2]) if (put('table', i, j)) { put('chair', i + 1, j, { seat: 5 }); put('chair', i, j + 1, { seat: 3 }); }
+    put('plantpot', w - 1, h - 3); put('plantpot', 0, h - 3); put('chandelier', Math.floor(w / 2), Math.floor(h / 2), { block: false });
   } else if (k === 'shop' && b.v === 6) {   // Elixires da Lua Prateada
     npcAt(dc, 0); for (let i = 0; i < w; i++) if (i !== dc) put('shelf', i, 0, { v: 7 });   // estantes de frascos brilhando
     put('counter', 1, 1, { w: dc - 1, v: 6 }); if (w - 2 - dc >= 1) put('counter', dc + 1, 1, { w: w - 2 - dc, v: 6 });
@@ -1476,12 +1486,12 @@ function generateWorld() {
       { x: C + 50, y: C + 33, ...BH('house', 5, 4, 2.4, 1.2, '', { v: 1, door: 'W', dcol: 1, cult: 'and', floors: 1 }) },
       { x: C + 80, y: C - 21, ...BH('archery', 8, 4, 2.6, 1.8, 'Pavilhão dos Arqueiros', { door: 'S', dcol: 3, floors: 1 }) },
       { x: C - 30, y: C + 24, ...BH('school', 13, 12, 7.8, 3.2, 'Escola de Magia do Círculo', { door: 'E', dcol: 3, floors: 4, stairs: { 0: 'spiral', 1: 'spiral', 2: 'spiral' }, cellar: [10, 1] }) },
-      { x: C + 42, y: C - 31, ...BH('site', 13, 5, 0.1, 0, 'Obra: Café', { lot: 1, door: 'E', dcol: 2, floors: 1 }) });
+      { x: C + 42, y: C - 31, ...BH('shop', 13, 5, 2.8, 1.4, 'Café Gourmet', { door: 'E', dcol: 2, v: 22, floors: 1 }) });
     for (let x = X0 + 1; x <= X1; x++) for (let y = C + 4; y <= C + 5; y++) { const i = idx(x, y); if (bld[i] >= 0 || obj[i] === O.WALL || obj[i] === O.PART || obj[i] === O.TOWER) continue; obj[i] = O.NONE; ground[i] = T.FLOORSTONE; rdir[i] = 1; }   /* a avenida até o portão leste novo */
     for (let y = y0; y <= y1; y++) for (let x = X0; x <= X1; x++) used[idx(x, y)] = 1;
     HOUSE_SEATS.forEach((S1, k) => { const bx = X0 + 4 + k * 2.4 | 0, by = k % 2 ? C + 4 : C - 3; const i = idx(bx, by); if (bld[i] < 0) { obj[i] = O.BANNER; BANNER_HOUSE[i] = S1.id; } });   /* estandartes das casas na praça */
   }
-  if (!TEST3D) { /* ---- MURALHA NOVA (Prancheta 28/11): cantos curvos, lados que ondulam para fora, 3 casas de espessura, caminho de ronda em cima, torres e rampas por dentro ---- */
+  if (!TEST3D && WALL_NEW) { /* ---- MURALHA NOVA (Prancheta 28/11): cantos curvos, lados que ondulam para fora, 3 casas de espessura, caminho de ronda em cima, torres e rampas por dentro ---- */
     const OX0 = x0, OY0 = y0, OX1 = CITY_X1, OY1 = y1, RC = 9, TH = 3, inKp = (x, y) => x >= KEEP.x0 - 3 && x <= KEEP.x1 + 3 && y >= KEEP.y0 - 3 && y <= KEEP.y1 + 3;
     const depth = (x, y) => { const dx = Math.max(OX0 + RC - x, 0, x - (OX1 - RC)), dy = Math.max(OY0 + RC - y, 0, y - (OY1 - RC)); if (dx > 0 && dy > 0) return RC - Math.hypot(dx, dy); return Math.min(x - OX0, OX1 - x, y - OY0, OY1 - y); };
     const gateT = []; for (let y = OY0; y <= OY1; y++) for (let x = OX0; x <= OX1; x++) { const i = idx(x, y); if (obj[i] === O.GATE && !inKp(x, y)) gateT.push([x, y]); }
@@ -1530,6 +1540,7 @@ function generateWorld() {
   if (!TEST3D) for (const [bi, rx, ry, w, h, door, dc] of CITY_RELAYOUT) { const b = BUILDINGS[bi]; if (!b) continue; if (b.w !== w || b.h !== h) delete b.arch; delete b.gen; b._old = { x: b.x, y: b.y, w: b.w, h: b.h }; Object.assign(b, { x: C + rx, y: C + ry, w, h, door, dcol: dc }); if (b.deco === 'seat') { delete b._d2; b.seatMirror = door === 'S' ? 1 : 0; b.seatSide = door === 'S' ? 'R' : door === 'E' ? 'L' : null; const A2 = door === 'S' || door === 'N' ? w : h;   /* a porta dos fundos e a hera ficam numa parede que a câmera vê (leste ou sul) */
       b.door2L = door === 'S' ? [A2 - 1, 2, 'E'] : door === 'E' ? [0, 2, 'S'] : [Math.floor(seatMapU(b, 1.5)), 0, 'E']; } }
   if (!TEST3D) { const b = BUILDINGS.find(q => q.name === 'Casa Lorvan'); if (b) { delete b.arch; delete b.gen; delete b.seat; Object.assign(b, { kind: 'tower', deco: 'steam', name: 'Torre do Inventor', floors: 6, stairs: ['clift', 'clift', 'clift', 'clift', 'clift'], tower: 1, round: 1, H: 14.4, RH: 2.6, wall: Math.round(14.4 * 19.6), roof: Math.round(2.6 * 19.6) }); } }   /* a Casa Lorvan virou a Torre do Inventor (Sxan the Creator) */
+  if (!TEST3D && BUILDINGS[23]) { delete BUILDINGS[23].arch; Object.assign(BUILDINGS[23], { kind: 'shop', name: 'Armaria da Muralha', v: 21, floors: 1, H: 3.2, RH: 1.6 }); }   /* a Casa 23 virou a loja de armas (Prancheta 28/11) */
   if (!TEST3D) for (const bi of [21, 22, 25]) if (BUILDINGS[bi]) Object.assign(BUILDINGS[bi], { cult: 'and', v: 1 });   /* vila romana (Prancheta 28/11) */
   if (!TEST3D) for (const bi of CITY_LOTS) { const b = BUILDINGS[bi]; if (!b) continue; delete b.seat; b._lotPend = 1; }   /* o lote nasce construído (casarão comum) e vira terreno vazio no fim do arquivo: lotPrepare guarda as duas versões para a obra */   /* terreno vazio cercado: fica na lista (os índices dos prédios salvos não mudam), mas não é desenhado nem mobiliado */
   BUILDINGS.forEach((b, bi) => {
@@ -1878,11 +1889,11 @@ if (!TEST3D) { const ob = BUILDINGS.find(b => b.office === 'estate'); if (ob) NP
 if (!TEST3D) { const hb = BUILDINGS.find(b => b.kind === 'hotel'); if (hb) NPCS.push({ id: 'hotelkeeper', name: 'Dona Ilsa, a Estalajadeira', kind: 'hotelkeeper', ...npcIn(hb, { x: hb.x + hb.w - 2, y: hb.y + hb.h - 1 }) }); }
 if (!TEST3D) { const bb = BUILDINGS.find(b => b.kind === 'bank'); if (bb) { NPCS.push({ id: 'banker', name: 'Mestre Varkas, o Banqueiro', kind: 'banker', ...npcIn(bb, { x: bb.x + 1, y: bb.y + 1 }) }); const [w, h] = bDims(bb); (w >= 8 && h >= 10 ? [['banker2', 'Edda, a Caixa', w - 2, 3], ['banker3', 'Osric, o Contador', 1, 6], ['banker4', 'Gorim, o Escriturário', w - 2, 6], ['banker5', 'Hilde, a Tesoureira', 1, 9], ['banker6', 'Brann, o Avaliador', w - 2, 9], ['bankporter', 'Tobb, o Porteiro', 2, h - 1]] : w >= 6 && h >= 10 ? [['banker2', 'Edda, a Caixa', w - 1, 3], ['banker3', 'Osric, o Contador', 0, 6], ['banker4', 'Gorim, o Escriturário', w - 1, 6], ['banker5', 'Hilde, a Tesoureira', 0, 9], ['banker6', 'Brann, o Avaliador', w - 1, 9], ['bankporter', 'Tobb, o Porteiro', w - 2, h - 2]] : [['banker2', 'Edda, a Caixa', 2, 1], ['banker3', 'Osric, o Contador', w - 3, 1]]).forEach(([id, name, i, j]) => { const [x, y] = bLocal(bb, i, j); NPCS.push({ id, name, kind: id, x, y }); }); } }
 const STAFF_NAMES = {
-  dojo: 'Mestre Tetsuo, o Sensei',
+  dojo: 'Mestre Tetsuo, o Sensei', arms: 'Tobias Malho, o Armeiro', cafe: 'Celeste Moura, a Barista',
   saw: 'Bruno Serra, o Serrador', mine: 'Gunnar Pedrafunda, o Mineiro', farm: 'Rosa Quintal, a Hortelã', carp: 'Elias Plaina, o Carpinteiro', alch: 'Odila Varga, a Destiladora',
   wheat: 'Tonico Espiga, o Fazendeiro', mill: 'Dona Firmina, a Moleira', bakery: 'Mestre Bartolo, o Padeiro', witch: 'Morgana Vespertina, a Alquimista', apoth: 'Clara Malva, a Boticária', arcane: 'Silas Runa, o Balconista', tailor: 'Berta Agulha, a Costureira', scroll: 'Teodoro Tinta, o Copista',
 };
-const SHOP_TYPE_BY_NAME = { 'Elixires da Lua Prateada': 'witch', 'Boticário de Elva': 'apoth', 'Arcanos & Varinhas': 'arcane', 'Alfaiataria Real': 'tailor', 'Pergaminhos & Mapas': 'scroll' };
+const SHOP_TYPE_BY_NAME = { 'Armaria da Muralha': 'arms', 'Café Gourmet': 'cafe', 'Elixires da Lua Prateada': 'witch', 'Boticário de Elva': 'apoth', 'Arcanos & Varinhas': 'arcane', 'Alfaiataria Real': 'tailor', 'Pergaminhos & Mapas': 'scroll' };
 if (!TEST3D) {
   BUILDINGS.forEach((b, bi) => {
     if (b.kind === 'workshop') { let sp = null; if (b.cult) { const L0 = interiorLayout(b, 0).npc; if (L0) { const [x, y] = bLocal(b, L0.i, L0.j); sp = { x, y }; } }   /* vila: o lugar do artesão vem da planta (as portas da vila não ficam no sul) */
@@ -1900,12 +1911,13 @@ if (!TEST3D) {
 const GOODS = {
   wood: { n: 'Madeira', p: 2, ic: '🪵' }, ore: { n: 'Minério', p: 3, ic: '🪨' }, crystal: { n: 'Cristais', p: 14, ic: '💎' }, herb: { n: 'Ervas', p: 3, ic: '🌿' }, flax: { n: 'Linho e tecidos', p: 4, ic: '🧵' },
   woodgoods: { n: 'Varinhas e artigos de madeira', p: 8, ic: '🪄' }, wheat: { n: 'Trigo', p: 2, ic: '🌾' }, fruit: { n: 'Frutas', p: 3, ic: '🍎' }, flour: { n: 'Farinha', p: 5, ic: '🥣' }, loaves: { n: 'Pães', p: 7, ic: '🍞' }, pies: { n: 'Tortas', p: 13, ic: '🥧' }, cakes: { n: 'Bolos', p: 18, ic: '🎂' }, tools: { n: 'Ferramentas', p: 16, ic: '⚒' }, serve: { n: 'Mesas servidas', p: 4, ic: '🍺' }, paper: { n: 'Papel e pergaminho', p: 7, ic: '📜' }, potion: { n: 'Poções e tônicos', p: 11, ic: '🧪' },
+  blades: { n: 'Espadas', p: 140, ic: '🗡️' }, bows: { n: 'Arcos', p: 140, ic: '🏹' }, staves: { n: 'Cajados', p: 140, ic: '🪄' }, coffee: { n: 'Café', p: 6, ic: '☕' },   /* Armaria da Muralha e Café Gourmet (28/11) */
 };
 // o que a mercadoria vira quando um jogador compra no balcão
-const GOOD_ITEM = { potion: { pot: 'hp' }, flax: { pot: 'band' }, herb: { loot: 'herb' }, crystal: { loot: 'gem' }, woodgoods: { loot: 'wand' }, paper: { loot: 'map' }, wood: { loot: 'firewood' }, ore: { loot: 'gem' } };
+const GOOD_ITEM = { blades: { loot: 'arm_sword' }, bows: { loot: 'arm_bow' }, staves: { loot: 'arm_staff' }, coffee: { loot: 'coffee' }, cakes: { loot: 'cakeslice' }, potion: { pot: 'hp' }, flax: { pot: 'band' }, herb: { loot: 'herb' }, crystal: { loot: 'gem' }, woodgoods: { loot: 'wand' }, paper: { loot: 'map' }, wood: { loot: 'firewood' }, ore: { loot: 'gem' } };
 // item do inventário → mercadoria (para colocar no estoque da loja ou no depósito da oficina)
-const ITEM_GOOD = { wheat: ['wheat', 1], apple: ['fruit', 1], berries: ['fruit', 1], log: ['wood', 1], hardwood: ['wood', 2], wand: ['woodgoods', 1], wand_fine: ['woodgoods', 2], wand_arcane: ['woodgoods', 4], gem: ['crystal', 1], herb: ['herb', 1], map: ['paper', 1], flaxraw: ['flax', 1], ore: ['ore', 1] };
-const SHOP_GOODS = { witch: ['potion', 'crystal'], apoth: ['potion', 'herb'], arcane: ['crystal', 'woodgoods'], tailor: ['flax'], scroll: ['paper'] };
+const ITEM_GOOD = { arm_sword: ['blades', 1], arm_bow: ['bows', 1], arm_staff: ['staves', 1], coffee: ['coffee', 1], cakeslice: ['cakes', 1], wheat: ['wheat', 1], apple: ['fruit', 1], berries: ['fruit', 1], log: ['wood', 1], hardwood: ['wood', 2], wand: ['woodgoods', 1], wand_fine: ['woodgoods', 2], wand_arcane: ['woodgoods', 4], gem: ['crystal', 1], herb: ['herb', 1], map: ['paper', 1], flaxraw: ['flax', 1], ore: ['ore', 1] };
+const SHOP_GOODS = { arms: ['blades', 'bows', 'staves'], cafe: ['coffee', 'cakes'], witch: ['potion', 'crystal'], apoth: ['potion', 'herb'], arcane: ['crystal', 'woodgoods'], tailor: ['flax'], scroll: ['paper'] };
 const WORKS = {
   saw: { n: 'Serraria', make: { wood: 2 } }, mine: { n: 'Mina', make: { ore: 2, crystal: 0.2 } }, farm: { n: 'Horta', make: { herb: 2, flax: 1 } },
   wheat: { n: 'Fazenda', make: { wheat: 2 } }, mill: { n: 'Moinho', recipes: { flour: { wheat: 2 } } }, bakery: { n: 'Padaria', recipes: { loaves: { flour: 1 }, pies: { flour: 1, fruit: 1 }, cakes: { flour: 2, fruit: 1 } } },
